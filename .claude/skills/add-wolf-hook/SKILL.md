@@ -133,7 +133,7 @@ Both must print nothing and exit `0`.
 Uses the file from Step 3. Run from the repo root:
 
 ```bash
-echo '{"tool_input":{"file_path":"docs/specs/automaticum-draft-spec.md"}}' \
+echo '{"tool_input":{"file_path":"docs/specs/000-overview.md"}}' \
   | CLAUDE_PROJECT_DIR="$PWD" node .wolf/hooks/<name>.js; echo "exit=$?"
 ```
 

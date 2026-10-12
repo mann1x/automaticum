@@ -55,3 +55,38 @@
 | 22:37 | Edited ../../../../root/.claude/plans/functional-mapping-elephant.md | modified set() | ~38 |
 | 22:37 | Edited ../../../../root/.claude/plans/functional-mapping-elephant.md | 2→6 lines | ~109 |
 | 22:42 | Neutral host names in draft; local mapping file; gitignore for runtime state | docs/specs/automaticum-draft-spec.md, docs/local/hosts.local.md, .gitignore, .wolf/cerebrum.md | done | — |
+
+## Session: 2026-10-12 22:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-12 22:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-12 22:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:51 | Created docs/specs/000-overview.md | — | ~2211 |
+| 22:51 | Created docs/specs/010-architecture.md | — | ~1639 |
+| 22:51 | Created docs/specs/020-run-record.md | — | ~1978 |
+| 22:51 | Created docs/specs/030-configuration.md | — | ~1506 |
+| 22:52 | Created docs/specs/040-runner.md | — | ~2305 |
+| 22:53 | Created docs/specs/050-orchestration.md | — | ~1672 |
+| 22:53 | Created docs/specs/060-tasks-and-suites.md | — | ~1234 |
+| 22:53 | Created docs/specs/061-suite-bfcl.md | — | ~587 |
+| 22:54 | Created docs/specs/062-suite-swe-bench.md | — | ~651 |
+| 22:54 | Created docs/specs/063-suite-multi-language.md | — | ~572 |
+| 22:54 | Created docs/specs/064-engine-adapters.md | — | ~1026 |
+| 22:54 | Created docs/specs/065-cell-contract.md | — | ~1249 |
+| 22:54 | Created docs/specs/070-diagnostics.md | — | ~2825 |
+| 22:55 | Created docs/specs/080-store.md | — | ~1520 |
+| 22:55 | Created docs/specs/090-interfaces.md | — | ~1471 |
+| 22:55 | Created docs/specs/100-legacy-import.md | — | ~1554 |
+| 22:56 | Created docs/specs/110-acceptance-and-roadmap.md | — | ~1194 |
+| 22:56 | Created docs/specs/decisions.md | — | ~1712 |
+| 23:20 | Wrote spec set 000-110 + decisions.md from both inputs and three surveys; inputs moved to archive | docs/specs/* | done | — |
+| 23:25 | README, CLAUDE.md, spec-conventions rule and two spec skills updated for the set | README.md, CLAUDE.md, .claude/ | done | — |

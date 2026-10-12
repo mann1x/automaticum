@@ -6,33 +6,31 @@ Follow `.wolf/OPENWOLF.md` every session. Check `.wolf/anatomy.md` before readin
 
 ## Status
 
-- Spec stage: no application code yet. The source of truth is `docs/specs/automaticum-draft-spec.md` (draft 0.4).
+- Spec stage: no application code yet. The source of truth is the spec set in `docs/specs/` (`000-overview.md` to `110-acceptance-and-roadmap.md`, plus `decisions.md`). The two input documents are in `docs/specs/archive/` and are not edited.
 - automaticum is a test harness that runs coding agents against tasks with a verdict, on lanes it orchestrates itself.
 - The only executable code today is tooling: `.wolf/hooks/` (Node ESM) and `.claude/hooks/` (Shell).
 - Do not invent Go packages, `go.mod` or build commands until the owner creates them.
 
-## Owner decisions (spec section 3)
+## Owner decisions
 
-- Main application and daemon `automaticumd` are written in Go.
-- A host runs only the Go application: no Node, no Python, no helper scripts on a host.
-- The Node runner lives in the Docker image; lanes run in Docker from a slim base image.
-- Gitea provides git remotes for tasks.
-- Store: the owner prefers DuckDB (state, configuration, metrics, statistics) plus Lance through `lancedb-go` (text chunks, vectors, full-text), to be confirmed by the spike in spec section 10.1.
-- Anything marked `**Open**` in `docs/specs/automaticum-draft-spec.md` is a question, not a decision.
+- All owner decisions are in `docs/specs/decisions.md` (D1 onwards). Read it before proposing anything.
+- Go daemon `automaticumd`; a host runs only the Go application; Node only inside containers.
+- Lanes run in Docker; remote hosts use agent mode only; configuration is TOML; store is DuckDB + Lance + blobs on disk.
+- Anything marked `**Open**` in a spec is a question, not a decision. Only the owner decides: ask, never close one by default.
 
 ## Vocabulary
 
-- Use the spec's terms exactly: `task`, `suite`, `arm`, `run`, `batch`, `campaign`, `lane`, `endpoint`, `oracle`, `gate`, `finding`.
+- Use the terms of `docs/specs/000-overview.md` section 3 exactly: `task`, `suite`, `arm`, `run`, `batch`, `cell`, `cohort`, `campaign`, `basis`, `lane`, `endpoint`, `oracle`, `gate`, `finding`, `runner`.
 - The `oracle` is run by the harness after the agent stops, never by the agent.
 - A `gate` must hold before a `run` starts; a `lane` runs one `run` at a time.
 
 ## Commands
 
-Spec navigation (the file is ~10k tokens, so grep before reading):
+Spec navigation (grep before reading whole files):
 
 ```bash
-grep -n '^#' docs/specs/automaticum-draft-spec.md
-grep -n 'Open' docs/specs/automaticum-draft-spec.md
+grep -n '^#' docs/specs/0*.md docs/specs/1*.md
+grep -n -F '**Open' docs/specs/*.md
 ```
 
 OpenWolf hooks (wired in `.claude/settings.json`):
@@ -53,7 +51,9 @@ bash .claude/hooks/caliber-check-sync.sh
 
 ## Layout
 
-- **Spec** (`docs/specs/`): `automaticum-draft-spec.md` · `omnimergekit-evaluation-requirements.md`
+- **Specs** (`docs/specs/`): `000-overview.md` · `010-architecture.md` · `020-run-record.md` · `030-configuration.md` · `040-runner.md` · `050-orchestration.md` · `060-tasks-and-suites.md` · `061-suite-bfcl.md` · `062-suite-swe-bench.md` · `063-suite-multi-language.md` · `064-engine-adapters.md` · `065-cell-contract.md` · `070-diagnostics.md` · `080-store.md` · `090-interfaces.md` · `100-legacy-import.md` · `110-acceptance-and-roadmap.md` · `decisions.md`
+- **Inputs** (`docs/specs/archive/`): `automaticum-draft-spec-0.4.md` · `omnimergekit-evaluation-requirements-0.1.md`
+- **Local, untracked** (`docs/local/`): host mapping and private paths
 - **OpenWolf state** (`.wolf/`): `OPENWOLF.md` · `anatomy.md` · `cerebrum.md` · `memory.md` · `buglog.json` · `identity.md` · `config.json` · `token-ledger.json` · `cron-manifest.json` · `cron-state.json` · `suggestions.json` · `designqc-report.json` · `reframe-frameworks.md` · `daemon.log`
 - **OpenWolf hooks** (`.wolf/hooks/`): `session-start.js` · `pre-read.js` · `post-read.js` · `pre-write.js` · `post-write.js` · `stop.js` · `shared.js` · `package.json`
 - **Claude config** (`.claude/`): `settings.json` · `rules/openwolf.md` · `rules/spec-conventions.md` · `rules/wolf-hooks.md` · `hooks/caliber-check-sync.sh` · `hooks/caliber-session-freshness.sh`
@@ -64,7 +64,8 @@ bash .claude/hooks/caliber-check-sync.sh
 - Add an entry to `.wolf/anatomy.md` whenever you create, rename or delete a file.
 - Append one row to `.wolf/memory.md` after each significant action.
 - Read `.wolf/buglog.json` before a fix and append to it after.
-- Record owner decisions in `.wolf/cerebrum.md` under `## Decision Log`, with the date.
+- Record owner decisions in `docs/specs/decisions.md` and in `.wolf/cerebrum.md` under `## Decision Log`, with the date.
+- The repo is public: tracked files use the neutral host names (`linux-gpu-1`, `linux-gpu-2`, `windows-1`, `mac-1`) and no absolute paths.
 - Do not hand-edit `.claude/settings.json`; hooks there are managed by OpenWolf and Caliber.
 
 ## Tooling constraints

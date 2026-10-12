@@ -11,12 +11,12 @@
 - GitHub repos go under the `mann1x` account.
 - The repo is public: no host nicknames, private paths or addresses in tracked files.
 - C# is a primary language for the owner: dotnet leads the language layer list.
-- An **Open** spec item becomes a decision only when the owner says so; ask, do not decide by default.
+- An **Open** spec item becomes a decision only when the owner says so; ask, do not decide by default. The owner is willing to answer open questions in batches when asked.
 
 ## Key Learnings
 
 - **Project:** automaticum — Go test harness for coding agents built on @cerebriline/sdk; spec stage, no code yet.
-- Inputs: docs/specs/automaticum-draft-spec.md (draft 0.4, from the Cerebriline session, first user) and docs/specs/omnimergekit-evaluation-requirements.md (draft 0.1, from the omnimergekit session, second user).
+- Source of truth: the spec set docs/specs/000..110 plus decisions.md (draft 0.5). Inputs, not edited: docs/specs/archive/ (draft spec 0.4 from the Cerebriline session, first user; omnimergekit requirements 0.1, second user).
 - Host mapping, old-harness paths and mailbox aliases live in docs/local/hosts.local.md (untracked). Published files use neutral host names (linux-gpu-1, linux-gpu-2, windows-1, mac-1) and no absolute paths. The old harness is READ-ONLY.
 
 ## Do-Not-Repeat
@@ -31,3 +31,6 @@
 - [2026-10-12] Owner: Go daemon; hosts run only the Go binary; Node runner inside the lane image; Docker lanes (slim base + language layers); Gitea for git tasks.
 - [2026-10-12] Owner: spec-only outcome for now; agent mode only for remote hosts; TOML with tasks in this repo; one operator plus assistants; verdicts PASS/FAIL/TIMEOUT/ABORTED/INVALID/SKIPPED; raw streams as content-addressed blobs on disk; runner at full extension parity; first language layers dotnet (C#), node, python, go, rust, c/c++.
 - [2026-10-12] Owner prefers store shape 3: DuckDB (state, config, metrics, stats) + Lance via lancedb-go (chunks, vectors, FTS). To be confirmed by the spike in spec 10.1.
+- [2026-10-12] Owner: paused time excluded from timing; oracle sampling optional and off by default; no default for guards or compaction (arm must state each); runner installed into external harness task containers; omk_eval always owns serving in mode C; BFCL as two cells (proxy, agent); completion-form tasks stay out of automaticum; other-language SWE-bench sets are external suites with C/C++ first; detector library in Go in automaticum; VS Code-only behaviour emulated where an SDK hook exists; full TUI dashboard.
+- [2026-10-12] First languages recorded as C#, C/C++, Python, TypeScript, Go, Rust. This is a reading of two answers (C# named primary, then not ticked in the language question); see decisions.md D15 note.
+- [2026-10-12] Full list with ids lives in docs/specs/decisions.md; keep it and this log in step.

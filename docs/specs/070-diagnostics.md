@@ -1,0 +1,186 @@
+# 070 — Diagnostics: metrics, detectors, statistics
+
+**Status:** draft 0.5, 2026-10-12.
+
+## 1. The rule: no custom script
+
+Everything in this file runs automatically at ingest, is stored as metrics and
+findings on the run, and is available as a CLI command, an API call and a
+dashboard view. Each item replaces a script someone had to write (100 §5).
+
+Definitions here are shared with `omk_eval`, so a number from automaticum and a
+number from omnimergekit mean the same thing.
+
+### 1.1 Per-run report
+
+`automaticum run show <id>`: verdict and evidence; the arm, with the fields
+that differ from the batch's baseline highlighted; timeline; the metrics of §2;
+the findings of §3 and §4; links to every artefact.
+
+## 2. Metrics per run
+
+Token counts come from the server's own `usage` block whenever it exists, not
+from re-tokenizing afterwards. Where the server gives no split, the split
+method is recorded.
+
+- **Time:** wall time (paused intervals excluded, 050 §4), time to first
+  token, time per turn, time in tools against time in the model, idle gaps.
+- **Volume:** requests, turns, tool calls by tool, tool failures by tool and by
+  error class.
+- **Tokens:** prompt, cached, fresh, completion; completion split into
+  reasoning, visible text and tool input; tokens per second for prompt and
+  generation, per request and overall, with the concurrency it was measured at.
+- **Length distributions** for completion tokens and characters: n, sum, p10,
+  p50, p90, max. The same for reasoning alone and visible text alone.
+- **Finish reasons:** histogram; empty completions (nothing visible and no tool
+  call).
+- **Thinking:** blocks, tokens per block (median, p90, max), budget hits, turns
+  with no thinking, thinking-only turns.
+- **Context:** prompt tokens at the first and last request, peak occupancy
+  against the window, share of prompt served from cache, compactions (count,
+  size before and after, duration, tokens spent, trigger), overflow errors,
+  full prompt re-reads per request with the cause when known.
+- **Reasoning carried between turns:** per request, whether history contains
+  earlier reasoning and how many tokens of it. It changes fresh reasoning
+  length (median 252 against 467 characters measured).
+- **Edits:** count, files, churn (lines written against lines surviving),
+  edits to the same region, reverts, edit-without-check sequences.
+- **Change protocol:** transactions kept, discarded, empty; checks proposed and
+  their outcome; rollbacks.
+- **Escalation:** offers, calls, expert cost, whether it helped.
+- **Sub-agents:** spawned, per-agent verdict and spend, wait for placement,
+  retries, agents that reported nothing.
+- **Cost** in tokens and, for priced endpoints, money.
+
+### 2.1 Per cell
+
+- Every distribution above over the cell's runs.
+- **Conditioned on the verdict:** token p50 and p90 over `PASS` runs only, and
+  **tokens per solved task** = total completion tokens of the cell ÷ number of
+  `PASS`. A median over all runs rewards a model that gives up early.
+- Throughput over the whole cell. A rate from the easy first tasks is not the
+  rate of the suite.
+- **Sanity warnings:** n differs from expected; empty completions above 5 %;
+  p10 of visible characters under the suite's declared floor.
+
+## 3. Detectors: degeneration and looping
+
+**Decided by the owner (2026-10-12):** one detector library, written in **Go,
+in automaticum**, exposed by CLI and API (`automaticum detect` over a
+transcript or a text). omnimergekit calls it in place of its own Python
+implementation, whose thresholds and fixtures become the library's first test
+set. Two implementations of one detector drift.
+
+Detectors are versioned plugins, evaluated per assistant block (reasoning and
+visible text separately), per run and per cell. They are never re-declared in a
+report.
+
+| detector | definition | lesson behind it |
+|---|---|---|
+| short-unit repeat | a 2 to 40 character unit repeated 8 or more times, with word content (3 or more letters) | on code-bearing transcripts every firing without that rule was indentation or a number printout |
+| character run | one character repeated 41 or more times, same rule | |
+| sentence repeat | an identical unit of 60 or more characters repeated 3 or more times **and** making up 30 % or more of the block's units, or repeated 8 or more times outright | character detectors saw 1 and 9 blocks where this saw 29 and 89. Count alone is not enough: 3 to 6 repeats with thousands of new characters between them is iterative drafting |
+| runaway | a single reasoning block over a declared size (10,000 characters by default, per suite) | healthy length differs by suite |
+| repeated tool call | identical name and arguments N times | |
+| near-duplicate rounds | repeated rounds hidden behind a changing ordinal | |
+| edit oscillation | edit and revert of the same region | |
+| re-read loop | the same range read again and again; search repeated after "no match" | |
+
+Requirements:
+
+- **Positive and negative controls, per domain.** Each detector ships a fixture
+  it must fire on and healthy long text (prose, code, tool output) it must stay
+  silent on. The self-test runs at start (050 §3.2) and its result is in the
+  result file. A zero from a detector with no proven non-zero floor is not a
+  measurement.
+- `loop_rate` = runs with at least one firing ÷ runs, reported with its
+  components: which detector, reasoning or text, turn index.
+- **Always cross-tabulated** with the verdict and with cap hits: loops among
+  passes, loops among failures, loops that ended in a cap.
+- A suite subset may declare `loop_rate` as its headline metric.
+- Interventions are arm fields (030 §5.1), and the report says which runs had a
+  guard fire.
+- When a detector changes, findings are recomputed over the whole corpus
+  (`automaticum reanalyse`).
+
+## 4. Other findings
+
+Each has a severity, evidence (event ids, quoted text) and a count.
+
+- **Guards:** every guard that fired, when, what it cut or said, and what the
+  model did next; guards that should have fired by their own rule and did not
+  (the rule replayed over the transcript); a false-positive review queue.
+- **Tool calls:** calls per run and per tool; parse path per call (native,
+  repaired, from text, from reasoning); unreadable calls; calls truncated by a
+  cap; unknown tool names; schema violations; arrays sent as strings; an
+  `intent` used as scratch space; server parse errors (HTTP 5xx on a
+  generation) counted apart from model errors; share of turns with no call and
+  no final answer.
+- **Output hygiene:** empty turns; visible text under five characters; control
+  tokens or channel markers in visible text or in history; thinking that
+  stopped after a leak; thinking that never closed; reasoning emitted as text
+  or text as reasoning; markdown fences where the scorer executes raw code;
+  answers present only inside the reasoning; a stop sequence that fired inside
+  the reasoning.
+- **Turn pathologies:** thinking-only turns, a report after work that ended the
+  run early, a plan written to reasoning with an empty reply, premature "done",
+  refusal to continue.
+- **Parameter drift:** any request whose sampler, thinking, context or output
+  budget differs from the arm; values the server reported differently from
+  what was sent; a tag parameter that silently won or lost.
+- **Server side:** finish reason per request, truncations, slot or session
+  reuse, checkpoint restores, evictions, admission refusals, load and unload
+  events, restarts, GPU residency changes, errors in the window of the run.
+- **Integrity:** oracle tampering, workspace not pristine, files written
+  outside the workspace, sandbox escapes or denials, the agent changing its
+  environment to get past an obstacle (editing PATH, chmod, deleting a guard).
+- **Struggle signals:** the triggers of the escalation study, evaluated on
+  every run, with recall and false-alarm rate per trigger across a set.
+- **Outcome mismatches:** claimed success against the oracle; fixed then broken
+  again; correct at some point but not at the end (needs oracle sampling,
+  060 §3.1).
+
+## 5. Generation-cap audit
+
+- Cap hits are counted per run **at any turn**. In an agent loop the mid-loop
+  cap is the failure.
+- Per cell: capped runs, capped requests, and how many capped runs still
+  passed.
+- **Pile-up test** for servers that do not report the finish reason honestly:
+  two or more completions within a few tokens of the longest, at a plausible
+  limit, on at least a minimum number of rows. Small samples say "unverified",
+  never "capped".
+- Verdict per cell: `CLEAN`, `CAPPED`, `UNVERIFIED`. A `CAPPED` cell is not
+  comparable to a cell at another budget.
+- Between two arms: if cap hits differ by 1.5 times or more, the report refuses
+  to call the score difference clean. The bench has become a length meter.
+- The reasoning-budget regime is recorded (unlimited, budgeted, off): a budget
+  relocates rumination rather than removing it.
+
+## 6. Across runs
+
+- **Pass rate per arm** with a Wilson interval, streaks, and "how many more
+  runs to tell these two arms apart".
+- **Paired comparison** when two arms ran the same task ids: McNemar on the
+  discordant pairs (exact binomial), reported with the two discordant counts.
+  Errored tasks are excluded from the pairs and listed.
+- **Unpaired comparison** of any metric with the test stated (Fisher for rates,
+  Mann-Whitney or bootstrap for times and counts) and a plain statement of
+  whether the difference is distinguishable at this n.
+- **Jitter band:** a repeat of the same arm on the same basis. A difference
+  inside the band is reported as not distinguishable, whatever its sign. One
+  repeat per cohort is the minimum to state a band.
+- **A zero or a null result carries its power:** n, and the smallest difference
+  this n could have shown.
+- Above any difference it prints, a report states the basis diff (020 §5), the
+  cap comparison (§5) and each arm's denominator.
+- Medians and ranges by default, not means; distributions on request.
+- **Group by** any arm field, task label or finding. Attribution across
+  categories is done on balanced axes with per-category n shown.
+- **Census** of tool failures across the corpus by tool, model and error class.
+- **Regression view** across harness builds: what changed between two SDK
+  versions, on the same arm, for every metric and finding.
+- **Comparability:** refusal to pool across task, oracle, scoring or basis
+  boundaries, with the excluded runs and the reason.
+- **Lane skew:** the same arm on two hosts, to separate the model from the
+  machine.
