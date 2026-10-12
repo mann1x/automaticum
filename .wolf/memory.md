@@ -108,3 +108,15 @@
 | 23:15 | Applied mail 1209/1210: detector and cap definitions corrected, refusal.json, SDK request statuses, D27 | docs/specs/040,065,070,decisions | done | — |
 | 23:30 | Recorded owner decisions D27-D35; six items remain Open | docs/specs/*, .wolf/cerebrum.md, README.md | done | — |
 | 23:40 | D36: archived logs stay searchable (episodic-memory model) | docs/specs/080-store.md, 090, decisions.md | done | — |
+
+## Session: 2026-10-12 23:12
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-12 23:12
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:20 | Created ../../../../root/.claude/plans/functional-mapping-elephant.md | — | ~2847 |
+| 23:50 | Milestone 1 plan approved; bootstrap (go.mod, LICENSE, Makefile, build image), link checks L1 and L2 written; specs 080/010/040 and decisions D37-D43 updated | many | native build running | — |

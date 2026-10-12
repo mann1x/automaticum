@@ -1,6 +1,6 @@
 # 080 — The store
 
-**Status:** draft 0.6, 2026-10-12. The shape is the owner's preference; the
+**Status:** draft 0.7, 2026-10-12. The shape is the owner's preference; the
 spike in §7 confirms it or sends us to a fallback.
 
 ## 1. What the store has to do
@@ -13,7 +13,11 @@ spike in §7 confirms it or sends us to a fallback.
 - Vector search over text chunks (likely millions), full-text and regex search,
   and analytical queries (group by any arm field, percentiles, joins).
 - Be simple to run: no separate database server to administer.
-- Work from Go, on Linux and Windows, with only the Go application on the host.
+- Work from Go on Linux (amd64 and arm64), with only the Go application on the
+  host. **Decided by the owner (2026-10-12):** only the daemon holds the store,
+  so Windows builds agent mode and the CLI without it; a Windows build with the
+  store is attempted in the spike and reported, not required. The daemon runs
+  on Linux for now.
 - One writer (the daemon), many readers, and survive a kill during a write.
 
 ## 2. Shape
@@ -25,7 +29,7 @@ at.
 |---|---|---|
 | **Blob store on disk** | event streams, wire captures, logs, snapshots, session data | the source of truth for raw material |
 | **DuckDB** | runs, arms, tasks, cells, cohorts, lane and queue state, metrics, findings, statistics, reports | state and analytics |
-| **Lance** (through `lancedb-go`) | text chunks, their vectors, the full-text index | search |
+| **Lance** (binding chosen by the spike, §7.1) | text chunks, their vectors, the full-text index | search |
 
 **Decided by the owner (2026-10-12):** raw event streams, wire captures and
 logs live as **content-addressed blobs on disk**, referenced by hash from
@@ -123,19 +127,45 @@ walking skeleton (110 §3). It confirms the
 shape and finds its limits; it no longer chooses among three.
 
 **Fallbacks** if one engine fails its part:
-1. Lance for everything. Risk: the Go SDK is young, and small frequent updates
-   make a new table version each.
+1. Lance for everything. Risk: small frequent updates make a new table version
+   each, and the binding risk of §7.1 is concentrated.
 2. DuckDB for everything, with vectors searched exactly or the index rebuilt
    from the table at start. Risk: full-text needs scheduled rebuilds; vector
    cost at millions of chunks.
 3. ClickHouse embedded (chDB) only if log volume defeats the others.
 
-**Known limits going in** (as read on 2026-10-12, to be re-checked):
-`lancedb-go` is a CGO binding at an early version; `duckdb-go` is CGO and
-actively maintained; DuckDB's vector index persistence is experimental and its
-full-text index does not update automatically. Both engines need CGO, so **the
-first measurement is whether the two link into one static binary** on Linux
-(amd64, arm64) and Windows (amd64).
+### 7.1 Lance binding and linking
+
+Read on 2026-10-12 from each project's repository; nothing below is a
+measurement yet.
+
+- `lancedb-go` **cannot be used as released**: v0.1.2 (September 2025) returns
+  "not supported" for full-text queries, has no hybrid search, merge-insert or
+  compaction, and ships no linux-arm64 or Windows library. Its unreleased main
+  branch has them, must be built from source, and the repository looks
+  unmaintained.
+- `lance-c` is the official C interface to Lance and is active. It covers
+  write, update, delete, merge-insert, vector and scalar indexes, full-text,
+  versions and compaction, exchanging data through the Arrow C Data Interface.
+  Its prebuilt libraries need a newer glibc than our oldest host, so it is
+  built from source too.
+- DuckDB has a `lance` extension, which would remove the second native library.
+- `duckdb-go` is healthy and ships static archives. Its `vss` and `fts`
+  extensions are downloaded at run time; this shape does not need them, and
+  the store switches extension autoload and autoinstall off.
+
+**Decided by the owner (2026-10-12):**
+
+- The Lance binding is **chosen by the spike**. Candidates in order: L1
+  `lancedb-go` main at a pinned commit; L2 `lance-c` behind a thin cgo wrapper
+  of our own; L3 DuckDB's `lance` extension.
+- **Linking posture:** one binary, both engines linked statically, glibc and
+  libstdc++ dynamic, **built on a Debian 11 base** so it runs on glibc 2.31 and
+  later. A fully static binary is measured and reported, not required.
+- **Hybrid ranking** (reciprocal rank fusion) is our own Go code if the chosen
+  binding lacks it.
+
+### 7.2 Data and measurements
 
 **Data:** the old corpus (100) imported, then scaled synthetically to 5,000
 runs.
@@ -160,4 +190,33 @@ runs.
   matched passage from an archived blob;
 - memory at rest and at peak.
 
-**Pass criteria** are set before the spike runs. **Open:** the thresholds.
+### 7.3 Pass thresholds
+
+**Decided by the owner (2026-10-12).** T1 to T3 are hard gates. A miss on T4 to
+T15 is reported with its number and does not by itself reject the shape; the
+owner decides.
+
+| # | measurement | pass |
+|---|---|---|
+| T1 | one binary with both engines, linux amd64 and arm64, built on Debian 11 | opens DuckDB and a Lance dataset in one process and round-trips data on both; no duplicate-symbol or allocator fault |
+| T2 | `kill -9` during writes, 20 times | reopens 20/20; no committed DuckDB transaction lost; no partial blob under a valid name; Lance reopens or is rebuilt from blobs |
+| T3 | import of the real corpus | the old verdict counts reproduced exactly; original run ids kept |
+| T4 | ingest rate | at least 10 MB/s of raw stream on one core |
+| T5 | size on disk | streams and logs at most 15 % of raw; figures for both deduplication schemes |
+| T6 | batch statistics (pass rate and percentiles by three arm fields, 5,000 runs) | under 1 s warm |
+| T7 | tool-failure census over all tool calls | under 5 s warm |
+| T8 | full-text search over all chunks | p95 under 1 s warm, under 5 s cold |
+| T9 | regex scan over raw blobs, whole live corpus | under 10 minutes; throughput reported |
+| T10 | vector search, 1 M chunks at 1024 dimensions | p95 under 200 ms; recall@10 at least 0.90 against exact |
+| T11 | vector search, 5 M chunks at 1024 dimensions | p95 under 500 ms; recall@10 at least 0.85; index build under 2 h |
+| T12 | 10 updates per second to lane state for 1 h under the query load | p99 under 100 ms; file growth under 100 MB after checkpoint |
+| T13 | range read of 1 MB from a multi-gigabyte blob | under 200 ms live, under 2 s from the archive tier |
+| T14 | memory | under 500 MB at rest, under 16 GB at peak |
+| T15 | search with half the corpus archived | full-text and vector latency within 10 % of all-live; opening an archived passage under 2 s |
+
+If T1 fails for every Lance candidate, the spike falls back to DuckDB for
+everything, re-runs T6 to T15 on that, and reports.
+
+Vectors: about 100k real chunks are embedded with local embedders at 768 and
+1024 dimensions; the 1 M and 5 M sets are synthetic vectors drawn to match the
+real sample.

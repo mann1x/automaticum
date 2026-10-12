@@ -1,0 +1,45 @@
+# Build environment for automaticum's native (cgo) parts.
+#
+# Debian 11 is the oldest glibc (2.31) the binary must run on, so everything
+# that links against glibc is built here. Nothing is installed on a host.
+FROM debian:11
+
+ARG GO_VERSION=1.25.10
+ARG PROTOC_VERSION=28.3
+ARG RUST_VERSION=1.89.0
+
+ENV DEBIAN_FRONTEND=noninteractive
+# Debian 11 left the regular mirrors; its packages are served from the archive.
+RUN rm -f /etc/apt/sources.list.d/* \
+    && printf '%s\n' \
+        'deb http://archive.debian.org/debian bullseye main' \
+        'deb http://archive.debian.org/debian-security bullseye-security main' \
+        > /etc/apt/sources.list \
+    && printf 'Acquire::Check-Valid-Until "false";\n' > /etc/apt/apt.conf.d/99archive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates curl git xz-utils unzip file pkg-config make cmake \
+        build-essential g++ \
+        gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+        gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 \
+        libssl-dev binutils \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz | tar -C /usr/local -xz
+
+RUN curl -fsSL -o /tmp/protoc.zip \
+        https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip \
+    && unzip -q /tmp/protoc.zip -d /usr/local && rm /tmp/protoc.zip
+
+ENV RUSTUP_HOME=/opt/rustup CARGO_HOME=/opt/cargo
+RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain ${RUST_VERSION} \
+    && /opt/cargo/bin/rustup target add aarch64-unknown-linux-gnu x86_64-pc-windows-gnu
+
+ENV PATH=/usr/local/go/bin:/opt/cargo/bin:$PATH \
+    CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
+    CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc \
+    CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc \
+    CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++ \
+    CC_x86_64_pc_windows_gnu=x86_64-w64-mingw32-gcc \
+    CXX_x86_64_pc_windows_gnu=x86_64-w64-mingw32-g++
+
+WORKDIR /src

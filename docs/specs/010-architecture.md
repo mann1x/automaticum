@@ -1,6 +1,6 @@
 # 010 — Architecture
 
-**Status:** draft 0.6, 2026-10-12.
+**Status:** draft 0.7, 2026-10-12.
 
 ## 1. Fixed points
 
@@ -37,7 +37,9 @@
         └────────────────────┘   └────────────────────┘
 ```
 
-- **automaticumd** owns all state and all decisions. One static binary.
+- **automaticumd** owns all state and all decisions. One binary, built as
+  described in 080 §7.1. It runs on Linux; Windows and macOS hosts run agent
+  mode and the CLI.
 - **automaticum** is the CLI and TUI: a thin client of the daemon's API. Every
   dashboard action exists as a CLI command and an API call.
 - **runner**: the only non-Go part (040).

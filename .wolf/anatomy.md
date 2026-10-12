@@ -1,15 +1,18 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-12T20:56:13.542Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-12T21:20:53.095Z
 > Files: 25 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../root/.claude/plans/
 
-- `functional-mapping-elephant.md` — automaticum: refine the draft into a spec set (~2067 tok)
+- `functional-mapping-elephant.md` — Milestone 1: store spike and legacy importer (~2669 tok)
 
 ## ./
 
-- `CALIBER_LEARNINGS.md` — session learnings, managed by Caliber
+- `LICENSE` — Apache-2.0
+- `Makefile` — container build targets; needs SPIKE_ROOT
+- `go.mod` — module github.com/mann1x/automaticum
+- `spike.local.toml` — untracked local paths for the spike
 - `CLAUDE.md` — OpenWolf (~57 tok)
 - `README.md` — Project documentation (~1599 tok)
 
@@ -20,6 +23,9 @@
 ## .claude/rules/
 
 - `openwolf.md` (~313 tok)
+
+## docs/local/ (untracked)
+
 
 ## docs/specs/
 
@@ -47,6 +53,11 @@
 - `automaticum-draft-spec-0.4.md` — input document, not edited (~10526 tok)
 - `omnimergekit-evaluation-requirements-0.1.md` — input document, not edited (~8242 tok)
 
-## docs/local/ (untracked)
+## build/
 
-- `hosts.local.md` — neutral host name mapping, private paths, mailbox aliases
+- `Dockerfile.build` — Debian 11 (glibc 2.31) image with Go, Rust, protoc, arm64 and MinGW cross toolchains
+
+## spike/001-store/linkcheck/
+
+- `l1/main.go` — T1 link check: DuckDB + lancedb-go (main, from source) in one process
+- `l2/main.go` — T1 link check: DuckDB + lance-c through our own cgo wrapper and the Arrow C Data Interface

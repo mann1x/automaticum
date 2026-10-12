@@ -6,7 +6,7 @@ throwaway script.
 
 > **Status: specification stage.** Nothing is implemented yet. The roadmap is
 > approved and the first milestone (store spike and importer) is next. The design is the
-> spec set in [`docs/specs/`](docs/specs/000-overview.md) (draft 0.6). Items a
+> spec set in [`docs/specs/`](docs/specs/000-overview.md) (draft 0.7). Items a
 > spec marks **Open** are questions, not decisions; they are listed in
 > [`docs/specs/decisions.md`](docs/specs/decisions.md).
 
@@ -156,7 +156,11 @@ automaticum doctor
 ```
 docs/specs/            the spec set (start at 000-overview.md)
 docs/specs/archive/    the two input documents the set was refined from
+build/                 the Debian 11 build container for native (cgo) parts
+spike/001-store/       the store spike: link checks, later the benchmarks and report
 ```
+
+Licensed under [Apache-2.0](LICENSE).
 
 ## Documentation
 

@@ -1,6 +1,6 @@
 # 040 — The runner
 
-**Status:** draft 0.6, 2026-10-12. Facts about the SDK in this file were read
+**Status:** draft 0.7, 2026-10-12. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
 running it. Items under "Requests to Cerebriline" are dependencies on another
 project.
@@ -49,10 +49,11 @@ Three layers, each recorded:
    from the resolved arm. Nothing is passed through environment variables or
    settings files.
 2. **Read-back.** Before the first request, each setting is read back from the
-   built session. A setting that did not survive is a gate failure, not a quiet
-   default. *This is not possible with the SDK today:* the resolved session
-   configuration is private. See §8, request 1. Until it exists, the runner
-   relies on layer 3 and the record says read-back was unavailable.
+   built session and compared with the arm. A setting that did not survive is a
+   gate failure, not a quiet default. This uses the SDK's resolved-configuration
+   callback (§8.2), which is on the SDK's main branch but not yet in a release.
+   With an SDK build that lacks it, the runner relies on layer 3 and the record
+   says read-back was unavailable.
 3. **The wire.** The runner supplies the SDK's `fetch` option and records every
    request and response body untruncated, with timing. The first request of a
    run is compared to the arm (sampler, thinking, context, output budget, stop
@@ -161,15 +162,52 @@ code, not from trying. Each request is tracked in `decisions.md` section 4.
 
 | id | request | status |
 |---|---|---|
-| X1 | A public way to read the **resolved session configuration** before the first request, including where each value came from (session, stored profile, model catalog, default). | approved; cheap; first |
-| X2 | Configuration fields for the **data directory** and for the **lead agent's context window**. | approved; cheap; second |
-| X3 | A **strict mode** that refuses to read stored provider profiles and global settings, with the provenance of X1. | approved; medium; third |
+| X1 | A public way to read the **resolved session configuration** before the first request, including where each value came from. | **on Cerebriline main, unreleased** (§8.2) |
+| X2 | Configuration fields for the **data directory** and for the **lead agent's context window**. | **on Cerebriline main, unreleased** (§8.2) |
+| X3 | A **strict mode** that refuses to read stored provider profiles and global settings. | **partly: provider profiles only** (§8.2) |
 | X4 | The extension's **mention expansion** as an SDK function. | expensive: it lives in the extension and leans on the editor. Worked around at first (§8.1) |
 | X5 | A hook for the **error-retry** decision. | **withdrawn** (owner, 2026-10-12): the runner observes only (§8.1) |
 | X6 | Confirmation of the parity inventory in §6, row by row. | pending; silence is not confirmation |
 
 `INVALID` depends on X1 to X3, which is why they come first. More requests are
 expected while the runner is written, and are sent in batches.
+
+### 8.2 What landed (reported by the Cerebriline session, 2026-10-12)
+
+On the SDK's main branch, to ship with the release after 4.100.249. Until that
+release the runner pins a tarball built from the commit (§3). The session
+reports unit tests for each item; a live request showing the context window on
+the wire from the new field was **not** tested there, so the runner's wire
+check (§4) is the first real proof.
+
+- **Resolved configuration (X1).** A callback on the session configuration,
+  called once the configuration is final and before any request, and awaited.
+  **Throwing from it stops the session from starting**, which is how a gate
+  refuses before anything is spent. The same object is returned by start. It
+  holds provider, model, base URL, context window, output budget, thinking,
+  sampling, the provider and session configuration as plain data with secrets
+  masked, the system prompt as the model is given it, and a `sources` block.
+- **`sources`** says whether a stored provider profile was merged, ignored or
+  absent, **which fields were inherited from it**, the data directory in use,
+  and whether a global settings file exists. An isolated run must show no
+  inherited field; anything else is `INVALID` (§5).
+- **Context window (X2)** is a session configuration field and wins over a
+  stored profile.
+- **Data directory (X2)** is an option when the core is created. It is
+  **process-wide**, so one run per runner process stays the rule. Narrower
+  environment variables still override parts of it, so the lane image must not
+  set them, and the harness-build gate checks they are unset.
+- **Stored provider settings (X3)** can be set to `ignore`, in which case the
+  profile is not read at all.
+- **Not covered:** the global settings file has no switch. With a fresh data
+  directory it does not exist, and the report lets the runner assert that.
+- **Only the local runtime** calls the callback. The runner uses it; the hub
+  and remote runtimes are out of scope.
+- **Bundled skills are on by default** in the SDK (three media skills), so
+  every session has the `skills` tool unless global settings turn them off.
+  Which bundled skills are on is therefore an arm field (030 §5) that the
+  runner writes into the fresh data directory's global settings, and the wire
+  check verifies the tool list.
 
 ### 8.1 Consequences until the requests land
 

@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-10-12 (revision 4).
+**Status:** current as of 2026-10-12 (revision 5).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -46,6 +46,13 @@ All dated 2026-10-12.
 | D33 | The terminal dashboard has all four view groups: core, gates and doctor, A/B and reports, log viewer and search. | 090 §2 |
 | D34 | For endpoint errors the runner observes the SDK's retries and does not decide them. Request X5 is withdrawn. | 040 §8.1 |
 | D35 | The native agent's way of running Node is decided when milestone 7 is planned. | 010 §4 |
+| D37 | Licence: Apache-2.0. | `LICENSE` |
+| D38 | The Lance binding is chosen by the spike (candidates L1, L2, L3), not assumed to be `lancedb-go`. | 080 §7.1 |
+| D39 | Linking posture: both engines static, glibc and libstdc++ dynamic, built on Debian 11. Fully static is reported, not required. | 080 §7.1 |
+| D40 | Only the daemon holds the store. It is required on linux amd64 and arm64; Windows builds agent mode and the CLI without it. The daemon runs on Linux for now. | 080 §1, 010 §2 |
+| D41 | Hybrid ranking is our own code if the binding lacks it. | 080 §7.1 |
+| D42 | The spike's pass thresholds T1 to T15, with T1 to T3 as hard gates. | 080 §7.3 |
+| D43 | Spike data: live tier and indexes on a dedicated NVMe that is neither the development disk nor the old harness's disk; archive tier on the large array. Real embeddings for about 100k chunks, synthetic vectors for scale. The store interface, blob store and importer are kept; the benchmark harness is throwaway. | 080 §7 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked
@@ -76,21 +83,20 @@ Each of these waits for a measurement or for the planning of its milestone.
 | O5 | Which published C/C++ SWE-bench-style set, at which version; the order of languages after it. | 062 §6 | milestone 5 |
 | O6 | Which external harnesses need the offline event path. | 064 §3.2 | milestone 5, per harness |
 | O8 | Deduplication scheme for wire captures. | 080 §4 | the spike |
-| O10 | Pass thresholds for the store spike. | 080 §7 | the planning of milestone 1 |
 
 Closed since the first revision: O2 (D32), O4 (D30), O7 (S4, then D34), O9
-(D31), O11 (D33), O12 (D28), O13 (D29).
+(D31), O10 (D42), O11 (D33), O12 (D28), O13 (D29).
 
 ## 4. External dependencies
 
 Requests to the Cerebriline SDK (040 §8). The owner approved the work on
-2026-10-12 (D27). None has landed.
+2026-10-12 (D27). X1 to X3 are on the SDK's main branch and ship with the release after 4.100.249; none is in a published release yet.
 
 | id | request | status | effect while absent |
 |---|---|---|---|
-| X1 | Read the resolved session configuration, with provenance, before the first request. | approved, first | read-back is unavailable; verification relies on the wire |
-| X2 | Configuration fields for the data directory and the lead agent's context window. | approved, second | one session per runner process; the context window goes through the known-models table |
-| X3 | A strict mode that refuses stored provider profiles and global settings. | approved, third | the runner relies on an empty data directory |
+| X1 | Read the resolved session configuration, with provenance, before the first request. | on Cerebriline main, unreleased | with an older SDK build: no read-back, wire only |
+| X2 | Configuration fields for the data directory and the lead agent's context window. | on Cerebriline main, unreleased | the data directory stays process-wide: one run per runner process |
+| X3 | A strict mode that refuses stored provider profiles and global settings. | provider profiles: on main, unreleased. Global settings: no switch | a fresh data directory, asserted through the resolved-configuration report |
 | X4 | Mention expansion as an SDK function. | worked around | the scripted user sends expanded text; expansion is not exercised |
 | X5 | A hook for the error-retry decision. | withdrawn (D34) | retries are observed and recorded, not decided |
 | X6 | Confirmation of the extension-parity inventory. | pending | the inventory rests on a source read |

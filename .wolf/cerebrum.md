@@ -10,6 +10,7 @@
 - When the owner lists setup steps, do them in the order given (repo creation before tool inits).
 - GitHub repos go under the `mann1x` account.
 - The repo is public: no host nicknames, private paths or addresses in tracked files.
+- Never put spike or store data on the development NVMe (filling it blocks every project) or on the old harness's spool NVMe (heavily used). Use the dedicated disk recorded in docs/local/hosts.local.md.
 - C# is a primary language for the owner: dotnet leads the language layer list.
 - An **Open** spec item becomes a decision only when the owner says so; ask, do not decide by default. The owner is willing to answer open questions in batches when asked.
 
@@ -36,3 +37,5 @@
 - [2026-10-12] Full list with ids lives in docs/specs/decisions.md; keep it and this log in step.
 - [2026-10-12] Owner (second pass): SDK fixes approved on the Cerebriline side (X1-X3 first); store spike first; milestone order approved, milestone 1 planned next; one Gitea per daemon; blobs archived automatically by age; plugins compiled in only; TUI has all four view groups; runner only observes endpoint-error retries (X5 withdrawn); native agent's Node question deferred to milestone 7.
 - [2026-10-12] Owner: archived logs must stay searchable like the episodic memory in claude-hooks (index stays in the database, only raw blobs move, transparent open of archived blobs, embedder version per chunk). Spec 080 section 5.1.
+- [2026-10-12] Owner (milestone 1 plan): Apache-2.0; Lance binding chosen by the spike (lancedb-go v0.1.2 is unusable as released); both engines static with dynamic glibc, built on Debian 11; store required on Linux only, Windows gets agent mode and CLI without it; thresholds T1-T15 (T1-T3 hard gates); spike data on a dedicated NVMe (never the dev or spool disk), archive on the large array.
+- [2026-10-12] Cerebriline SDK: X1-X3 are on its main branch, unreleased (resolved-config callback that can refuse a session, context window field, process-wide data dir option, ignore stored provider profile). No switch for the global settings file; three bundled media skills are on by default.

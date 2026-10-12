@@ -8,3 +8,7 @@ docs/local/
 .wolf/hooks/_session.json
 .wolf/token-ledger.json
 .wolf/daemon.log
+
+# Local build and spike settings (paths on this installation)
+spike.local.toml
+/bin/
