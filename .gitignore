@@ -1,0 +1,10 @@
+# Caliber local state
+.caliber/
+
+# Local-only notes (host mapping, private paths)
+docs/local/
+
+# OpenWolf runtime state
+.wolf/hooks/_session.json
+.wolf/token-ledger.json
+.wolf/daemon.log
