@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-10-12.
+**Status:** current as of 2026-10-12 (revision 4).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -37,6 +37,16 @@ All dated 2026-10-12.
 | D24 | The shared detector library is written in Go, in automaticum. | 070 §3 |
 | D25 | VS Code-only behaviour is emulated where an SDK hook exists, as arm fields, and recorded as emulated. | 040 §6.1 |
 | D26 | A full terminal dashboard, in addition to the web dashboard. | 090 §2 |
+| D27 | The SDK fixes requested from Cerebriline go ahead on that side. | 040 §8 |
+| D28 | The store spike runs first, before the walking skeleton. | 080 §7, 110 §3 |
+| D29 | The milestone order is approved as the roadmap; milestone 1 is planned next. This supersedes the "no milestone approved" part of D7. | 110 §3 |
+| D30 | One long-lived Gitea instance per daemon. | 060 §6 |
+| D31 | Raw blobs are archived automatically by age, verified before the source is freed. | 080 §5 |
+| D32 | Plugins are compiled into the binary only. | 010 §2 |
+| D33 | The terminal dashboard has all four view groups: core, gates and doctor, A/B and reports, log viewer and search. | 090 §2 |
+| D34 | For endpoint errors the runner observes the SDK's retries and does not decide them. Request X5 is withdrawn. | 040 §8.1 |
+| D35 | The native agent's way of running Node is decided when milestone 7 is planned. | 010 §4 |
+| D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked
 which languages come first, selected C/C++, Python + TypeScript and Go + Rust
@@ -51,38 +61,39 @@ Not owner decisions; recorded so they can be overturned.
 |---|---|---|
 | S1 | The vocabulary takes `cell`, `cohort`, `basis`, `headline metric`, `cap hit`, `errored` and `engine adapter` as omnimergekit proposed, plus `runner` and `agent mode`. | 000 §3 |
 | S2 | The request-count pause is not emulated, because it no longer exists in the extension. | 040 §6 |
-| S3 | The old oracle's history is numbered as task versions 1, 2 and 3. | 100 §3 |
+| S3 | The old oracle's history is numbered as task versions 1, 2 and 3. Confirmed by the Cerebriline session as a numbering of scoring boundaries. | 100 §3 |
+| S4 | Exit codes for `cell run` are 0, 10, 20, 30, 70. Confirmed by the omnimergekit session; this closes the former O7. | 065 §2.1 |
+| S5 | Detector and cap-audit definitions follow omnimergekit's code exactly, as corrected by that session. | 070 §3, §5 |
 
 ## 3. Open
 
-| id | question | where | recommendation |
+Each of these waits for a measurement or for the planning of its milestone.
+
+| id | question | where | waits for |
 |---|---|---|---|
-| O1 | How the native agent on Windows and macOS meets "a host runs only the Go application", given the runner needs Node. | 010 §4 | decide when milestone 7 is planned |
-| O2 | Whether out-of-tree plugins (suites, gates, detectors, adapters) are ever needed. | 010 §2 | no; compile them in |
-| O3 | Configuration directory layout and file names. | 030 §1 | as proposed there |
-| O4 | Gitea: one instance per daemon or per campaign, and where it runs for remote lanes. | 060 §6 | one per daemon |
-| O5 | Which published C/C++ SWE-bench-style set, at which version; the order of languages after it. | 062 §6 | pick when milestone 5 is planned |
-| O6 | Which external harnesses need the offline event path. | 064 §3.2 | find out per harness |
-| O7 | Exit code numbers for `cell run`. | 065 §2.1 | as proposed; confirm with omnimergekit |
-| O8 | Deduplication scheme for wire captures. | 080 §4 | measure in the spike |
-| O9 | The archive tier's location and the policy for cold blobs. | 080 §5 | owner's call |
-| O10 | Pass thresholds for the store spike. | 080 §7 | set before it runs |
-| O11 | Which views the TUI has beyond the core ones, and their order. | 090 §2 | lanes, queue, live run, controls first |
-| O12 | Whether the store spike runs before or alongside the walking skeleton. | 110 §3 | before; the static build is the largest risk |
-| O13 | The milestone order as a whole. | 110 §3 | as proposed |
+| O1 | How the native agent on Windows and macOS meets "a host runs only the Go application", given the runner needs Node. | 010 §4 | milestone 7 (D35) |
+| O3 | Configuration directory layout and file names. | 030 §1 | milestone 2; as proposed there unless the owner objects |
+| O5 | Which published C/C++ SWE-bench-style set, at which version; the order of languages after it. | 062 §6 | milestone 5 |
+| O6 | Which external harnesses need the offline event path. | 064 §3.2 | milestone 5, per harness |
+| O8 | Deduplication scheme for wire captures. | 080 §4 | the spike |
+| O10 | Pass thresholds for the store spike. | 080 §7 | the planning of milestone 1 |
+
+Closed since the first revision: O2 (D32), O4 (D30), O7 (S4, then D34), O9
+(D31), O11 (D33), O12 (D28), O13 (D29).
 
 ## 4. External dependencies
 
-Requests to the Cerebriline SDK (040 §8). None is confirmed.
+Requests to the Cerebriline SDK (040 §8). The owner approved the work on
+2026-10-12 (D27). None has landed.
 
-| id | request | effect if absent |
-|---|---|---|
-| X1 | Read the resolved session configuration before the first request. | read-back is unavailable; verification relies on the wire |
-| X2 | Configuration fields for the lead agent's context window and for the data directory. | the runner uses the same side routes as the CLI |
-| X3 | Disable, or report, the merge of stored provider profiles and global settings. | the runner relies on an empty data directory |
-| X4 | Mention expansion as an SDK function. | the runner re-implements it and may drift |
-| X5 | A hook for the error-retry decision. | listed as a known difference |
-| X6 | Confirmation of the extension-parity inventory. | the inventory rests on a source read |
+| id | request | status | effect while absent |
+|---|---|---|---|
+| X1 | Read the resolved session configuration, with provenance, before the first request. | approved, first | read-back is unavailable; verification relies on the wire |
+| X2 | Configuration fields for the data directory and the lead agent's context window. | approved, second | one session per runner process; the context window goes through the known-models table |
+| X3 | A strict mode that refuses stored provider profiles and global settings. | approved, third | the runner relies on an empty data directory |
+| X4 | Mention expansion as an SDK function. | worked around | the scripted user sends expanded text; expansion is not exercised |
+| X5 | A hook for the error-retry decision. | withdrawn (D34) | retries are observed and recorded, not decided |
+| X6 | Confirmation of the extension-parity inventory. | pending | the inventory rests on a source read |
 
 ## 5. Not adopted
 

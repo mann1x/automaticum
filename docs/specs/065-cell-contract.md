@@ -1,6 +1,6 @@
 # 065 — The cell contract and exports
 
-**Status:** draft 0.5, 2026-10-12.
+**Status:** draft 0.6, 2026-10-12.
 
 ## 1. Purpose
 
@@ -34,8 +34,9 @@ automaticum cell run \
 
 ### 2.1 Exit codes
 
-Stable, and distinguishing these five outcomes. The numbers are a proposal
-(**Open:** confirm with the omnimergekit session):
+Stable, and distinguishing these five outcomes. The omnimergekit session
+confirmed on 2026-10-12 that these numbers work for `omk_eval`, which maps a
+child's code to its own:
 
 | code | meaning |
 |---|---|
@@ -44,6 +45,10 @@ Stable, and distinguishing these five outcomes. The numbers are a proposal
 | 20 | a gate refused; nothing ran |
 | 30 | incomplete; resume is possible with the same key |
 | 70 | internal error |
+
+On **20** and **30** the reason is machine-readable: `<out>/refusal.json` names
+the gate that refused (code 20) or the unfinished run ids (code 30), so the
+caller's log line says why.
 
 ## 3. The result file
 
@@ -85,6 +90,10 @@ Rules, each from an incident:
 - `warnings` is machine-readable, and non-empty when a cap, a basis mismatch, a
   detector self-test failure or an incomplete set was seen. A warning is a
   reason not to tabulate, so it is in the file and not only in a log.
+- `complete: false` always comes with a non-empty `warnings`, so a reader that
+  only checks warnings still stops.
+- Fields may be added within a schema version; readers ignore keys they do not
+  know.
 - `runs.jsonl` has one row per run: task id, verdict, the per-run numbers of
   070, and the run id to drill into.
 - Timestamps are UTC with offset.

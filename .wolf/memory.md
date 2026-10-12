@@ -90,3 +90,21 @@
 | 22:56 | Created docs/specs/decisions.md | — | ~1712 |
 | 23:20 | Wrote spec set 000-110 + decisions.md from both inputs and three surveys; inputs moved to archive | docs/specs/* | done | — |
 | 23:25 | README, CLAUDE.md, spec-conventions rule and two spec skills updated for the set | README.md, CLAUDE.md, .claude/ | done | — |
+
+## Session: 2026-10-12 22:57
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-12 22:57
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-12 22:58
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:15 | Applied mail 1209/1210: detector and cap definitions corrected, refusal.json, SDK request statuses, D27 | docs/specs/040,065,070,decisions | done | — |
+| 23:30 | Recorded owner decisions D27-D35; six items remain Open | docs/specs/*, .wolf/cerebrum.md, README.md | done | — |
+| 23:40 | D36: archived logs stay searchable (episodic-memory model) | docs/specs/080-store.md, 090, decisions.md | done | — |

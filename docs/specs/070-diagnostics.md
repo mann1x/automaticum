@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.5, 2026-10-12.
+**Status:** draft 0.6, 2026-10-12.
 
 ## 1. The rule: no custom script
 
@@ -77,14 +77,32 @@ report.
 
 | detector | definition | lesson behind it |
 |---|---|---|
-| short-unit repeat | a 2 to 40 character unit repeated 8 or more times, with word content (3 or more letters) | on code-bearing transcripts every firing without that rule was indentation or a number printout |
-| character run | one character repeated 41 or more times, same rule | |
-| sentence repeat | an identical unit of 60 or more characters repeated 3 or more times **and** making up 30 % or more of the block's units, or repeated 8 or more times outright | character detectors saw 1 and 9 blocks where this saw 29 and 89. Count alone is not enough: 3 to 6 repeats with thousands of new characters between them is iterative drafting |
-| runaway | a single reasoning block over a declared size (10,000 characters by default, per suite) | healthy length differs by suite |
+| short-unit repeat | a 2 to 40 character unit repeated 8 or more times, where **the repeated unit itself** contains 3 or more alphabetic characters | on code-bearing transcripts every firing without that rule was indentation or a number printout |
+| character run | one character repeated 41 or more times, **only when that character is alphabetic** | a run of `=` or `-` is a separator and is clean |
+| sentence repeat | see §3.1 | character detectors saw 1 and 9 blocks where this saw 29 and 89. Count alone is not enough: 3 to 6 repeats with thousands of new characters between them is iterative drafting |
+| runaway | a single block whose length in characters is **at or above** a declared size (10,000 by default, per suite) | healthy length differs by suite |
 | repeated tool call | identical name and arguments N times | |
 | near-duplicate rounds | repeated rounds hidden behind a changing ordinal | |
 | edit oscillation | edit and revert of the same region | |
 | re-read loop | the same range read again and again; search repeated after "no match" | |
+
+The first four are omnimergekit's reference detectors, and their definitions
+here were checked against its code on 2026-10-12. The per-block result keeps
+each detector's flag separate, plus `looped` as their OR. **The OR alone is
+never what is stored.**
+
+### 3.1 Sentence repeat, exactly
+
+- Evaluated **within one block only**. The same sentence across separate turns
+  is normal and does not count.
+- **Units:** split on whitespace after `.`, `!` or `?`, and on newlines; then
+  strip. A unit qualifies when it has 60 or more characters and 3 or more
+  letters.
+- **Identity:** exact string equality after strip. No normalisation of case or
+  spacing.
+- **Share:** count of the most frequent unit ÷ number of qualifying units in
+  the block.
+- **Fires** when count ≥ 3 and (share ≥ 0.30 or count ≥ 8).
 
 Requirements:
 
@@ -146,14 +164,24 @@ Each has a severity, evidence (event ids, quoted text) and a count.
   cap is the failure.
 - Per cell: capped runs, capped requests, and how many capped runs still
   passed.
-- **Pile-up test** for servers that do not report the finish reason honestly:
-  two or more completions within a few tokens of the longest, at a plausible
-  limit, on at least a minimum number of rows. Small samples say "unverified",
-  never "capped".
+- **Declared limit:** when the output budget is known, a completion is capped
+  when its length ≥ cap − 16 tokens. For a derived answer allowance (output
+  budget minus thinking budget) it is a band: |length − allowance| ≤ 16.
+- **Pile-up test** for servers that do not report the finish reason honestly,
+  all of:
+  - tie band: completions within 16 tokens of the longest;
+  - at least 2 ties, and at least 10 rows. Under 10 rows the answer is
+    "unverified", never "capped";
+  - plausible limit: longest ≥ 256 tokens, and (longest − 16) ≥ 2.0 × the
+    median of the rows outside the tie band.
 - Verdict per cell: `CLEAN`, `CAPPED`, `UNVERIFIED`. A `CAPPED` cell is not
   comparable to a cell at another budget.
-- Between two arms: if cap hits differ by 1.5 times or more, the report refuses
-  to call the score difference clean. The bench has become a length meter.
+- **Cap asymmetry between two arms**, over their shared task ids. Let hi be the
+  larger cap-hit count and lo the smaller. The asymmetry is *material* when
+  hi ≥ max(5, 1 % of shared tasks). When material, the comparison is confounded
+  if lo = 0 or hi ÷ lo ≥ 1.5, and the report refuses to call the score
+  difference clean: the bench has become a length meter. A bare 1.5 ratio
+  would cry wolf on 1 against 0.
 - The reasoning-budget regime is recorded (unlimited, budgeted, off): a budget
   relocates rumination rather than removing it.
 

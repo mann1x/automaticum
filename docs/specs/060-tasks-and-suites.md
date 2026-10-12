@@ -1,6 +1,6 @@
 # 060 — Tasks, oracles and the suite interface
 
-**Status:** draft 0.5, 2026-10-12.
+**Status:** draft 0.6, 2026-10-12.
 
 ## 1. Scope
 
@@ -95,8 +95,10 @@ Per run: a fresh repository or fork seeded from the task, a scoped token, and
 afterwards the pushed refs, pull requests and comments collected as artefacts
 and available to the oracle. Torn down or archived per policy.
 
-**Open:** one long-lived Gitea instance per daemon, or one per campaign; and
-where it runs when lanes are on a remote host.
+**Decided by the owner (2026-10-12):** **one long-lived Gitea instance per
+daemon**, a container managed by the daemon on the main host. Lanes on remote
+hosts reach it over the private network; it is never exposed on a public
+interface.
 
 ## 7. Private tasks
 

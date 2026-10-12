@@ -4,8 +4,9 @@ A test harness that runs coding agents against tasks with a verdict, on lanes it
 orchestrates itself, and answers the questions about those runs without a
 throwaway script.
 
-> **Status: specification stage.** Nothing is implemented yet. The design is the
-> spec set in [`docs/specs/`](docs/specs/000-overview.md) (draft 0.5). Items a
+> **Status: specification stage.** Nothing is implemented yet. The roadmap is
+> approved and the first milestone (store spike and importer) is next. The design is the
+> spec set in [`docs/specs/`](docs/specs/000-overview.md) (draft 0.6). Items a
 > spec marks **Open** are questions, not decisions; they are listed in
 > [`docs/specs/decisions.md`](docs/specs/decisions.md).
 

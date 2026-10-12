@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.5, 2026-10-12.
+**Status:** draft 0.6, 2026-10-12.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -51,8 +51,15 @@ transcript and numbers, batch and campaign progress, and the controls of
 The TUI is a client of the same API as everything else and holds no logic of
 its own, so it cannot disagree with the web dashboard.
 
-**Open:** which views the TUI has beyond those above (A/B boards, search, the
-log viewer), and the order they are built in.
+**Decided by the owner (2026-10-12):** the TUI has all four groups of views:
+
+1. lanes, queue, a run in flight, batch and campaign progress, controls;
+2. gate status per lane, the reason for every refusal, and the doctor run;
+3. A/B boards and reports, with the basis diff above every comparison;
+4. the transcript viewer with the aligned server log, and full-text and regex
+   search.
+
+They are built in that order (a proposal; the order is not an owner decision).
 
 ## 3. HTTP API
 
@@ -101,6 +108,7 @@ The primary user is often an AI session. Requirements:
   tool results and logs, across the corpus, with filters on any run field.
 - **Semantic search** through the embedder: "runs where the model decided the
   oracle was wrong", "reasoning that mentions giving up".
+- Search covers archived runs exactly as live ones (080 §5.1).
 - Saved queries, and queries as report columns.
 - **Replay:** re-send a recorded request to an endpoint, byte for byte, to
   reproduce a behaviour offline. One template leak needed exactly this, and 23

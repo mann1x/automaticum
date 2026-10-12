@@ -1,6 +1,6 @@
 # 040 — The runner
 
-**Status:** draft 0.5, 2026-10-12. Facts about the SDK in this file were read
+**Status:** draft 0.6, 2026-10-12. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
 running it. Items under "Requests to Cerebriline" are dependencies on another
 project.
@@ -123,8 +123,7 @@ The system prompt names the host IDE. The arm states which value is sent; the
 default is the value the extension sends, since that is what users run.
 
 Not emulated, and listed as known differences: the webview's own behaviour, and
-the error-retry prompt for authentication and balance errors (no hook found;
-§8, request 5).
+the error-retry prompt for authentication and balance errors (§8.1).
 
 ### 6.2 The scripted user
 
@@ -156,17 +155,33 @@ The runner never runs the oracle and never sees it (060 §3).
 
 ## 8. Requests to Cerebriline
 
-Needed from the SDK; each is tracked in `decisions.md` as an external
-dependency.
+**Decided by the owner (2026-10-12):** the SDK fixes go ahead on the Cerebriline
+side. Costs and order below are that session's estimates from reading its
+code, not from trying. Each request is tracked in `decisions.md` section 4.
 
-1. A public way to read the **resolved session configuration** after it is
-   built and before the first request.
-2. A configuration field for the **lead agent's context window**, and one for
-   the **data directory**, so neither needs an environment variable or a
-   side table.
-3. A way to **disable the merge** of stored provider profiles and global
-   settings, or to be told which files were read.
-4. The extension's **mention expansion** as an SDK function, so the runner and
-   the extension cannot drift.
-5. A hook for the **error-retry** decision.
-6. Confirmation of the parity inventory in §6.
+| id | request | status |
+|---|---|---|
+| X1 | A public way to read the **resolved session configuration** before the first request, including where each value came from (session, stored profile, model catalog, default). | approved; cheap; first |
+| X2 | Configuration fields for the **data directory** and for the **lead agent's context window**. | approved; cheap; second |
+| X3 | A **strict mode** that refuses to read stored provider profiles and global settings, with the provenance of X1. | approved; medium; third |
+| X4 | The extension's **mention expansion** as an SDK function. | expensive: it lives in the extension and leans on the editor. Worked around at first (§8.1) |
+| X5 | A hook for the **error-retry** decision. | **withdrawn** (owner, 2026-10-12): the runner observes only (§8.1) |
+| X6 | Confirmation of the parity inventory in §6, row by row. | pending; silence is not confirmation |
+
+`INVALID` depends on X1 to X3, which is why they come first. More requests are
+expected while the runner is written, and are sent in batches.
+
+### 8.1 Consequences until the requests land
+
+- **One session per runner process.** The data directory is a process-global
+  setting in the SDK today, so two sessions in one process share it. The runner
+  starts one process per run, and a sub-agent's session is assumed to share the
+  lead's directory.
+- **Mentions:** the scripted user sends already-expanded text, and the run
+  record says that mention expansion was not exercised.
+- **Error retry:** the runner observes every retry the SDK makes (from the
+  event stream and the wire) and records it as infrastructure, never as the
+  model's failure (050 §4). The arm's retry limits are passed as configuration.
+  **Decided by the owner (2026-10-12):** the runner **observes only**. The
+  SDK's own retry ladder runs; no hook is requested. The extension's retry
+  prompt stays a known difference (§6.1).

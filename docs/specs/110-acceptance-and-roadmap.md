@@ -1,8 +1,7 @@
 # 110 — Acceptance and roadmap
 
-**Status:** draft 0.5, 2026-10-12. The milestone order is a proposal: the owner
-chose a spec-only outcome for now and has not approved an implementation
-milestone.
+**Status:** draft 0.6, 2026-10-12. The milestone order in §3 was approved by the owner
+on 2026-10-12; milestone 1 is to be planned next. Nothing is implemented.
 
 ## 1. Acceptance: when it replaces the old harness
 
@@ -45,7 +44,11 @@ milestone.
 - What did the last 20 `FAIL`s have in common that the `PASS`es did not?
 - How many tokens did this arm spend per solved task, and was any cell capped?
 
-## 3. Proposed milestones
+## 3. Milestones
+
+**Decided by the owner (2026-10-12):** this order is the roadmap, the store
+spike runs first, and milestone 1 is the next thing planned in detail. Later
+milestones may be reordered when they are planned.
 
 Each milestone ends with something that runs and with tests for the failures it
 is meant to prevent.
@@ -67,6 +70,5 @@ diagnostics with the language layers in 5.
 Acceptance criteria map to milestones: 1 and 2 need milestone 2; 3 needs 3;
 4 needs 4 and 7; 5 needs 6; 6 and 7 need 5; 8 needs 3.
 
-**Open:** whether milestone 1 runs before or alongside milestone 2. The store
-interface lets the skeleton start on DuckDB alone, at the risk of rework if the
-spike sends us to a fallback.
+Milestone 2 does not start until the spike has answered its first question:
+whether both store engines link into one static binary.

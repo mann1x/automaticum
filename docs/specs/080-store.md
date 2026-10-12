@@ -1,6 +1,6 @@
 # 080 — The store
 
-**Status:** draft 0.5, 2026-10-12. The shape is the owner's preference; the
+**Status:** draft 0.6, 2026-10-12. The shape is the owner's preference; the
 spike in §7 confirms it or sends us to a fallback.
 
 ## 1. What the store has to do
@@ -65,8 +65,44 @@ DuckDB. They are not database columns.
 - Nothing is pruned by default. Retention is an explicit policy with an archive
   tier, and a deletion happens only behind a **verified archive**.
 - Per run, enough is kept to re-run the scorer without the model (020 §2).
-- **Open:** the archive tier's location and the policy for moving cold blobs to
-  it.
+- **Decided by the owner (2026-10-12):** archiving is **automatic by age**.
+  Blobs older than a configured age move to a configured archive path. Each is
+  copied, its hash verified at the destination, and only then freed at the
+  source. Both the age and the path are daemon settings (030 §1).
+- An archived blob stays addressable by its hash: reads fall through to the
+  archive tier, and reports say when a query waited on it.
+- If the archive path is unreachable, nothing is moved and nothing is deleted;
+  the daemon notifies and the free-space floor (010 §6) still stops new runs.
+
+### 5.1 Archived logs stay searchable
+
+**Decided by the owner (2026-10-12):** archiving must not take anything out of
+search. The model is the episodic memory of the owner's `claude-hooks`
+project, where a transcript that has been compressed into the archive is still
+found, shown and read exactly as before.
+
+What that model does, and what is required here:
+
+| episodic memory | automaticum |
+|---|---|
+| the index (text, vectors, summaries) stays in the database when a transcript is archived | **only raw blobs move.** DuckDB rows, Lance chunks, vectors and the full-text index never go to the archive tier |
+| the transcript keeps its canonical name; only opening it resolves to the compressed file | a blob keeps its hash as its address; the store resolves the tier on open. No caller knows or cares where a blob is |
+| search, show, indexing and the read tool open archived transcripts transparently | every reader does: the transcript viewer, `logs`, `find`, replay, `reanalyse`, `rescore`, export and the MCP tools |
+| each indexed row carries the version of the encoder that embedded it; a pipeline change triggers re-embedding | each chunk carries the embedder's identity and version; changing the embedder re-embeds from the blobs, archived ones included |
+| a marker in a conversation keeps it archived but not indexed | private tasks are indexed locally and never sent to a cloud embedder (060 §7) |
+
+Further requirements:
+
+- Full-text and semantic search hit the index and are **as fast on archived
+  runs as on live ones**. Only opening the matched passage reads the archive.
+- **Regex over raw text** that is not in the index scans blobs, archived ones
+  too. It is slower there; the result says how many blobs were read from the
+  archive, and a query may be limited to live data explicitly, never silently.
+- A hit always shows enough context from the index (the chunk and its
+  neighbours) to be useful before the blob is opened.
+- An archived blob that cannot be read is reported as such per result, with its
+  hash and expected location. It is never an empty result.
+- The consistency check (§3) covers both tiers.
 
 ## 6. The store interface
 
@@ -82,7 +118,8 @@ with a free-space floor.
 
 ## 7. The spike
 
-Run before the first milestone that needs a store (110 §3). It confirms the
+**Decided by the owner (2026-10-12):** the spike runs **first**, before the
+walking skeleton (110 §3). It confirms the
 shape and finds its limits; it no longer chooses among three.
 
 **Fallbacks** if one engine fails its part:
@@ -118,6 +155,9 @@ runs.
   above run: latency, file growth, what compaction costs;
 - `kill -9` during a write, twenty times: does it reopen, and is anything lost;
 - range reads from a multi-gigabyte blob;
+- search with part of the corpus moved to an archive tier on a slower disk:
+  full-text and semantic latency unchanged, regex scan cost, and opening a
+  matched passage from an archived blob;
 - memory at rest and at peak.
 
 **Pass criteria** are set before the spike runs. **Open:** the thresholds.

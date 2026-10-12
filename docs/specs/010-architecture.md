@@ -1,6 +1,6 @@
 # 010 — Architecture
 
-**Status:** draft 0.5, 2026-10-12.
+**Status:** draft 0.6, 2026-10-12.
 
 ## 1. Fixed points
 
@@ -42,8 +42,10 @@
   dashboard action exists as a CLI command and an API call.
 - **runner**: the only non-Go part (040).
 - **Suite plugins, gates, detectors and engine adapters** are plugins with a
-  name and a version, compiled into the binary. **Open:** whether out-of-tree
-  plugins are ever needed, and by what mechanism.
+  name and a version.
+  **Decided by the owner (2026-10-12):** plugins are **compiled into the
+  binary** only. A plugin is a Go package in this repository; adding one means
+  a new build. Nothing is loaded at run time.
 - Work that the old harness did with host-side Python and bash (analysis, log
   collection, archiving, tag checks) is Go code in the daemon or in agent mode.
   Scorers that exist only in Python (BFCL's evaluator, the SWE-bench harness)
@@ -79,7 +81,7 @@ path separators).
 that runs the runner without a Linux container. It is specified after the Linux
 path is proven (110 §3, milestone 7).
 
-**Open:** how the native agent meets the rule "a host runs only the Go
+**Open** (the owner defers this to the planning of milestone 7): how the native agent meets the rule "a host runs only the Go
 application", since the runner needs Node. Candidates: Windows containers on
 Windows; a Node runtime the agent unpacks into its own private directory and
 removes afterwards; a lightweight VM on macOS.
