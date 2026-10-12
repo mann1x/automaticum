@@ -1,4 +1,31 @@
 {
   "version": 1,
-  "bugs": []
+  "bugs": [
+    {
+      "id": "bug-001",
+      "timestamp": "2026-10-13T00:20:00+02:00",
+      "error_message": "go build with duckdb-go on Debian 11: undefined reference to std::__throw_bad_array_new_length() (hundreds), in libduckdb_static.a",
+      "root_cause": "DuckDB's prebuilt static archive is built on manylinux with a newer GCC; it needs libstdc++ symbols from GCC 11+, and Debian 11 ships GCC 10. Same cause on Windows with Debian's MinGW (GCC 10, win32 threads): also undefined pthread_mutex_*.",
+      "fix": "Do the final cgo link in a manylinux_2_28 image (build/Dockerfile.build). Rust archives may still be cross-compiled on Debian 11 (build/Dockerfile.cross).",
+      "tags": [
+        "cgo",
+        "duckdb",
+        "linking",
+        "glibc",
+        "build"
+      ]
+    },
+    {
+      "id": "bug-002",
+      "timestamp": "2026-10-13T00:20:00+02:00",
+      "error_message": "apt-get install in debian:11 image fails with 404 on bullseye-security packages (exit 100)",
+      "root_cause": "Debian 11 left the regular mirrors; packages are on archive.debian.org.",
+      "fix": "Point sources.list at archive.debian.org and set Acquire::Check-Valid-Until false (build/Dockerfile.cross).",
+      "tags": [
+        "docker",
+        "apt",
+        "debian11"
+      ]
+    }
+  ]
 }

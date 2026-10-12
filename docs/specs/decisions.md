@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-10-12 (revision 5).
+**Status:** current as of 2026-10-12 (revision 6).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -82,6 +82,8 @@ Each of these waits for a measurement or for the planning of its milestone.
 | O3 | Configuration directory layout and file names. | 030 §1 | milestone 2; as proposed there unless the owner objects |
 | O5 | Which published C/C++ SWE-bench-style set, at which version; the order of languages after it. | 062 §6 | milestone 5 |
 | O6 | Which external harnesses need the offline event path. | 064 §3.2 | milestone 5, per harness |
+| O14 | Confirm the build base: `manylinux_2_28` in place of Debian 11 (forced by the link gate; revises D39). | 080 §7.1 | now |
+| O15 | Which Lance binding is adopted: L1 `lancedb-go` main, or L2 `lance-c` with our own wrapper. Both passed T1. | 080 §7.1.1 | now; recommendation L2 |
 | O8 | Deduplication scheme for wire captures. | 080 §4 | the spike |
 
 Closed since the first revision: O2 (D32), O4 (D30), O7 (S4, then D34), O9

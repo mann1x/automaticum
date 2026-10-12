@@ -120,3 +120,26 @@
 |------|--------|---------|---------|--------|
 | 23:20 | Created ../../../../root/.claude/plans/functional-mapping-elephant.md | — | ~2847 |
 | 23:50 | Milestone 1 plan approved; bootstrap (go.mod, LICENSE, Makefile, build image), link checks L1 and L2 written; specs 080/010/040 and decisions D37-D43 updated | many | native build running | — |
+
+## Session: 2026-10-12 23:31
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-12 23:31
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-12 23:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-12 23:33
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:11 | Created spike/001-store/linkcheck/README.md | — | ~2070 |
+| 00:12 | Session end: 1 writes across 1 files (README.md) | 0 reads | ~2218 tok |
+| 00:20 | Link gate T1: L1 and L2 pass on linux amd64+arm64; Windows link fails on DuckDB side; build base moved to manylinux_2_28 | spike/001-store/linkcheck/*, build/*, docs/specs/080, decisions | done, awaiting owner on O14/O15 | — |

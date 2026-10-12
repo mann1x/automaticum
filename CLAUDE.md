@@ -6,10 +6,10 @@ Follow `.wolf/OPENWOLF.md` every session. Check `.wolf/anatomy.md` before readin
 
 ## Status
 
-- Spec stage: no application code yet. The source of truth is the spec set in `docs/specs/` (`000-overview.md` to `110-acceptance-and-roadmap.md`, plus `decisions.md`). The two input documents are in `docs/specs/archive/` and are not edited.
+- Milestone 1 (store spike and legacy importer) is approved and in progress; there is no application code yet. The source of truth is the spec set in `docs/specs/` (`000-overview.md` to `110-acceptance-and-roadmap.md`, plus `decisions.md`). The two input documents are in `docs/specs/archive/` and are not edited.
 - automaticum is a test harness that runs coding agents against tasks with a verdict, on lanes it orchestrates itself.
-- The only executable code today is tooling: `.wolf/hooks/` (Node ESM) and `.claude/hooks/` (Shell).
-- Do not invent Go packages, `go.mod` or build commands until the owner creates them.
+- Executable code today: tooling in `.wolf/hooks/` (Node ESM) and `.claude/hooks/` (Shell), the build setup (`go.mod`, `Makefile`, `build/`) and the store spike in `spike/001-store/`.
+- Do not invent Go packages or build commands outside a milestone plan the owner has approved: check `docs/specs/110-acceptance-and-roadmap.md` section 3 and `docs/specs/decisions.md` first.
 
 ## Owner decisions
 
@@ -49,10 +49,20 @@ caliber skills --query "go docker"
 bash .claude/hooks/caliber-check-sync.sh
 ```
 
+Native (cgo) builds run only in the build container (`Makefile`; `SPIKE_ROOT` is a local directory for caches and sources, never stored in a tracked file):
+
+```bash
+make image
+make shell SPIKE_ROOT=<dir>
+make test
+```
+
 ## Layout
 
 - **Specs** (`docs/specs/`): `000-overview.md` · `010-architecture.md` · `020-run-record.md` · `030-configuration.md` · `040-runner.md` · `050-orchestration.md` · `060-tasks-and-suites.md` · `061-suite-bfcl.md` · `062-suite-swe-bench.md` · `063-suite-multi-language.md` · `064-engine-adapters.md` · `065-cell-contract.md` · `070-diagnostics.md` · `080-store.md` · `090-interfaces.md` · `100-legacy-import.md` · `110-acceptance-and-roadmap.md` · `decisions.md`
 - **Inputs** (`docs/specs/archive/`): `automaticum-draft-spec-0.4.md` · `omnimergekit-evaluation-requirements-0.1.md`
+- **Build** (repo root and `build/`): `go.mod` · `Makefile` · `LICENSE` · `build/Dockerfile.build` · `build/Dockerfile.cross`
+- **Store spike** (`spike/001-store/`): `linkcheck/README.md`
 - **Local, untracked** (`docs/local/`): host mapping and private paths
 - **OpenWolf state** (`.wolf/`): `OPENWOLF.md` · `anatomy.md` · `cerebrum.md` · `memory.md` · `buglog.json` · `identity.md` · `config.json` · `token-ledger.json` · `cron-manifest.json` · `cron-state.json` · `suggestions.json` · `designqc-report.json` · `reframe-frameworks.md` · `daemon.log`
 - **OpenWolf hooks** (`.wolf/hooks/`): `session-start.js` · `pre-read.js` · `post-read.js` · `pre-write.js` · `post-write.js` · `stop.js` · `shared.js` · `package.json`

@@ -1,6 +1,6 @@
 # 080 — The store
 
-**Status:** draft 0.7, 2026-10-12. The shape is the owner's preference; the
+**Status:** draft 0.8, 2026-10-12. The shape is the owner's preference; the
 spike in §7 confirms it or sends us to a fallback.
 
 ## 1. What the store has to do
@@ -160,10 +160,30 @@ measurement yet.
   `lancedb-go` main at a pinned commit; L2 `lance-c` behind a thin cgo wrapper
   of our own; L3 DuckDB's `lance` extension.
 - **Linking posture:** one binary, both engines linked statically, glibc and
-  libstdc++ dynamic, **built on a Debian 11 base** so it runs on glibc 2.31 and
-  later. A fully static binary is measured and reported, not required.
+  libstdc++ dynamic. A fully static binary is measured and reported, not
+  required.
+  **Revised by the link gate (2026-10-13), for the owner to confirm (O14):** the
+  build base is `manylinux_2_28`, not Debian 11. DuckDB's prebuilt archive
+  needs a C++ runtime newer than Debian 11's compiler provides, so it cannot
+  be linked there. The resulting binary needs glibc 2.28 or later and runs on
+  Debian 11. Fully static linking is not available.
 - **Hybrid ranking** (reciprocal rank fusion) is our own Go code if the chosen
   binding lacks it.
+
+### 7.1.1 Result of the link gate (T1)
+
+Run on 2026-10-12/13; details and reproduction in
+`spike/001-store/linkcheck/README.md`.
+
+- **T1 passes for L1 and for L2**, on linux amd64 and arm64: both engines in
+  one process, data round-tripped, full-text and vector queries answered, no
+  duplicate symbol and no allocator fault. L3 was not tested.
+- Binaries need glibc 2.28 and are 259 MB (L1) and 348 MB (L2) stripped.
+- A Windows build with the store does not link with the toolchain tried; the
+  cause is DuckDB's Windows archive, and it is not required (D40).
+- **Open (O15):** which candidate is adopted. The recommendation is L2: it is
+  the maintained path, at the cost of a wrapper of our own and our own rank
+  fusion.
 
 ### 7.2 Data and measurements
 
