@@ -29,6 +29,10 @@
 - The command line builds two ways: with cgo (link image) it has the store commands; with `CGO_ENABLED=0` (host) it has everything that reads configuration and tasks. New store-touching commands go in `cmd/automaticum/store_cgo.go` with a stub in `store_nocgo.go`.
 - An arm that exists only to be extended carries `template = true` (not inherited). `LoadArm` returns it unvalidated with no ID; `LoadArms` leaves it out. `arms/base.toml` is one.
 - Go's `flag` stops at the first positional argument; commands use `parse()` in `config_cmds.go` so `automaticum oracle verify <task> -repeats 2` works.
+- A run row is only written with a verdict (`UpsertRun` refuses others). A run in flight is known through `lane_state` (run id, container id in `detail`), which is what restart recovery reads.
+- `internal/run` is pure Go: it reaches the store through `store.State` and a `Blobs` interface, so its tests run on the host with fakes. Verdict rules live only in `run.Decide`.
+- Run tests with `-race`: `Execute` stores the runner's two output streams from two goroutines.
+- 2026-10-13: `@cerebriline/sdk` 4.100.250 is neither tagged nor on the registry; the SDK main branch is at "start 4.100.250". Runner install and real runs wait for it (D54: no fallback).
 
 ## Do-Not-Repeat
 

@@ -401,3 +401,19 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 10:05 | step 1 CLI: arm validate/show/diff, task ls/show/build, oracle verify, lane ls, endpoint ls; template arms; cgo split of cmd | cmd/automaticum, internal/config/arm.go, arms/base.toml, Makefile | make test passes; oracle verify proven via CLI | ~7000 |
+
+## Session: 2026-10-13 09:42
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 09:42
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 09:43
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:50 | step 4: internal/run (protocol, verdict rules, endpoint probe, Execute) with fault-injection tests; docker.Image labels | internal/run, internal/docker/docker.go | go test -race passes; race fixed (bug-006) | ~14000 |

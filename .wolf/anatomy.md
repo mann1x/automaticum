@@ -134,6 +134,14 @@
 - `local.go` — the untracked side: `Local` (daemon, lanes, endpoints), `LoadLocal`, token and API key files (~2500 tok)
 - `config_test.go` — arm inheritance, switching off an inherited feature, rejections, local config loading (~3500 tok)
 
+## internal/run/
+
+- `protocol.go` — the contract with the runner: `Job`, `End`, outcomes, the stream reader, `SDKReleaseLabel` (~1400 tok)
+- `verdict.go` — `Facts` and `Decide`: the verdict rules of 020 §3 in one place (~600 tok)
+- `probe.go` — `Probe`: an endpoint's identity without loading the model; `Identity.Changed` (~1500 tok)
+- `run.go` — `Executor.Execute`: gates before start, container, stream intake, limits, collection, oracle, record (~5200 tok)
+- `run_test.go` — fake engine, state and blobs; one test per verdict row with the fault injected (~4500 tok)
+
 ## internal/stubmodel/
 
 - `stubmodel.go` — model server that plays a script over the Ollama chat protocol (chat, show, ps, tags, version); for tests only (~2300 tok)

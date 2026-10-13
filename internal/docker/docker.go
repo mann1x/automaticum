@@ -140,6 +140,9 @@ type Image struct {
 	RepoTags    []string
 	Size        int64
 	Created     string
+	Config      struct {
+		Labels map[string]string
+	}
 }
 
 // ImageInspect returns the image named by ref (a tag, a digest or an id).
