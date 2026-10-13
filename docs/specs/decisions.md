@@ -64,10 +64,13 @@ All dated 2026-10-12.
 | D52 | Embeddings are updated manually: an embedding pass is started by the operator for a stated scope, never scheduled and never automatic. | 080 §5.2, 090 §1 |
 | D53 | The `manic_miner` task is public and whole: seed, prompt, oracle source, reference and fixtures live in this repository. | 060 §5.1 |
 | D54 | The runner uses SDK release 4.100.250. Every run records the SDK release version; a run whose release version cannot be established does not start. | 040 §3 |
-| D55 | The first real runs of milestone 2: provider `xollama` on `linux-gpu-2`, model `qwen36-base-mtp_tb:27b-q4km-128k`. | 110 §3 |
+| D55 | The first real runs of milestone 2: provider `xollama` on `windows-2` (a Windows host with one 24 GB GPU; earlier drafts wrongly wrote `linux-gpu-2`), model `qwen36-base-mtp_tb:27b-q4km-128k`. | 110 §3 |
 | D56 | Old corpus: verdicts contradicted by how the run ended are re-mapped (operator kills to `ABORTED`, the CLI's own clock to `TIMEOUT`), original word kept; the two sibling lanes are imported. A boundary for one defective build was offered and not chosen. | 100 §7 |
 | D57 | Configuration layout: the daemon reads one directory given by `--config`; lanes and endpoints live there and are not tracked; `arms/` and `tasks/` are tracked, and an arm names an endpoint, never an address. Approved with the milestone 2 plan. | 030 §1 |
 | D58 | Milestone 2 plan approved: Docker through the Engine API with our own small client; the runner is plain Node ESM, one process per run; the daemon is not linked with Lance until ingest writes chunks (milestone 3); `manic_miner` is task version 4 here; its workspace oracle is built reproducibly; the lane container is unprivileged with the default bridge network; a stub model server for tests. | 110 §3 |
+| D59 | The first real arm (2026-10-13): context window 128k, sent as the 131072 the model tag declares; sampler temperature 1, top-k 20, repeat last-n 0, repeat penalty 1, presence penalty 0. The values of the old harness's last manual arm (96000, temperature 0.8 and so on) are not used. | `arms/qwen36-mtp-27b-xhigh.toml` |
+| D60 | Compaction and every guard are enabled by default: the shared base states them all as on, and an arm that wants one off says so (2026-10-13). | 030 §5.1, `arms/base.toml` |
+| D61 | Real runs on `windows-2` must be stoppable at any moment, gracefully or not: the owner may need the host at short notice (2026-10-13). | 050 §4 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked

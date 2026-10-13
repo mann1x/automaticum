@@ -5,7 +5,7 @@ on 2026-10-12. Milestone 1 has been carried out: the store, the importer and
 the spike's measurements exist (080 §7.4, 100 §7), and the owner has decided
 the questions it raised (D46 to D51). Milestone 2 was planned and approved on
 2026-10-13 (D53 to D58) and is in progress; its first real runs are on
-`linux-gpu-2` (D55). Built and tested so far: configuration and arms, the
+`windows-2` (D55). Built and tested so far: configuration and arms, the
 task with its proven oracle, the run lifecycle with the verdict rules, the
 daemon with its API and the command line. Waiting for SDK release 4.100.250
 (040 §3): the runner, the lane images, the run against the stub server and

@@ -502,4 +502,15 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
-| 10:45 | D55 arm drafted and validated (07b3b87af8d8); endpoint file written (untracked); model present on linux-gpu-2, nothing loaded; servers stopped; waiting for the owner before real runs | arms/qwen36-mtp-27b-xhigh.toml | no run started | ~2500 |
+| 10:45 | D55 arm drafted and validated (07b3b87af8d8); endpoint file written (untracked); model present on windows-2 (then misnamed linux-gpu-2), nothing loaded; servers stopped; waiting for the owner before real runs | arms/qwen36-mtp-27b-xhigh.toml | no run started | ~2500 |
+
+## Session: 2026-10-13 10:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 10:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:50 | Owner corrections: host is windows-2 (Windows, RTX 3090), 128k window (131072), sampler t1 k20 rln0 rp1 pp0; D59-D61 recorded; arm rewritten (28e390f61fed) | arms/, docs/specs/decisions.md, .wolf/cerebrum.md | validated | ~3000 |

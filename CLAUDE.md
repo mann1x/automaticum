@@ -94,7 +94,7 @@ make shell SPIKE_ROOT=<dir>
 - Append one row to `.wolf/memory.md` after each significant action.
 - Read `.wolf/buglog.json` before a fix and append to it after.
 - Record owner decisions in `docs/specs/decisions.md` and in `.wolf/cerebrum.md` under `## Decision Log`, with the date.
-- The repo is public: tracked files use the neutral host names (`linux-gpu-1`, `linux-gpu-2`, `windows-1`, `mac-1`) and no absolute paths.
+- The repo is public: tracked files use the neutral host names (`linux-gpu-1`, `linux-gpu-2`, `windows-1`, `windows-2`, `mac-1`) and no absolute paths.
 - Do not hand-edit `.claude/settings.json`; hooks there are managed by OpenWolf and Caliber.
 
 ## Tooling constraints
