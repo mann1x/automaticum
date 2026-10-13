@@ -109,10 +109,10 @@ Decided so far:
   user for approvals, questions and steering.
 - Configuration is TOML; tasks live in this repository.
 
-Preferred, to be confirmed by a spike ([080](docs/specs/080-store.md)): **DuckDB** for state,
+Confirmed after the spike ([080](docs/specs/080-store.md), 2026-10-13): **DuckDB** for state,
 configuration, metrics and statistics, **Lance** for text chunks, vectors and
 full-text search, and a content-addressed blob store on disk for streams and
-logs.
+logs. The Lance binding is reviewed again at milestone 6.
 
 ## Suites
 

@@ -291,3 +291,18 @@
 |------|--------|---------|---------|--------|
 - Owner decided D46 to D51 (shape confirmed with a review at milestone 6; dedup by message part; regex skips deltas; refine 30; chunk locator; earlier campaigns on demand). Specs, report and cerebrum updated.
 - Code follows D49 and D50: `store.Chunk` has `Blob` and `Offset`, the Lance schema has `blob` and `offset` columns, `store.DefaultRefine = 30` (zero means default, negative means none). All store tests pass. The chunk dataset left in the spike root predates the two columns and must be rebuilt with `bench chunks` before reuse.
+
+## Session: 2026-10-13 08:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 08:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 08:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
