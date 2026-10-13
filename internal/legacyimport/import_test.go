@@ -715,3 +715,19 @@ func TestRealCorpusDryRun(t *testing.T) {
 		ids[r.ID] = true
 	}
 }
+
+// A run scored by the first oracle carries the finding that its oracle could
+// not fail; later runs carry none.
+func TestImportFindings(t *testing.T) {
+	for v, want := range map[int]int{1: 1, 2: 0, 3: 0} {
+		got := importFindings(&Run{ID: "r", TaskVersion: v})
+		if len(got) != want {
+			t.Errorf("task version %d: %d findings, want %d", v, len(got), want)
+		}
+		for _, f := range got {
+			if f.RunID != "r" || f.Detector != "legacy_oracle" || f.DetectorVersion != ImporterVersion || !json.Valid(f.Evidence) {
+				t.Errorf("finding %+v", f)
+			}
+		}
+	}
+}

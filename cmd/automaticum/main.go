@@ -191,6 +191,21 @@ func storeCheck(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	for _, table := range []string{"tool_calls", "findings"} {
+		var n int64
+		rows, err := st.Query(ctx, "SELECT count(*) FROM "+table)
+		if err != nil {
+			return err
+		}
+		if rows.Next() {
+			err = rows.Scan(&n)
+		}
+		rows.Close()
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s: %d\n", table, n)
+	}
 	fmt.Printf("runs: %d\nblobs verified: %d live, %d archived, %d bytes uncompressed\n", runs, rep.Live, rep.Archived, rep.Bytes)
 	for _, f := range rep.Corrupt {
 		fmt.Printf("corrupt: %s (%s) %s: %v\n", f.Hash, f.Tier, f.Path, f.Err)

@@ -233,3 +233,27 @@
 - Importer delivered by an agent and verified by me: gofmt, vet, tests, real corpus. Real import: 474 runs, 0 failed, 202 s with 2 workers, 43.4 GB raw -> 0.85 GB stored; verdict counts exact; `store check` OK.
 - `cmd/automaticum/main.go` written (version, legacy import, store check). Built in the link image; the host compiler cannot link DuckDB.
 - Bench findings so far: FTS p95 under 10 ms at 389k and 3.9M chunks; regex over raw streams 526 s (Go regexp, alternation) but 17 s when the streaming deltas are skipped; the build image has no /usr/bin/time; archive mover only 2.5 MB/s on many small blobs; synthetic isotropic clusters give poor PQ recall, real embeddings do much better, so synthetic sets are now real vectors plus noise.
+
+## Session: 2026-10-13 06:46
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 06:46
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 06:47
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 06:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 07:29 | Created spike/001-store/REPORT.md | — | ~3943 |
+- Importer 0.1.1 writes a `legacy_oracle` finding for every run under task version 1 (247 on the real corpus) through an optional FindingSink; `store check` prints tool-call and finding counts. One-core import: 295 s.
+- Recall in `bench embed` is now tie-robust (a hit counts when at least as close as the true tenth neighbour); real chunks are full of near-copies and id-based recall tops out at 0.92 even for an exact scan.
+- State benchmark done: T6 1.7 ms, T7 9.4 ms, T12 p99 15 ms. 1M real-derived vectors: recall 0.954 at refine 30, p95 30 ms.

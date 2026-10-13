@@ -829,6 +829,11 @@ func (im *importer) process(ctx context.Context, src RunSource) (
 	if err := im.o.Sink.ReplaceToolCalls(ctx, src.ID, calls); err != nil {
 		return sum, bytesIn, streamBytes, files, blobs, stats, warns, incons, "", fmt.Errorf("sink: tool calls: %w", err)
 	}
+	if fs, ok := im.o.Sink.(FindingSink); ok {
+		if err := fs.ReplaceFindings(ctx, src.ID, importFindings(run)); err != nil {
+			return sum, bytesIn, streamBytes, files, blobs, stats, warns, incons, "", fmt.Errorf("sink: findings: %w", err)
+		}
+	}
 	if err := markComplete(run); err != nil {
 		return sum, bytesIn, streamBytes, files, blobs, stats, warns, incons, "", err
 	}

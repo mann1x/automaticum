@@ -416,6 +416,19 @@ func buildRun(src RunSource, m *runMeta, stats *StreamStats, st stateFacts, call
 
 // markComplete rewrites the provenance to say the import of the run
 // finished, which is what makes it skippable on the next pass.
+// importFindings returns the findings the import makes about a run: a run
+// scored under task version 1 had an oracle that could not fail (spec 100
+// section 3).
+func importFindings(r *Run) []Finding {
+	if r.TaskVersion != 1 {
+		return nil
+	}
+	ev, _ := json.Marshal(map[string]string{
+		"detail": "task version 1: the oracle pumped 30 frames, never left the countdown and scored broken code as passing; it could not fail on game logic",
+	})
+	return []Finding{{RunID: r.ID, Detector: "legacy_oracle", DetectorVersion: ImporterVersion, Severity: "warning", Count: 1, Evidence: ev}}
+}
+
 func markComplete(r *Run) error {
 	var prov map[string]json.RawMessage
 	if err := json.Unmarshal(r.Provenance, &prov); err != nil {

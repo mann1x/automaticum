@@ -90,7 +90,12 @@ func cmdEmbed(args []string) error {
 	hold := fs.Int("queries", 200, "chunks held out as queries")
 	k := fs.Int("k", 10, "neighbours")
 	vecOut := fs.String("vectors-out", "", "write the vectors to this file, little-endian float32, row after row")
+	vecIn := fs.String("vectors-in", "", "read the vectors from a file written by -vectors-out instead of embedding; needs -dim")
+	dimIn := fs.Int("dim", 0, "dimension of the vectors in -vectors-in")
 	fs.Parse(args)
+	if *vecIn != "" && *dimIn <= 0 {
+		return errors.New("-vectors-in needs -dim")
+	}
 	if *sample == "" || *dir == "" || *model == "" {
 		return errors.New("-sample, -lance and -model are required")
 	}
@@ -125,7 +130,19 @@ func cmdEmbed(args []string) error {
 
 	start := time.Now()
 	var textBytes int64
-	for i := 0; i < len(chunks); i += *batch {
+	if *vecIn != "" {
+		g, err := loadGenerator(*vecIn, *dimIn, 0)
+		if err != nil {
+			return err
+		}
+		if len(g.centres) < len(chunks) {
+			return fmt.Errorf("%s holds %d vectors for %d chunks", *vecIn, len(g.centres), len(chunks))
+		}
+		for i := range chunks {
+			chunks[i].Vector, chunks[i].Embedder = g.centres[i], *model
+		}
+	}
+	for i := 0; *vecIn == "" && i < len(chunks); i += *batch {
 		j := min(i+*batch, len(chunks))
 		texts := make([]string, j-i)
 		for n := range texts {
@@ -175,6 +192,11 @@ func cmdEmbed(args []string) error {
 	}
 	pm, ps := meanStd(pairs)
 	exactIDs := make([]map[string]bool, len(qs))
+	kth := make([]float64, len(qs)) // cosine of the k-th true neighbour
+	vecOf := make(map[string][]float32, len(base))
+	for j := range base {
+		vecOf[base[j].ID] = base[j].Vector
+	}
 	nn := make([]float64, len(qs))
 	for i, q := range qs {
 		type sc struct {
@@ -191,6 +213,7 @@ func cmdEmbed(args []string) error {
 		for _, a := range all[:*k] {
 			exactIDs[i][a.id] = true
 		}
+		kth[i] = all[*k-1].c
 	}
 	nm, ns := meanStd(nn)
 	out["cosine_random_pairs"] = map[string]float64{"mean": pm, "std": ps}
@@ -218,10 +241,16 @@ func cmdEmbed(args []string) error {
 	out["fulltext_index_build_s"] = time.Since(start).Seconds()
 	out["size_gb"] = float64(dirSize(*dir)) / (1 << 30)
 
+	// Many chunks are near-copies of one another, so the ten nearest are
+	// often tied and two correct answers can name different chunks. Recall
+	// counts a hit as correct when it is at least as close as the true
+	// tenth neighbour; RecallByID, which demands the same ids, is the
+	// stricter figure and is kept to show the size of the effect.
 	type setting struct {
-		Name    string
-		Recall  float64 // against brute-force cosine in this program
-		Latency latency
+		Name       string
+		Recall     float64
+		RecallByID float64
+		Latency    latency
 	}
 	var settings []setting
 	for _, o := range []struct {
@@ -235,7 +264,7 @@ func cmdEmbed(args []string) error {
 		{"probes 50, refine 30", store.SearchOptions{Limit: *k, Probes: 50, Refine: 30}},
 	} {
 		var ds []time.Duration
-		var found, total int
+		var found, close, total int
 		for i, q := range qs {
 			t := time.Now()
 			hits, err := s.Nearest(ctx, q.Vector, o.so)
@@ -248,9 +277,12 @@ func cmdEmbed(args []string) error {
 				if exactIDs[i][h.ID] {
 					found++
 				}
+				if v := vecOf[h.ID]; v != nil && cosine(q.Vector, v) >= kth[i]-1e-6 {
+					close++
+				}
 			}
 		}
-		settings = append(settings, setting{o.name, float64(found) / float64(total), summarise(ds)})
+		settings = append(settings, setting{o.name, float64(close) / float64(total), float64(found) / float64(total), summarise(ds)})
 	}
 	out["nearest"] = settings
 

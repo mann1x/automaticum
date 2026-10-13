@@ -13,6 +13,8 @@ type (
 	BlobRef = store.BlobRef
 	// ToolCall is one tool call of a run, as derived from its event stream.
 	ToolCall = store.ToolCall
+	// Finding is something a detector, or here the import, noticed in a run.
+	Finding = store.Finding
 )
 
 // The six verdicts.

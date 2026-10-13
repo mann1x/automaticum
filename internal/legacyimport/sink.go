@@ -22,6 +22,13 @@ type Sink interface {
 	ReplaceToolCalls(ctx context.Context, runID string, calls []ToolCall) error
 }
 
+// FindingSink is an optional extension of Sink. When the sink implements it,
+// the findings the import itself makes (a run scored by the first oracle,
+// which could not fail) are written as findings of the run.
+type FindingSink interface {
+	ReplaceFindings(ctx context.Context, runID string, findings []Finding) error
+}
+
 // Resumer is an optional extension of Sink. When the sink implements it, a
 // run whose stored fingerprint equals the fingerprint of its source is
 // skipped. An adapter over the store can implement it with GetRun and
@@ -55,6 +62,7 @@ type MemorySink struct {
 	Runs      map[string]Run
 	Refs      map[string][]BlobRef
 	Calls     map[string][]ToolCall
+	Findings  map[string][]Finding
 	BlobSizes map[string]int64
 	BlobData  map[string][]byte
 	Puts      int
@@ -67,6 +75,7 @@ func NewMemorySink() *MemorySink {
 		Runs:      map[string]Run{},
 		Refs:      map[string][]BlobRef{},
 		Calls:     map[string][]ToolCall{},
+		Findings:  map[string][]Finding{},
 		BlobSizes: map[string]int64{},
 		BlobData:  map[string][]byte{},
 	}
@@ -139,6 +148,14 @@ func (m *MemorySink) ReplaceToolCalls(ctx context.Context, runID string, calls [
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.Calls[runID] = append([]ToolCall(nil), calls...)
+	return nil
+}
+
+// ReplaceFindings replaces the findings of one run.
+func (m *MemorySink) ReplaceFindings(ctx context.Context, runID string, findings []Finding) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.Findings[runID] = append([]Finding(nil), findings...)
 	return nil
 }
 

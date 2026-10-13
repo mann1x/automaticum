@@ -11,4 +11,4 @@
 package legacyimport
 
 // ImporterVersion is recorded on every imported run.
-const ImporterVersion = "legacyimport/0.1.0"
+const ImporterVersion = "legacyimport/0.1.1"
