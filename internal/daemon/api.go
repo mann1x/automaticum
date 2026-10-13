@@ -1,20 +1,24 @@
 package daemon
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net"
 	"net/http"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/mann1x/automaticum/internal/config"
+	"github.com/mann1x/automaticum/internal/detect"
 	"github.com/mann1x/automaticum/internal/ingest"
 	"github.com/mann1x/automaticum/internal/run"
 	"github.com/mann1x/automaticum/internal/store"
@@ -132,12 +136,40 @@ type FindingView struct {
 type ReanalyseRequest struct {
 	Run   string `json:"run,omitempty"`
 	Batch string `json:"batch,omitempty"`
+	// Imported also takes the runs of the older harness, which get the
+	// detectors' findings only.
+	Imported bool `json:"imported,omitempty"`
 }
 
-// ReanalyseResponse says what was done.
-type ReanalyseResponse struct {
-	Runs   int               `json:"runs"`
-	Failed map[string]string `json:"failed,omitempty"` // by run, why
+// DetectView is what the detector library says about one run, computed now
+// from stored material; nothing is written.
+type DetectView struct {
+	Run      string                `json:"run"`
+	Version  string                `json:"detector_version"`
+	Blocks   int                   `json:"blocks"`
+	Calls    int                   `json:"tool_calls"`
+	Hits     []BlockHit            `json:"hits"`
+	Repeated []detect.RepeatedCall `json:"repeated_tool_calls"`
+}
+
+// BlockHit is one detector firing on one block of a run.
+type BlockHit struct {
+	Turn    int    `json:"turn"`
+	Channel string `json:"channel"`
+	Chars   int    `json:"chars"`
+	detect.Hit
+}
+
+// ReanalyseStatus is the state of the daemon's one reanalysis: the one
+// running, or the last one that ran.
+type ReanalyseStatus struct {
+	Running bool              `json:"running"`
+	Request ReanalyseRequest  `json:"request"`
+	Total   int               `json:"total"`
+	Done    int               `json:"done"`
+	Failed  map[string]string `json:"failed,omitempty"` // by run, why
+	Started time.Time         `json:"started,omitzero"`
+	Ended   time.Time         `json:"ended,omitzero"`
 }
 
 // BlobView is one piece of a run's raw material.
@@ -191,7 +223,9 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/runs/{id}/stop", d.handleStop)
 	mux.HandleFunc("POST /v1/runs/{id}/abort", d.handleAbort)
 	mux.HandleFunc("POST /v1/runs/{id}/invalidate", d.handleInvalidate)
+	mux.HandleFunc("GET /v1/runs/{id}/detect", d.handleDetect)
 	mux.HandleFunc("POST /v1/reanalyse", d.handleReanalyse)
+	mux.HandleFunc("GET /v1/reanalyse", func(w http.ResponseWriter, r *http.Request) { reply(w, http.StatusOK, d.reanalyseStatus()) })
 	mux.HandleFunc("POST /v1/drain", func(w http.ResponseWriter, r *http.Request) {
 		d.Drain()
 		reply(w, http.StatusOK, map[string]bool{"draining": true})
@@ -485,8 +519,10 @@ func (d *Daemon) handleRun(w http.ResponseWriter, r *http.Request) {
 	reply(w, http.StatusOK, v)
 }
 
-// handleReanalyse derives metrics, tool calls and findings again from what
-// is stored. Verdicts and raw material are not touched.
+// handleReanalyse starts deriving metrics, tool calls and findings again
+// from what is stored. Verdicts and raw material are not touched. The work
+// goes on in the daemon whether or not the caller waits: an old corpus takes
+// minutes. One reanalysis runs at a time.
 func (d *Daemon) handleReanalyse(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var req ReanalyseRequest
@@ -502,8 +538,11 @@ func (d *Daemon) handleReanalyse(w http.ResponseWriter, r *http.Request) {
 		}
 		ids = []string{req.Run}
 	} else {
-		own := false
-		runs, err := d.State.ListRuns(ctx, store.RunFilter{Batch: req.Batch, Imported: &own})
+		f := store.RunFilter{Batch: req.Batch}
+		if !req.Imported {
+			f.Imported = new(bool)
+		}
+		runs, err := d.State.ListRuns(ctx, f)
 		if err != nil {
 			fail(w, http.StatusInternalServerError, "%v", err)
 			return
@@ -514,18 +553,105 @@ func (d *Daemon) handleReanalyse(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	resp := ReanalyseResponse{}
-	for _, id := range ids {
-		if _, err := ingest.Run(ctx, d.State, d.Blobs, id); err != nil {
-			if resp.Failed == nil {
-				resp.Failed = map[string]string{}
+	d.mu.Lock()
+	if d.reanalysis != nil && d.reanalysis.Running {
+		st := *d.reanalysis
+		d.mu.Unlock()
+		fail(w, http.StatusConflict, "a reanalysis is running: %d of %d runs done", st.Done, st.Total)
+		return
+	}
+	job := &ReanalyseStatus{Running: true, Request: req, Total: len(ids), Started: time.Now().UTC()}
+	d.reanalysis = job
+	d.mu.Unlock()
+	go d.reanalyse(job, ids)
+	reply(w, http.StatusAccepted, d.reanalyseStatus())
+}
+
+// reanalyse works through the runs of one reanalysis, a few at a time.
+func (d *Daemon) reanalyse(job *ReanalyseStatus, ids []string) {
+	ctx := context.Background()
+	next := make(chan string)
+	var wg sync.WaitGroup
+	for range min(4, max(1, len(ids))) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for id := range next {
+				_, err := ingest.Run(ctx, d.State, d.Blobs, id)
+				d.mu.Lock()
+				job.Done++
+				if err != nil {
+					if job.Failed == nil {
+						job.Failed = map[string]string{}
+					}
+					job.Failed[id] = err.Error()
+				}
+				d.mu.Unlock()
 			}
-			resp.Failed[id] = err.Error()
+		}()
+	}
+	for _, id := range ids {
+		next <- id
+	}
+	close(next)
+	wg.Wait()
+	d.mu.Lock()
+	job.Running, job.Ended = false, time.Now().UTC()
+	failed := len(job.Failed)
+	d.mu.Unlock()
+	if d.Log != nil {
+		d.Log.Info("reanalysis ended", "runs", len(ids), "failed", failed, "took", job.Ended.Sub(job.Started).Round(time.Second).String())
+	}
+}
+
+// reanalyseStatus is a copy of the reanalysis's state, safe to send.
+func (d *Daemon) reanalyseStatus() ReanalyseStatus {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.reanalysis == nil {
+		return ReanalyseStatus{}
+	}
+	st := *d.reanalysis
+	st.Failed = maps.Clone(st.Failed)
+	return st
+}
+
+// handleDetect runs the detector library over one run's stored stream.
+func (d *Daemon) handleDetect(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := r.PathValue("id")
+	if _, err := d.State.GetRun(ctx, id); errors.Is(err, store.ErrNotFound) {
+		fail(w, http.StatusNotFound, "there is no finished run %s", id)
+		return
+	}
+	refs, err := d.State.BlobRefs(ctx, id)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, "%v", err)
+		return
+	}
+	ev := &ingest.Events{Notices: map[string]int{}}
+	for _, ref := range refs {
+		if ref.Kind != "events" {
 			continue
 		}
-		resp.Runs++
+		rd, _, err := d.Blobs.Reader(ctx, ref.Hash)
+		if err == nil {
+			err = ev.Read(rd)
+			rd.Close()
+		}
+		if err != nil {
+			fail(w, http.StatusInternalServerError, "the event stream of %s: %v", id, err)
+			return
+		}
 	}
-	reply(w, http.StatusOK, resp)
+	v := DetectView{Run: id, Version: detect.Version, Blocks: len(ev.Blocks), Calls: len(ev.Calls),
+		Hits: []BlockHit{}, Repeated: detect.RepeatedCalls(ev.Calls, 0)}
+	for _, b := range ev.Blocks {
+		for _, h := range detect.Block(b.Text, detect.Options{}) {
+			v.Hits = append(v.Hits, BlockHit{Turn: b.Turn, Channel: b.Kind, Chars: len([]rune(b.Text)), Hit: h})
+		}
+	}
+	reply(w, http.StatusOK, v)
 }
 
 // handleStream sends what a run in flight prints, as server-sent events:

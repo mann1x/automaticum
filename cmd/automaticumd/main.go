@@ -18,6 +18,7 @@ import (
 
 	"github.com/mann1x/automaticum/internal/config"
 	"github.com/mann1x/automaticum/internal/daemon"
+	"github.com/mann1x/automaticum/internal/detect"
 	"github.com/mann1x/automaticum/internal/docker"
 	"github.com/mann1x/automaticum/internal/run"
 	"github.com/mann1x/automaticum/internal/store/blob"
@@ -97,6 +98,17 @@ func serve(cfgDir string, log *slog.Logger) error {
 	ln, err := net.Listen("tcp", d.Listen)
 	if err != nil {
 		return err
+	}
+	// The detectors' controls (070 §3). One that fails its controls is
+	// unavailable: ingest reports nothing for it, which is not a zero.
+	if results, ok := detect.SelfTest(); ok {
+		log.Info("detector self-test passed", "version", detect.Version, "controls", len(results))
+	} else {
+		for _, r := range results {
+			if !r.OK {
+				log.Error("detector self-test failed", "control", r.Control, "domain", r.Domain, "want", r.Want, "got", r.Got)
+			}
+		}
 	}
 	srv := &http.Server{Handler: dm.Handler(), ReadHeaderTimeout: 10 * time.Second}
 	go func() {

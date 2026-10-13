@@ -598,3 +598,24 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 12:56 | M3 step 1+2: store metrics table (schema 3), internal/ingest (events, wire, metrics, wire_arm detector), daemon runs ingest after each run, `reanalyse`, `run show` prints metrics and findings | internal/ingest/*, internal/store/*, internal/daemon/*, cmd/automaticum/* | tests pass; 19 stored runs analysed again; 5 real runs each show effort and presence penalty stated, not sent | ~9000 |
+
+## Session: 2026-10-13 12:57
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 12:57
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 12:58
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 13:00
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:21 | M3 step 3 and 5: internal/detect (4 reference detectors + repeated tool call, controls, self-test), detectors at ingest for new and imported runs, `detect` command, reanalysis as a daemon job | internal/detect/*, internal/ingest/*, internal/daemon/api.go, cmd/* | tests pass; self-test 15/15; whole-corpus reanalysis started | ~9000 |

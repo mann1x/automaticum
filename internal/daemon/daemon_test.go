@@ -352,9 +352,15 @@ func TestStartRunsInOrder(t *testing.T) {
 	g.state.mu.Lock()
 	g.state.metrics[resp.RunIDs[0]] = nil
 	g.state.mu.Unlock()
-	var again2 ReanalyseResponse
-	if code := g.call("POST", "/v1/reanalyse", ReanalyseRequest{Batch: "k-once"}, &again2); code != 200 || again2.Runs != 3 || len(again2.Failed) != 0 {
+	var again2 ReanalyseStatus
+	if code := g.call("POST", "/v1/reanalyse", ReanalyseRequest{Batch: "k-once"}, &again2); code != 202 || again2.Total != 3 {
 		t.Errorf("reanalyse: %d %+v", code, again2)
+	}
+	for deadline := time.Now().Add(10 * time.Second); again2.Running && time.Now().Before(deadline); time.Sleep(5 * time.Millisecond) {
+		g.call("GET", "/v1/reanalyse", nil, &again2)
+	}
+	if again2.Running || again2.Done != 3 || len(again2.Failed) != 0 || again2.Ended.IsZero() {
+		t.Errorf("reanalyse ended as %+v", again2)
 	}
 	if g.call("GET", "/v1/runs/"+resp.RunIDs[0], nil, &shown); len(shown.Metrics) == 0 {
 		t.Error("reanalyse derived nothing")

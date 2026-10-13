@@ -28,9 +28,9 @@ automaticum report run|batch|cell|ab|regression|census [...]
 automaticum find "<query>" [--semantic] [--where ...]
 automaticum logs <run> [--server|--runtime|--events|--wire] [--grep ...] [--turn N]
 automaticum replay <run> --turn N [--endpoint E]
-automaticum detect <file|run>               # the detector library, standalone
+automaticum detect <file|run> [--runaway N] # the detector library, standalone; --self-test runs its controls
 automaticum embed start|status|stop [--where ...]   # by hand only (080 §5.2)
-automaticum reanalyse [--run R | --batch B] [--detector D] [--where ...]
+automaticum reanalyse [--run R | --batch B] [--imported] [--detector D] [--where ...]
 automaticum rescore <cell>
 automaticum export run|cell|cohort|campaign ...
 automaticum wait run|batch|cell <id> [--until "<condition>"]

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/mann1x/automaticum/internal/config"
+	"github.com/mann1x/automaticum/internal/detect"
 	"github.com/mann1x/automaticum/internal/store"
 	"github.com/mann1x/automaticum/internal/store/blob"
 )
@@ -28,19 +29,20 @@ type Result struct {
 
 // owned names the detectors whose findings ingest writes. Findings of any
 // other detector are kept as they are.
-var owned = map[string]bool{WireArm: true}
+var owned = map[string]bool{WireArm: true, detect.ShortUnitRepeat: true, detect.CharRun: true,
+	detect.SentenceRepeat: true, detect.Runaway: true, detect.RepeatedToolCall: true}
 
 // Run derives metrics, tool calls and findings from a run's stored material
 // and writes them, replacing what an earlier ingest wrote. It is safe to run
 // again: nothing but derived rows is touched.
+//
+// An imported run gets the detectors' findings and nothing else: its tool
+// calls were written by the importer and it has no wire capture, so the
+// metrics that need one do not exist for it (D65).
 func Run(ctx context.Context, st store.State, blobs Blobs, runID string) (*Result, error) {
 	r, err := st.GetRun(ctx, runID)
 	if err != nil {
 		return nil, err
-	}
-	if r.Imported {
-		// An older harness's stream has another shape and no wire capture.
-		return nil, fmt.Errorf("run %s is imported: its stream is not in the runner's format", runID)
 	}
 	refs, err := st.BlobRefs(ctx, runID)
 	if err != nil {
@@ -48,7 +50,7 @@ func Run(ctx context.Context, st store.State, blobs Blobs, runID string) (*Resul
 	}
 	ev, reqs := &Events{Notices: map[string]int{}}, []Request(nil)
 	for _, ref := range refs {
-		if ref.Kind != "events" && ref.Kind != "wire" {
+		if ref.Kind != "events" && (ref.Kind != "wire" || r.Imported) {
 			continue
 		}
 		rd, _, err := blobs.Reader(ctx, ref.Hash)
@@ -56,7 +58,7 @@ func Run(ctx context.Context, st store.State, blobs Blobs, runID string) (*Resul
 			return nil, fmt.Errorf("%s of run %s: %w", ref.Kind, runID, err)
 		}
 		if ref.Kind == "events" {
-			ev, err = ReadEvents(rd)
+			err = ev.Read(rd)
 		} else {
 			var more []Request
 			more, err = ReadWire(rd)
@@ -67,7 +69,13 @@ func Run(ctx context.Context, st store.State, blobs Blobs, runID string) (*Resul
 			return nil, fmt.Errorf("%s of run %s: %w", ref.Kind, runID, err)
 		}
 	}
-	res := Analyse(r, ev, reqs)
+	var res *Result
+	if r.Imported {
+		res = &Result{Blocks: ev.Blocks}
+		res.Findings, _ = detectorFindings(r.ID, ev, detect.Options{})
+	} else {
+		res = Analyse(r, ev, reqs)
+	}
 	old, err := st.Findings(ctx, runID)
 	if err != nil {
 		return nil, err
@@ -78,11 +86,13 @@ func Run(ctx context.Context, st store.State, blobs Blobs, runID string) (*Resul
 			keep = append(keep, f)
 		}
 	}
-	if err := st.ReplaceMetrics(ctx, runID, res.Metrics); err != nil {
-		return nil, err
-	}
-	if err := st.ReplaceToolCalls(ctx, runID, res.ToolCalls); err != nil {
-		return nil, err
+	if !r.Imported {
+		if err := st.ReplaceMetrics(ctx, runID, res.Metrics); err != nil {
+			return nil, err
+		}
+		if err := st.ReplaceToolCalls(ctx, runID, res.ToolCalls); err != nil {
+			return nil, err
+		}
 	}
 	if err := st.ReplaceFindings(ctx, runID, keep); err != nil {
 		return nil, err
@@ -264,6 +274,12 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 		}
 		res.Findings = wireFindings(r.ID, CompareWire(&arm, tag, reqs))
 	}
+
+	// What the model wrote and called, through the detector library. The
+	// runaway size is the library's default until suites declare their own.
+	found, counts := detectorFindings(r.ID, ev, detect.Options{})
+	res.Findings = append(res.Findings, found...)
+	res.Metrics = append(res.Metrics, counts...)
 	return res
 }
 

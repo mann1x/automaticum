@@ -24,13 +24,20 @@ type Identity struct {
 	Model         string    `json:"model"`
 	Digest        string    `json:"digest"`
 	// The template as served: its hash and size, not its text.
-	TemplateSHA256 string          `json:"template_sha256"`
-	TemplateBytes  int             `json:"template_bytes"`
-	Parameters     string          `json:"parameters"`
-	Capabilities   []string        `json:"capabilities"`
-	Details        json.RawMessage `json:"details,omitempty"`
+	TemplateSHA256 string   `json:"template_sha256"`
+	TemplateBytes  int      `json:"template_bytes"`
+	Parameters     string   `json:"parameters"`
+	Capabilities   []string `json:"capabilities"`
+	// Renderer and Parser are the server's own prompt builder and answer
+	// parser for the tag, when it uses them in place of the template.
+	Renderer string          `json:"renderer,omitempty"`
+	Parser   string          `json:"parser,omitempty"`
+	Details  json.RawMessage `json:"details,omitempty"`
 	// Loaded is how the model sits in memory, when it is loaded.
 	Loaded *Loaded `json:"loaded"`
+	// OtherModels lists what else the server holds in memory. Loading
+	// another model there would push these out.
+	OtherModels []string `json:"other_models_loaded,omitempty"`
 	// NotProbed lists what this kind of endpoint cannot be asked.
 	NotProbed []string `json:"not_probed,omitempty"`
 }
@@ -56,6 +63,8 @@ func (a Identity) Changed(b Identity) []string {
 	cmp("model digest", a.Digest, b.Digest)
 	cmp("template", a.TemplateSHA256, b.TemplateSHA256)
 	cmp("parameters", a.Parameters, b.Parameters)
+	cmp("renderer", a.Renderer, b.Renderer)
+	cmp("parser", a.Parser, b.Parser)
 	return out
 }
 
@@ -142,6 +151,8 @@ func Probe(ctx context.Context, hc *http.Client, e *config.Endpoint, apiKey, mod
 	}
 	var show struct {
 		Template     string          `json:"template"`
+		Renderer     string          `json:"renderer"`
+		Parser       string          `json:"parser"`
 		Parameters   string          `json:"parameters"`
 		Capabilities []string        `json:"capabilities"`
 		Details      json.RawMessage `json:"details"`
@@ -152,6 +163,7 @@ func Probe(ctx context.Context, hc *http.Client, e *config.Endpoint, apiKey, mod
 	sum := sha256.Sum256([]byte(show.Template))
 	id.TemplateSHA256, id.TemplateBytes = hex.EncodeToString(sum[:]), len(show.Template)
 	id.Parameters, id.Capabilities, id.Details = show.Parameters, show.Capabilities, show.Details
+	id.Renderer, id.Parser = show.Renderer, show.Parser
 	var ps struct {
 		Models []entry `json:"models"`
 	}
@@ -161,6 +173,8 @@ func Probe(ctx context.Context, hc *http.Client, e *config.Endpoint, apiKey, mod
 	for _, m := range ps.Models {
 		if m.Name == model || m.Model == model {
 			id.Loaded = &Loaded{ContextLength: m.ContextLength, Size: m.Size, SizeVRAM: m.SizeVRAM}
+		} else if m.Name != "" {
+			id.OtherModels = append(id.OtherModels, m.Name)
 		}
 	}
 	return id, nil

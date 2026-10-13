@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/mann1x/automaticum/internal/daemon"
+	"github.com/mann1x/automaticum/internal/detect"
 	"github.com/mann1x/automaticum/internal/ingest"
 	"math"
 	"strconv"
@@ -417,7 +418,17 @@ func logs(ctx context.Context, args []string) error {
 // findingLine says one finding in one line.
 func findingLine(f daemon.FindingView) string {
 	head := fmt.Sprintf("%-8s %s", f.Severity, f.Detector)
-	if f.Detector != ingest.WireArm {
+	switch f.Detector {
+	case ingest.WireArm:
+	case detect.RepeatedToolCall:
+		var c detect.RepeatedCall
+		json.Unmarshal(f.Evidence, &c)
+		return fmt.Sprintf("%s  %s called %d times in a row with the same arguments, from turn %d: %s", head, c.Tool, c.Count, c.Turn, c.Input)
+	case detect.ShortUnitRepeat, detect.CharRun, detect.SentenceRepeat, detect.Runaway:
+		var fire ingest.Firing
+		json.Unmarshal(f.Evidence, &fire)
+		return fmt.Sprintf("%s  %d of %d %s blocks, first in turn %d: %s", head, fire.Blocks, fire.Of, fire.Channel, f.Turn, hitLine(fire.First))
+	default:
 		return fmt.Sprintf("%s  turn %d, %d times  %s", head, f.Turn, f.Count, f.Evidence)
 	}
 	var d ingest.Deviation
@@ -454,26 +465,143 @@ func reanalyse(ctx context.Context, args []string) error {
 	var req daemon.ReanalyseRequest
 	fs.StringVar(&req.Run, "run", "", "one run")
 	fs.StringVar(&req.Batch, "batch", "", "the runs of one batch")
+	fs.BoolVar(&req.Imported, "imported", false, "also the imported runs, which get the detectors' findings only")
 	if rest := parse(fs, args); len(rest) != 0 {
-		return errors.New("usage: automaticum reanalyse [--run <run> | --batch <batch>]")
+		return errors.New("usage: automaticum reanalyse [--run <run> | --batch <batch>] [--imported]")
 	}
 	c, err := dial()
 	if err != nil {
 		return err
 	}
-	var resp daemon.ReanalyseResponse
-	if err := c.do(ctx, "POST", "/v1/reanalyse", req, &resp); err != nil {
+	var st daemon.ReanalyseStatus
+	if err := c.do(ctx, "POST", "/v1/reanalyse", req, &st); err != nil {
 		return err
 	}
-	if c.json {
-		return printJSON(resp)
+	// The daemon does the work; this only watches it.
+	shown := time.Now()
+	for st.Running {
+		select {
+		case <-ctx.Done():
+			fmt.Printf("the reanalysis goes on in the daemon: %d of %d runs done\n", st.Done, st.Total)
+			return nil
+		case <-time.After(time.Second):
+		}
+		if err := c.do(ctx, "GET", "/v1/reanalyse", nil, &st); err != nil {
+			if ctx.Err() != nil {
+				continue
+			}
+			return err
+		}
+		if !c.json && st.Running && time.Since(shown) >= 30*time.Second {
+			fmt.Printf("%d of %d runs\n", st.Done, st.Total)
+			shown = time.Now()
+		}
 	}
-	fmt.Printf("%d runs analysed again\n", resp.Runs)
-	for id, why := range resp.Failed {
+	if c.json {
+		return printJSON(st)
+	}
+	fmt.Printf("%d runs analysed again in %s\n", st.Done-len(st.Failed), st.Ended.Sub(st.Started).Round(time.Second))
+	for id, why := range st.Failed {
 		fmt.Printf("  %s: %s\n", id, why)
 	}
-	if len(resp.Failed) > 0 {
-		return fmt.Errorf("%d runs could not be analysed", len(resp.Failed))
+	if len(st.Failed) > 0 {
+		return fmt.Errorf("%d runs could not be analysed", len(st.Failed))
 	}
 	return nil
+}
+
+// hitLine says what a detector counted.
+func hitLine(h detect.Hit) string {
+	switch h.Detector {
+	case detect.Runaway:
+		return fmt.Sprintf("%d characters", h.Count)
+	case detect.CharRun:
+		return fmt.Sprintf("%q %d times in a row at character %d", h.Unit, h.Count, h.Offset)
+	case detect.SentenceRepeat:
+		return fmt.Sprintf("%d times, %.0f%% of the block's sentences: %q", h.Count, h.Share*100, h.Unit)
+	}
+	return fmt.Sprintf("%q %d times in a row at character %d", h.Unit, h.Count, h.Offset)
+}
+
+// detectCmd runs the detector library: on its own controls, on a text file
+// taken as one block, or on a stored run.
+func detectCmd(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("detect", flag.ExitOnError)
+	p, dial := addClient(fs)
+	self := fs.Bool("self-test", false, "run the library's controls")
+	size := fs.Int("runaway", 0, "the block size, in characters, that counts as a runaway (a file only; 0 is the default)")
+	rest := parse(fs, args)
+	if *self {
+		results, ok := detect.SelfTest()
+		if *p.json {
+			if err := printJSON(results); err != nil {
+				return err
+			}
+		} else {
+			w := table()
+			fmt.Fprintln(w, "CONTROL\tDOMAIN\tMUST FIRE\tFIRED\t")
+			for _, r := range results {
+				mark := "ok"
+				if !r.OK {
+					mark = "WRONG"
+				}
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", r.Control, r.Domain, orNone(r.Want), orNone(r.Got), mark)
+			}
+			w.Flush()
+			fmt.Printf("detector library version %s\n", detect.Version)
+		}
+		if !ok {
+			return errors.New("a detector did not give its known answer on a control")
+		}
+		return nil
+	}
+	if len(rest) != 1 {
+		return errors.New("usage: automaticum detect <file|run> [--runaway N], or automaticum detect --self-test")
+	}
+	if text, err := os.ReadFile(rest[0]); err == nil {
+		hits := detect.Block(string(text), detect.Options{RunawayChars: *size})
+		if *p.json {
+			if hits == nil {
+				hits = []detect.Hit{}
+			}
+			return printJSON(hits)
+		}
+		fmt.Printf("%s: one block of %d characters\n", rest[0], len([]rune(string(text))))
+		for _, h := range hits {
+			fmt.Printf("  %-18s %s\n", h.Detector, hitLine(h))
+		}
+		if len(hits) == 0 {
+			fmt.Println("  no detector fired")
+		}
+		return nil
+	}
+	c, err := dial()
+	if err != nil {
+		return err
+	}
+	var v daemon.DetectView
+	if err := c.do(ctx, "GET", "/v1/runs/"+url.PathEscape(rest[0])+"/detect", nil, &v); err != nil {
+		return fmt.Errorf("%s is not a readable file, and as a run: %w", rest[0], err)
+	}
+	if c.json {
+		return printJSON(v)
+	}
+	fmt.Printf("run %s: %d blocks, %d tool calls, detector library version %s\n", v.Run, v.Blocks, v.Calls, v.Version)
+	for _, h := range v.Hits {
+		fmt.Printf("  turn %-3d %-9s %-18s %s\n", h.Turn, h.Channel, h.Detector, hitLine(h.Hit))
+	}
+	for _, r := range v.Repeated {
+		fmt.Printf("  turn %-3d %-9s %-18s %s %d times in a row: %s\n", r.Turn, "calls", detect.RepeatedToolCall, r.Tool, r.Count, r.Input)
+	}
+	if len(v.Hits)+len(v.Repeated) == 0 {
+		fmt.Println("  no detector fired")
+	}
+	return nil
+}
+
+func orNone(v []string) string {
+	if len(v) == 0 {
+		return "-"
+	}
+	return strings.Join(v, ", ")
 }

@@ -176,6 +176,39 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-13T12:56:46+02:00"
+    },
+    {
+      "id": "bug-012",
+      "timestamp": "2026-10-13T13:21:14+02:00",
+      "error_message": "automaticum reanalyse --imported: 'the daemon does not answer' after 580 s; only part of the corpus analysed",
+      "file": "internal/daemon/api.go",
+      "root_cause": "the reanalysis ran inside the HTTP request and used its context; the old corpus has event streams of up to 5 GB, so the caller gave up and the context was cancelled",
+      "fix": "reanalysis is a job in the daemon (one at a time, four runs in parallel, own context); POST returns 202, GET /v1/reanalyse gives progress, the command only watches",
+      "tags": [
+        "daemon",
+        "reanalyse",
+        "timeout",
+        "corpus"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-13T13:21:14+02:00"
+    },
+    {
+      "id": "bug-013",
+      "timestamp": "2026-10-13T13:21:14+02:00",
+      "error_message": "DetectView redeclared in this block (internal/daemon/api.go)",
+      "file": "internal/daemon/api.go",
+      "root_cause": "a scripted edit replaced the text between two markers assuming an order they did not have, duplicating two declarations",
+      "fix": "removed the duplicate; check marker order before splicing",
+      "tags": [
+        "edit",
+        "go",
+        "duplicate"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-13T13:21:14+02:00"
     }
   ]
 }

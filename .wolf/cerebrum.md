@@ -54,6 +54,10 @@
 - 2026-10-13: `ReplaceFindings` replaces all findings of a run; ingest keeps findings of detectors it does not own (`internal/ingest` `owned`). A new detector written by ingest must be added there.
 - 2026-10-13: adding a method to `store.State` compiles in test fakes that embed the interface but panics at run time when called; extend the fakes (`internal/daemon/daemon_test.go`, `internal/run/run_test.go`).
 
+- 2026-10-13: the old corpus holds single event streams of up to 5 GB (deltas that repeat the accumulated text); anything that walks the corpus takes minutes and must be a job inside the daemon, never work done inside an HTTP request.
+- 2026-10-13: the short-unit detector follows the reference pattern `(.{2,40}?)\1{7,}` exactly: shortest unit at the leftmost place, letters rule on that unit, a failing repeat passed over whole. Check a change against that pattern in Python before trusting a test's expectation.
+- 2026-10-13: the older harness's stream is `{"ts","type":"agent_event","event":{...}}` with the same inner SDK events; `internal/ingest` reads both envelopes.
+
 ## Do-Not-Repeat
 
 <!-- Mistakes made and corrected. Each entry prevents the same mistake recurring. -->
@@ -65,6 +69,8 @@
 - [2026-10-13] NEVER fill an arm from the old harness's values when the owner has named the value. "128k" in the model tag the owner chose means a 128k window (131072, what the tag declares), and the sampler is the owner's (temperature 1, top-k 20, repeat last-n 0, repeat penalty 1, presence penalty 0). I had copied 96000, effort xhigh and temperature 0.8 from the old manual arm and was corrected three times (thinking effort is `high`). When a value is not named, read the tag's own parameters (`/api/show`) and ask, do not reach for the old harness.
 - [2026-10-13] The owner's second GPU host for xollama is a WINDOWS machine with an RTX 3090; its neutral name is `windows-2`. I had mapped it to `linux-gpu-2`. Check the host mapping against what the owner says before writing a neutral name.
 - [2026-10-13] A host with two addresses: write the address that answers on the service port (`curl -w %{remote_ip}`), not the first one the resolver returns.
+
+- 2026-10-13: do not slice-and-splice a Go file between two text markers without checking their order in the file; it duplicated two type declarations in `internal/daemon/api.go`.
 
 ## Decision Log
 

@@ -3,6 +3,7 @@ package task
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -424,4 +425,41 @@ func copyTree(src, dst string) error {
 		}
 		return nil
 	})
+}
+
+// Proof is the record that a task's primary oracle was proven against its
+// fixtures (060 §3). It is kept by the task's hash, so any change to the
+// task, its oracle or its fixtures makes it void.
+type Proof struct {
+	Task     string    `json:"task"`
+	Hash     string    `json:"hash"`
+	Fixtures int       `json:"fixtures"`
+	Repeats  int       `json:"repeats"`
+	At       time.Time `json:"at"`
+}
+
+func (e *Env) proofPath(t *Task) string {
+	return filepath.Join(e.Artefacts, "proven", t.Hash+".json")
+}
+
+// RecordProof writes that the oracle of this task, as it is now, was proven.
+func (e *Env) RecordProof(t *Task, fixtures, repeats int) error {
+	b, _ := json.MarshalIndent(Proof{Task: t.Name(), Hash: t.Hash, Fixtures: fixtures, Repeats: repeats, At: time.Now().UTC()}, "", "  ")
+	if err := os.MkdirAll(filepath.Dir(e.proofPath(t)), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(e.proofPath(t), append(b, '\n'), 0o644)
+}
+
+// Proven returns the record for this task as it is now, or nil.
+func (e *Env) Proven(t *Task) *Proof {
+	b, err := os.ReadFile(e.proofPath(t))
+	if err != nil {
+		return nil
+	}
+	var p Proof
+	if json.Unmarshal(b, &p) != nil || p.Hash != t.Hash {
+		return nil
+	}
+	return &p
 }

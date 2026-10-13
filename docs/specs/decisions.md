@@ -103,6 +103,8 @@ Each of these waits for a measurement or for the planning of its milestone.
 | O1 | How the native agent on Windows and macOS meets "a host runs only the Go application", given the runner needs Node. | 010 §4 | milestone 7 (D35) |
 | O5 | Which published C/C++ SWE-bench-style set, at which version; the order of languages after it. | 062 §6 | milestone 5 |
 | O6 | Which external harnesses need the offline event path. | 064 §3.2 | milestone 5, per harness |
+| O19 | Repeated tool call: how many identical calls, and whether they must be in a row. Built as 3 or more in a row; recommendation: keep as the default, a suite may declare another. | 070 §3.2 | the owner; nothing waits, the built default is in use |
+| O20 | Severity of a runaway block: built as a note, with the default size of 10,000 characters for every run until suites declare theirs; recommendation: keep. | 070 §3.2 | the owner; nothing waits |
 
 Closed since the first revision: O2 (D32), O4 (D30), O7 (S4, then D34), O9
 (D31), O10 (D42), O11 (D33), O12 (D28), O13 (D29), O14 (D46), O8 (D47), O15

@@ -61,6 +61,8 @@ type Daemon struct {
 	draining bool
 	wake     chan struct{}
 	started  time.Time
+	// reanalysis is the one running, or the last that ran.
+	reanalysis *ReanalyseStatus
 }
 
 // flight is a run in flight on a lane.

@@ -166,12 +166,24 @@
 - `local.go` — Local (70 fields); methods: Token, APIKey (~2058 tok)
 - `runner_fixture_test.go` — TestRunnerFixtureIsTheResolvedArm (~164 tok)
 
+## internal/detect/
+
+- `detect.go` — the detector library, version 1: Block (short_unit_repeat, char_run, sentence_repeat, runaway), Sentences, RepeatedCalls (~2600 tok)
+- `controls.go` — Controls, SelfTest, Available: positive and negative controls per domain (~1700 tok)
+- `detect_test.go` — edges of each definition; answers pinned to the reference pattern (~2600 tok)
+
+## internal/gate/
+
+- `gate.go` — Builtin gates (lane, free, model_tag, template, sampler, thinking, gpu_residency, harness_build, host, oracle, workspace, bind_address; three unchecked until agent mode), Run, Worst (~4200 tok)
+- `gate_test.go` — every gate with the fault it must catch, against a fake model server (~2700 tok)
+
 ## internal/ingest/
 
 - `events.go` — ReadEvents: one pass over a run's event stream (tool calls, blocks, notices, split); chunk lines skipped unparsed (~1900 tok)
 - `wire.go` — ReadWire: the wire capture as Requests; agent request = chat with tools; server counts from the last answer line (~1300 tok)
 - `wirearm.go` — CompareWire: detector `wire_arm` (stated_not_sent, sent_not_stated, differs, drift), Deviation evidence (~3300 tok)
 - `analyse.go` — Run (reads blobs, writes metrics, tool calls, findings; keeps other detectors' findings), Analyse, distribution (~2700 tok)
+- `detectors.go` — detectorFindings: the detector library over blocks and calls, one finding per detector and channel (Firing) (~1100 tok)
 - `ingest_test.go` — synthetic stream and wire lines in the real shapes; memory store (~3800 tok)
 - `sample_test.go` — prints the analysis of a real run when AUTOMATICUM_SAMPLE names a directory (~900 tok)
 

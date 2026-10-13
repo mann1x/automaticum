@@ -337,6 +337,9 @@ func oracleVerify(ctx context.Context, args []string) error {
 		fmt.Printf("%s: the oracle is not proven: %d of %d fixtures judged wrongly or unevenly\n", t.Name(), bad, len(results))
 		return errFailed
 	}
+	if err := env.RecordProof(t, len(results), *repeats); err != nil {
+		return fmt.Errorf("the oracle is proven, but the record of it could not be written: %w", err)
+	}
 	fmt.Printf("%s: the oracle is proven on %d fixtures, %d runs each\n", t.Name(), len(results), *repeats)
 	return nil
 }

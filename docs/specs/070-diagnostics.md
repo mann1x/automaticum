@@ -124,6 +124,53 @@ Requirements:
   text detectors this way; metrics that need the wire capture exist for new
   runs only.
 
+### 3.2 The library, as built
+
+`internal/detect`, version 1, holds the four reference detectors and the
+repeated tool call. `automaticum detect <file>` runs them on a text file
+taken as one block, `automaticum detect <run>` on a stored run's blocks and
+calls, and `automaticum detect --self-test` on the library's own controls.
+
+- **Short-unit repeat** takes the unit the reference pattern
+  `(.{2,40}?)\1{7,}` takes: the shortest unit that repeats at the leftmost
+  place. The letters rule is applied to that unit, and a repeat whose unit
+  fails it is passed over whole. So `abab…` (unit `ab`, two letters) and
+  `a1 a1 …` do not fire, however long. The library's tests pin its answers
+  to that pattern's.
+- **Letters** are Unicode letters; lengths and offsets are in characters,
+  not bytes.
+- **Controls:** seven texts a detector must fire on, six healthy ones (prose,
+  code with indentation and separators, tool output, iterative drafting,
+  number tables, the empty block) on which none may, and two call sequences.
+  The daemon runs them at start. A detector that misses a control is
+  **unavailable**: ingest writes `detector.<name>.available = 0` and no
+  count for it (050 §3.2).
+- **At ingest** each block of reasoning and of visible text goes through the
+  four text detectors. One finding per detector and channel, with the number
+  of blocks it fired on, out of how many, the turns, and the first firing.
+  Counts are also metrics (`detector.<name>.<channel>`), so that a zero from
+  an available detector is on record. `detector.looped_blocks` is the count
+  of blocks where any of the three looping detectors fired; it is derived
+  next to its components and never replaces them.
+- **Imported runs** (D65) are read in the older stream format. Where a block's
+  end does not repeat the whole block, the block is put together from its
+  pieces. They get the detectors' findings only: their tool calls stay as
+  the importer wrote them and they have no wire-based metrics.
+
+**As built, not owner decisions** (both can be changed without a new
+detector definition, and are carried here until the owner says otherwise):
+
+- **Open (O19) — repeated tool call:** the spec says "identical name and arguments
+  N times" without N or adjacency. Built as **3 or more calls in a row**,
+  arguments compared after one spelling of their JSON. Recommendation: keep
+  3 in a row as the default and let a suite declare another.
+- **Open (O20) — severity of a runaway:** built as a note, the looping detectors as
+  warnings: a long block is a size, and healthy length differs by suite
+  until suites declare their own (the default 10,000 is used for every run
+  now). Recommendation: keep.
+
+Not built: near-duplicate rounds, edit oscillation, re-read loop.
+
 ## 4. Other findings
 
 Each has a severity, evidence (event ids, quoted text) and a count.

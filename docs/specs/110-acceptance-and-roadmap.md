@@ -130,6 +130,16 @@ does not name (presence penalty among them). It is corrected in the SDK's
 repository and not released (X8). Until a release carries it, an arm that
 states an effort level runs on the tag's budget, and says so in a finding.
 
+The detector library (070 §3.2) over the same five runs: no looping detector
+fired on any block; four of the five have at least one reasoning block of
+10,000 characters or more (the largest 29,345). Over the 531 imported runs
+the same library, version 1, gives: sentence repeat in the reasoning of 156
+runs (76 of 313 `PASS`, 27 of 87 `FAIL`, 19 of 38 `TIMEOUT`, 21 of 60
+`ABORTED`, 13 of 33 `INVALID`), short-unit repeat in 6, no letter run, and
+three or more identical tool calls in a row in 107. A run of the old
+harness is not a run of this arm, so these are two descriptions, not a
+comparison.
+
 Two more things the comparison shows on all five runs, both as notes: the
 output budget sent (`num_predict`) shrinks as the context fills, by the SDK's
 own rule, since the arm leaves it to the SDK; and the first agent request

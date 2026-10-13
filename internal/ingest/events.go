@@ -11,6 +11,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/mann1x/automaticum/internal/detect"
 	"github.com/mann1x/automaticum/internal/store"
 )
 
@@ -29,7 +30,9 @@ type Events struct {
 	Iterations      int
 	AgentEnd        string
 	ToolCalls       []store.ToolCall
-	Blocks          []Block
+	// Calls holds the same calls with their arguments, for the detectors.
+	Calls  []detect.Call
+	Blocks []Block
 	// Notices counts the SDK's notices by reason; a notice without a reason
 	// is counted under its type and message.
 	Notices map[string]int
@@ -45,14 +48,21 @@ type Events struct {
 	Questions int
 }
 
+// eventLine is one line of a stream. The runner writes
+//
+//	{"t":..., "k":"event", "event":{"type":"agent_event", "payload":{"event":{...}}}}
+//
+// and the older harness, whose runs are imported, wrote
+//
+//	{"ts":..., "type":"agent_event", "event":{...}}
+//
+// The innermost object is the SDK's event in both.
 type eventLine struct {
-	T     time.Time `json:"t"`
-	K     string    `json:"k"`
-	Note  string    `json:"note"`
-	Event *struct {
-		Type    string          `json:"type"`
-		Payload json.RawMessage `json:"payload"`
-	} `json:"event"`
+	T       time.Time          `json:"t"`
+	K       string             `json:"k"`
+	Type    string             `json:"type"`
+	Note    string             `json:"note"`
+	Event   json.RawMessage    `json:"event"`
 	Derived map[string]float64 `json:"derived"`
 }
 
@@ -64,6 +74,7 @@ type agentEvent struct {
 	ToolName    string          `json:"toolName"`
 	ToolCallID  string          `json:"toolCallId"`
 	Iteration   int             `json:"iteration"`
+	Input       json.RawMessage `json:"input"`
 	Error       json.RawMessage `json:"error"`
 	Output      json.RawMessage `json:"output"`
 	DurationMS  *float64        `json:"durationMs"`
@@ -85,30 +96,45 @@ type agentEvent struct {
 // as text and make up half the stream; they are passed over unparsed.
 var chunkMark = []byte(`"event":{"type":"chunk"`)
 
+// scan is what is carried from line to line while a stream is read.
+type scan struct {
+	turn    int
+	started map[string]time.Time // tool calls, by id
+	inputs  map[string]string
+	// What a block's deltas add up to, by kind, for a stream whose
+	// "content_end" does not repeat the whole block.
+	partial map[string]*bytes.Buffer
+}
+
 // ReadEvents reads a run's event stream: the JSON lines the runner printed.
 func ReadEvents(r io.Reader) (*Events, error) {
 	ev := &Events{Notices: map[string]int{}}
+	return ev, ev.Read(r)
+}
+
+// Read adds one more stream to what was read: an imported run may have
+// several.
+func (ev *Events) Read(r io.Reader) error {
 	rd := bufio.NewReaderSize(r, 1<<20)
-	turn := 0
-	started := map[string]time.Time{}
+	sc := &scan{started: map[string]time.Time{}, inputs: map[string]string{}, partial: map[string]*bytes.Buffer{}}
 	for {
 		line, err := rd.ReadBytes('\n')
 		if len(bytes.TrimSpace(line)) > 0 {
 			ev.Lines++
 			if !bytes.Contains(line[:min(len(line), 200)], chunkMark) {
-				ev.line(line, &turn, started)
+				ev.line(line, sc)
 			}
 		}
 		if err == io.EOF {
-			return ev, nil
+			return nil
 		}
 		if err != nil {
-			return ev, err
+			return err
 		}
 	}
 }
 
-func (ev *Events) line(line []byte, turn *int, started map[string]time.Time) {
+func (ev *Events) line(line []byte, sc *scan) {
 	var l eventLine
 	if err := json.Unmarshal(line, &l); err != nil {
 		ev.BadLines++
@@ -120,8 +146,9 @@ func (ev *Events) line(line []byte, turn *int, started map[string]time.Time) {
 		}
 		ev.Last = l.T
 	}
-	switch l.K {
-	case "runner":
+	var a agentEvent
+	switch {
+	case l.K == "runner":
 		switch l.Note {
 		case "config_resolved":
 			ev.Derived = l.Derived
@@ -129,50 +156,83 @@ func (ev *Events) line(line []byte, turn *int, started map[string]time.Time) {
 			ev.Questions++
 		}
 		return
-	case "event":
+	case l.K == "event":
+		var e struct {
+			Type    string `json:"type"`
+			Payload struct {
+				Event agentEvent `json:"event"`
+			} `json:"payload"`
+		}
+		if len(l.Event) == 0 {
+			return
+		}
+		if json.Unmarshal(l.Event, &e) != nil {
+			ev.BadLines++
+			return
+		}
+		if e.Type != "agent_event" {
+			return
+		}
+		a = e.Payload.Event
+	case l.K == "" && l.Type == "agent_event" && len(l.Event) > 0:
+		if json.Unmarshal(l.Event, &a) != nil {
+			ev.BadLines++
+			return
+		}
 	default:
 		return
 	}
-	if l.Event == nil || l.Event.Type != "agent_event" {
-		return
-	}
-	var p struct {
-		Event agentEvent `json:"event"`
-	}
-	if json.Unmarshal(l.Event.Payload, &p) != nil {
-		ev.BadLines++
-		return
-	}
-	a := &p.Event
 	switch a.Type {
 	case "iteration_start":
-		*turn = a.Iteration
+		sc.turn = a.Iteration
 		if a.Iteration > ev.Iterations {
 			ev.Iterations = a.Iteration
 		}
 	case "content_start":
-		if a.ContentType == "tool" && a.ToolCallID != "" {
-			started[a.ToolCallID] = l.T
+		switch a.ContentType {
+		case "tool":
+			if a.ToolCallID != "" {
+				sc.started[a.ToolCallID] = l.T
+				sc.inputs[a.ToolCallID] = compact(a.Input)
+			}
+		case "reasoning", "text":
+			buf := sc.partial[a.ContentType]
+			if buf == nil {
+				buf = &bytes.Buffer{}
+				sc.partial[a.ContentType] = buf
+			}
+			buf.WriteString(a.Reasoning + a.Text)
 		}
 	case "content_end":
 		switch a.ContentType {
-		case "reasoning":
-			ev.Blocks = append(ev.Blocks, Block{Turn: *turn, Kind: "reasoning", Text: a.Reasoning})
-		case "text":
-			ev.Blocks = append(ev.Blocks, Block{Turn: *turn, Kind: "text", Text: a.Text})
+		case "reasoning", "text":
+			text := a.Reasoning + a.Text
+			if buf := sc.partial[a.ContentType]; buf != nil {
+				if text == "" {
+					text = buf.String()
+				}
+				buf.Reset()
+			}
+			ev.Blocks = append(ev.Blocks, Block{Turn: sc.turn, Kind: a.ContentType, Text: text})
 		case "tool":
-			call := store.ToolCall{Turn: *turn, Seq: len(ev.ToolCalls), Tool: a.ToolName, OK: true}
-			if failed(a) {
+			call := store.ToolCall{Turn: sc.turn, Seq: len(ev.ToolCalls), Tool: a.ToolName, OK: true}
+			if failed(&a) {
 				call.OK, call.ErrorClass = false, "tool_error"
 			}
-			switch t0, ok := started[a.ToolCallID]; {
+			switch t0, ok := sc.started[a.ToolCallID]; {
 			case a.DurationMS != nil:
 				call.DurationMS = int64(*a.DurationMS)
 			case ok && !l.T.IsZero():
 				call.DurationMS = l.T.Sub(t0).Milliseconds()
 			}
-			delete(started, a.ToolCallID)
+			input := compact(a.Input)
+			if input == "" {
+				input = sc.inputs[a.ToolCallID]
+			}
+			delete(sc.started, a.ToolCallID)
+			delete(sc.inputs, a.ToolCallID)
 			ev.ToolCalls = append(ev.ToolCalls, call)
+			ev.Calls = append(ev.Calls, detect.Call{Turn: sc.turn, Tool: a.ToolName, Input: input})
 		}
 	case "usage":
 		if ev.FirstTokenMS == 0 {
@@ -193,6 +253,20 @@ func (ev *Events) line(line []byte, turn *int, started map[string]time.Time) {
 	case "done":
 		ev.AgentEnd = a.Reason
 	}
+}
+
+// compact gives a call's arguments one spelling, so that the same arguments
+// compare equal however they were spaced.
+func compact(raw json.RawMessage) string {
+	if len(bytes.TrimSpace(raw)) == 0 || bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+		return ""
+	}
+	var v any
+	if json.Unmarshal(raw, &v) != nil {
+		return string(raw)
+	}
+	b, _ := json.Marshal(v) // maps are written with sorted keys
+	return string(b)
 }
 
 // failed reports whether a tool call's end says it failed: an error on the

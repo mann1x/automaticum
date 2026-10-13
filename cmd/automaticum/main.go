@@ -35,7 +35,8 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   run abort <run>               end a run in flight
   run invalidate <run>          mark a finished run INVALID, --reason "..."
   logs <run>                    a run's raw material [--events|--wire|--runner|--oracle]
-  reanalyse                     derive metrics and findings again from what is stored [--run R | --batch B]
+  reanalyse                     derive metrics and findings again from what is stored [--run R | --batch B] [--imported]
+  detect <file|run>             the detector library on a text file or on a stored run; --self-test runs its controls
   stub serve --script F         a scripted model server, for trying the harness without a GPU
   legacy import                 import the old harness's corpus (spec 100)
   store check                   verify every blob and every blob reference
@@ -56,7 +57,7 @@ func main() {
 		return
 	}
 	// Some commands are one word.
-	one := map[string]func(context.Context, []string) error{"status": status, "logs": logs, "reanalyse": reanalyse}
+	one := map[string]func(context.Context, []string) error{"status": status, "logs": logs, "reanalyse": reanalyse, "detect": detectCmd}
 	if len(args) >= 1 && one[args[0]] != nil {
 		fail(one[args[0]](ctx, args[1:]))
 		return

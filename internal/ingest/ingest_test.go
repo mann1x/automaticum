@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/mann1x/automaticum/internal/config"
+	"github.com/mann1x/automaticum/internal/detect"
 	"github.com/mann1x/automaticum/internal/store"
 	"github.com/mann1x/automaticum/internal/store/blob"
 )
@@ -351,8 +352,67 @@ func TestRun(t *testing.T) {
 		}
 	}
 
-	m.run.Imported = true
-	if _, err := Run(context.Background(), m, m, "r1"); err == nil {
-		t.Error("an imported run has another stream format and must be refused here")
+}
+
+// An imported run has the older harness's stream and no wire capture: it
+// gets the detectors' findings and nothing else is touched (D65).
+func TestRunImported(t *testing.T) {
+	loop := strings.Repeat("I will fix the jump. ", 9)
+	old := func(event string) string { return `{"ts":1791710224660,"type":"agent_event","event":` + event + `}` }
+	lines := []string{
+		old(`{"type":"iteration_start","iteration":1}`),
+		old(`{"type":"content_start","contentType":"reasoning","reasoning":"` + loop[:40] + `"}`),
+		old(`{"type":"content_start","contentType":"reasoning","reasoning":"` + loop[40:] + `"}`),
+		old(`{"type":"content_end","contentType":"reasoning"}`), // the whole block is not repeated here
+		old(`{"type":"content_end","contentType":"text","text":"fine"}`),
+		`{"ts":1791710224661,"type":"hook_event","hookEventName":"tool_call"}`,
+		old(`{"type":"iteration_start","iteration":2}`),
+		old(`{"type":"content_start","contentType":"tool","toolName":"read_files","toolCallId":"a","input":{"path":"x","n":1}}`),
+		old(`{"type":"content_end","contentType":"tool","toolName":"read_files","toolCallId":"a"}`),
+		old(`{"type":"content_start","contentType":"tool","toolName":"read_files","toolCallId":"b","input":{"n":1,"path":"x"}}`),
+		old(`{"type":"content_end","contentType":"tool","toolName":"read_files","toolCallId":"b"}`),
+		old(`{"type":"content_end","contentType":"tool","toolName":"read_files","toolCallId":"c","input":{"path": "x", "n": 1}}`),
+	}
+	h1, h2 := blob.Hash("1"), blob.Hash("2")
+	m := &memory{
+		run:  store.Run{ID: "old", Imported: true},
+		refs: []store.BlobRef{{RunID: "old", Kind: "events", Name: "run.jsonl", Hash: h1}, {RunID: "old", Kind: "events", Name: "run.2.jsonl", Hash: h2}},
+		blobs: map[blob.Hash]string{h1: strings.Join(lines, "\n"),
+			h2: old(`{"type":"content_end","contentType":"text","text":"x` + strings.Repeat("z", 50) + `"}`)},
+		findings: []store.Finding{{RunID: "old", Detector: "legacy_oracle", Count: 1}, {RunID: "old", Detector: detect.CharRun, Count: 7}},
+		metrics:  []store.Metric{{RunID: "old", Name: "kept", Value: 1}},
+		calls:    []store.ToolCall{{RunID: "old", Tool: "from the importer"}},
+	}
+	res, err := Run(context.Background(), m, m, "old")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Blocks) != 3 || res.Blocks[0].Text != loop {
+		t.Errorf("blocks, the first put together from its pieces: %+v", res.Blocks)
+	}
+	got := map[string]store.Finding{}
+	for _, f := range m.findings {
+		got[f.Detector] = f
+	}
+	if len(m.findings) != 4 || got["legacy_oracle"].Count != 1 {
+		t.Fatalf("findings: %+v", m.findings)
+	}
+	var fire Firing
+	json.Unmarshal(got[detect.ShortUnitRepeat].Evidence, &fire)
+	if fire.Channel != "reasoning" || fire.Blocks != 1 || fire.Of != 1 || fire.First.Count != 9 || got[detect.ShortUnitRepeat].Turn != 1 {
+		t.Errorf("short unit: %+v %+v", got[detect.ShortUnitRepeat], fire)
+	}
+	json.Unmarshal(got[detect.CharRun].Evidence, &fire)
+	if fire.Channel != "text" || fire.First.Count != 50 || got[detect.CharRun].Count != 1 {
+		t.Errorf("letter run, from the second stream: %+v %+v", got[detect.CharRun], fire)
+	}
+	// The same arguments, spelt three ways, are the same call.
+	var seq detect.RepeatedCall
+	json.Unmarshal(got[detect.RepeatedToolCall].Evidence, &seq)
+	if seq.Tool != "read_files" || seq.Count != 3 || seq.Turn != 2 || seq.Input != `{"n":1,"path":"x"}` {
+		t.Errorf("repeated call: %+v", seq)
+	}
+	if len(m.metrics) != 1 || len(m.calls) != 1 {
+		t.Errorf("an imported run's metrics and tool calls were touched: %+v %+v", m.metrics, m.calls)
 	}
 }
