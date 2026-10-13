@@ -61,6 +61,7 @@ All dated 2026-10-12.
 | D49 | Vector search uses a refine step by default, with a factor of at least 30. | 080 §7.4 |
 | D50 | Every chunk carries a locator: the blob hash and byte offset of its source line. | 080 §7.4 |
 | D51 | The 30 earlier campaigns in the old harness's archive are imported only when a question needs them. | 100 §7 |
+| D52 | Embeddings are updated manually: an embedding pass is started by the operator for a stated scope, never scheduled and never automatic. | 080 §5.2, 090 §1 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked
@@ -107,7 +108,7 @@ Requests to the Cerebriline SDK (040 §8). The owner approved the work on
 | X3 | A strict mode that refuses stored provider profiles and global settings. | provider profiles: on main, unreleased. Global settings: no switch | a fresh data directory, asserted through the resolved-configuration report |
 | X4 | Mention expansion as an SDK function. | worked around | the scripted user sends expanded text; expansion is not exercised |
 | X5 | A hook for the error-retry decision. | withdrawn (D34) | retries are observed and recorded, not decided |
-| X6 | Confirmation of the extension-parity inventory. | pending | the inventory rests on a source read |
+| X6 | Confirmation of the extension-parity inventory. | done 2026-10-13 for 040 §6: 11 rows confirmed, 2 corrected, 6 added. §6.1 offered, not yet checked | §6.1 and §6.2 rest on a source read |
 
 ## 5. Not adopted
 

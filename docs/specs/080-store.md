@@ -1,6 +1,6 @@
 # 080 — The store
 
-**Status:** draft 1.1, 2026-10-13. The spike has run (§7.4, and
+**Status:** draft 1.2, 2026-10-13. The spike has run (§7.4, and
 `spike/001-store/REPORT.md`) and the owner has confirmed the shape, with a
 review of the Lance binding at milestone 6.
 
@@ -98,7 +98,7 @@ What that model does, and what is required here:
 | the index (text, vectors, summaries) stays in the database when a transcript is archived | **only raw blobs move.** DuckDB rows, Lance chunks, vectors and the full-text index never go to the archive tier |
 | the transcript keeps its canonical name; only opening it resolves to the compressed file | a blob keeps its hash as its address; the store resolves the tier on open. No caller knows or cares where a blob is |
 | search, show, indexing and the read tool open archived transcripts transparently | every reader does: the transcript viewer, `logs`, `find`, replay, `reanalyse`, `rescore`, export and the MCP tools |
-| each indexed row carries the version of the encoder that embedded it; a pipeline change triggers re-embedding | each chunk carries the embedder's identity and version; changing the embedder re-embeds from the blobs, archived ones included |
+| each indexed row carries the version of the encoder that embedded it; a pipeline change triggers re-embedding | each chunk carries the embedder's identity and version; after a change of embedder the operator starts the re-embedding from the blobs, archived ones included (§5.2) |
 | a marker in a conversation keeps it archived but not indexed | private tasks are indexed locally and never sent to a cloud embedder (060 §7) |
 
 Further requirements:
@@ -113,6 +113,24 @@ Further requirements:
 - An archived blob that cannot be read is reported as such per result, with its
   hash and expected location. It is never an empty result.
 - The consistency check (§3) covers both tiers.
+
+### 5.2 Embeddings are updated by hand
+
+**Decided by the owner (2026-10-13):** embeddings are updated **manually**.
+At this amount of data, embedding cannot be scheduled or automatic.
+
+- Ingest writes chunks with their text and no vector. Full-text and regex
+  search work on a run as soon as it is ingested; semantic search covers only
+  what has been embedded.
+- The operator starts an embedding pass with a command, for a stated scope
+  (a run, a batch, a cell, a time range, everything not yet embedded). The
+  daemon never starts one by itself and never uses a GPU for it uninvited.
+- A pass can be stopped and resumed, reports its progress, and builds the
+  vector index when it ends.
+- Every semantic search result says how much of its scope is embedded, so a
+  missing hit is never mistaken for "nothing found".
+- A change of embedder does not re-embed anything by itself. Old and new
+  vectors are not mixed in one search.
 
 ## 6. The store interface
 
@@ -292,8 +310,7 @@ What the spike changes or adds.
 Findings that need no decision:
 
 - Embedding ran at 45 chunks per second with a 1024-dimension model on the
-  GPU. Embedding, not search, limits how fresh semantic search can be; it needs
-  its own plan before milestone 6.
+  GPU: hours for this corpus. It is therefore started by hand (§5.2).
 - Rows written after an index is built are searched without the index until
   it is rebuilt, and `lance-c` has no incremental update. The daemon rebuilds
   indexes on a schedule.

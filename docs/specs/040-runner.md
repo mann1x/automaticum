@@ -1,8 +1,10 @@
 # 040 — The runner
 
-**Status:** draft 0.7, 2026-10-12. Facts about the SDK in this file were read
+**Status:** draft 0.8, 2026-10-13. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
-running it. Items under "Requests to Cerebriline" are dependencies on another
+running it. The parity table in §6 was checked row by row by the Cerebriline
+session on 2026-10-13 against its main branch (release 4.100.249 plus requests
+1 to 3); §6.1 and §6.2 were not checked. Items under "Requests to Cerebriline" are dependencies on another
 project.
 
 ## 1. What it is
@@ -89,19 +91,45 @@ and how the runner provides it:
 
 | behaviour | SDK hook | runner |
 |---|---|---|
-| Approval by category (read, edit, safe commands, all commands, web fetch, browser, MCP) | `requestToolApproval`, `toolPolicies` | approval policy in the arm; decisions by the scripted user |
-| Denial with feedback text | `ToolApprovalResult.reason` | the scripted user's denial carries feedback in the extension's format |
-| `ask_question` with suggested options | `toolExecutors.askQuestion` | answered by the scripted user |
-| Plan mode, act mode and the switch | `mode`; a switch restarts the session with its messages | scripted, or fixed per arm |
-| Steering a running turn; queued messages | `send` with delivery `steer` or `queue`; pending prompts | scripted |
-| Cancel and resume; resume after restart | `abort`, `stop`; `start` with session id and initial messages | used for pause and resume (050 §4) and scripted |
+| Approval by category (read, edit, safe commands, all commands, web fetch, browser, MCP) | `requestToolApproval` on the runtime capabilities (not the session configuration); `toolPolicies` on the start input. A request carries tool name, input and policy; the extension approves by itself when the policy says auto-approve | approval policy in the arm; decisions by the scripted user |
+| Denial with feedback text | `ToolApprovalResult` with `approved` and `reason` | the scripted user's denial uses the extension's exact sentences (below) |
+| `ask_question` with suggested options | `toolExecutors.askQuestion` on the capabilities | answered by the scripted user |
+| Plan mode, act mode and the switch | `mode`. A switch rebuilds the session with the **same session id** and the loaded messages as initial messages, cancelling a running turn first | scripted, or fixed per arm |
+| `switch_to_act_mode` tool | added through `extraTools` in plan mode, removed in act mode | the runner does the same, or the plan-mode tool list differs from the extension's |
+| Steering a running turn; queued messages | `send` with delivery `steer` or `queue`; `pendingPrompts` to list, update and delete. The extension's default for a message typed during a run is `queue`; `steer` is the explicit send-now | scripted; the default delivery is `queue` |
+| Cancel and resume; resume after restart | `abort`, `stop`; `start` with session id, initial messages **and the initial compaction state**. Without the last, a resume drops the saved compaction | used for pause and resume (050 §4) and scripted |
 | Checkpoint restore (task, workspace, both) and compare | `restore`, `compareCheckpoint` | scripted; also used for snapshots |
-| Mistake-limit stop | `onConsecutiveMistakeLimitReached` | arm field; the extension's behaviour is to stop |
-| Manual compaction | compaction state update | scripted |
-| Escalation and check approvals | `escalation.approve`, `atomicProtocol.approveCheck` | scripted user |
+| Mistake-limit stop | `onConsecutiveMistakeLimitReached`; the extension answers stop, with a reason. The call says whether the stop was `forced` by a terminal guard | arm field; the run record says whether a stop was forced or a count of mistakes |
+| Manual compaction | none that compacts. The extension reads the transcript, runs the compaction itself, then stores the result with `updateSessionCompactionState` | the runner runs the compaction, as the extension and the CLI each do; scripted |
+| Slash commands (`/compact`, `/smol`, the built-ins) | none: the extension expands them before the prompt is sent | expanded by the runner, like mentions (§8, request 4) |
+| Escalation and check approvals | `escalation.approve` and `atomicProtocol.approveCheck`, on the session configuration. Leaving `approveCheck` out is a behaviour of its own (a host with no user), not an approval | scripted user; the arm states whether the hook is supplied |
 | MCP tools | `extraTools` | arm field: which servers, started inside the container |
-| Browser tool | available in both | arm field |
+| Browser tool | present only where a Chrome is found | arm field; the lane image provides the browser or the tool is absent |
+| `render_image`, `transform_image`, `generate_icon` | extension only, through the same browser driver; the CLI registers none | the runner supplies the driver, or they are absent and the wire tool list shows it |
+| `check_file` tool | registered by the extension | registered by the runner |
+| Replaced executors | the extension supplies its own `editor`, `applyPatch`, `readFile` and `semanticSearch` executors, sharing one registry of read receipts | **the runner replaces none** and records that the SDK's own executors ran. If it ever replaces the reader it must share the registry, or edits are refused as "not read in this session" |
 | Task progress (focus chain) | `taskProgress` | arm field |
+| Sandbox | in the extension, delegated agents are sandboxed by default and the lead is not | arm field, same default |
+| Bundled skills | three media skills are on by default | arm field (§8.2) |
+
+**Denial sentences**, as the extension sends them: by default "This tool call
+was rejected by the user and not executed."; for edit tools "The user denied
+this edit. The file was NOT modified and still contains its original
+content."; with feedback, that sentence followed by " The user provided the
+following feedback:" and the feedback inside `<feedback>` tags. A pending
+approval is also denied when the user types instead of answering, with "Tool
+execution was cancelled because the user sent a follow-up message." The SDK
+appends guidance of its own to every rejection, so the text on the wire is
+longer than what the runner returns.
+
+**Values the extension sets and the old harness carried by hand:** at most 6
+changes, task-progress interval 2, tool results capped at 64,000 characters,
+compaction `agentic`, edit verification `nudge`, 6 retries. Each is an arm
+field. Those that are guards or compaction settings have no default (030
+§5.1): the arm states them, and these are the values that reproduce the
+extension. The Cerebriline session proposed the extension's values as
+defaults for all of them; that would contradict 030 §5.1 for guards and
+compaction, so it is not adopted here.
 
 The **request-count pause** (asking the user to continue after about twenty
 auto-approved requests) no longer exists in the extension: the setting is a
@@ -167,7 +195,7 @@ code, not from trying. Each request is tracked in `decisions.md` section 4.
 | X3 | A **strict mode** that refuses to read stored provider profiles and global settings. | **partly: provider profiles only** (§8.2) |
 | X4 | The extension's **mention expansion** as an SDK function. | expensive: it lives in the extension and leans on the editor. Worked around at first (§8.1) |
 | X5 | A hook for the **error-retry** decision. | **withdrawn** (owner, 2026-10-12): the runner observes only (§8.1) |
-| X6 | Confirmation of the parity inventory in §6, row by row. | pending; silence is not confirmation |
+| X6 | Confirmation of the parity inventory in §6, row by row. | done on 2026-10-13 for §6: 11 rows confirmed, 2 corrected, 6 added. §6.1 and §6.2 not checked |
 
 `INVALID` depends on X1 to X3, which is why they come first. More requests are
 expected while the runner is written, and are sent in batches.

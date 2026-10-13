@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.6, 2026-10-12.
+**Status:** draft 0.7, 2026-10-13.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -29,6 +29,7 @@ automaticum find "<query>" [--semantic] [--where ...]
 automaticum logs <run> [--server|--runtime|--events|--wire] [--grep ...] [--turn N]
 automaticum replay <run> --turn N [--endpoint E]
 automaticum detect <file|run>               # the detector library, standalone
+automaticum embed start|status|stop [--where ...]   # by hand only (080 §5.2)
 automaticum reanalyse [--detector D] [--where ...]
 automaticum rescore <cell>
 automaticum export run|cell|cohort|campaign ...
@@ -107,7 +108,9 @@ The primary user is often an AI session. Requirements:
 - **Full-text and regex search** over transcripts, reasoning, tool arguments,
   tool results and logs, across the corpus, with filters on any run field.
 - **Semantic search** through the embedder: "runs where the model decided the
-  oracle was wrong", "reasoning that mentions giving up".
+  oracle was wrong", "reasoning that mentions giving up". It covers what has
+  been embedded, which the operator decides (080 §5.2), and every result says
+  how much of its scope that is.
 - Search covers archived runs exactly as live ones (080 §5.1).
 - Saved queries, and queries as report columns.
 - **Replay:** re-send a recorded request to an endpoint, byte for byte, to

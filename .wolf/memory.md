@@ -306,3 +306,15 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 08:36
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 08:36
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+- Mail 1231 from the Cerebriline session folded in: 040 §6 parity table rewritten (11 confirmed, 2 corrected, 6 added), X6 done for §6. Its proposal of extension values as arm defaults is not adopted for guards and compaction (030 §5.1). Invalid runs by id received: group A (0207-0212, 0296) to be marked INVALID; groups B, C and two sibling lanes (gemma 51 runs, bs2 5 runs, not imported) are for the owner.
+- Owner decision D52: embeddings are updated manually. 080 §5.2 added, `automaticum embed start|status|stop` in 090 §1.
