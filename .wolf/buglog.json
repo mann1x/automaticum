@@ -40,6 +40,38 @@
         "memory",
         "store"
       ]
+    },
+    {
+      "id": "bug-004",
+      "timestamp": "2026-10-13T04:13:00Z",
+      "error_message": "sh: /usr/bin/time: No such file or directory (import container exit 127, docker wait reported 0)",
+      "file": "spike job wrapper (untracked)",
+      "root_cause": "The manylinux link image has no /usr/bin/time, and the wrapper's last command was echo, so the container's exit code hid the failure.",
+      "fix": "Time with date arithmetic, read peak memory from the cgroup, write the job's exit code into the result file and read that file.",
+      "tags": [
+        "docker",
+        "benchmark",
+        "exit-code"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-13T04:13:00Z"
+    },
+    {
+      "id": "bug-005",
+      "timestamp": "2026-10-13T04:45:00Z",
+      "error_message": "perturb() advanced the text by the length of the replacement word, not the original",
+      "file": "spike/001-store/bench/corpus.go",
+      "root_cause": "The replaced word's length was used to slice the remaining text.",
+      "fix": "Remember the consumed length before replacing the word.",
+      "tags": [
+        "go",
+        "strings",
+        "benchmark"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-13T04:45:00Z"
     }
   ]
 }

@@ -4,9 +4,12 @@ A test harness that runs coding agents against tasks with a verdict, on lanes it
 orchestrates itself, and answers the questions about those runs without a
 throwaway script.
 
-> **Status: specification stage.** Nothing is implemented yet. The roadmap is
-> approved and the first milestone (store spike and importer) is next. The design is the
-> spec set in [`docs/specs/`](docs/specs/000-overview.md) (draft 0.7). Items a
+> **Status: milestone 1 of 7 carried out.** There is no harness yet. What
+> exists is the store (`internal/store`), the importer for the old harness's
+> corpus (`internal/legacyimport`), a command line with `legacy import` and
+> `store check`, and the store spike with its
+> [report](spike/001-store/REPORT.md). The design is the
+> spec set in [`docs/specs/`](docs/specs/000-overview.md). Items a
 > spec marks **Open** are questions, not decisions; they are listed in
 > [`docs/specs/decisions.md`](docs/specs/decisions.md).
 

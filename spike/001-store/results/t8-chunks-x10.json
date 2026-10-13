@@ -1,0 +1,20 @@
+{
+  "chunk_mb_per_s_of_stream": 368.7206426119032,
+  "chunk_s": 81.47257488,
+  "chunk_text_bytes": 4491580153,
+  "chunks": 3892790,
+  "chunks_by_kind": {
+    "reasoning": 166968,
+    "text": 29005,
+    "tool_args": 73248,
+    "tool_result": 120058
+  },
+  "copies": 10,
+  "index_build_s": 272.575146833,
+  "peak_rss_mib": 3629.23046875,
+  "rss_mib": 2193.54296875,
+  "size_after_index_gb": 3.980779616162181,
+  "size_before_index_gb": 2.99718498531729,
+  "stream_bytes": 30040620165,
+  "streams": 489
+}

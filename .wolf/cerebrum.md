@@ -20,11 +20,20 @@
 - Source of truth: the spec set docs/specs/000..110 plus decisions.md (draft 0.5). Inputs, not edited: docs/specs/archive/ (draft spec 0.4 from the Cerebriline session, first user; omnimergekit requirements 0.1, second user).
 - Host mapping, old-harness paths and mailbox aliases live in docs/local/hosts.local.md (untracked). Published files use neutral host names (linux-gpu-1, linux-gpu-2, windows-1, mac-1) and no absolute paths. The old harness is READ-ONLY.
 
+- [2026-10-13] Old event streams are almost all streaming deltas: 30 GB of stream holds 0.45 GB of distinct text, and each block's closing event (`content_end`) repeats its text in full. Chunk, search and regex over the non-delta lines; skip lines whose first 200 bytes contain `"type":"content_start","contentType":"reasoning"` or `..."text"`.
+- [2026-10-13] Lance IVF_PQ needs a refine step: without it recall@10 is 0.1 to 0.6 on every set tried and more probes do not help. Use refine 30 or more.
+- [2026-10-13] Real chunk embeddings are full of near-copies (mean cosine 0.95 to the nearest neighbour), so recall by identical ids tops out near 0.92 even for an exact scan. Count a hit as correct when it is at least as close as the true k-th neighbour.
+- [2026-10-13] Synthetic vectors as evenly spread isotropic clusters are a worst case for PQ and unlike real embeddings. Draw scale sets as real vectors plus noise (`bench vectors -base`).
+- [2026-10-13] The host compiler (GCC 10) cannot link DuckDB, so anything importing `internal/store/duck`, including `cmd/automaticum`, is built in the link image (`make build`). Pure-Go packages (`blob`, `legacyimport`) build and test on the host.
+- [2026-10-13] The imported store holds private strings from the old corpus (endpoint addresses, absolute paths, host nicknames in invalid-run notes). Never quote imported records in a tracked file.
+
 ## Do-Not-Repeat
 
 <!-- Mistakes made and corrected. Each entry prevents the same mistake recurring. -->
 <!-- Format: [YYYY-MM-DD] Description of what went wrong and what to do instead. -->
 - [2026-10-12] Ran the tool inits before creating the GitHub repo although the owner listed the repo first. Follow the listed order.
+- [2026-10-13] Wrapped a container job in `/usr/bin/time`, which the link image lacks; the job died with 127 and the `docker wait` task still said exit 0. Have each job write its own exit code to a result file and read that file.
+- [2026-10-13] Wrote a blind `until` waiter (success condition only) and a waiter that tested a result file created empty by shell redirection. Give every waiter a failure exit and a bound, and test for the job's own "exit" line.
 
 ## Decision Log
 
@@ -40,3 +49,4 @@
 - [2026-10-12] Owner (milestone 1 plan): Apache-2.0; Lance binding chosen by the spike (lancedb-go v0.1.2 is unusable as released); both engines static with dynamic glibc, built on Debian 11; store required on Linux only, Windows gets agent mode and CLI without it; thresholds T1-T15 (T1-T3 hard gates); spike data on a dedicated NVMe (never the dev or spool disk), archive on the large array.
 - [2026-10-12] Cerebriline SDK: X1-X3 are on its main branch, unreleased (resolved-config callback that can refuse a session, context window field, process-wide data dir option, ignore stored provider profile). No switch for the global settings file; three bundled media skills are on by default.
 - [2026-10-13] Owner, after link gate T1 (both candidates passed on linux amd64+arm64): Lance binding is lance-c behind our own cgo wrapper (lancedb-go main is the fallback); build base is manylinux_2_28 because DuckDB's prebuilt archive cannot link with Debian 11's GCC 10.
+- [2026-10-13] Milestone 1 result: T1-T3 pass; spike supports DuckDB + Lance (lance-c) + blobs. Open with the owner: O14 confirm D6, O8 dedup by message part, O15 regex over non-delta lines, O16 refine default 30, O17 chunk locator, O18 earlier campaigns. Not decided by me.

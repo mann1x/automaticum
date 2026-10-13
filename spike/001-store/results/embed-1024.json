@@ -1,0 +1,85 @@
+{
+  "chunks": 100000,
+  "cosine_nearest_neighbour": {
+    "mean": 0.9476514910772472,
+    "std": 0.05121048424753352
+  },
+  "cosine_random_pairs": {
+    "mean": 0.6364935292282283,
+    "std": 0.10038775700120976
+  },
+  "dim": 1024,
+  "embed_chunks_per_s": 44.641963300103576,
+  "embed_s": 2240.044850352,
+  "embed_text_mb_per_s": 0.052137901605696625,
+  "fulltext_index_build_s": 5.926285833,
+  "hybrid_ms": {
+    "N": 200,
+    "P50": 11.635,
+    "P95": 22.664,
+    "P99": 26.487,
+    "Max": 37.538
+  },
+  "model": "mxbai-embed-large:latest",
+  "nearest": [
+    {
+      "Name": "exact scan",
+      "Recall": 0.9175,
+      "Latency": {
+        "N": 200,
+        "P50": 366.369,
+        "P95": 435.338,
+        "P99": 468.172,
+        "Max": 499.899
+      }
+    },
+    {
+      "Name": "probes 10",
+      "Recall": 0.627,
+      "Latency": {
+        "N": 200,
+        "P50": 2.817,
+        "P95": 4.615,
+        "P99": 6.336,
+        "Max": 11.084
+      }
+    },
+    {
+      "Name": "probes 20, refine 10",
+      "Recall": 0.877,
+      "Latency": {
+        "N": 200,
+        "P50": 5.511,
+        "P95": 8.844,
+        "P99": 11.103,
+        "Max": 11.531
+      }
+    },
+    {
+      "Name": "probes 50, refine 10",
+      "Recall": 0.8805,
+      "Latency": {
+        "N": 200,
+        "P50": 9.983,
+        "P95": 21.52,
+        "P99": 25.587,
+        "Max": 27.065
+      }
+    },
+    {
+      "Name": "probes 50, refine 30",
+      "Recall": 0.907,
+      "Latency": {
+        "N": 200,
+        "P50": 10.148,
+        "P95": 15.444,
+        "P99": 26.497,
+        "Max": 33.19
+      }
+    }
+  ],
+  "peak_rss_mib": 3055.05859375,
+  "rss_mib": 2959.65625,
+  "size_gb": 0.48227999452501535,
+  "vector_index_build_s": 116.597327863
+}

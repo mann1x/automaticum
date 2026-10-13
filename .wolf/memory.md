@@ -257,3 +257,25 @@
 - Importer 0.1.1 writes a `legacy_oracle` finding for every run under task version 1 (247 on the real corpus) through an optional FindingSink; `store check` prints tool-call and finding counts. One-core import: 295 s.
 - Recall in `bench embed` is now tie-robust (a hit counts when at least as close as the true tenth neighbour); real chunks are full of near-copies and id-based recall tops out at 0.92 even for an exact scan.
 - State benchmark done: T6 1.7 ms, T7 9.4 ms, T12 p99 15 ms. 1M real-derived vectors: recall 0.954 at refine 30, p95 30 ms.
+
+## Session: 2026-10-13 07:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 07:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 07:31
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 07:33
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+- 5M vectors: real-derived set passes T11 (recall 0.906 at refine 30, p95 43 ms, build 9 min on 4 cores, peak 5.3 GB); worst-case synthetic set reaches only 0.63. Docker's memory figure for a container includes file cache: read VmHWM, not `docker stats`.
+- `spike/001-store/REPORT.md` written; raw results copied to `spike/001-store/results/`. Specs 080 (1.0), 100 (0.6), 110 (0.7), 010 (0.8) and decisions (O14 to O18 added) updated. Throwaway benchmark data removed from the spike root (48 GB); imported corpus, chunk index and real embeddings kept.

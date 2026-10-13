@@ -1,0 +1,11 @@
+{
+  "bytes": 30040620165,
+  "compressed_bytes": 611292832,
+  "lines": 72542121,
+  "matching_lines": 487,
+  "mb_per_s": 977.5119993089414,
+  "pattern": "giving up",
+  "seconds": 30.731714993,
+  "streams": 489,
+  "workers": 1
+}

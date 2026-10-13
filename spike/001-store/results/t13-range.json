@@ -1,0 +1,33 @@
+{
+  "archive_1mib_ms": {
+    "N": 200,
+    "P50": 3.618,
+    "P95": 7.596,
+    "P99": 8.337,
+    "Max": 9.277
+  },
+  "archive_report": {
+    "Scanned": 1,
+    "Eligible": 1,
+    "Moved": 1,
+    "AlreadyArchived": 0,
+    "BytesMoved": 597961342,
+    "BytesFreed": 597961342,
+    "Failed": null
+  },
+  "archive_s": 8.331776119,
+  "archive_tier": "archive",
+  "blob_gib": 4,
+  "compressed_ratio": 7.182683886611519,
+  "live_1mib_ms": {
+    "N": 200,
+    "P50": 3.704,
+    "P95": 8.114,
+    "P99": 9.305,
+    "Max": 14.425
+  },
+  "live_tier": "live",
+  "put_mb_per_s": 163.39970888049447,
+  "put_s": 26.285036402,
+  "verified_after_archive": true
+}

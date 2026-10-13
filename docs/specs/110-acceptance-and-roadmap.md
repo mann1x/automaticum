@@ -1,7 +1,9 @@
 # 110 — Acceptance and roadmap
 
-**Status:** draft 0.6, 2026-10-12. The milestone order in §3 was approved by the owner
-on 2026-10-12; milestone 1 is to be planned next. Nothing is implemented.
+**Status:** draft 0.7, 2026-10-13. The milestone order in §3 was approved by the owner
+on 2026-10-12. Milestone 1 has been carried out: the store, the importer and
+the spike's measurements exist (080 §7.4, 100 §7). Its open questions are with
+the owner (decisions.md, O8 and O14 to O18).
 
 ## 1. Acceptance: when it replaces the old harness
 
@@ -71,4 +73,5 @@ Acceptance criteria map to milestones: 1 and 2 need milestone 2; 3 needs 3;
 4 needs 4 and 7; 5 needs 6; 6 and 7 need 5; 8 needs 3.
 
 Milestone 2 does not start until the spike has answered its first question:
-whether both store engines link into one static binary.
+whether both store engines link into one static binary. **Answered on
+2026-10-13: yes** (080 §7.1.1), with glibc and the C++ runtime dynamic.

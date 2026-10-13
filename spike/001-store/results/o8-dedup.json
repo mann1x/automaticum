@@ -1,0 +1,38 @@
+{
+  "by_message_part": {
+    "distinct_pieces": 26207,
+    "distinct_raw_gib": 0.061195870861411095,
+    "gib": 0.09777707792818546,
+    "percent_of_raw": 1.547153393807138,
+    "reference_gib": 0.07440739870071411,
+    "references": 2496698
+  },
+  "compactions": 53,
+  "content_defined_avg_64kib": {
+    "distinct_pieces": 9501,
+    "distinct_raw_gib": 1.330762573517859,
+    "gib": 0.24645034596323967,
+    "percent_of_raw": 3.899651096569087,
+    "reference_gib": 0.0015621185302734375,
+    "references": 52416
+  },
+  "content_defined_avg_8kib": {
+    "distinct_pieces": 13490,
+    "distinct_raw_gib": 0.19348569680005312,
+    "gib": 0.07269073091447353,
+    "percent_of_raw": 1.150205277306923,
+    "reference_gib": 0.015425562858581543,
+    "references": 517596
+  },
+  "event_streams_raw_gib": 1.8714194325730205,
+  "event_streams_stored_gib": 0.08550901524722576,
+  "request_bodies_raw_gib": 6.31980502512306,
+  "requests": 9070,
+  "runs": 83,
+  "simulated": true,
+  "whole_body_compressed": {
+    "gib": 1.1796564189717174,
+    "percent_of_raw": 18.666025522658384
+  },
+  "wire_capture_to_event_stream_stored_x": 1.1434709854334069
+}

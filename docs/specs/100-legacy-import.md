@@ -1,8 +1,10 @@
 # 100 — Import of the old harness's corpus
 
-**Status:** draft 0.5, 2026-10-12. Figures are from a read-only survey of the
-old harness on 2026-10-12. The old harness is paused, not retired: the import
-reads it and changes nothing there.
+**Status:** draft 0.6, 2026-10-13. The importer exists
+(`internal/legacyimport`) and has imported the run directories of the real
+corpus; §7 has the result. The figures in §1 are from a read-only survey on
+2026-10-12, corrected where the import showed otherwise. The old harness is
+paused, not retired: the import reads it and changes nothing there.
 
 ## 1. What exists
 
@@ -13,11 +15,12 @@ reads it and changes nothing there.
 | teams loop | 6 | 7.8 GB | raw, one of 7.5 GB | 6 |
 | abandoned and discarded | 9 | small | raw | 9 |
 | earlier campaigns (archive) | 30 named campaigns | 23 GB | mixed | mixed |
-| external state archive | 166 runs | 54 MB | one compressed tar of session state per run | 166 |
+| external state archive | 168 files (166 runs, 2 aborted) | 54 MB | one compressed tar of session state per run | 168 |
 
 Verdict lines for the native loop: 424, of which 284 passed, 96 failed, 24
-timed out, 19 aborted and 1 is malformed. A live VS Code session archive from
-the Windows host also exists, as copied session files and notes.
+timed out, 19 aborted, and 1 is not a run line: it is an operator's comment
+that voids one run. A live VS Code session archive from the Windows host also
+exists, as copied session files and notes.
 
 ## 2. Mapping
 
@@ -104,3 +107,76 @@ sent" values, and say so when a comparison mixes the two.
 The import is also the store spike's data (080 §7), so the importer is written
 first, against the store interface, and its output is checked against the old
 verdict files: the counts in §1 must be reproduced exactly.
+
+## 7. Result of the first import (2026-10-13)
+
+Importer version `legacyimport/0.1.1`, into the spike's store.
+
+| | |
+|---|---|
+| runs imported | 474 of 474 directories; none failed |
+| verdict files | all three reproduced exactly, every run line matched to an imported run by its original id |
+| mapped verdicts, native loop (447 with discarded and abandoned) | 284 `PASS`, 91 `FAIL`, 24 `TIMEOUT`, 41 `ABORTED`, 7 `INVALID` |
+| mapped verdicts, atomic and teams | 13 `PASS`, 8 `ABORTED`; 5 `PASS`, 1 `FAIL` |
+| task versions, native loop | 220 runs under version 1, 204 under version 2, 23 under version 3 |
+| findings written | 247: every run under version 1, "the oracle could not fail" |
+| tool calls extracted | 64,801 |
+| size | 43.4 GB uncompressed read, 0.88 GB stored |
+| time | 295 s on one core |
+| old harness before and after | 17,304 files both times; it was mounted read-only |
+
+**What the corpus showed that this spec did not say:**
+
+- The native verdict file's 423 run lines are 417 directories of the native
+  set, one whose directory was renamed with a void marker, and 5 runs that now
+  sit among the abandoned runs. The `exit` files of the native set alone give
+  279 passes, not 284.
+- Six run directories carry a marker after the run id (a void note, a
+  reason). The id is read from inside the name.
+- Run numbers repeat across days, so a boundary is compared on the full run
+  id, never on the number.
+- Version 3 has 23 directories, of which 21 finished.
+- The old harness's file of invalid runs lists one group of five. Two more
+  invalid runs come from void markers. The other reasons named in §2 (a stale
+  lane script, a model unloaded mid-run, a non-pristine workspace) are not in
+  that file, so those runs are **not** marked `INVALID` by the import.
+- No `ROLLBACK-FAILED` verdict exists in the corpus.
+- State archives: 168 files in the external archive and 15 more inside the old
+  harness's directory; 182 runs have one. Session state is still on disk for 44
+  run directories, 8 of them native.
+- The streams hold 30 GB, of which about 0.45 GB is distinct text: nearly
+  every line is a streaming delta that the closing event of the same block
+  repeats in full.
+
+**Fields recorded as `unknown`, by number of runs (of 474):** what was sent on
+the wire, thinking, host, arm id, driver script and claimed success for all
+474; sampler 458; session state 277; accumulated text 256; protocol arm 128;
+context window 47; agent end 46; verdict 30; endpoint 28; provider 16; start
+and end time 12; wall time 2.
+
+**Choices the importer makes that the owner has not seen** (each can be
+changed and the import re-run; it is idempotent per run):
+
+- A run directory with no `exit` file is imported as `ABORTED`, with the
+  verdict listed among its missing fields.
+- Streams are stored exactly as the old harness wrote them. The mapping to the
+  SDK's event shape (§2) is applied when a stream is read, not at import, and
+  text is not rebuilt from deltas at import.
+- The arm is taken from the build file, the saved settings and the stream. The
+  driver scripts are not read.
+
+**Not imported yet:**
+
+- the 30 earlier campaigns under the old harness's archive (23 GB);
+- the per-loop result files beside the verdict files;
+- the VS Code session archive from the Windows host.
+
+**Open** (for the owner): whether the earlier campaigns are imported at all.
+They have their own layouts and no verdict file of the same form.
+Recommendation: import them only when a question needs them; the importer's
+parsers cover the files they share with the loops.
+
+Build files and saved settings in the corpus hold endpoint addresses and
+absolute paths, and these are now in the imported arms. They stay in the store.
+An export of an imported run must pass them through the same redaction as any
+other export (010 §5).

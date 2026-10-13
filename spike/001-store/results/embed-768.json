@@ -1,0 +1,85 @@
+{
+  "chunks": 50000,
+  "cosine_nearest_neighbour": {
+    "mean": 0.9136024189838905,
+    "std": 0.07533403715999784
+  },
+  "cosine_random_pairs": {
+    "mean": 0.545337301217587,
+    "std": 0.10132423264738576
+  },
+  "dim": 768,
+  "embed_chunks_per_s": 53.77756090616558,
+  "embed_s": 929.755815576,
+  "embed_text_mb_per_s": 0.06375449016500899,
+  "fulltext_index_build_s": 3.4938375,
+  "hybrid_ms": {
+    "N": 200,
+    "P50": 16.386,
+    "P95": 31.622,
+    "P99": 38.426,
+    "Max": 52.14
+  },
+  "model": "nomic-embed-text:latest",
+  "nearest": [
+    {
+      "Name": "exact scan",
+      "Recall": 0.929,
+      "Latency": {
+        "N": 200,
+        "P50": 191.455,
+        "P95": 219.712,
+        "P99": 232.855,
+        "Max": 240.392
+      }
+    },
+    {
+      "Name": "probes 10",
+      "Recall": 0.6345,
+      "Latency": {
+        "N": 200,
+        "P50": 2.439,
+        "P95": 8.118,
+        "P99": 9.521,
+        "Max": 11.271
+      }
+    },
+    {
+      "Name": "probes 20, refine 10",
+      "Recall": 0.881,
+      "Latency": {
+        "N": 200,
+        "P50": 6.103,
+        "P95": 12.991,
+        "P99": 16.941,
+        "Max": 18.288
+      }
+    },
+    {
+      "Name": "probes 50, refine 10",
+      "Recall": 0.885,
+      "Latency": {
+        "N": 200,
+        "P50": 9.353,
+        "P95": 17.11,
+        "P99": 25.185,
+        "Max": 33.227
+      }
+    },
+    {
+      "Name": "probes 50, refine 30",
+      "Recall": 0.9125,
+      "Latency": {
+        "N": 200,
+        "P50": 11.163,
+        "P95": 21.2,
+        "P99": 27.942,
+        "Max": 44.157
+      }
+    }
+  ],
+  "peak_rss_mib": 2002.3359375,
+  "rss_mib": 1663.82421875,
+  "size_gb": 0.1932850582525134,
+  "vector_index_build_s": 82.844761661
+}

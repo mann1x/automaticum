@@ -1,7 +1,9 @@
 # 080 — The store
 
-**Status:** draft 0.9, 2026-10-12. The shape is the owner's preference; the
-spike in §7 confirms it or sends us to a fallback.
+**Status:** draft 1.0, 2026-10-13. The shape is the owner's preference. The
+spike has run (§7.4, and `spike/001-store/REPORT.md`): the hard gates pass and
+the evidence is for confirming the shape. The confirmation itself is the
+owner's and is still open.
 
 ## 1. What the store has to do
 
@@ -55,7 +57,11 @@ DuckDB. They are not database columns.
 - **Deduplicated:** system prompts and tool schemas repeat thousands of times.
   Wire captures are stored so that repeated parts are shared. **Open:** the
   chunking scheme (whole request bodies deduplicated by part, or content-defined
-  chunking).
+  chunking). The spike could only simulate request bodies, because the old
+  corpus has no wire capture; on those, both schemes store 1 to 2 % of the raw
+  bytes, against 19 % for compressing each body whole. Recommendation: by
+  message part, with the per-request lists of part hashes compressed, to be
+  confirmed on the first real captures of milestone 2 (§7.4).
 - Size is handled here, never by dropping fields at source (020 §2).
 - A blob is written to a temporary name and renamed, so a kill during a write
   leaves no half file under a valid name.
@@ -240,3 +246,55 @@ everything, re-runs T6 to T15 on that, and reports.
 Vectors: about 100k real chunks are embedded with local embedders at 768 and
 1024 dimensions; the 1 M and 5 M sets are synthetic vectors drawn to match the
 real sample.
+
+### 7.4 Result of the spike
+
+Run on 2026-10-12/13 on `linux-gpu-1`, a shared and busy host. Every number,
+its conditions and its limits are in `spike/001-store/REPORT.md`.
+
+| # | result | |
+|---|---|---|
+| T1 | both candidates link and run on amd64 and arm64 | pass |
+| T2 | 20 of 20 reopened after `kill -9`; nothing acknowledged was lost | pass |
+| T3 | 474 runs imported; every verdict file reproduced exactly | pass |
+| T4 | 102 MB/s of stream on one core | pass |
+| T5 | 2.0 % of raw | pass |
+| T6 | 1.7 ms | pass |
+| T7 | 9.4 ms over 2,000,000 tool calls | pass |
+| T8 | p95 under 10 ms warm at 389k and at 3.9M chunks | pass |
+| T9 | 526 s over every raw byte; 17 s skipping streaming deltas | pass, see below |
+| T10 | recall 0.954 at p95 30 ms, with a refine factor of 30 | pass |
+| T11 | recall 0.906 at p95 43 ms with a refine factor of 30; index built in 9 minutes | pass |
+| T12 | p99 15 ms; no growth after a checkpoint | pass |
+| T13 | p95 8 ms on both tiers | pass |
+| T14 | 39 MB at rest; 5.5 GB at peak | pass |
+| T15 | search unchanged; archived passage p95 4 ms | pass |
+
+What the spike changes or adds. Each is a proposal until the owner decides.
+
+- **Open:** confirmation of the shape (D6). The evidence is for confirming.
+- **Open:** regex search runs over the lines of a stream that are not
+  streaming deltas, not over every byte. A delta carries nothing that the
+  closing event of its block does not repeat, and the old corpus is 30 GB of
+  stream for 0.45 GB of distinct text. A raw mode over every byte stays, and
+  is slow.
+- **Open:** vector search uses a refine step by default, with a factor of at
+  least 30. Without it recall is between 0.05 and 0.6 on every set tried, and
+  more probes do not help. A deliberately hostile synthetic set (evenly spread
+  tight clusters) still reaches only 0.63 at 5M; real embeddings are not like
+  it, and recall should be checked on a sample whenever the embedder changes.
+- **Open:** every chunk carries a locator (blob hash and byte offset of its
+  source line), so a hit can open its passage. The spike packed this into the
+  chunk id.
+- Embedding ran at 45 chunks per second with a 1024-dimension model on the
+  GPU. Embedding, not search, limits how fresh semantic search can be; it needs
+  its own plan before milestone 6.
+- Rows written after an index is built are searched without the index until
+  it is rebuilt, and `lance-c` has no incremental update. The daemon rebuilds
+  indexes on a schedule.
+- The archive mover handles many small blobs at 2.5 MB/s. Enough for a nightly
+  job; batching its syncs is an improvement, not a requirement.
+- The 5,000-run blob set of §7.2 was not generated: costs that are linear were
+  measured on the real 43 GB, and the parts that are not were measured at scale
+  (state tables at 5,000 runs, full-text at ten times the corpus, vectors at
+  1M and 5M).

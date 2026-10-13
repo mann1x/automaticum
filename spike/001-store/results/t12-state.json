@@ -1,0 +1,53 @@
+{
+  "calls_per_run": 400,
+  "census_first_ms": 7.746,
+  "census_idle_ms": {
+    "N": 20,
+    "P50": 8.095,
+    "P95": 9.446,
+    "P99": 9.446,
+    "Max": 16.763
+  },
+  "census_rows": 210,
+  "census_under_load_ms": {
+    "N": 57541,
+    "P50": 9.456,
+    "P95": 22.713,
+    "P99": 27.436,
+    "Max": 443.744
+  },
+  "duration_s": 3600,
+  "generate_runs_per_s": 31.458649819146196,
+  "generate_s": 158.938798351,
+  "peak_rss_mib": 285.59375,
+  "rate": 10,
+  "rss_mib": 189.17578125,
+  "runs": 5000,
+  "size_after_checkpoint_mib": 15.01171875,
+  "size_after_mib": 22.733895301818848,
+  "size_before_mib": 15.01171875,
+  "stats_first_ms": 1.942,
+  "stats_idle_ms": {
+    "N": 20,
+    "P50": 1.306,
+    "P95": 1.714,
+    "P99": 1.714,
+    "Max": 2.294
+  },
+  "stats_rows": 30,
+  "stats_under_load_ms": {
+    "N": 67346,
+    "P50": 2.246,
+    "P95": 5.909,
+    "P99": 10.608,
+    "Max": 464.704
+  },
+  "update_ms": {
+    "N": 35989,
+    "P50": 4.69,
+    "P95": 9.085,
+    "P99": 15.414,
+    "Max": 470.238
+  },
+  "updates_slower_than_interval": 27
+}

@@ -1,0 +1,13 @@
+{
+  "bytes": 30040620165,
+  "bytes_matched_against": 644069005,
+  "compressed_bytes": 611292832,
+  "lines": 72542121,
+  "matching_lines": 129,
+  "mb_per_s": 1793.173423015794,
+  "pattern": "(?i)(oracle|checker|test) (is|was|must be|seems) (wrong|broken|incorrect)",
+  "seconds": 16.752769018,
+  "skip_deltas": true,
+  "streams": 489,
+  "workers": 4
+}

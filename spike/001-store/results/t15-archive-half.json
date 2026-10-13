@@ -1,0 +1,15 @@
+{
+  "cutoff": "2026-10-13T04:14:56.421055816Z",
+  "live_blobs_before": 8515,
+  "mb_per_s": 2.514454487014801,
+  "report": {
+    "Scanned": 8515,
+    "Eligible": 4257,
+    "Moved": 4257,
+    "AlreadyArchived": 0,
+    "BytesMoved": 364169876,
+    "BytesFreed": 364169876,
+    "Failed": null
+  },
+  "seconds": 144.830569764
+}

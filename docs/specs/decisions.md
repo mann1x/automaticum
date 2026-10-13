@@ -84,7 +84,12 @@ Each of these waits for a measurement or for the planning of its milestone.
 | O3 | Configuration directory layout and file names. | 030 §1 | milestone 2; as proposed there unless the owner objects |
 | O5 | Which published C/C++ SWE-bench-style set, at which version; the order of languages after it. | 062 §6 | milestone 5 |
 | O6 | Which external harnesses need the offline event path. | 064 §3.2 | milestone 5, per harness |
-| O8 | Deduplication scheme for wire captures. | 080 §4 | the spike |
+| O8 | Deduplication scheme for wire captures. The spike could only simulate request bodies (the old corpus has none). Recommendation: by message part, confirmed on the first real captures. | 080 §4, §7.4 | the owner; milestone 2 for real data |
+| O14 | Confirm the store shape (D6) after the spike, or fall back. The hard gates pass and the evidence is for confirming. | 080 §7.4 | the owner |
+| O15 | Regex search over the non-delta lines of a stream instead of every raw byte, with a slow raw mode kept. | 080 §7.4 | the owner |
+| O16 | Vector search with a refine step by default, factor at least 30. | 080 §7.4 | the owner |
+| O17 | Every chunk carries a locator (blob hash and byte offset). | 080 §7.4 | the owner |
+| O18 | Whether the 30 earlier campaigns in the old harness's archive are imported. Recommendation: only when a question needs them. | 100 §7 | the owner |
 
 Closed since the first revision: O2 (D32), O4 (D30), O7 (S4, then D34), O9
 (D31), O10 (D42), O11 (D33), O12 (D28), O13 (D29).

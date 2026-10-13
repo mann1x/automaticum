@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-13T04:03:44.962Z
-> Files: 93 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-13T05:29:04.145Z
+> Files: 104 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -163,19 +163,23 @@
 
 ## internal/store/storetest/
 
-- `doc.go` — conformance tests that need both engines (~80 tok)
 - `crash_test.go` — go:build lance; TestKillDuringWrites, threshold T2 (~1900 tok)
+- `doc.go` — conformance tests that need both engines (~80 tok)
+
+## spike/001-store/
+
+- `REPORT.md` — Store spike: report (~3697 tok)
 
 ## spike/001-store/bench/
 
-- `main.go` — go:build lance; throwaway measurement program, shared helpers (~800 tok)
-- `fs_linux.go` — free space of a filesystem (~80 tok)
-- `vectors.go` — T10/T11: synthetic clustered vectors, index build, recall and latency (~2200 tok)
-- `state.go` — T6/T7/T12: DuckDB statistics and census queries, lane-state updates under load (~2100 tok)
-- `rangeread.go` — T13: range reads from a multi-GB blob, live and archive tier (~1100 tok)
 - `corpus.go` — on the imported corpus: chunks (T4/T8), text (T8/T15), regex (T9), archive-half (T15) (~5000 tok)
-- `embed.go` — real embeddings through an Ollama-compatible server, search on them (~2600 tok)
 - `dedup.go` — O8: by-part against content-defined deduplication on simulated request bodies (~1900 tok)
+- `embed.go` — real embeddings through an Ollama-compatible server, search on them (~2600 tok)
+- `fs_linux.go` — free space of a filesystem (~80 tok)
+- `main.go` — go:build lance; throwaway measurement program, shared helpers (~800 tok)
+- `rangeread.go` — T13: range reads from a multi-GB blob, live and archive tier (~1100 tok)
+- `state.go` — T6/T7/T12: DuckDB statistics and census queries, lane-state updates under load (~2100 tok)
+- `vectors.go` — T10/T11: synthetic clustered vectors, index build, recall and latency (~2200 tok)
 
 ## spike/001-store/linkcheck/
 
