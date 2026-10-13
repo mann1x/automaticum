@@ -174,3 +174,49 @@
 | 05:56 | Created internal/legacyimport/mapping.go | — | ~3263 |
 | 05:58 | Created internal/legacyimport/importer.go | — | ~7326 |
 | 06:10 | Store packages: interface, blob (agent), duck, lance wrapper; all tests pass in the link container | internal/store/** , Makefile | done | — |
+
+## Session: 2026-10-13 05:59
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 06:00
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 06:00 | Created internal/legacyimport/fixture_test.go | — | ~5208 |
+| 06:00 | Session end: 1 writes across 1 files (fixture_test.go) | 0 reads | ~5580 tok |
+
+## Session: 2026-10-13 06:00
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 06:01 | Created internal/legacyimport/parse_test.go | — | ~3560 |
+| 06:01 | Created internal/legacyimport/stream_test.go | — | ~2156 |
+| 06:02 | Session end: 2 writes across 2 files (parse_test.go, stream_test.go) | 0 reads | ~6124 tok |
+
+## Session: 2026-10-13 06:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 06:03 | Created internal/legacyimport/import_test.go | — | ~7125 |
+
+## Session: 2026-10-13 06:05
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 06:05
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 06:07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## 2026-10-13 (milestone 1, continued)
+- T2 crash test written and passing (`internal/store/storetest/crash_test.go`): 20 SIGKILLs, 320 acknowledged runs all in DuckDB, Lance holds whole appends only.
+- Benchmark harness `spike/001-store/bench/` (build tag `lance`): subcommands `vectors` (T10/T11), `state` (T6/T7/T12), `range` (T13). Run in the link image, capped at 8 cores / 48 GB; results under the spike root `work/results/`.
+- Host load was about 10 on 12 cores when the chain started: numbers carry noise, say so in the report.

@@ -1,25 +1,27 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-13T03:58:24.460Z
-> Files: 66 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-13T04:03:44.962Z
+> Files: 93 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
 - `.gitignore` — Git ignore rules (~73 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~2566 tok)
-- `CLAUDE.md` — automaticum (~1671 tok)
-- `go.mod` — Go module definition (~13 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~2935 tok)
+- `CLAUDE.md` — automaticum (~1879 tok)
+- `go.mod` — Go module definition (~297 tok)
+- `go.sum` — Go dependency checksums (~1202 tok)
 - `LICENSE` — Project license (~3029 tok)
-- `Makefile` — Make build targets (~271 tok)
+- `Makefile` — Make build targets (~493 tok)
 - `README.md` — Project documentation (~2348 tok)
 - `spike.local.toml` — Untracked. Paths for the store spike on this installation. (~167 tok)
 
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~497 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~0 tok)
-- `score-history.jsonl` (~58 tok)
+- `score-history.jsonl` (~116 tok)
 
 ## .caliber/backups/2026-10-12T20-16-19-461Z/
 
@@ -31,13 +33,13 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares dim (~48822 tok)
+- `fingerprint.json` — Declares dim (~69754 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` (~9466 tok)
+- `current-session.jsonl` (~112551 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~5158 tok)
+- `roi-stats.json` (~6364 tok)
 - `state.json` (~41 tok)
 
 ## .claude/
@@ -103,11 +105,11 @@
 - `064-engine-adapters.md` — 064 — Engine adapters: Cerebriline as the engine of an external harness (~962 tok)
 - `065-cell-contract.md` — 065 — The cell contract and exports (~1280 tok)
 - `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~2998 tok)
-- `080-store.md` — 080 — The store (~3060 tok)
+- `080-store.md` — 080 — The store (~3330 tok)
 - `090-interfaces.md` — 090 — Interfaces (~1480 tok)
 - `100-legacy-import.md` — 100 — Import of the old harness's corpus (~1464 tok)
 - `110-acceptance-and-roadmap.md` — 110 — Acceptance and roadmap (~1154 tok)
-- `decisions.md` — Decisions and open questions (~2169 tok)
+- `decisions.md` — Decisions and open questions (~2233 tok)
 
 ## docs/specs/archive/
 
@@ -116,15 +118,65 @@
 
 ## internal/legacyimport/
 
-- `importer.go` — Struct: Options (~7326 tok)
-- `mapping.go` — Struct: Boundary (~3263 tok)
-- `parse.go` — Struct: KV (~3478 tok)
-- `scan.go` — Struct: RunSource (~3551 tok)
-- `stream.go` — Struct: StreamStats (~3877 tok)
+- `doc.go` — reads the run corpus of the old test harness and maps (~197 tok)
+- `fixture_test.go` — Struct: fixture (~5208 tok)
+- `import_test.go` — TestDiscover, TestImportFixture (~7125 tok)
+- `importer.go` — Options (120 fields) (~7874 tok)
+- `mapping.go` — Boundary (117 fields) (~3470 tok)
+- `parse_test.go` — TestParseExit, TestParseBuild, TestParseVerdictFile, TestParseTransactionsAndSummaries, TestParseOra (~3560 tok)
+- `parse.go` — KV (135 fields); methods: Get, Map, Get, Counts (~3727 tok)
+- `scan.go` — RunSource (133 fields) (~3791 tok)
+- `sink.go` — Interface: Sink (7 methods) (~1158 tok)
+- `stream_test.go` — TestStreamScanner, TestStreamScannerCutStream, TestStreamScannerSeveralStreams, TestStreamScannerOve (~2156 tok)
+- `stream.go` — StreamStats (112 fields); methods: Write, EndStream, Stats, ToolCalls (~4302 tok)
+- `types.go` — Run (52 fields); methods: Valid (~628 tok)
+- `verify.go` — FileCheck (56 fields); methods: OK, String, String (~2079 tok)
+
+## internal/store/
+
+- `store.go` — defines the one interface through which automaticum reaches (~2295 tok)
+
+## internal/store/blob/
+
+- `archive_test.go` — TestArchiveMove, TestArchiveRootMissing, TestArchiveInterrupted, TestArchiveLeftoverTemporary, TestArchiveRefusesCorruptSource (~4780 tok)
+- `archive.go` — ArchiveReport (79 fields); methods: ArchiveOlderThan, Read (~1911 tok)
+- `bench_test.go` — BenchmarkPut, BenchmarkReadRange (~592 tok)
+- `blob_test.go` — failingReader (100 fields); methods: Read (~5881 tok)
+- `blob.go` — Options (86 fields); methods: String, Close, Root, ArchiveRoot (~2684 tok)
+- `check.go` — entry (68 fields); methods: Walk, OK, Check (~1761 tok)
+- `crash_test.go` — slowReader (36 fields); methods: Read (~1321 tok)
+- `doc.go` — is the content-addressed store for raw material: event (~347 tok)
+- `format.go` — index (63 fields) (~2199 tok)
+- `FORMAT.md` — Blob file format, version 1 (~1112 tok)
+- `put.go` (~1319 tok)
+- `read.go` — blobFile (92 fields); methods: Stat, Has, Reader, Read (~2231 tok)
+
+## internal/store/duck/
+
+- `duck_test.go` — TestRunRoundTrip, TestFiltersAndDerivedTables, TestLaneState (~1709 tok)
+- `duck.go` — implements store.State on DuckDB. (~4167 tok)
+
+## internal/store/lance/
+
+- `lance_test.go` — go:build lance (~1314 tok)
+- `lance.go` — implements store.Search on the Lance format, through the (~5180 tok)
+
+## internal/store/storetest/
+
+- `doc.go` — conformance tests that need both engines (~80 tok)
+- `crash_test.go` — go:build lance; TestKillDuringWrites, threshold T2 (~1900 tok)
+
+## spike/001-store/bench/
+
+- `main.go` — go:build lance; throwaway measurement program, shared helpers (~800 tok)
+- `fs_linux.go` — free space of a filesystem (~80 tok)
+- `vectors.go` — T10/T11: synthetic clustered vectors, index build, recall and latency (~2200 tok)
+- `state.go` — T6/T7/T12: DuckDB statistics and census queries, lane-state updates under load (~2100 tok)
+- `rangeread.go` — T13: range reads from a multi-GB blob, live and archive tier (~1100 tok)
 
 ## spike/001-store/linkcheck/
 
-- `README.md` — Project documentation (~1941 tok)
+- `README.md` — Project documentation (~2147 tok)
 
 ## spike/001-store/linkcheck/l1/
 
@@ -137,10 +189,3 @@
 - `go.mod` — Go module definition (~304 tok)
 - `go.sum` — Go dependency checksums (~1202 tok)
 - `main.go` — Command linkcheck-l2 is threshold T1 of the store spike for Lance candidate (~1947 tok)
-
-## internal/store/
-
-- `store.go` — the store interface: Run, BlobRef, ToolCall, Finding, LaneState, Chunk, Hit; State and Search interfaces
-- `blob/` — content-addressed blob store: seekable zstd frames, two tiers, archive-by-age with verify, Check; format in `blob/FORMAT.md`
-- `duck/duck.go` — store.State on DuckDB (autoload/autoinstall off, appender for derived tables)
-- `lance/lance.go` — store.Search on lance-c via cgo and the Arrow C Data Interface; build tag `lance`; rank fusion in Go

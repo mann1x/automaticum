@@ -13,6 +13,12 @@
       "status": "success",
       "timestamp": "2026-10-13T00:00:00.549Z",
       "duration_ms": 2
+    },
+    {
+      "task_id": "anatomy-rescan",
+      "status": "success",
+      "timestamp": "2026-10-13T04:00:00.595Z",
+      "duration_ms": 20
     }
   ],
   "dead_letter_queue": [],

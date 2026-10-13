@@ -64,7 +64,7 @@ make shell SPIKE_ROOT=<dir>
 - **Specs** (`docs/specs/`): `000-overview.md` · `010-architecture.md` · `020-run-record.md` · `030-configuration.md` · `040-runner.md` · `050-orchestration.md` · `060-tasks-and-suites.md` · `061-suite-bfcl.md` · `062-suite-swe-bench.md` · `063-suite-multi-language.md` · `064-engine-adapters.md` · `065-cell-contract.md` · `070-diagnostics.md` · `080-store.md` · `090-interfaces.md` · `100-legacy-import.md` · `110-acceptance-and-roadmap.md` · `decisions.md`
 - **Inputs** (`docs/specs/archive/`): `automaticum-draft-spec-0.4.md` · `omnimergekit-evaluation-requirements-0.1.md`
 - **Build** (repo root and `build/`): `go.mod` · `go.sum` · `Makefile` · `LICENSE` · `build/Dockerfile.build` · `build/Dockerfile.cross`
-- **Store spike** (`spike/001-store/`): `linkcheck/README.md`
+- **Store spike** (`spike/001-store/`): `linkcheck/README.md` · `bench/` (`main.go` · `state.go` · `vectors.go` · `rangeread.go` · `fs_linux.go`)
 - **Store** (`internal/store/`): `store.go` · `blob/` (`doc.go` · `blob.go` · `put.go` · `read.go` · `archive.go` · `check.go` · `format.go` · `FORMAT.md`) · `duck/duck.go` · `lance/lance.go` · `storetest/` (`doc.go` · `crash_test.go`)
 - **Legacy importer** (`internal/legacyimport/`): `doc.go` · `importer.go` · `scan.go` · `parse.go` · `stream.go` · `mapping.go` · `sink.go` · `verify.go` · `types.go`
 - **Local, untracked** (`docs/local/`): host mapping and private paths
