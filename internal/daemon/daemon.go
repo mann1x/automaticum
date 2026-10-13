@@ -449,11 +449,18 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 			return false
 		}
 	}
+	// What the model is, in the owner's words (D70). A tag without an entry
+	// runs all the same and its run says so (D71).
+	models, err := config.LoadModels(filepath.Join(d.Repo, "models"))
+	if err != nil {
+		skip("the model catalogue cannot be read: " + err.Error())
+		return false
+	}
 	det := &laneDetail{Item: it}
 	setLane("running", det)
 	log.Info("run starts", "arm", it.Arm, "task", it.Task)
 	r, err := d.Runner.Execute(ctx, run.Request{
-		ID: it.RunID, Arm: arm, Task: tk, Lane: it.Lane, Image: LaneImage(tk.Layers), Batch: it.Batch, Gates: answers,
+		ID: it.RunID, Arm: arm, Task: tk, Lane: it.Lane, Image: LaneImage(tk.Layers), Batch: it.Batch, Gates: answers, Identity: models[arm.Model.Model],
 		OnStart: func(partial *store.Run, containerID string) {
 			copy := *partial
 			det.ContainerID, det.Run = containerID, &copy

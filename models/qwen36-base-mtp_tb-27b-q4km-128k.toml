@@ -1,0 +1,7 @@
+# What this tag is, in the owner's words (030 §4.1). Family and size as the
+# owner named them on 2026-10-13. The variant is not stated yet: runs of
+# this tag say so until it is.
+tag = "qwen36-base-mtp_tb:27b-q4km-128k"
+family = "Qwen 3.6"
+size = "27B"
+variant = ""

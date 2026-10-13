@@ -41,7 +41,7 @@ const reloadSeconds = 1.0
 
 // owned names the detectors whose findings ingest writes. Findings of any
 // other detector are kept as they are.
-var owned = map[string]bool{WireArm: true, GPUResidency: true, ModelReloaded: true, detect.ShortUnitRepeat: true, detect.CharRun: true,
+var owned = map[string]bool{WireArm: true, GPUResidency: true, ModelReloaded: true, ModelIdentity: true, detect.ShortUnitRepeat: true, detect.CharRun: true,
 	detect.SentenceRepeat: true, detect.Runaway: true, detect.RepeatedToolCall: true}
 
 // Run derives metrics, tool calls and findings from a run's stored material
@@ -306,6 +306,23 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 			res.Findings = append(res.Findings, store.Finding{RunID: r.ID, Detector: GPUResidency, DetectorVersion: "1",
 				Severity: "warning", Count: 1, Evidence: raw})
 		}
+	}
+
+	// A run whose model has no stated identity runs all the same, and says
+	// so (D71): its family, size or variant is not on record.
+	var who struct {
+		Inference *struct {
+			Model struct {
+				Tag       string   `json:"tag"`
+				NotStated []string `json:"not_stated"`
+			} `json:"model"`
+		} `json:"inference"`
+	}
+	json.Unmarshal(r.Provenance, &who)
+	if i := who.Inference; i != nil && len(i.Model.NotStated) > 0 {
+		raw, _ := json.Marshal(map[string]any{"tag": i.Model.Tag, "not_stated": i.Model.NotStated})
+		res.Findings = append(res.Findings, store.Finding{RunID: r.ID, Detector: ModelIdentity, DetectorVersion: "1",
+			Severity: "warning", Count: len(i.Model.NotStated), Evidence: raw})
 	}
 
 	// A model that had to be loaded again in the middle of a run was pushed

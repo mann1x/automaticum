@@ -125,6 +125,9 @@ type RunView struct {
 	Blobs         []BlobView      `json:"blobs,omitempty"`
 	Metrics       []MetricView    `json:"metrics,omitempty"`
 	Findings      []FindingView   `json:"findings,omitempty"`
+	// Settings are the run's sampling and thinking parameters as they
+	// were in effect (070 §4.1).
+	Settings []ingest.Setting `json:"settings,omitempty"`
 }
 
 // MetricView is one number measured on a run.
@@ -532,6 +535,28 @@ func (d *Daemon) handleRun(w http.ResponseWriter, r *http.Request) {
 	for _, f := range findings {
 		v.Findings = append(v.Findings, FindingView{Detector: f.Detector, Version: f.DetectorVersion, Severity: f.Severity,
 			Turn: f.Turn, Count: f.Count, Evidence: f.Evidence})
+	}
+	// What was in effect, for a run of this harness with an arm on record.
+	var arm config.Arm
+	if !rec.Imported && len(rec.Arm) > 0 && json.Unmarshal(rec.Arm, &arm) == nil && arm.Model.Model != "" {
+		var prov struct {
+			EndpointBefore *struct {
+				Parameters string `json:"parameters"`
+			} `json:"endpoint_before"`
+		}
+		json.Unmarshal(rec.Provenance, &prov)
+		tag, served := "", 0.0
+		if prov.EndpointBefore != nil {
+			tag = prov.EndpointBefore.Parameters
+		}
+		for _, m := range metrics {
+			if m.Name == "thinking.budget_tokens.served" {
+				served = m.Value
+			}
+		}
+		if prov.EndpointBefore != nil {
+			v.Settings = ingest.InEffect(&arm, tag, findings, served)
+		}
 	}
 	reply(w, http.StatusOK, v)
 }

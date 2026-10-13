@@ -4,3 +4,10 @@ kind = "ollama"
 base_url = "http://172.17.0.1:11434"
 host = "linux-gpu-1"
 capacity = 1
+
+# What the server runs on, as you declare it. Every run records it as
+# declared, not measured.
+[hardware]
+gpu = "NVIDIA GeForce RTX 3090"
+vram_gb = 24
+notes = ""

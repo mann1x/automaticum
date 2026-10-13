@@ -20,6 +20,7 @@ import (
 	"github.com/mann1x/automaticum/internal/gate"
 	"github.com/mann1x/automaticum/internal/human"
 	"github.com/mann1x/automaticum/internal/ingest"
+	"github.com/mann1x/automaticum/internal/run"
 )
 
 // client talks to the daemon of this installation.
@@ -289,6 +290,7 @@ func runShow(ctx context.Context, args []string) error {
 	if r.WallMS > 0 {
 		line("wall", human.Millis(float64(r.WallMS)))
 	}
+	printInference(r)
 	if len(r.Blobs) > 0 {
 		fmt.Println("\nraw material:")
 		w := table()
@@ -425,6 +427,13 @@ func findingLine(f daemon.FindingView) string {
 	head := fmt.Sprintf("%-8s %s", f.Severity, f.Detector)
 	switch f.Detector {
 	case ingest.WireArm:
+	case ingest.ModelIdentity:
+		var e struct {
+			Tag       string   `json:"tag"`
+			NotStated []string `json:"not_stated"`
+		}
+		json.Unmarshal(f.Evidence, &e)
+		return fmt.Sprintf("%s  the model's identity is not on record: %s of %s not stated; add it to the model catalogue (models/)", head, strings.Join(e.NotStated, ", "), e.Tag)
 	case ingest.ModelReloaded:
 		return fmt.Sprintf("%s  the server loaded the model again %d times after the run's first request, first at request #%d: %s", head, f.Count, f.Turn, f.Evidence)
 	case ingest.GPUResidency:
@@ -678,4 +687,98 @@ func doctor(ctx context.Context, args []string) error {
 		fmt.Printf("%d gates say wait: a run would stay queued\n", waits)
 	}
 	return nil
+}
+
+// printInference says where and on what a run's model ran, each fact with
+// where it comes from, and the sampling parameters that were in effect.
+func printInference(r daemon.RunView) {
+	var p struct {
+		Inference      *run.Inference `json:"inference"`
+		EndpointBefore *run.Identity  `json:"endpoint_before"`
+	}
+	if json.Unmarshal(r.Provenance, &p) != nil || (p.Inference == nil && p.EndpointBefore == nil) {
+		return
+	}
+	or := func(v, missing string) string {
+		if strings.TrimSpace(v) == "" {
+			return missing
+		}
+		return v
+	}
+	fmt.Println("\nwhere and what:")
+	w := table()
+	row := func(k, v, source string) { fmt.Fprintf(w, "  %s\t%s\t%s\n", k, v, source) }
+	inf := p.Inference
+	if inf == nil {
+		// A run made before this was recorded: only what the server said.
+		e := p.EndpointBefore
+		row("inference point", strings.TrimSpace(r.Endpoint+" ("+e.Kind+" "+e.ServerVersion+")"), "server")
+		row("endpoint host", "not recorded", "")
+		row("GPU", "not recorded", "")
+		row("model tag", e.Model, "arm")
+		row("model, by the server", string(e.Details), "server")
+		row("model, stated", "not recorded", "")
+		w.Flush()
+	} else {
+		point := inf.Endpoint + " (" + inf.Kind + " " + inf.ServerVersion
+		if inf.Engine != "" {
+			point += ", engine " + inf.Engine
+		}
+		row("inference point", point+")", "server")
+		row("endpoint host", or(inf.Host, "not declared"), "configuration")
+		row("lane host", inf.LaneHost, "configuration")
+		gpu := or(inf.GPU.Declared, "not declared")
+		if inf.GPU.VRAMGB > 0 {
+			gpu += fmt.Sprintf(", %s GiB", human.Number(inf.GPU.VRAMGB))
+		}
+		row("GPU", gpu, "declared in the configuration, not measured")
+		if inf.GPU.Share != nil {
+			row("model on the GPU", human.Percent(*inf.GPU.Share), "server, after the run")
+		}
+		row("model tag", inf.Model.Tag, "arm")
+		if len(inf.Model.Digest) >= 12 {
+			row("model digest", inf.Model.Digest[:12], "server")
+		}
+		if st := inf.Model.Stated; st != nil {
+			row("model family", or(strings.TrimSpace(st.Family+" "+st.Size), "not stated"), "catalogue")
+			row("model variant", or(st.Variant, "not stated"), "catalogue")
+			if st.Lineage != "" {
+				row("lineage", st.Lineage, "catalogue")
+			}
+		} else {
+			row("model family", "not stated", "the catalogue has no entry for this tag")
+			row("model variant", "not stated", "")
+		}
+		var srv struct {
+			Family string `json:"family"`
+			Size   string `json:"parameter_size"`
+			Quant  string `json:"quantization_level"`
+			Format string `json:"format"`
+		}
+		if json.Unmarshal(inf.Model.Server, &srv) == nil && srv.Family != "" {
+			row("model, by the server", strings.TrimSpace(srv.Family+" "+srv.Size+" "+srv.Quant+" "+srv.Format), "server")
+		}
+		wt := inf.Model.Weights
+		if base := fmt.Sprint(wt["general.base_model.0.name"]); wt["general.base_model.0.name"] != nil {
+			text := base
+			if by, ok := wt["general.quantized_by"].(string); ok && by != "" {
+				text += ", quantized by " + by
+			}
+			if n, ok := wt["general.parameter_count"].(float64); ok {
+				text += ", " + human.Count(int64(n)) + " parameters"
+			}
+			row("model, by the weights file", text, "weights file")
+		}
+		w.Flush()
+	}
+	if len(r.Settings) > 0 {
+		fmt.Println("\nsampling and thinking, as in effect:")
+		w := table()
+		fmt.Fprintln(w, "  PARAMETER\tIN EFFECT\tWHY\tARM STATES\tSENT\tTAG'S OWN\tNOTE")
+		dash := func(v string) string { return or(v, "-") }
+		for _, s := range r.Settings {
+			fmt.Fprintf(w, "  %s\t%s\t%s\t%s\t%s\t%s\t%s\n", s.Name, s.Effective, s.Source, dash(s.Stated), dash(s.Sent), dash(s.Tag), s.Note)
+		}
+		w.Flush()
+	}
 }

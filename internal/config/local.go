@@ -81,6 +81,19 @@ type Endpoint struct {
 	Capacity int `toml:"capacity"`
 	// APIKeyFile holds a credential; relative to the directory. Optional.
 	APIKeyFile string `toml:"api_key_file"`
+	// Hardware is what the server runs on, as the installation's owner
+	// declares it. It is recorded in every run as declared, not measured.
+	Hardware Hardware `toml:"hardware"`
+}
+
+// Hardware is the [hardware] table of an endpoint.
+type Hardware struct {
+	// GPU names the device the endpoint's models run on.
+	GPU string `toml:"gpu"`
+	// VRAMGB is that device's memory.
+	VRAMGB float64 `toml:"vram_gb"`
+	// Notes is free text: other devices, a driver, a power limit.
+	Notes string `toml:"notes"`
 }
 
 var endpointKinds = map[string]bool{"ollama": true, "xollama": true, "openai-compatible": true}

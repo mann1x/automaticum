@@ -16,6 +16,8 @@
 
 - 2026-10-13: the owner wants durations ALWAYS as hours, minutes, seconds ("8m 13s", "1h 02m 05s"), never bare seconds ("493 s"), in every report I write and in everything automaticum prints. Owner's words: "please always give me hours, minutes, seconds; automaticum should output proper human readable formats in cli, tui and http web interface".
 
+- 2026-10-13: the owner must be able to read from every run what model it was ("Qwen 3.6 27B", "OmniMerge v4"), on which GPU and host, at which inference point, with which sampling parameters. Owner's words: "it's very important that every run records the inference point, the model familiy, the model variant ... on which GPU it ran, on which host, which sampling parameters". Reports of runs should lead with these.
+
 ## Key Learnings
 
 - **Project:** automaticum — Go test harness for coding agents built on @cerebriline/sdk; spec stage, no code yet.
@@ -69,6 +71,8 @@
 
 - 2026-10-13: anything a person reads from automaticum goes through `internal/human` (Duration, Time, Count, Bytes, Percent, Rate, Metric). Never print a raw `time.Duration`, a millisecond count or a byte count in the command line, the TUI or the web interface. `--json` stays raw.
 
+- 2026-10-13: a model tag's identity is `models/<file>.toml` (tag, family, size, variant, lineage); the endpoint's GPU is `[hardware]` in its untracked file; the run's record has `inference` (run.Inference). The server's family word is not the model's family (`qwen35` for Qwen 3.6): keep stated, server and weights-file facts apart. A new tag needs a catalogue entry or its runs carry `model_identity`.
+
 ## Do-Not-Repeat
 - [2026-10-13] Built the SDK into the lane image with a label, so one image carried one SDK and a new release meant rebuilding images. The owner: "we need to support multiple sdk versions at the same time. the images should be sdk agnostic and support provisioning of a specific sdk version at runtime. we need the testing to be reproducible on demand". Anything that is a variable of an arm must not be baked into an image.
 
@@ -108,3 +112,6 @@
 - 2026-10-13 D67: prebuilt bundle mounted read-only; tracked lockfile plus an archive of every downloaded package.
 - 2026-10-13 D68: releases and local builds (`<release>+<commit>`) are provisionable.
 - 2026-10-13 D69: human-readable formats in CLI, TUI and web interface; durations as hours, minutes, seconds; one formatter; JSON unformatted.
+- 2026-10-13 D70: every run records inference point, model family and variant, GPU, host, sampling parameters; identity in a model catalogue by tag.
+- 2026-10-13 D71: a tag without a stated identity runs and is marked unknown with a finding.
+- 2026-10-13 D72: GPU declared in the endpoint's configuration now, measured with agent mode later.

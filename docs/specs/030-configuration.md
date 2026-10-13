@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.9, 2026-10-13.
+**Status:** draft 0.10, 2026-10-13.
 
 ## 1. Rules
 
@@ -31,6 +31,7 @@ and tasks are tracked. An arm names an endpoint and never an address.
 arms/*.toml               tracked
 tasks/<suite>/<task>/task.toml   tracked
 images/                   tracked: base and language layer definitions
+models/*.toml             tracked: what each model tag is (family, size, variant)
 runner/sdk/<build>/       tracked: one SDK build's manifest, lockfile and pinned bundle hash
 campaigns/*.toml          tracked (milestone 4)
 suites/*.toml             tracked (milestone 5): source, pinned version, scorer
@@ -83,6 +84,21 @@ how to ask it to load or unload a model, capacity (sessions served at once).
 - An endpoint may be **given by the caller** for one cell (mode C, 065). It is
   probed and gated like any other, and automaticum never loads, unloads, starts
   or stops anything on it.
+
+### 4.1 The model catalogue
+
+`models/*.toml`, tracked, one file per model tag (D70): `tag`, `family`,
+`size`, `variant`, and optionally `lineage`, `digest` (a pin to one build of
+the tag) and `notes`. It says what a tag **is**, in the owner's words. An
+arm names a tag and never repeats this; every arm on a tag gets the same
+identity, and an arm's own identity does not change when an entry does.
+An unknown field is an error; a tag described in two files is an error.
+
+### 4.2 What an endpoint runs on
+
+An endpoint file may hold a `[hardware]` table: `gpu`, `vram_gb`, `notes`
+(D72). It is the owner's declaration and is recorded in every run as
+declared. Endpoint files hold addresses and stay untracked (§1).
 
 ## 5. Arms
 

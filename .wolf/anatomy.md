@@ -1,7 +1,11 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-13T10:00:00.430Z
-> Files: 186 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-13T13:19:49.044Z
+> Files: 203 tracked | Anatomy hits: 0 | Misses: 0
+
+## ../../../../root/.claude/projects/-srv-dev-disk-by-label-opt-dev-automaticum/memory/
+
+- `durations-as-hours-minutes-seconds.md` (~291 tok)
 
 ## ./
 
@@ -166,42 +170,42 @@
 - `local.go` — Local (70 fields); methods: Token, APIKey (~2058 tok)
 - `runner_fixture_test.go` — TestRunnerFixtureIsTheResolvedArm (~164 tok)
 
-## internal/detect/
-
-- `detect.go` — the detector library, version 1: Block (short_unit_repeat, char_run, sentence_repeat, runaway), Sentences, RepeatedCalls (~2600 tok)
-- `controls.go` — Controls, SelfTest, Available: positive and negative controls per domain (~1700 tok)
-- `detect_test.go` — edges of each definition; answers pinned to the reference pattern (~2600 tok)
-
-## internal/gate/
-
-- `gate.go` — Builtin gates (lane, free, model_tag, template, sampler, thinking, gpu_residency, harness_build, host, oracle, workspace, bind_address; three unchecked until agent mode), Run, Worst (~4200 tok)
-- `gate_test.go` — every gate with the fault it must catch, against a fake model server (~2700 tok)
-
-## internal/human/
-
-- `human.go` — Duration, Millis, Seconds, Since, Time, Count, Number, Bytes, Percent, Rate, Metric: the one formatter for everything a person reads (~1500 tok)
-- `human_test.go` — every format with its edges (~1000 tok)
-
-## internal/ingest/
-
-- `events.go` — ReadEvents: one pass over a run's event stream (tool calls, blocks, notices, split); chunk lines skipped unparsed (~1900 tok)
-- `wire.go` — ReadWire: the wire capture as Requests; agent request = chat with tools; server counts from the last answer line (~1300 tok)
-- `wirearm.go` — CompareWire: detector `wire_arm` (stated_not_sent, sent_not_stated, differs, drift), Deviation evidence (~3300 tok)
-- `analyse.go` — Run (reads blobs, writes metrics, tool calls, findings; keeps other detectors' findings), Analyse, distribution (~2700 tok)
-- `detectors.go` — detectorFindings: the detector library over blocks and calls, one finding per detector and channel (Firing) (~1100 tok)
-- `ingest_test.go` — synthetic stream and wire lines in the real shapes; memory store (~3800 tok)
-- `sample_test.go` — prints the analysis of a real run when AUTOMATICUM_SAMPLE names a directory (~900 tok)
-
 ## internal/daemon/
 
 - `api.go` — HTTP handlers: reply, fail (~5175 tok)
 - `daemon_test.go` — memState (124 fields); methods: UpsertRun, GetRun, ListRuns, BlobRefs (~4790 tok)
 - `daemon.go` — is automaticumd without its main: the queue, one worker (~3354 tok)
 
+## internal/detect/
+
+- `controls.go` — Controls, SelfTest, Available: positive and negative controls per domain (~1700 tok)
+- `detect_test.go` — edges of each definition; answers pinned to the reference pattern (~2600 tok)
+- `detect.go` — the detector library, version 1: Block (short_unit_repeat, char_run, sentence_repeat, runaway), Sentences, RepeatedCalls (~2600 tok)
+
 ## internal/docker/
 
 - `docker_test.go` — TestDemux, TestRun, TestRunTimeoutAndCancel (~1085 tok)
 - `docker.go` — is a small client for the Docker Engine API over the local (~4151 tok)
+
+## internal/gate/
+
+- `gate_test.go` — every gate with the fault it must catch, against a fake model server (~2700 tok)
+- `gate.go` — Builtin gates (lane, free, model_tag, template, sampler, thinking, gpu_residency, harness_build, host, oracle, workspace, bind_address; three unchecked until agent mode), Run, Worst (~4200 tok)
+
+## internal/human/
+
+- `human_test.go` — every format with its edges (~1000 tok)
+- `human.go` — Duration, Millis, Seconds, Since, Time, Count, Number, Bytes, Percent, Rate, Metric: the one formatter for everything a person reads (~1500 tok)
+
+## internal/ingest/
+
+- `analyse.go` — Run (reads blobs, writes metrics, tool calls, findings; keeps other detectors' findings), Analyse, distribution (~2700 tok)
+- `detectors.go` — detectorFindings: the detector library over blocks and calls, one finding per detector and channel (Firing) (~1100 tok)
+- `events.go` — ReadEvents: one pass over a run's event stream (tool calls, blocks, notices, split); chunk lines skipped unparsed (~1900 tok)
+- `ingest_test.go` — synthetic stream and wire lines in the real shapes; memory store (~3800 tok)
+- `sample_test.go` — prints the analysis of a real run when AUTOMATICUM_SAMPLE names a directory (~900 tok)
+- `wire.go` — ReadWire: the wire capture as Requests; agent request = chat with tools; server counts from the last answer line (~1300 tok)
+- `wirearm.go` — CompareWire: detector `wire_arm` (stated_not_sent, sent_not_stated, differs, drift), Deviation evidence (~3300 tok)
 
 ## internal/legacyimport/
 
@@ -231,8 +235,8 @@
 
 ## internal/sdk/
 
-- `sdk.go` — Env (Def, List, Check, Add, Rebuild, Path), Def (sdk.toml), Record (bundle.json), HashTree: SDK builds as pinned bundles with archived packages (~4300 tok)
 - `sdk_test.go` — definitions; a real install, second install, offline rebuild and tampering in containers (needs AUTOMATICUM_TEST_DIR) (~1700 tok)
+- `sdk.go` — Env (Def, List, Check, Add, Rebuild, Path), Def (sdk.toml), Record (bundle.json), HashTree: SDK builds as pinned bundles with archived packages (~4300 tok)
 
 ## internal/store/
 
@@ -381,3 +385,8 @@
 ## tasks/demo/answer/seed/
 
 - `answer.txt` (~5 tok)
+
+## models/
+
+- `qwen36-base-mtp_tb-27b-q4km-128k.toml` — the owner's first real tag: Qwen 3.6, 27B, variant not stated yet (~60 tok)
+- `stub.toml` — the scripted stub model (~30 tok)

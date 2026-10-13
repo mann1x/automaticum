@@ -1,6 +1,6 @@
 # 020 — The run record, verdicts and the basis
 
-**Status:** draft 0.5, 2026-10-12.
+**Status:** draft 0.6, 2026-10-13.
 
 Nothing in this file is optional. Each item is here because its absence
 invalidated or blinded a real campaign. A value is recorded **as probed or as
@@ -30,6 +30,42 @@ sent, never as configured**.
 - **Host facts:** GPU, driver, power cap, free VRAM at start.
 - **Limits in force:** wall time, idle time, requests, tokens, steps, and who
   set each (arm, task, external harness).
+
+### 1.1 Where and on what the model ran
+
+**Decided by the owner (2026-10-13):** every run records the inference
+point, the model's family and variant, the GPU and the host it ran on, and
+its sampling parameters (D70 to D72). As built, the run's record holds an
+`inference` object, each fact with where it comes from:
+
+| fact | source |
+|---|---|
+| endpoint name, kind, server version, engine | the server |
+| the endpoint's host and the lane's host, by neutral name | the configuration |
+| GPU and its memory | **declared** in the endpoint's `[hardware]` table (030 §4.2); `measured` stays empty until an agent on that host reads the device (milestone 7) |
+| share of the model on a GPU after the run | the server |
+| model tag and digest | the arm and the server |
+| model family, size, variant, lineage | **stated** by the owner in the model catalogue (030 §4.1); what is not stated is listed as such |
+| family, parameter size, quantization, format | the server's own words for the tag |
+| base model, size label, parameter count, who quantized it | the weights file's own metadata, as the server shows it |
+
+The server's word and the stated identity are both kept and never merged: a
+server calls a Qwen 3.6 tag `qwen35`, and no server knows a merge's name.
+
+A run whose tag has no catalogue entry, or an incomplete one, runs all the
+same and carries the finding `model_identity`, which names what is not
+stated (D71).
+
+**Sampling and thinking as in effect.** `run show` prints one table per
+run: for every parameter, the value that was in effect and why (sent on the
+wire, the model tag's own value because nothing was sent, or the server's
+answer), next to what the arm states, what was sent and what the tag sets.
+It is derived from the arm, the tag's parameters as served before the run,
+and the `wire_arm` findings (070 §4.1), so it can be recomputed.
+
+Not yet: these facts as columns to group reports by. They are in the
+record's JSON under stable names; columns come with the reports of
+milestone 4.
 
 ## 2. The streams
 

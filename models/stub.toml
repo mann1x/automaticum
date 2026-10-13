@@ -1,0 +1,5 @@
+# The scripted stub model server of the harness's own tests. Not a model.
+tag = "stub:latest"
+family = "stub"
+size = "none"
+variant = "scripted answers"

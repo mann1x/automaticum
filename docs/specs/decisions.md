@@ -79,6 +79,9 @@ All dated 2026-10-12.
 | D67 | A build is a prebuilt bundle, mounted read-only into the run's container; the harness keeps the tracked lockfile and an archive of every downloaded package, so a build is made again with no registry (2026-10-13). | 040 §3.1 |
 | D68 | Provisionable builds are published releases and local builds packed from a commit of the SDK's repository, named `<release>+<commit>` (2026-10-13). | 040 §3.1 |
 | D69 | The command line, the terminal interface and the web interface write values in human-readable formats; durations always as hours, minutes and seconds (2026-10-13). One formatter serves all three; JSON and the API stay unformatted. | 090 §1.1 |
+| D70 | Every run records the inference point, the model's family and variant, the GPU, the host and the sampling parameters. The model's stated identity lives in a model catalogue, one tracked file per tag (2026-10-13). | 020 §1.1, 030 §4.1 |
+| D71 | A run whose model tag has no stated identity runs and is marked unknown, with a finding; it is not refused (2026-10-13). | 020 §1.1 |
+| D72 | The GPU is declared in the endpoint's configuration now and recorded as declared; it is measured and compared when agent mode exists (2026-10-13). | 020 §1.1, 030 §4.2 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked

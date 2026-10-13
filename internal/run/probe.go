@@ -35,6 +35,12 @@ type Identity struct {
 	Details  json.RawMessage `json:"details,omitempty"`
 	// Loaded is how the model sits in memory, when it is loaded.
 	Loaded *Loaded `json:"loaded"`
+	// Weights is what the weights file says of itself: its "general"
+	// metadata (base model, size label, who quantized it) and the
+	// architecture's context length.
+	Weights map[string]any `json:"weights,omitempty"`
+	// Engine is the server's runner for the model, when it is loaded.
+	Engine string `json:"engine,omitempty"`
 	// OtherModels lists what else the server holds in memory. Loading
 	// another model there would push these out.
 	OtherModels []string `json:"other_models_loaded,omitempty"`
@@ -133,6 +139,7 @@ func Probe(ctx context.Context, hc *http.Client, e *config.Endpoint, apiKey, mod
 		Size          int64  `json:"size"`
 		SizeVRAM      int64  `json:"size_vram"`
 		ContextLength int    `json:"context_length"`
+		Runner        string `json:"runner"`
 	}
 	var tags struct {
 		Models []entry `json:"models"`
@@ -156,6 +163,7 @@ func Probe(ctx context.Context, hc *http.Client, e *config.Endpoint, apiKey, mod
 		Parameters   string          `json:"parameters"`
 		Capabilities []string        `json:"capabilities"`
 		Details      json.RawMessage `json:"details"`
+		ModelInfo    map[string]any  `json:"model_info"`
 	}
 	if err := call("POST", "/api/show", map[string]string{"model": model}, &show); err != nil {
 		return id, err
@@ -164,6 +172,20 @@ func Probe(ctx context.Context, hc *http.Client, e *config.Endpoint, apiKey, mod
 	id.TemplateSHA256, id.TemplateBytes = hex.EncodeToString(sum[:]), len(show.Template)
 	id.Parameters, id.Capabilities, id.Details = show.Parameters, show.Capabilities, show.Details
 	id.Renderer, id.Parser = show.Renderer, show.Parser
+	for k, v := range show.ModelInfo {
+		// Scalars only: a file's token list is not its identity.
+		switch v.(type) {
+		case string, float64, bool:
+		default:
+			continue
+		}
+		if strings.HasPrefix(k, "general.") || strings.HasSuffix(k, ".context_length") || strings.HasSuffix(k, ".block_count") {
+			if id.Weights == nil {
+				id.Weights = map[string]any{}
+			}
+			id.Weights[k] = v
+		}
+	}
 	var ps struct {
 		Models []entry `json:"models"`
 	}
@@ -173,6 +195,7 @@ func Probe(ctx context.Context, hc *http.Client, e *config.Endpoint, apiKey, mod
 	for _, m := range ps.Models {
 		if m.Name == model || m.Model == model {
 			id.Loaded = &Loaded{ContextLength: m.ContextLength, Size: m.Size, SizeVRAM: m.SizeVRAM}
+			id.Engine = m.Runner
 		} else if m.Name != "" {
 			id.OtherModels = append(id.OtherModels, m.Name)
 		}

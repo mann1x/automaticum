@@ -385,6 +385,76 @@ func TestModelReloaded(t *testing.T) {
 	}
 }
 
+// A run whose model has no stated identity carries a finding that names
+// what is missing; one with a whole identity carries none.
+func TestModelIdentity(t *testing.T) {
+	find := func(prov string) *store.Finding {
+		r := &store.Run{ID: "r", Provenance: json.RawMessage(prov)}
+		for _, f := range Analyse(r, &Events{Notices: map[string]int{}}, nil).Findings {
+			if f.Detector == ModelIdentity {
+				return &f
+			}
+		}
+		return nil
+	}
+	f := find(`{"inference":{"model":{"tag":"m:1","stated":null,"not_stated":["family","size","variant"]}}}`)
+	if f == nil || f.Count != 3 || !strings.Contains(string(f.Evidence), `"variant"`) || !strings.Contains(string(f.Evidence), `"m:1"`) {
+		t.Errorf("no identity: %+v", f)
+	}
+	if f := find(`{"inference":{"model":{"tag":"m:1","stated":{"family":"F","size":"1B","variant":"base"}}}}`); f != nil {
+		t.Errorf("a whole identity: %+v", f)
+	}
+}
+
+// What was in effect, from the arm, the tag and the wire's findings.
+func TestInEffect(t *testing.T) {
+	a := arm(t, `{"model":{"model":"m:1","context_window":8192,"output_tokens":0},
+		"thinking":{"owner":"arm","enabled":true,"effort":"high"},
+		"sampler":{"owner":"arm","temperature":1.0,"top_k":20,"presence_penalty":0.0}}`)
+	tagText := "top_p 0.95\npresence_penalty 0.5\ntop_k 40\nthink_budget \"medium\"\nnum_ctx 4096"
+	by := func(list []Setting) map[string]Setting {
+		out := map[string]Setting{}
+		for _, s := range list {
+			out[s.Name] = s
+		}
+		return out
+	}
+	// Everything sent as stated; the server served the high budget.
+	got := by(InEffect(a, tagText, nil, 48000))
+	for name, want := range map[string]Setting{
+		"temperature":      {Stated: "1", Sent: "1", Effective: "1", Source: "sent"},
+		"top_k":            {Stated: "20", Sent: "20", Tag: "40", Effective: "20", Source: "sent"},
+		"presence_penalty": {Stated: "0", Sent: "0", Tag: "0.5", Effective: "0", Source: "sent"},
+		"top_p":            {Tag: "0.95", Effective: "0.95", Source: "model tag"},
+		"context_window":   {Stated: "8192", Sent: "8192", Tag: "4096", Effective: "8192", Source: "sent"},
+		"thinking":         {Stated: "effort high", Sent: "high", Tag: "medium", Effective: "high (budget 48000 tokens)", Source: "server answer"},
+	} {
+		want.Name = name
+		if got[name] != want {
+			t.Errorf("%s\n got %+v\nwant %+v", name, got[name], want)
+		}
+	}
+	if _, ok := got["min_p"]; ok {
+		t.Error("a parameter nobody speaks of is listed")
+	}
+	// The release that dropped them: the tag's values applied.
+	devs := []Deviation{
+		{Kind: StatedNotSent, Field: "options.presence_penalty", Effective: "0.5", Source: "model tag"},
+		{Kind: StatedNotSent, Field: "think", Sent: json.RawMessage(`true`), Effective: "medium (24000 tokens)", Source: "server answer"},
+		{Kind: Drift, Field: "options.top_k", Values: []string{"20", "30"}},
+	}
+	got = by(InEffect(a, tagText, wireFindings("r", devs), 24000))
+	if s := got["presence_penalty"]; s.Sent != "" || s.Effective != "0.5" || s.Source != "model tag" || s.Note != "stated, not sent" {
+		t.Errorf("presence penalty: %+v", s)
+	}
+	if s := got["thinking"]; s.Sent != "true" || s.Effective != "medium (24000 tokens)" || s.Source != "server answer" || s.Note == "" {
+		t.Errorf("thinking: %+v", s)
+	}
+	if s := got["top_k"]; !strings.Contains(s.Note, "changed during the run: 20, 30") {
+		t.Errorf("top_k: %+v", s)
+	}
+}
+
 // A model that ended the run partly off the GPU is a finding.
 func TestResidencyAfter(t *testing.T) {
 	r := &store.Run{ID: "r", Provenance: json.RawMessage(`{"endpoint_after":{"loaded":{"size":100,"size_vram":60}}}`)}

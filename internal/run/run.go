@@ -46,6 +46,44 @@ type Blobs interface {
 	Put(ctx context.Context, r io.Reader) (blob.Hash, int64, error)
 }
 
+// Inference is the inference point of a run and the identity of its model,
+// each fact with where it comes from: stated by the owner, declared in the
+// configuration, said by the server, or read from the weights file.
+type Inference struct {
+	Endpoint      string `json:"endpoint"`
+	Kind          string `json:"kind"`
+	ServerVersion string `json:"server_version"`
+	// Engine is the server's runner for the model; known once it is loaded.
+	Engine string `json:"engine,omitempty"`
+	// Host is the neutral name of the host the server runs on, and LaneHost
+	// that of the host the agent ran on.
+	Host     string `json:"host"`
+	LaneHost string `json:"lane_host"`
+	GPU      struct {
+		// Declared is what the endpoint's configuration states.
+		Declared string  `json:"declared"`
+		VRAMGB   float64 `json:"vram_gb,omitempty"`
+		Notes    string  `json:"notes,omitempty"`
+		// Measured stays empty until an agent on that host reads the
+		// device (milestone 7); Share is the part of the model on a GPU
+		// after the run, as the server says.
+		Measured string   `json:"measured"`
+		Share    *float64 `json:"share_on_gpu,omitempty"`
+	} `json:"gpu"`
+	Model struct {
+		Tag    string `json:"tag"`
+		Digest string `json:"digest"`
+		// Stated is the catalogue's entry; nil when the tag has none.
+		Stated *config.ModelIdentity `json:"stated"`
+		// NotStated lists what the entry leaves out.
+		NotStated []string `json:"not_stated,omitempty"`
+		// Server is what the server says of the tag, and Weights what the
+		// weights file says of itself.
+		Server  json.RawMessage `json:"server,omitempty"`
+		Weights map[string]any  `json:"weights,omitempty"`
+	} `json:"model"`
+}
+
 // Bundles gives the SDK build a run's arm names. *sdk.Env is one.
 type Bundles interface {
 	// Check says whether a build can be used: defined, installed, and the
@@ -95,6 +133,9 @@ type Request struct {
 	OnLine func(line []byte)
 	// Gates is what the gates said before this run; it is recorded as is.
 	Gates any
+	// Identity is the catalogue's entry for the arm's model tag: what the
+	// model is, in the owner's words. Nil when the tag has none.
+	Identity *config.ModelIdentity
 }
 
 // NewID returns a run id that sorts by time.
@@ -149,6 +190,8 @@ type provenance struct {
 		Files  map[string]string `json:"files"`
 		Prompt string            `json:"prompt"`
 	} `json:"task"`
+	// Inference says where and on what the run's model ran (020 §1.1).
+	Inference *Inference `json:"inference,omitempty"`
 	// Gates is every gate's answer before the run (050 §3).
 	Gates          any       `json:"gates,omitempty"`
 	EndpointBefore *Identity `json:"endpoint_before"`
@@ -286,6 +329,13 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		return finish()
 	}
 	p.EndpointBefore = &before
+	inf := &Inference{Endpoint: endpoint.Name, Kind: endpoint.Kind, ServerVersion: before.ServerVersion, Engine: before.Engine,
+		Host: endpoint.Host, LaneHost: lane.Host}
+	inf.GPU.Declared, inf.GPU.VRAMGB, inf.GPU.Notes = endpoint.Hardware.GPU, endpoint.Hardware.VRAMGB, endpoint.Hardware.Notes
+	inf.Model.Tag, inf.Model.Digest = a.Model.Model, before.Digest
+	inf.Model.Stated, inf.Model.NotStated = req.Identity, req.Identity.Missing()
+	inf.Model.Server, inf.Model.Weights = before.Details, before.Weights
+	p.Inference = inf
 
 	wall := lower(*a.Limits.WallS, t.Limits.WallS)
 	idle := lower(*a.Limits.IdleS, t.Limits.IdleS)
@@ -444,6 +494,13 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		note("probing the endpoint after the run: %v", err)
 	} else {
 		p.EndpointAfter = &afterID
+		if inf.Engine == "" {
+			inf.Engine = afterID.Engine
+		}
+		if l := afterID.Loaded; l != nil && l.Size > 0 {
+			share := float64(l.SizeVRAM) / float64(l.Size)
+			inf.GPU.Share = &share
+		}
 		facts.Invalid = append(facts.Invalid, before.Changed(afterID)...)
 	}
 
