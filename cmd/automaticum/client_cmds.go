@@ -448,7 +448,7 @@ func findingLine(f daemon.FindingView) string {
 		var c detect.RepeatedCall
 		json.Unmarshal(f.Evidence, &c)
 		return fmt.Sprintf("%s  %s called %d times in a row with the same arguments, from turn %d: %s", head, c.Tool, c.Count, c.Turn, c.Input)
-	case detect.ShortUnitRepeat, detect.CharRun, detect.SentenceRepeat, detect.Runaway:
+	case detect.ShortUnitRepeat, detect.CharRun, detect.SentenceRepeat, detect.Runaway, detect.ReasoningRepetition, detect.ReasoningLoop:
 		var fire ingest.Firing
 		json.Unmarshal(f.Evidence, &fire)
 		return fmt.Sprintf("%s  %d of %d %s blocks, first in turn %d: %s", head, fire.Blocks, fire.Of, fire.Channel, f.Turn, hitLine(fire.First))
@@ -541,6 +541,16 @@ func hitLine(h detect.Hit) string {
 		return human.Count(int64(h.Count)) + " characters"
 	case detect.CharRun:
 		return fmt.Sprintf("%q %d times in a row at character %d", h.Unit, h.Count, h.Offset)
+	case detect.ReasoningRepetition:
+		return fmt.Sprintf("one paragraph %d times, %.0f%% of the block's paragraphs duplicates: %q", h.Count, h.Share*100, h.Unit)
+	case detect.ReasoningLoop:
+		switch h.Kind {
+		case detect.LowUniqueness:
+			return fmt.Sprintf("%d distinct lines in a window of 60: %q", h.Count, h.Unit)
+		case detect.LineCycle:
+			return fmt.Sprintf("a cycle of %d lines, %d times: %q", h.Period, h.Count, h.Unit)
+		}
+		return fmt.Sprintf("a phrase of %d characters, %d times in one unbroken line: %q", h.Period, h.Count, h.Unit)
 	case detect.SentenceRepeat:
 		return fmt.Sprintf("%d times, %.0f%% of the block's sentences: %q", h.Count, h.Share*100, h.Unit)
 	}

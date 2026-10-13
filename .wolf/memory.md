@@ -743,3 +743,19 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 15:55 | D73 (reload / partial GPU = INVALID unless the arm accepts), D74 (variant base, run identify on ten runs) | internal/config/arm.go, internal/ingest/analyse.go, internal/gate/gate.go, internal/daemon/api.go, cmd/automaticum, models/, specs 020 030 070 090, decisions | built, tested, daemon restarted | ~9000 |
+
+## Session: 2026-10-13 15:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 15:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 15:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 16:45 | owner correction: no invented thresholds; ported the SDK's reasoning guards and tool-call thresholds (library v2, D75), corpus analysed again | internal/detect/guards.go, detect.go, controls.go, ingest/detectors.go, specs 070, decisions | 559 runs in 4m 10s; O19, O20 closed | ~14000 |

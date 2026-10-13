@@ -45,7 +45,8 @@ const reloadSeconds = 1.0
 // owned names the detectors whose findings ingest writes. Findings of any
 // other detector are kept as they are.
 var owned = map[string]bool{WireArm: true, GPUResidency: true, ModelReloaded: true, ModelIdentity: true, detect.ShortUnitRepeat: true, detect.CharRun: true,
-	detect.SentenceRepeat: true, detect.Runaway: true, detect.RepeatedToolCall: true}
+	detect.SentenceRepeat: true, detect.Runaway: true, detect.RepeatedToolCall: true,
+	detect.ReasoningRepetition: true, detect.ReasoningLoop: true}
 
 // Run derives metrics, tool calls and findings from a run's stored material
 // and writes them, replacing what an earlier ingest wrote. It is safe to run

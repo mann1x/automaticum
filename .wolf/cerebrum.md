@@ -74,6 +74,8 @@
 - 2026-10-13: a model tag's identity is `models/<file>.toml` (tag, family, size, variant, lineage); the endpoint's GPU is `[hardware]` in its untracked file; the run's record has `inference` (run.Inference). The server's family word is not the model's family (`qwen35` for Qwen 3.6): keep stated, server and weights-file facts apart. A new tag needs a catalogue entry or its runs carry `model_identity`.
 
 ## Do-Not-Repeat
+
+- 2026-10-13: Do not invent a threshold or a default number for a detector, guard or limit and then carry it as an Open item with "keep" as the recommendation. The owner: the SDK's guards are tuned on more than 600 recorded runs; use the thresholds those analyses identified. If one is missing, ask the SDK's session or read the SDK's source (packages/agents and packages/core/src/runtime/safety). Wrong: `repeated_tool_call` at 3 in a row, `runaway` at 10,000 for every run.
 - [2026-10-13] Built the SDK into the lane image with a label, so one image carried one SDK and a new release meant rebuilding images. The owner: "we need to support multiple sdk versions at the same time. the images should be sdk agnostic and support provisioning of a specific sdk version at runtime. we need the testing to be reproducible on demand". Anything that is a variable of an arm must not be baked into an image.
 
 <!-- Mistakes made and corrected. Each entry prevents the same mistake recurring. -->
@@ -116,4 +118,5 @@
 - 2026-10-13 D71: a tag without a stated identity runs and is marked unknown with a finding.
 - 2026-10-13 D72: GPU declared in the endpoint's configuration now, measured with agent mode later.
 - 2026-10-13 D73: model reloaded mid-run or partly off the GPU makes a run INVALID by default; an arm may accept either (`[accepts] model_reload`, `partial_gpu`) because the owner may want to test exactly that. Closes O21.
+- 2026-10-13 D75: detector thresholds are the SDK guards' own (measured on recorded sessions), never chosen here; runaway has no default size. Closes O19, O20.
 - 2026-10-13 D74: tag `qwen36-base-mtp_tb:27b-q4km-128k` is the base Qwen 3.6 27B model (variant `base`); GPU of `windows-2` is an RTX 3090, 24 GB; the ten real runs of that day got these facts added, marked as added later (`run identify`).

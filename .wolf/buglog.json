@@ -228,6 +228,23 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-10-13T14:04:41+02:00"
+    },
+    {
+      "id": "bug-015",
+      "timestamp": "2026-10-13T16:40:00+02:00",
+      "error_message": "owner: why do you have to decide these numbers? based on what? ... you don't need to invent anything",
+      "file": "internal/detect/detect.go",
+      "root_cause": "two detector thresholds (3 identical calls in a row; 10,000 characters as a runaway for every run) were set without data and carried as Open items with a recommendation to keep them, while the SDK's own guards hold measured thresholds for the same things",
+      "fix": "detector library version 2: internal/detect/guards.go ports the SDK's reasoning repetition and reasoning loop guards with their thresholds; repeated_tool_call at 2 (info) and 5 (warning) as in the SDK; runaway only where a size is declared; D75",
+      "tags": [
+        "detectors",
+        "thresholds",
+        "design",
+        "owner-correction"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-13T16:40:00+02:00"
     }
   ]
 }

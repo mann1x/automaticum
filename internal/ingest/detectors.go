@@ -97,8 +97,12 @@ func detectorFindings(runID string, ev *Events, opt detect.Options) ([]store.Fin
 		m("detector."+d, float64(len(seqs)))
 		for _, s := range seqs {
 			raw, _ := json.Marshal(s)
+			sev := "info" // where the SDK would warn the model
+			if s.Count >= detect.RepeatedCallsHard {
+				sev = "warning" // where it would escalate
+			}
 			findings = append(findings, store.Finding{RunID: runID, Detector: d, DetectorVersion: detect.Version,
-				Severity: "warning", Turn: s.Turn, Count: s.Count, Evidence: raw})
+				Severity: sev, Turn: s.Turn, Count: s.Count, Evidence: raw})
 		}
 	}
 	return findings, metrics

@@ -1,6 +1,6 @@
 # 110 — Acceptance and roadmap
 
-**Status:** draft 0.13, 2026-10-13. The milestone order in §3 was approved by the owner
+**Status:** draft 0.14, 2026-10-13. The milestone order in §3 was approved by the owner
 on 2026-10-12. Milestone 1 has been carried out: the store, the importer and
 the spike's measurements exist (080 §7.4, 100 §7), and the owner has decided
 the questions it raised (D46 to D51). Milestone 2 was planned and approved on
@@ -169,6 +169,17 @@ runs (76 of 313 `PASS`, 27 of 87 `FAIL`, 19 of 38 `TIMEOUT`, 21 of 60
 three or more identical tool calls in a row in 107. A run of the old
 harness is not a run of this arm, so these are two descriptions, not a
 comparison.
+
+**Library version 2 (D75), the same day:** the thresholds above for a long
+block and for identical tool calls were this project's own and are
+withdrawn; the SDK's guards, with the thresholds it measured, are read
+instead (070 §3.2). Over the 531 imported runs: reasoning repetition in the
+reasoning of 64 runs (28 of 313 `PASS`, 12 of 87 `FAIL`, 9 of 38 `TIMEOUT`,
+14 of 60 `ABORTED`, 1 of 33 `INVALID`); a reasoning loop in 27 (10 `PASS`,
+5 `FAIL`, 6 `TIMEOUT`, 6 `ABORTED`); five or more identical tool calls in a
+row, where the SDK escalates, in 29 (17 of 87 `FAIL`, 8 of 313 `PASS`);
+two or more, where it warns, in 292. On the ten real runs none of the
+SDK's guards fires; one run has two identical calls in a row.
 
 Two more things the comparison shows on all five runs, both as notes: the
 output budget sent (`num_predict`) shrinks as the context fills, by the SDK's

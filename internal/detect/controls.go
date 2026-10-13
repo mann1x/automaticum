@@ -60,13 +60,46 @@ func Controls() []Control {
 			fmt.Fprintf(&draft, "Attempt %d, variant %d changes the collision test on row %d and leaves every other row of the table as it was. ", i, j, i*8+j)
 		}
 	}
+	// A long block of distinct sentences: length alone is not a signal.
+	var long strings.Builder
+	for i := 0; i < 400; i++ {
+		fmt.Fprintf(&long, "In step %d the loader reads section %d of the level table and checks it against the list before moving on.\n\n", i, i*7+3)
+	}
+	// One conclusion re-derived, paragraph after paragraph.
+	var stuck strings.Builder
+	for i := 0; i < 16; i++ {
+		fmt.Fprintf(&stuck, "Attempt %d looks at row %d of the table and it is not the cause, so the search has to go on.\n\n", i, i*3)
+		stuck.WriteString("Actually, I think I found it! These should all be fine. Let me look more carefully at the collision test.\n\n")
+		fmt.Fprintf(&stuck, "The frame counter is advanced by the loop in section %d, and that is where the next check will be made because of it.\n\n", i)
+	}
+	// The same code quoted while candidate edits are compared: working.
+	var quoted strings.Builder
+	for i := 0; i < 30; i++ {
+		quoted.WriteString("```\nfunction isOverlapping(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h; }\n```\n\n")
+		fmt.Fprintf(&quoted, "Candidate %d changes the comparison on line %d and leaves the others of the body as they were in the file.\n\n", i, 90+i)
+	}
+	// A checklist flipping between two states.
+	var flip strings.Builder
+	for i := 0; i < 200; i++ {
+		flip.WriteString([]string{"- [ ] check the collision test of the guardian", "- [x] check the collision test of the guardian", "- [ ] then the portal", "- [x] then the portal"}[(i*7)%4] + "\n")
+	}
+	// Fewer lines than the window holds, so only the exact cycle can speak.
+	cycle := "First the loader of the level table is read again from its start to its end and every section of it is compared with the list.\n" +
+		"Then the platform list is read again from its start to its end and every entry of it is compared with the level table above.\n"
 	return []Control{
 		{Name: "word loop", Domain: "prose", Text: "The answer is " + rep("very ", 12) + "clear.", Fires: []string{ShortUnitRepeat}},
 		{Name: "phrase loop", Domain: "prose", Text: "Let me check. " + rep("I will fix the jump. ", 9), Fires: []string{ShortUnitRepeat}},
 		{Name: "letter run", Domain: "prose", Text: "Wait" + rep("a", 60) + " no.", Fires: []string{CharRun}},
 		{Name: "sentence loop", Domain: "prose", Text: rep(line+"\n", 4) + "So it must be something else in the way the frame counter is advanced by the loop.", Fires: []string{SentenceRepeat}},
 		{Name: "sentence loop among new text", Domain: "prose", Text: rep(line+"Then a short note. ", 8) + prose.String(), Fires: []string{SentenceRepeat}},
-		{Name: "long block", Domain: "prose", Text: prose.String() + prose.String() + prose.String(), Fires: []string{Runaway}},
+		{Name: "long block, no size declared", Domain: "prose", Text: long.String()},
+		{Name: "paragraph loop", Domain: "prose", Text: stuck.String(), Fires: []string{ReasoningRepetition}},
+		// The older sentence rule counts the quoted code; the SDK's paragraph
+		// rule, which asks for a sentence, does not.
+		{Name: "code quoted again and again", Domain: "code", Text: quoted.String(), Fires: []string{SentenceRepeat}},
+		{Name: "two lines flipping", Domain: "prose", Text: flip.String(), Fires: []string{ReasoningLoop}},
+		{Name: "two lines in a cycle", Domain: "prose", Text: rep(cycle, 22), Fires: []string{SentenceRepeat, ReasoningLoop}},
+		{Name: "one phrase in an unbroken line", Domain: "prose", Text: prose.String() + prose.String() + "\n" + rep("and I'll do it, ", 200), Fires: []string{ShortUnitRepeat, ReasoningLoop}},
 		{Name: "declared size", Domain: "prose", Text: rep("x1 ", 40), Fires: []string{Runaway}, Opt: Options{RunawayChars: 100}},
 		{Name: "healthy prose", Domain: "prose", Text: prose.String()},
 		{Name: "healthy code", Domain: "code", Text: code.String()},
@@ -101,7 +134,7 @@ func SelfTest() (results []ControlResult, ok bool) {
 		name  string
 		calls []Call
 		fires bool
-	}{{"same call three times", same, true}, {"different calls", varied, false}} {
+	}{{"same call again and again", same, true}, {"different calls", varied, false}} {
 		got, want := []string{}, []string{}
 		if len(RepeatedCalls(c.calls, 0)) > 0 {
 			got = append(got, RepeatedToolCall)

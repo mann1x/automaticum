@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.8, 2026-10-13.
+**Status:** draft 0.9, 2026-10-13.
 
 ## 1. The rule: no custom script
 
@@ -80,7 +80,7 @@ report.
 | short-unit repeat | a 2 to 40 character unit repeated 8 or more times, where **the repeated unit itself** contains 3 or more alphabetic characters | on code-bearing transcripts every firing without that rule was indentation or a number printout |
 | character run | one character repeated 41 or more times, **only when that character is alphabetic** | a run of `=` or `-` is a separator and is clean |
 | sentence repeat | see §3.1 | character detectors saw 1 and 9 blocks where this saw 29 and 89. Count alone is not enough: 3 to 6 repeats with thousands of new characters between them is iterative drafting |
-| runaway | a single block whose length in characters is **at or above** a declared size (10,000 by default, per suite) | healthy length differs by suite |
+| runaway | a single block whose length in characters is **at or above** a declared size (per suite; no default, D75) | healthy length differs by suite |
 | repeated tool call | identical name and arguments N times | |
 | near-duplicate rounds | repeated rounds hidden behind a changing ordinal | |
 | edit oscillation | edit and revert of the same region | |
@@ -139,14 +139,15 @@ calls, and `automaticum detect --self-test` on the library's own controls.
   to that pattern's.
 - **Letters** are Unicode letters; lengths and offsets are in characters,
   not bytes.
-- **Controls:** seven texts a detector must fire on, six healthy ones (prose,
-  code with indentation and separators, tool output, iterative drafting,
-  number tables, the empty block) on which none may, and two call sequences.
+- **Controls:** texts a detector must fire on, healthy ones (prose, a long
+  block, code with indentation and separators, tool output, iterative
+  drafting, number tables, the empty block) on which none may, and two call
+  sequences.
   The daemon runs them at start. A detector that misses a control is
   **unavailable**: ingest writes `detector.<name>.available = 0` and no
   count for it (050 §3.2).
 - **At ingest** each block of reasoning and of visible text goes through the
-  four text detectors. One finding per detector and channel, with the number
+  text detectors. One finding per detector and channel, with the number
   of blocks it fired on, out of how many, the turns, and the first firing.
   Counts are also metrics (`detector.<name>.<channel>`), so that a zero from
   an available detector is on record. `detector.looped_blocks` is the count
@@ -157,17 +158,42 @@ calls, and `automaticum detect --self-test` on the library's own controls.
   pieces. They get the detectors' findings only: their tool calls stay as
   the importer wrote them and they have no wire-based metrics.
 
-**As built, not owner decisions** (both can be changed without a new
-detector definition, and are carried here until the owner says otherwise):
+**Decided by the owner (2026-10-13), D75: no threshold is chosen here.**
+Where the agent's own SDK has a guard for the same thing, the detector is
+that guard read after the run, with the SDK's definition and thresholds,
+which were set on recorded sessions. Library version 2 (this closes O19 and
+O20):
 
-- **Open (O19) — repeated tool call:** the spec says "identical name and arguments
-  N times" without N or adjacency. Built as **3 or more calls in a row**,
-  arguments compared after one spelling of their JSON. Recommendation: keep
-  3 in a row as the default and let a suite declare another.
-- **Open (O20) — severity of a runaway:** built as a note, the looping detectors as
-  warnings: a long block is a size, and healthy length differs by suite
-  until suites declare their own (the default 10,000 is used for every run
-  now). Recommendation: keep.
+| detector | definition, as in the SDK's source | source file |
+|---|---|---|
+| `reasoning_repetition` | in a block of 4,000 characters or more, among the paragraphs of 60 characters or more that carry a sentence (3 or more common words; a bare fenced quote does not count): one paragraph 4 or more times **and** duplicates making up 25% or more of them | `packages/agents/src/reasoning-repetition.ts` |
+| `reasoning_loop` | from 4,000 characters of a block, any of: 4 or fewer distinct lines in a full window of 60 lines (`low-uniqueness`); the same 1 to 6 lines repeating with an exact period 20 or more times (`line-cycle`); in one unbroken line of 2,000 characters or more, a unit of 4 to 120 characters 13 or more times in a row (`phrase-cycle`) | `packages/agents/src/reasoning-loop-guard.ts` |
+| `repeated_tool_call` | identical name and arguments in a row: reported from 2 (where the SDK warns the model), a warning from 5 (where it escalates) | `packages/core/src/runtime/safety/loop-detection.ts` |
+
+Read at the SDK's commit `daa9edb883`. A change of a threshold there is a
+new library version here; which SDK build's values a library version holds
+is stated in `internal/detect/guards.go`.
+
+- **`runaway` has no default size.** The SDK's own data says length is
+  never the signal: healthy reasoning runs to hundreds of thousands of
+  characters a turn. The detector reports only where a suite declares a
+  size (the requirement it comes from says "per suite").
+- The SDK's guards look while the stream arrives; here the whole block is
+  at hand, and it is looked at after every line and, inside a line, after
+  every character. What fires in the SDK fires here.
+- With a window of 60 lines and 20 cycles asked for, the SDK's `line-cycle`
+  can only be reached by a period of 1 or 2 lines; periods of 3 to 6 are in
+  its definition and cannot fire. Kept as it is, and reported to the SDK's
+  session.
+- `short_unit_repeat`, `char_run` and `sentence_repeat` stay as the
+  requirements define them (their thresholds are that document's, with its
+  reference pattern). Where they and the SDK's guards disagree, both are on
+  record: on code quoted again and again, `sentence_repeat` fires and
+  `reasoning_repetition`, which asks for a sentence, does not.
+- Not ported yet from the same source: the count of failed identical calls
+  (6, and 4 for a call the tool refused in advance) and the repeated pair
+  of call and result (3, and 6 for writing tools). Both need each call's
+  result.
 
 Not built: near-duplicate rounds, edit oscillation, re-read loop.
 

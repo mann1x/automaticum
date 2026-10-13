@@ -84,6 +84,7 @@ All dated 2026-10-12.
 | D72 | The GPU is declared in the endpoint's configuration now and recorded as declared; it is measured and compared when agent mode exists (2026-10-13). | 020 §1.1, 030 §4.2 |
 | D73 | A run whose model was loaded again mid-run (`model_reloaded`) or that ended partly off the GPU (`gpu_residency`) is `INVALID` by default, its earlier verdict kept beside it. An arm may accept either, as the thing it tests: `[accepts] model_reload`, `partial_gpu`. Such an arm is another arm; its runs keep their verdict and the finding becomes a note (2026-10-13; closes O21). | 030 §5.3, 070 §4.1 |
 | D74 | Tag `qwen36-base-mtp_tb:27b-q4km-128k` is the base Qwen 3.6 27B model (variant `base`); the GPU of `windows-2` is an NVIDIA GeForce RTX 3090, 24 GB. The ten real runs of 2026-10-13, made before the record held these facts, have them added and marked as added later (`automaticum run identify`) (2026-10-13). | 020 §1.1, 030 §4.1, 090 §1 |
+| D75 | No detector threshold is chosen in this project. Where the agent's own SDK has a guard for the same thing, the detector is that guard read after the run, with the SDK's definition and thresholds, which were set on recorded sessions: reasoning repetition, reasoning loop, identical tool calls in a row (2 and 5). A missing threshold is asked for or read in the SDK's source, never invented. `runaway` has no default size (2026-10-13; closes O19 and O20). | 070 §3.2 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked
@@ -112,8 +113,6 @@ Each of these waits for a measurement or for the planning of its milestone.
 | O1 | How the native agent on Windows and macOS meets "a host runs only the Go application", given the runner needs Node. | 010 §4 | milestone 7 (D35) |
 | O5 | Which published C/C++ SWE-bench-style set, at which version; the order of languages after it. | 062 §6 | milestone 5 |
 | O6 | Which external harnesses need the offline event path. | 064 §3.2 | milestone 5, per harness |
-| O19 | Repeated tool call: how many identical calls, and whether they must be in a row. Built as 3 or more in a row; recommendation: keep as the default, a suite may declare another. | 070 §3.2 | the owner; nothing waits, the built default is in use |
-| O20 | Severity of a runaway block: built as a note, with the default size of 10,000 characters for every run until suites declare theirs; recommendation: keep. | 070 §3.2 | the owner; nothing waits |
 
 Closed since the first revision: O2 (D32), O4 (D30), O7 (S4, then D34), O9
 (D31), O10 (D42), O11 (D33), O12 (D28), O13 (D29), O14 (D46), O8 (D47), O15

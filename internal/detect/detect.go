@@ -14,7 +14,7 @@ import (
 
 // Version is the version of the library's definitions. It changes when any
 // detector's answer on some input changes, and findings are then recomputed.
-const Version = "1"
+const Version = "2"
 
 // The detectors, by name.
 const (
@@ -23,10 +23,13 @@ const (
 	SentenceRepeat   = "sentence_repeat"
 	Runaway          = "runaway"
 	RepeatedToolCall = "repeated_tool_call"
+	// The SDK's own reasoning guards, read after the run (guards.go).
+	ReasoningRepetition = "reasoning_repetition"
+	ReasoningLoop       = "reasoning_loop"
 )
 
 // Text lists the detectors that read a block of text, in the order they run.
-var Text = []string{ShortUnitRepeat, CharRun, SentenceRepeat, Runaway}
+var Text = []string{ShortUnitRepeat, CharRun, SentenceRepeat, ReasoningRepetition, ReasoningLoop, Runaway}
 
 // The thresholds of the definitions. They are part of the definition: a
 // change is a new Version.
@@ -42,14 +45,12 @@ const (
 	sentenceAlways   = 8 // fires from this many repeats, whatever the share
 )
 
-// DefaultRunaway is the block length, in characters, from which a block is a
-// runaway when a suite declares nothing else.
-const DefaultRunaway = 10000
-
 // Options are the settings a caller may declare.
 type Options struct {
-	// RunawayChars is the size from which a block is a runaway; 0 means
-	// DefaultRunaway.
+	// RunawayChars is the size from which a block is a runaway. There is
+	// no default: length alone is not a signal (healthy reasoning runs to
+	// hundreds of thousands of characters a turn), so the detector reports
+	// only where a size is declared (D75).
 	RunawayChars int
 }
 
@@ -61,6 +62,10 @@ type Hit struct {
 	Count int `json:"count"`
 	// Share is the repeated sentence's share of the qualifying sentences.
 	Share float64 `json:"share,omitempty"`
+	// Kind and Period are a reasoning loop's: which of its three signals,
+	// and the cycle's length in lines or characters.
+	Kind   string `json:"kind,omitempty"`
+	Period int    `json:"period,omitempty"`
 	// Unit is what repeated, cut to a readable length.
 	Unit string `json:"unit,omitempty"`
 	// Offset is where it starts, in characters from the start of the block.
@@ -72,7 +77,7 @@ type Hit struct {
 func Block(text string, o Options) []Hit {
 	r := []rune(text)
 	var hits []Hit
-	for _, f := range []func([]rune, string, Options) *Hit{shortUnit, charRun, sentence, runaway} {
+	for _, f := range []func([]rune, string, Options) *Hit{shortUnit, charRun, sentence, reasoningRepetition, reasoningLoop, runaway} {
 		if h := f(r, text, o); h != nil {
 			hits = append(hits, *h)
 		}
@@ -176,13 +181,11 @@ func Sentences(text string) []string {
 	return out
 }
 
-// runaway: a block at or above the declared size.
+// runaway: a block at or above the declared size; nothing when none is
+// declared.
 func runaway(r []rune, _ string, o Options) *Hit {
 	limit := o.RunawayChars
-	if limit <= 0 {
-		limit = DefaultRunaway
-	}
-	if len(r) >= limit {
+	if limit > 0 && len(r) >= limit {
 		return &Hit{Detector: Runaway, Count: len(r)}
 	}
 	return nil
@@ -196,9 +199,15 @@ type Call struct {
 	Input string
 }
 
-// DefaultRepeatedCalls is how many identical calls in a row make a finding
-// when nothing else is declared.
-const DefaultRepeatedCalls = 3
+// The SDK's own thresholds for identical calls in a row
+// (packages/core/src/runtime/safety/loop-detection.ts, as of commit
+// daa9edb883): from RepeatedCallsSoft it warns the model, at
+// RepeatedCallsHard it escalates (D75). A sequence is reported from the
+// first, and is a warning from the second.
+const (
+	RepeatedCallsSoft = 2
+	RepeatedCallsHard = 5
+)
 
 // RepeatedCall is the longest sequence of identical calls.
 type RepeatedCall struct {
@@ -210,10 +219,10 @@ type RepeatedCall struct {
 }
 
 // RepeatedCalls finds every sequence of n or more calls in a row with the
-// same name and the same arguments; n of 0 means DefaultRepeatedCalls.
+// same name and the same arguments; n of 0 means RepeatedCallsSoft.
 func RepeatedCalls(calls []Call, n int) []RepeatedCall {
 	if n <= 0 {
-		n = DefaultRepeatedCalls
+		n = RepeatedCallsSoft
 	}
 	var out []RepeatedCall
 	for i := 0; i < len(calls); {

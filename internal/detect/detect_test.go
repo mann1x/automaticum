@@ -1,6 +1,7 @@
 package detect
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -171,11 +172,12 @@ func TestSentence(t *testing.T) {
 }
 
 func TestRunaway(t *testing.T) {
-	if h := hit(t, strings.Repeat("a b ", 2500), Runaway); h == nil || h.Count != 10000 {
-		t.Errorf("exactly the default size: %+v", h)
+	// No size declared: length alone is never reported (D75).
+	if h := hit(t, strings.Repeat("a b ", 100000), Runaway); h != nil {
+		t.Errorf("a long block fired with no size declared: %+v", h)
 	}
-	if h := hit(t, strings.Repeat("a b ", 2499)+"abc", Runaway); h != nil {
-		t.Errorf("one under the default size fired: %+v", h)
+	if got := Block("1234", Options{RunawayChars: 5}); len(got) != 0 {
+		t.Errorf("one under the declared size: %+v", got)
 	}
 	if got := Block("12345", Options{RunawayChars: 5}); len(got) != 1 || got[0].Detector != Runaway {
 		t.Errorf("a declared size: %+v", got)
@@ -185,14 +187,58 @@ func TestRunaway(t *testing.T) {
 func TestRepeatedCalls(t *testing.T) {
 	c := func(turn int, tool, in string) Call { return Call{turn, tool, in} }
 	calls := []Call{c(1, "a", "1"), c(2, "a", "1"), c(3, "b", "1"), c(4, "b", "1"), c(5, "b", "1"), c(6, "b", "1"), c(7, "b", "2"), c(8, "b", "1")}
+	// From the second identical call in a row, as the SDK warns.
 	got := RepeatedCalls(calls, 0)
-	if len(got) != 1 || got[0] != (RepeatedCall{Tool: "b", Input: "1", Count: 4, Turn: 3, Index: 2}) {
+	if len(got) != 2 || got[0].Count != 2 || got[1] != (RepeatedCall{Tool: "b", Input: "1", Count: 4, Turn: 3, Index: 2}) {
 		t.Errorf("%+v", got)
 	}
-	if got := RepeatedCalls(calls, 2); len(got) != 2 {
-		t.Errorf("with two in a row declared: %+v", got)
+	if got := RepeatedCalls(calls, RepeatedCallsHard); len(got) != 0 {
+		t.Errorf("four in a row is under where the SDK escalates: %+v", got)
 	}
 	if got := RepeatedCalls(nil, 0); got != nil {
 		t.Errorf("no calls: %+v", got)
+	}
+}
+
+// The SDK's own guards, on the cases its source names (D75).
+func TestReasoningGuards(t *testing.T) {
+	para := "Actually, I think I found it! These should all be fine. Let me look more carefully at the test.\n\n"
+	var b strings.Builder
+	for i := 0; i < 30; i++ {
+		fmt.Fprintf(&b, "Step %d: the loader reads section %d and it is compared with the list for the level.\n\n", i, i*3)
+	}
+	clean := b.String()
+	// Three repeats: under the count. Four with much new text: under the share.
+	if h := hit(t, clean+strings.Repeat(para, 3), ReasoningRepetition); h != nil {
+		t.Errorf("three repeats fired: %+v", h)
+	}
+	if h := hit(t, clean+strings.Repeat(para, 4), ReasoningRepetition); h != nil {
+		t.Errorf("four repeats among thirty new paragraphs fired: %+v", h)
+	}
+	h := hit(t, clean+strings.Repeat(para, 16), ReasoningRepetition)
+	if h == nil || h.Count != 16 || h.Share < 0.25 {
+		t.Errorf("sixteen repeats: %+v", h)
+	}
+	// Under 4,000 characters nothing is judged.
+	if h := hit(t, strings.Repeat(para, 20), ReasoningRepetition); h != nil {
+		t.Errorf("a short block fired: %+v", h)
+	}
+	// A phrase 12 times in a line is one short of the 13 the guard asks for.
+	var nums strings.Builder
+	for i := 1000; nums.Len() < 2000; i++ {
+		fmt.Fprintf(&nums, "%d ", i*i)
+	}
+	lead := clean + clean + nums.String()
+	if h := hit(t, lead+strings.Repeat("and I'll do it, ", 12), ReasoningLoop); h != nil {
+		t.Errorf("twelve times fired: %+v", h)
+	}
+	h = hit(t, lead+strings.Repeat("and I'll do it, ", 13)+"and then", ReasoningLoop)
+	if h == nil || h.Kind != PhraseCycle || h.Period != 16 || h.Count != 13 {
+		t.Errorf("thirteen times: %+v", h)
+	}
+	// 21 identical long lines: an exact cycle before the window is full.
+	h = hit(t, strings.Repeat(strings.Repeat("the same line once more ", 9)+"\n", 21), ReasoningLoop)
+	if h == nil || h.Kind != LineCycle || h.Period != 1 || h.Count != 21 {
+		t.Errorf("one line 21 times: %+v", h)
 	}
 }
