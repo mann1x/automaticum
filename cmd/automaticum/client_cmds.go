@@ -295,7 +295,14 @@ func runShow(ctx context.Context, args []string) error {
 		line("started", human.Time(r.StartedAt))
 	}
 	if r.WallMS > 0 {
-		line("wall", human.Millis(float64(r.WallMS)))
+		wall := human.Millis(float64(r.WallMS))
+		var held struct {
+			MS int64 `json:"held_ms"`
+		}
+		if json.Unmarshal(r.Provenance, &held); r.Paused || held.MS > 0 {
+			wall += fmt.Sprintf(" (paused for %s more, which is not counted)", human.Millis(float64(held.MS)))
+		}
+		line("wall", wall)
 	}
 	printInference(r)
 	if len(r.Blobs) > 0 {

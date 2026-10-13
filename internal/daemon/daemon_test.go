@@ -773,6 +773,7 @@ func TestCompare(t *testing.T) {
 	add("r5", "b", store.Pass, 4000)
 	add("r6", "b", store.Fail, 5000)
 	add("r7", "b", store.Fail, 6000)
+	g.state.UpsertRun(ctx, &store.Run{ID: "r8", Batch: "b1", Suite: "demo", TaskID: "answer", Verdict: store.Skipped, VerdictReason: "stopped by the operator before it started"})
 	g.state.ReplaceFindings(ctx, "r5", []store.Finding{{RunID: "r5", Detector: "reasoning_loop"}, {RunID: "r5", Detector: "reasoning_loop"}})
 	var v CompareView
 	if code := g.call("GET", "/v1/compare?batch=b1", nil, &v); code != 200 || len(v.Groups) != 2 || len(v.Pairs) != 1 {
@@ -797,6 +798,9 @@ func TestCompare(t *testing.T) {
 	}
 	if p.PassP <= 0 || p.PassP > 1 || len(p.Differs) == 0 {
 		t.Errorf("pair: %+v", p)
+	}
+	if len(v.NeverStarted) != 1 {
+		t.Errorf("a run that never started is not a group of its own: %+v", v.NeverStarted)
 	}
 	if code := g.call("GET", "/v1/compare?batch=none", nil, nil); code != 404 {
 		t.Errorf("an unknown batch: %d", code)

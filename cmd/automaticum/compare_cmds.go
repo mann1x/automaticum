@@ -56,6 +56,16 @@ func compare(ctx context.Context, args []string) error {
 			fmt.Printf("   left out: %s  %s\n", id, g.Excluded[id])
 		}
 	}
+	if n := len(v.NeverStarted); n > 0 {
+		reasons := map[string]int{}
+		for _, why := range v.NeverStarted {
+			reasons[why]++
+		}
+		fmt.Printf("\n%d runs of these batches never started and are in no arm's numbers:\n", n)
+		for why, k := range reasons {
+			fmt.Printf("  %d: %s\n", k, why)
+		}
+	}
 	for _, p := range v.Pairs {
 		fmt.Printf("\nwhat differs between %s and %s, besides the runs:\n", letter(p.A), letter(p.B))
 		if len(p.Differs) == 0 {

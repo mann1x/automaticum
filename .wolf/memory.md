@@ -847,3 +847,19 @@
 |------|--------|---------|---------|--------|
 | 18:43 | started the D81 batch (base Qwen 3.6 27B against OmniMerge v4, 10 each, interleaved) on windows-2; mail 1275 to the xOllama session with start and expected end | batch k-d81-base-vs-omnimerge-v4 | running | ~1500 |
 | 21:10 | D83: hold between requests (runner beforeModel hook), run pause/resume with unload, held time out of wall time; written and unit-tested, NOT deployed (batch running) | runner/runner.mjs, PROTOCOL.md, internal/run, internal/docker, internal/daemon/api.go, cmd/automaticum/main.go, 050, 090, decisions | tests pass | ~12000 |
+
+## Session: 2026-10-13 20:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 20:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 20:51
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:25 | first half of the D81 batch ended (5+5 PASS), graceful stop for the xOllama release check, model unloaded, mails 1287/1288; compare fix (never-started runs); pause deployed and tried on the stub server | internal/daemon, cmd/automaticum | pause/resume works on the stub: held 11.5s taken out of wall | ~8000 |

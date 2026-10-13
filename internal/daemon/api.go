@@ -130,6 +130,9 @@ type RunView struct {
 	Thinking      string          `json:"thinking,omitempty"`
 	SDKRelease    string          `json:"sdk_release,omitempty"`
 	Imported      bool            `json:"imported,omitempty"`
+	// Paused says that the run was held at least once; the time held is
+	// not in its wall time (050 §4).
+	Paused bool `json:"paused,omitempty"`
 	ResolvedArm   json.RawMessage `json:"resolved_arm,omitempty"`
 	Provenance    json.RawMessage `json:"provenance,omitempty"`
 	Blobs         []BlobView      `json:"blobs,omitempty"`
@@ -210,7 +213,7 @@ func view(r *store.Run, full bool) RunView {
 		ID: r.ID, State: "finished", Batch: r.Batch, Task: r.Suite + "/" + r.TaskID, TaskVersion: r.TaskVersion, ArmID: r.ArmID,
 		Lane: r.Lane, Host: r.Host, Verdict: string(r.Verdict), VerdictReason: r.VerdictReason, PriorVerdict: string(r.PriorVerdict),
 		AgentEnd: r.AgentEnd, Claimed: r.ClaimedSuccess, StartedAt: r.StartedAt, EndedAt: r.EndedAt, WallMS: r.WallMS,
-		Provider: r.Provider, Model: r.Model, Endpoint: r.Endpoint, Thinking: r.Thinking, SDKRelease: r.Harness, Imported: r.Imported,
+		Provider: r.Provider, Model: r.Model, Endpoint: r.Endpoint, Thinking: r.Thinking, SDKRelease: r.Harness, Imported: r.Imported, Paused: r.Paused,
 	}
 	if full {
 		v.ResolvedArm, v.Provenance = r.Arm, r.Provenance
@@ -320,6 +323,9 @@ func (d *Daemon) handleStatus(w http.ResponseWriter, r *http.Request) {
 		}
 		if f := flying[n]; f != nil {
 			ls.State, ls.RunID, ls.Arm, ls.Task, ls.Since = "running", f.runID, f.item.Arm, f.item.Task, f.started
+			if held, _ := f.holding(); held {
+				ls.State = "paused"
+			}
 		}
 		st.Lanes = append(st.Lanes, ls)
 	}

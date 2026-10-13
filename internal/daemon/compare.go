@@ -22,6 +22,10 @@ type CompareView struct {
 	Batches []string       `json:"batches"`
 	Groups  []CompareGroup `json:"groups"`
 	Pairs   []ComparePair  `json:"pairs"`
+	// NeverStarted are the runs of these batches that were taken off the
+	// queue or refused before they started, with the reason: they belong
+	// to no arm's numbers.
+	NeverStarted map[string]string `json:"never_started,omitempty"`
 	// Level is the level of every interval in the view.
 	Level float64 `json:"interval_level"`
 }
@@ -144,6 +148,13 @@ func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, run := range runs {
+			if run.Verdict == store.Skipped {
+				if v.NeverStarted == nil {
+					v.NeverStarted = map[string]string{}
+				}
+				v.NeverStarted[run.ID] = run.VerdictReason
+				continue
+			}
 			task := run.Suite + "/" + run.TaskID
 			key := run.ArmID + " " + task
 			i, ok := index[key]
@@ -160,7 +171,7 @@ func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
 			}
 			g := &v.Groups[i]
 			g.Verdicts[string(run.Verdict)]++
-			if run.Verdict == store.Skipped || run.Verdict == store.Invalid {
+			if run.Verdict == store.Invalid {
 				if g.Excluded == nil {
 					g.Excluded = map[string]string{}
 				}
