@@ -177,6 +177,11 @@
 - `gate.go` — Builtin gates (lane, free, model_tag, template, sampler, thinking, gpu_residency, harness_build, host, oracle, workspace, bind_address; three unchecked until agent mode), Run, Worst (~4200 tok)
 - `gate_test.go` — every gate with the fault it must catch, against a fake model server (~2700 tok)
 
+## internal/human/
+
+- `human.go` — Duration, Millis, Seconds, Since, Time, Count, Number, Bytes, Percent, Rate, Metric: the one formatter for everything a person reads (~1500 tok)
+- `human_test.go` — every format with its edges (~1000 tok)
+
 ## internal/ingest/
 
 - `events.go` — ReadEvents: one pass over a run's event stream (tool calls, blocks, notices, split); chunk lines skipped unparsed (~1900 tok)

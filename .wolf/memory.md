@@ -667,3 +667,34 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 14:04 | D66-D68: SDK out of the lane images; internal/sdk (definitions, bundles, archive, offline rebuild); `sdk add|ls|verify`; run mounts the arm's bundle; gate harness_build; 4.100.250 and 4.100.251 installed, both reproduced offline, same task PASS on both from one image | internal/sdk/*, internal/run/*, internal/gate/*, cmd/*, images/base/Dockerfile, runner/package.json, runner/sdk/*, arms/stub-sdk-4.100.251.toml, docs/specs/030,040,050,090,110,decisions | tests pass | ~12000 |
+
+## Session: 2026-10-13 14:05
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 14:05
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 14:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 14:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 14:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 14:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:18 | D69: internal/human, the one formatter; every command prints durations as h m s, counts, sizes, shares through it | internal/human/*, cmd/automaticum/*, docs/specs/090, decisions | tests pass; checked on live output | ~3000 |

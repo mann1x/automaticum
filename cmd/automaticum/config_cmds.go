@@ -13,6 +13,7 @@ import (
 
 	"github.com/mann1x/automaticum/internal/config"
 	"github.com/mann1x/automaticum/internal/docker"
+	"github.com/mann1x/automaticum/internal/human"
 	"github.com/mann1x/automaticum/internal/task"
 )
 
@@ -209,7 +210,7 @@ func taskShow(_ context.Context, args []string) error {
 		return err
 	}
 	fmt.Printf("task     %s\nversion  %d\nhash     %s\nlayers   %s\n", t.Name(), t.Version, t.Hash, strings.Join(t.Layers, ", "))
-	fmt.Printf("limits   wall %ds, idle %ds, oracle %ds\n", t.Limits.WallS, t.Limits.IdleS, t.Limits.OracleS)
+	fmt.Printf("limits   wall %s, idle %s, oracle %s\n", human.Seconds(float64(t.Limits.WallS)), human.Seconds(float64(t.Limits.IdleS)), human.Seconds(float64(t.Limits.OracleS)))
 	for _, a := range t.Artefacts {
 		fmt.Printf("artefact %s -> %s, sha256 %s\n", a.Name, a.Output, a.SHA256)
 	}

@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mann1x/automaticum/internal/human"
 	"github.com/mann1x/automaticum/internal/legacyimport"
 	"github.com/mann1x/automaticum/internal/store"
 	"github.com/mann1x/automaticum/internal/store/blob"
@@ -185,7 +186,7 @@ func storeCheck(ctx context.Context, args []string) error {
 		}
 		fmt.Printf("%s: %d\n", table, n)
 	}
-	fmt.Printf("runs: %d\nblobs verified: %d live, %d archived, %d bytes uncompressed\n", runs, rep.Live, rep.Archived, rep.Bytes)
+	fmt.Printf("runs: %s\nblobs verified: %s live, %s archived, %s uncompressed\n", human.Count(int64(runs)), human.Count(int64(rep.Live)), human.Count(int64(rep.Archived)), human.Bytes(int64(rep.Bytes)))
 	for _, f := range rep.Corrupt {
 		fmt.Printf("corrupt: %s (%s) %s: %v\n", f.Hash, f.Tier, f.Path, f.Err)
 	}

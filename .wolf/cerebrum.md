@@ -14,6 +14,8 @@
 - C# is a primary language for the owner: dotnet leads the language layer list.
 - An **Open** spec item becomes a decision only when the owner says so; ask, do not decide by default. The owner is willing to answer open questions in batches when asked.
 
+- 2026-10-13: the owner wants durations ALWAYS as hours, minutes, seconds ("8m 13s", "1h 02m 05s"), never bare seconds ("493 s"), in every report I write and in everything automaticum prints. Owner's words: "please always give me hours, minutes, seconds; automaticum should output proper human readable formats in cli, tui and http web interface".
+
 ## Key Learnings
 
 - **Project:** automaticum — Go test harness for coding agents built on @cerebriline/sdk; spec stage, no code yet.
@@ -65,6 +67,8 @@
 - 2026-10-13: lane images hold no SDK. A build is `runner/sdk/<build>/` (package.json, package-lock.json, sdk.toml with the pinned bundle hash); `automaticum sdk add <build>` installs it under the data root and archives the downloaded packages; the run mounts the bundle read-only at the runner's node_modules. `automaticum sdk verify <build>` reinstalls with no network and compares. Never put an SDK back into an image.
 - 2026-10-13: a new SDK release = a new directory under `runner/sdk/` with its lockfile made in the Node container (`npm install --package-lock-only --ignore-scripts`), then `sdk add`, then commit the pinned hash. An arm picks it with `[harness] sdk_release`.
 
+- 2026-10-13: anything a person reads from automaticum goes through `internal/human` (Duration, Time, Count, Bytes, Percent, Rate, Metric). Never print a raw `time.Duration`, a millisecond count or a byte count in the command line, the TUI or the web interface. `--json` stays raw.
+
 ## Do-Not-Repeat
 - [2026-10-13] Built the SDK into the lane image with a label, so one image carried one SDK and a new release meant rebuilding images. The owner: "we need to support multiple sdk versions at the same time. the images should be sdk agnostic and support provisioning of a specific sdk version at runtime. we need the testing to be reproducible on demand". Anything that is a variable of an arm must not be baked into an image.
 
@@ -103,3 +107,4 @@
 - 2026-10-13 D66: several SDK builds at once; images SDK-agnostic; the arm's build provisioned at run time; reproducible on demand.
 - 2026-10-13 D67: prebuilt bundle mounted read-only; tracked lockfile plus an archive of every downloaded package.
 - 2026-10-13 D68: releases and local builds (`<release>+<commit>`) are provisionable.
+- 2026-10-13 D69: human-readable formats in CLI, TUI and web interface; durations as hours, minutes, seconds; one formatter; JSON unformatted.

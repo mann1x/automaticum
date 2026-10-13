@@ -78,6 +78,7 @@ All dated 2026-10-12.
 | D66 | Several SDK builds are supported at the same time. Lane images are SDK-agnostic; the build an arm names is provisioned at run time; testing is reproducible on demand (2026-10-13). This replaces the image label as the way D54 is met; D54 itself stands, without its fixed release number. | 040 §3.1, 030 §3 |
 | D67 | A build is a prebuilt bundle, mounted read-only into the run's container; the harness keeps the tracked lockfile and an archive of every downloaded package, so a build is made again with no registry (2026-10-13). | 040 §3.1 |
 | D68 | Provisionable builds are published releases and local builds packed from a commit of the SDK's repository, named `<release>+<commit>` (2026-10-13). | 040 §3.1 |
+| D69 | The command line, the terminal interface and the web interface write values in human-readable formats; durations always as hours, minutes and seconds (2026-10-13). One formatter serves all three; JSON and the API stay unformatted. | 090 §1.1 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked

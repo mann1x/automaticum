@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.10, 2026-10-13.
+**Status:** draft 0.11, 2026-10-13.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -54,6 +54,28 @@ flight is streamed as server-sent events.
 
 Live output in plain commands: `status --watch`, progress bars, and a `run
 tail` that renders the transcript as it streams.
+
+### 1.1 What a person reads
+
+**Decided by the owner (2026-10-13):** the command line, the terminal
+interface and the web interface write values in formats a person reads
+(D69). As built, all of them write through one formatter, `internal/human`,
+so the same value reads the same everywhere:
+
+| value | written as |
+|---|---|
+| a length of time | hours, minutes and seconds: `1h 02m 05s`, `8m 13s`, `42s`; one decimal under ten seconds, two under one. Never bare seconds for a minute or more, never milliseconds |
+| a moment | the reader's own zone with its offset: `2026-10-13 14:56:00 +02:00` |
+| a count | thousands apart, with what is counted where the name says it: `987,358 tokens` |
+| a size | binary units: `143 MiB`, `15.9 GiB` |
+| a share | a percentage: `36.4%` |
+| a rate | `51.7 tok/s` |
+
+A metric is written by what its name says it is (a name ending in `_ms` or
+`_s` is a time, one holding `share` is a share). **`--json` and the API are
+never formatted:** they keep the stored numbers and units, for machines.
+The terminal and web interfaces do not exist yet (milestone 6); they are
+bound by this section when they do.
 
 ## 2. TUI
 

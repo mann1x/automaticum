@@ -18,9 +18,8 @@ import (
 	"github.com/mann1x/automaticum/internal/daemon"
 	"github.com/mann1x/automaticum/internal/detect"
 	"github.com/mann1x/automaticum/internal/gate"
+	"github.com/mann1x/automaticum/internal/human"
 	"github.com/mann1x/automaticum/internal/ingest"
-	"math"
-	"strconv"
 )
 
 // client talks to the daemon of this installation.
@@ -98,7 +97,7 @@ func ago(t time.Time) string {
 	if t.IsZero() {
 		return ""
 	}
-	return time.Since(t).Round(time.Second).String()
+	return human.Since(t)
 }
 
 func status(ctx context.Context, args []string) error {
@@ -225,7 +224,7 @@ func runLs(ctx context.Context, args []string) error {
 	for _, r := range runs {
 		wall := ""
 		if r.WallMS > 0 {
-			wall = (time.Duration(r.WallMS) * time.Millisecond).Round(time.Second).String()
+			wall = human.Millis(float64(r.WallMS))
 		}
 		reason := r.VerdictReason
 		if len(reason) > 60 {
@@ -285,16 +284,16 @@ func runShow(ctx context.Context, args []string) error {
 		line("SDK release", "not established")
 	}
 	if !r.StartedAt.IsZero() {
-		line("started", r.StartedAt.Local().Format(time.RFC3339))
+		line("started", human.Time(r.StartedAt))
 	}
 	if r.WallMS > 0 {
-		line("wall", (time.Duration(r.WallMS) * time.Millisecond).Round(time.Millisecond).String())
+		line("wall", human.Millis(float64(r.WallMS)))
 	}
 	if len(r.Blobs) > 0 {
 		fmt.Println("\nraw material:")
 		w := table()
 		for _, b := range r.Blobs {
-			fmt.Fprintf(w, "  %s\t%s\t%d bytes\t%s\n", b.Kind, b.Name, b.Size, b.Hash[:12])
+			fmt.Fprintf(w, "  %s\t%s\t%s\t%s\n", b.Kind, b.Name, human.Bytes(b.Size), b.Hash[:12])
 		}
 		w.Flush()
 	}
@@ -302,7 +301,7 @@ func runShow(ctx context.Context, args []string) error {
 		fmt.Println("\nmetrics:")
 		w := table()
 		for _, m := range r.Metrics {
-			fmt.Fprintf(w, "  %s\t%s\n", m.Name, strconv.FormatFloat(math.Round(m.Value*1000)/1000, 'f', -1, 64))
+			fmt.Fprintf(w, "  %s\t%s\n", m.Name, human.Metric(m.Name, m.Value))
 		}
 		w.Flush()
 	}
@@ -435,7 +434,7 @@ func findingLine(f daemon.FindingView) string {
 			Share    float64 `json:"share"`
 		}
 		json.Unmarshal(f.Evidence, &e)
-		return fmt.Sprintf("%s  the model ended the run only partly on the GPU: %.0f%% (%d of %d bytes)", head, e.Share*100, e.SizeVRAM, e.Size)
+		return fmt.Sprintf("%s  the model ended the run only partly on the GPU: %s (%s of %s)", head, human.Percent(e.Share), human.Bytes(e.SizeVRAM), human.Bytes(e.Size))
 	case detect.RepeatedToolCall:
 		var c detect.RepeatedCall
 		json.Unmarshal(f.Evidence, &c)
@@ -516,7 +515,7 @@ func reanalyse(ctx context.Context, args []string) error {
 	if c.json {
 		return printJSON(st)
 	}
-	fmt.Printf("%d runs analysed again in %s\n", st.Done-len(st.Failed), st.Ended.Sub(st.Started).Round(time.Second))
+	fmt.Printf("%d runs analysed again in %s\n", st.Done-len(st.Failed), human.Duration(st.Ended.Sub(st.Started)))
 	for id, why := range st.Failed {
 		fmt.Printf("  %s: %s\n", id, why)
 	}
@@ -530,7 +529,7 @@ func reanalyse(ctx context.Context, args []string) error {
 func hitLine(h detect.Hit) string {
 	switch h.Detector {
 	case detect.Runaway:
-		return fmt.Sprintf("%d characters", h.Count)
+		return human.Count(int64(h.Count)) + " characters"
 	case detect.CharRun:
 		return fmt.Sprintf("%q %d times in a row at character %d", h.Unit, h.Count, h.Offset)
 	case detect.SentenceRepeat:

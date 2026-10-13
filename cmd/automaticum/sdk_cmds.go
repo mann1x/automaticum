@@ -10,6 +10,7 @@ import (
 
 	"github.com/mann1x/automaticum/internal/config"
 	"github.com/mann1x/automaticum/internal/docker"
+	"github.com/mann1x/automaticum/internal/human"
 	"github.com/mann1x/automaticum/internal/sdk"
 )
 
@@ -57,8 +58,8 @@ func sdkAdd(ctx context.Context, args []string) error {
 	if *p.json {
 		return printJSON(rec)
 	}
-	fmt.Printf("SDK build %s: package version %s, %d files, bundle %s\n", rec.Name, rec.Version, rec.Files, rec.BundleSHA256)
-	fmt.Printf("what it downloaded is kept: %d bytes, %.12s\n", rec.PackagesBytes, rec.PackagesSHA256)
+	fmt.Printf("SDK build %s: package version %s, %s files, bundle %s\n", rec.Name, rec.Version, human.Count(int64(rec.Files)), rec.BundleSHA256)
+	fmt.Printf("what it downloaded is kept: %s, %.12s\n", human.Bytes(rec.PackagesBytes), rec.PackagesSHA256)
 	if before.BundleSHA256 == "" {
 		fmt.Printf("this was its first install: the hash is now in runner/sdk/%s/sdk.toml. Commit that file; no run uses the build before it is pinned there.\n", rec.Name)
 	} else {
