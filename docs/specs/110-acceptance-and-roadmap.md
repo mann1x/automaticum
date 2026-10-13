@@ -2,8 +2,8 @@
 
 **Status:** draft 0.7, 2026-10-13. The milestone order in §3 was approved by the owner
 on 2026-10-12. Milestone 1 has been carried out: the store, the importer and
-the spike's measurements exist (080 §7.4, 100 §7). Its open questions are with
-the owner (decisions.md, O8 and O14 to O18).
+the spike's measurements exist (080 §7.4, 100 §7), and the owner has decided
+the questions it raised (D46 to D51). Milestone 2 is the next to plan.
 
 ## 1. Acceptance: when it replaces the old harness
 

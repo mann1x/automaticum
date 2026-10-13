@@ -181,11 +181,16 @@ type State interface {
 
 // Chunk is a piece of text from a run, with the vector that embeds it.
 type Chunk struct {
-	ID       string // stable: derived from run, kind, turn and position
-	RunID    string
-	Turn     int
-	Kind     string // reasoning, text, tool_args, tool_result, server_log, ...
-	Text     string
+	ID    string // stable: derived from run, kind, turn and position
+	RunID string
+	Turn  int
+	Kind  string // reasoning, text, tool_args, tool_result, server_log, ...
+	Text  string
+	// Blob and Offset locate the chunk's source: the blob it was cut from and
+	// the byte offset, in the uncompressed blob, of the line that holds it.
+	// A hit opens its passage with a range read there.
+	Blob     blob.Hash
+	Offset   int64
 	Vector   []float32 // nil when not embedded yet
 	Embedder string    // identity and version of the embedder; empty when Vector is nil
 }
@@ -195,6 +200,11 @@ type Hit struct {
 	Chunk
 	Score float32 // higher is better, whatever the kind of search
 }
+
+// DefaultRefine is the refine factor of a vector search that does not set
+// one. The spike measured recall between 0.05 and 0.6 without the step and
+// above 0.9 with this factor (spec 080 section 7.4).
+const DefaultRefine = 30
 
 // IndexOptions tunes Search.BuildIndexes. Zero values choose defaults.
 type IndexOptions struct {
@@ -210,7 +220,9 @@ type SearchOptions struct {
 	Limit  int
 	RunIDs []string
 	Kinds  []string
-	// Probes and Refine trade recall for speed in vector search.
+	// Probes and Refine trade recall for speed in vector search. Refine
+	// re-ranks that many times Limit candidates by their full vectors; zero
+	// means DefaultRefine and a negative value switches the step off.
 	Probes int
 	Refine int
 	// Exact bypasses the vector index.

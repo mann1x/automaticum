@@ -1,6 +1,6 @@
 # 100 — Import of the old harness's corpus
 
-**Status:** draft 0.6, 2026-10-13. The importer exists
+**Status:** draft 0.7, 2026-10-13. The importer exists
 (`internal/legacyimport`) and has imported the run directories of the real
 corpus; §7 has the result. The figures in §1 are from a read-only survey on
 2026-10-12, corrected where the import showed otherwise. The old harness is
@@ -171,10 +171,10 @@ changed and the import re-run; it is idempotent per run):
 - the per-loop result files beside the verdict files;
 - the VS Code session archive from the Windows host.
 
-**Open** (for the owner): whether the earlier campaigns are imported at all.
-They have their own layouts and no verdict file of the same form.
-Recommendation: import them only when a question needs them; the importer's
-parsers cover the files they share with the loops.
+**Decided by the owner (2026-10-13):** the earlier campaigns are imported only
+when a question needs them. They have their own layouts and no verdict file
+of the same form; the importer's parsers cover the files they share with the
+loops.
 
 Build files and saved settings in the corpus hold endpoint addresses and
 absolute paths, and these are now in the imported arms. They stay in the store.

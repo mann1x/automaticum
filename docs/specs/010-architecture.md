@@ -14,8 +14,8 @@
   engine adapter installs the pinned runner into that container (064 §3).
 - Lanes run in **Docker**, from a slim base image with one layer per language.
 - **Gitea** provides git for tasks that need a remote.
-- The store is **DuckDB + Lance + blobs on disk** (080). The spike has run and
-  supports it (080 §7.4); the owner's confirmation is open.
+- The store is **DuckDB + Lance + blobs on disk** (080), confirmed after the
+  spike (2026-10-13), with the Lance binding reviewed again at milestone 6.
 - Remote hosts use **agent mode only**. There is no agentless path over SSH.
 - One operator plus assistants. No accounts, roles or per-user ownership.
 

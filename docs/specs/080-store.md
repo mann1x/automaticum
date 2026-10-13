@@ -1,9 +1,8 @@
 # 080 — The store
 
-**Status:** draft 1.0, 2026-10-13. The shape is the owner's preference. The
-spike has run (§7.4, and `spike/001-store/REPORT.md`): the hard gates pass and
-the evidence is for confirming the shape. The confirmation itself is the
-owner's and is still open.
+**Status:** draft 1.1, 2026-10-13. The spike has run (§7.4, and
+`spike/001-store/REPORT.md`) and the owner has confirmed the shape, with a
+review of the Lance binding at milestone 6.
 
 ## 1. What the store has to do
 
@@ -24,8 +23,9 @@ owner's and is still open.
 
 ## 2. Shape
 
-**Owner's preference (2026-10-12):** three parts, each doing what it is good
-at.
+**Decided by the owner (2026-10-13), after the spike:** three parts, each
+doing what it is good at. The Lance binding is reviewed again when search is
+built into the interfaces (110 §3, milestone 6).
 
 | part | holds | role |
 |---|---|---|
@@ -55,13 +55,13 @@ DuckDB. They are not database columns.
 
 - Content-addressed by sha256, compressed with zstd.
 - **Deduplicated:** system prompts and tool schemas repeat thousands of times.
-  Wire captures are stored so that repeated parts are shared. **Open:** the
-  chunking scheme (whole request bodies deduplicated by part, or content-defined
-  chunking). The spike could only simulate request bodies, because the old
-  corpus has no wire capture; on those, both schemes store 1 to 2 % of the raw
-  bytes, against 19 % for compressing each body whole. Recommendation: by
-  message part, with the per-request lists of part hashes compressed, to be
-  confirmed on the first real captures of milestone 2 (§7.4).
+  Wire captures are stored so that repeated parts are shared.
+  **Decided by the owner (2026-10-13):** by message part. Each part is stored
+  once and a request is a list of part hashes, kept compressed. The spike
+  could only simulate request bodies, because the old corpus has no wire
+  capture; on those this stores about 1.5 % of the raw bytes, against 19 % for
+  compressing each body whole. The sizes are confirmed on the first real
+  captures of milestone 2 before the format is frozen.
 - Size is handled here, never by dropping fields at source (020 §2).
 - A blob is written to a temporary name and renamed, so a kill during a write
   leaves no half file under a valid name.
@@ -270,22 +270,27 @@ its conditions and its limits are in `spike/001-store/REPORT.md`.
 | T14 | 39 MB at rest; 5.5 GB at peak | pass |
 | T15 | search unchanged; archived passage p95 4 ms | pass |
 
-What the spike changes or adds. Each is a proposal until the owner decides.
+What the spike changes or adds.
 
-- **Open:** confirmation of the shape (D6). The evidence is for confirming.
-- **Open:** regex search runs over the lines of a stream that are not
+**Decided by the owner (2026-10-13):**
+
+- The shape is confirmed (§2).
+- Regex search runs over the lines of a stream that are not
   streaming deltas, not over every byte. A delta carries nothing that the
   closing event of its block does not repeat, and the old corpus is 30 GB of
   stream for 0.45 GB of distinct text. A raw mode over every byte stays, and
   is slow.
-- **Open:** vector search uses a refine step by default, with a factor of at
+- Vector search uses a refine step by default, with a factor of at
   least 30. Without it recall is between 0.05 and 0.6 on every set tried, and
   more probes do not help. A deliberately hostile synthetic set (evenly spread
   tight clusters) still reaches only 0.63 at 5M; real embeddings are not like
   it, and recall should be checked on a sample whenever the embedder changes.
-- **Open:** every chunk carries a locator (blob hash and byte offset of its
-  source line), so a hit can open its passage. The spike packed this into the
-  chunk id.
+- Every chunk carries a locator (blob hash and byte offset of its source
+  line), so a hit can open its passage. The spike packed this into the chunk
+  id; the store interface gets the two fields.
+
+Findings that need no decision:
+
 - Embedding ran at 45 chunks per second with a 1024-dimension model on the
   GPU. Embedding, not search, limits how fresh semantic search can be; it needs
   its own plan before milestone 6.

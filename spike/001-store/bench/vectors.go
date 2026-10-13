@@ -206,7 +206,7 @@ func cmdVectors(args []string) error {
 		Latency        latency
 	}
 	var settings []setting
-	for _, p := range [][2]int{{10, 0}, {20, 0}, {20, 10}, {50, 10}, {20, 30}, {50, 30}, {50, 50}, {100, 100}} {
+	for _, p := range [][2]int{{10, -1}, {20, -1}, {20, 10}, {50, 10}, {20, 30}, {50, 30}, {50, 50}, {100, 100}} {
 		o := store.SearchOptions{Limit: *k, Probes: p[0], Refine: p[1]}
 		var ds []time.Duration
 		var found, total int

@@ -206,6 +206,12 @@ confirm the sizes before the format is frozen.
 
 ## 6. For the owner
 
+**Decided on 2026-10-13:** the shape is confirmed, with the Lance binding
+reviewed again at milestone 6 (D46); wire captures are deduplicated by message
+part (D47); regex skips deltas by default (D48); refine factor at least 30
+(D49); a locator in every chunk (D50). Item 6 below needs no decision yet. The
+list is kept as it was put.
+
 1. **Confirm the store shape (D6)** or fall back. The evidence is for
    confirming.
 2. **O8:** deduplicate wire captures by message part (§5)?

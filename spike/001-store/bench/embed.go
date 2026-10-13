@@ -258,7 +258,7 @@ func cmdEmbed(args []string) error {
 		so   store.SearchOptions
 	}{
 		{"exact scan", store.SearchOptions{Limit: *k, Exact: true}},
-		{"probes 10", store.SearchOptions{Limit: *k, Probes: 10}},
+		{"probes 10, no refine", store.SearchOptions{Limit: *k, Probes: 10, Refine: -1}},
 		{"probes 20, refine 10", store.SearchOptions{Limit: *k, Probes: 20, Refine: 10}},
 		{"probes 50, refine 10", store.SearchOptions{Limit: *k, Probes: 50, Refine: 10}},
 		{"probes 50, refine 30", store.SearchOptions{Limit: *k, Probes: 50, Refine: 30}},

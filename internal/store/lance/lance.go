@@ -42,6 +42,7 @@ import (
 	"github.com/apache/arrow-go/v18/arrow/memory"
 
 	"github.com/mann1x/automaticum/internal/store"
+	"github.com/mann1x/automaticum/internal/store/blob"
 )
 
 // rrfK is the constant of reciprocal rank fusion.
@@ -70,7 +71,7 @@ type Search struct {
 var _ store.Search = (*Search)(nil)
 
 // hitColumns are read back for every hit; the vector is not.
-var hitColumns = []string{"id", "run_id", "turn", "kind", "text", "embedder"}
+var hitColumns = []string{"id", "run_id", "turn", "kind", "text", "blob", "offset", "embedder"}
 
 // Open opens the dataset in o.Dir, or prepares to create it on first write.
 func Open(o Options) (*Search, error) {
@@ -94,6 +95,8 @@ func Open(o Options) (*Search, error) {
 		{Name: "turn", Type: arrow.PrimitiveTypes.Int32},
 		{Name: "kind", Type: arrow.BinaryTypes.String},
 		{Name: "text", Type: arrow.BinaryTypes.LargeString},
+		{Name: "blob", Type: arrow.BinaryTypes.String},
+		{Name: "offset", Type: arrow.PrimitiveTypes.Int64},
 		{Name: "embedder", Type: arrow.BinaryTypes.String},
 		{Name: "vector", Type: arrow.FixedSizeListOf(int32(o.Dim), arrow.PrimitiveTypes.Float32), Nullable: true},
 	}, nil)
@@ -153,10 +156,12 @@ func (s *Search) record(chunks []store.Chunk) (arrow.RecordBatch, error) {
 	kind := array.NewStringBuilder(pool)
 	text := array.NewLargeStringBuilder(pool)
 	emb := array.NewStringBuilder(pool)
+	src := array.NewStringBuilder(pool)
+	off := array.NewInt64Builder(pool)
 	vec := array.NewFixedSizeListBuilder(pool, int32(s.dim), arrow.PrimitiveTypes.Float32)
 	val := vec.ValueBuilder().(*array.Float32Builder)
 	defer func() {
-		for _, b := range []array.Builder{id, run, turn, kind, text, emb, vec} {
+		for _, b := range []array.Builder{id, run, turn, kind, text, src, off, emb, vec} {
 			b.Release()
 		}
 	}()
@@ -170,6 +175,8 @@ func (s *Search) record(chunks []store.Chunk) (arrow.RecordBatch, error) {
 		turn.Append(int32(c.Turn))
 		kind.Append(c.Kind)
 		text.Append(c.Text)
+		src.Append(string(c.Blob))
+		off.Append(c.Offset)
 		emb.Append(c.Embedder)
 		switch len(c.Vector) {
 		case 0:
@@ -181,7 +188,7 @@ func (s *Search) record(chunks []store.Chunk) (arrow.RecordBatch, error) {
 			return nil, fmt.Errorf("lance: chunk %s has a vector of %d dimensions, dataset has %d", c.ID, len(c.Vector), s.dim)
 		}
 	}
-	cols := []arrow.Array{id.NewArray(), run.NewArray(), turn.NewArray(), kind.NewArray(), text.NewArray(), emb.NewArray(), vec.NewArray()}
+	cols := []arrow.Array{id.NewArray(), run.NewArray(), turn.NewArray(), kind.NewArray(), text.NewArray(), src.NewArray(), off.NewArray(), emb.NewArray(), vec.NewArray()}
 	defer func() {
 		for _, c := range cols {
 			c.Release()
@@ -507,6 +514,12 @@ func appendHits(hits []store.Hit, rec arrow.RecordBatch, scoreCol string, negate
 		if t, ok := turn.(*array.Int32); ok {
 			h.Turn = int(t.Value(i))
 		}
+		if b := col("blob"); b != nil {
+			h.Blob = blob.Hash(str(b, i))
+		}
+		if o, ok := col("offset").(*array.Int64); ok {
+			h.Offset = o.Value(i)
+		}
 		switch v := score.(type) {
 		case *array.Float32:
 			h.Score = v.Value(i)
@@ -564,7 +577,11 @@ func (s *Search) Nearest(ctx context.Context, vector []float32, o store.SearchOp
 		if o.Probes > 0 && !ok(C.lance_scanner_set_nprobes(sc, C.uint32_t(o.Probes))) {
 			return false
 		}
-		if o.Refine > 0 && !ok(C.lance_scanner_set_refine_factor(sc, C.uint32_t(o.Refine))) {
+		refine := o.Refine
+		if refine == 0 {
+			refine = store.DefaultRefine
+		}
+		if refine > 0 && !o.Exact && !ok(C.lance_scanner_set_refine_factor(sc, C.uint32_t(refine))) {
 			return false
 		}
 		return true

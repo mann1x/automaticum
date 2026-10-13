@@ -212,19 +212,10 @@ func perturb(rng *rand.Rand, text string) string {
 	return b.String()
 }
 
-// chunkID locates a chunk in its blob: hash, offset of the stream line, piece.
+// chunkID names a chunk by its blob, the offset of its stream line and the
+// piece of that line.
 func chunkID(h blob.Hash, off int64, piece int) string {
 	return fmt.Sprintf("%s@%d#%d", h, off, piece)
-}
-
-func parseChunkID(id string) (blob.Hash, int64, bool) {
-	h, rest, ok := strings.Cut(id, "@")
-	if !ok {
-		return "", 0, false
-	}
-	o, _, _ := strings.Cut(rest, "#")
-	off, err := strconv.ParseInt(o, 10, 64)
-	return blob.Hash(h), off, err == nil
 }
 
 // cmdChunks is the ingest half of T4 and T8: every stream is read back from
@@ -287,7 +278,7 @@ func cmdChunks(args []string) error {
 				return nil
 			}
 			for i, piece := range split(p.Text, *max) {
-				ch := store.Chunk{ID: chunkID(ref.Hash, p.Offset, i), RunID: ref.RunID, Turn: p.Turn, Kind: p.Kind, Text: piece}
+				ch := store.Chunk{ID: chunkID(ref.Hash, p.Offset, i), RunID: ref.RunID, Turn: p.Turn, Kind: p.Kind, Text: piece, Blob: ref.Hash, Offset: p.Offset}
 				kinds[p.Kind]++
 				total++
 				textBytes += int64(len(piece))
@@ -439,8 +430,9 @@ func cmdText(args []string) error {
 		byTier := map[string][]time.Duration{}
 		rng := rand.New(rand.NewSource(1))
 		for i := 0; i < 300; i++ {
-			h, off, ok := parseChunkID(hits[rng.Intn(len(hits))].ID)
-			if !ok {
+			hit := hits[rng.Intn(len(hits))]
+			h, off := hit.Blob, hit.Offset
+			if h == "" {
 				continue
 			}
 			t := time.Now()

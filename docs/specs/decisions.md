@@ -55,6 +55,12 @@ All dated 2026-10-12.
 | D43 | Spike data: live tier and indexes on a dedicated NVMe that is neither the development disk nor the old harness's disk; archive tier on the large array. Real embeddings for about 100k chunks, synthetic vectors for scale. The store interface, blob store and importer are kept; the benchmark harness is throwaway. | 080 §7 |
 | D44 | Lance binding: `lance-c` behind our own cgo wrapper, with our own rank fusion. `lancedb-go` main is the fallback. | 080 §7.1.1 |
 | D45 | Build base for the native parts: `manylinux_2_28`. Revises the "built on Debian 11" part of D39. | 080 §7.1 |
+| D46 | Store shape confirmed after the spike: DuckDB, Lance through `lance-c`, blobs on disk. The Lance binding is reviewed again when search is built into the interfaces (milestone 6). Confirms D6. | 080 §2, §7.4 |
+| D47 | Wire captures are deduplicated by message part: each part stored once, a request is a list of part hashes. Sizes are confirmed on real captures in milestone 2 before the format is frozen. | 080 §4 |
+| D48 | Regex search runs over the non-delta lines of a stream by default; a slow raw mode over every byte stays available. | 080 §7.4 |
+| D49 | Vector search uses a refine step by default, with a factor of at least 30. | 080 §7.4 |
+| D50 | Every chunk carries a locator: the blob hash and byte offset of its source line. | 080 §7.4 |
+| D51 | The 30 earlier campaigns in the old harness's archive are imported only when a question needs them. | 100 §7 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked
@@ -84,15 +90,10 @@ Each of these waits for a measurement or for the planning of its milestone.
 | O3 | Configuration directory layout and file names. | 030 §1 | milestone 2; as proposed there unless the owner objects |
 | O5 | Which published C/C++ SWE-bench-style set, at which version; the order of languages after it. | 062 §6 | milestone 5 |
 | O6 | Which external harnesses need the offline event path. | 064 §3.2 | milestone 5, per harness |
-| O8 | Deduplication scheme for wire captures. The spike could only simulate request bodies (the old corpus has none). Recommendation: by message part, confirmed on the first real captures. | 080 §4, §7.4 | the owner; milestone 2 for real data |
-| O14 | Confirm the store shape (D6) after the spike, or fall back. The hard gates pass and the evidence is for confirming. | 080 §7.4 | the owner |
-| O15 | Regex search over the non-delta lines of a stream instead of every raw byte, with a slow raw mode kept. | 080 §7.4 | the owner |
-| O16 | Vector search with a refine step by default, factor at least 30. | 080 §7.4 | the owner |
-| O17 | Every chunk carries a locator (blob hash and byte offset). | 080 §7.4 | the owner |
-| O18 | Whether the 30 earlier campaigns in the old harness's archive are imported. Recommendation: only when a question needs them. | 100 §7 | the owner |
 
 Closed since the first revision: O2 (D32), O4 (D30), O7 (S4, then D34), O9
-(D31), O10 (D42), O11 (D33), O12 (D28), O13 (D29).
+(D31), O10 (D42), O11 (D33), O12 (D28), O13 (D29), O14 (D46), O8 (D47), O15
+(D48), O16 (D49), O17 (D50), O18 (D51).
 
 ## 4. External dependencies
 

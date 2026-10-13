@@ -279,3 +279,15 @@
 |------|--------|---------|---------|--------|
 - 5M vectors: real-derived set passes T11 (recall 0.906 at refine 30, p95 43 ms, build 9 min on 4 cores, peak 5.3 GB); worst-case synthetic set reaches only 0.63. Docker's memory figure for a container includes file cache: read VmHWM, not `docker stats`.
 - `spike/001-store/REPORT.md` written; raw results copied to `spike/001-store/results/`. Specs 080 (1.0), 100 (0.6), 110 (0.7), 010 (0.8) and decisions (O14 to O18 added) updated. Throwaway benchmark data removed from the spike root (48 GB); imported corpus, chunk index and real embeddings kept.
+
+## Session: 2026-10-13 07:59
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 07:59
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+- Owner decided D46 to D51 (shape confirmed with a review at milestone 6; dedup by message part; regex skips deltas; refine 30; chunk locator; earlier campaigns on demand). Specs, report and cerebrum updated.
+- Code follows D49 and D50: `store.Chunk` has `Blob` and `Offset`, the Lance schema has `blob` and `offset` columns, `store.DefaultRefine = 30` (zero means default, negative means none). All store tests pass. The chunk dataset left in the spike root predates the two columns and must be rebuilt with `bench chunks` before reuse.

@@ -5,9 +5,11 @@ package lance
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/mann1x/automaticum/internal/store"
+	"github.com/mann1x/automaticum/internal/store/blob"
 )
 
 const testDim = 16
@@ -164,5 +166,38 @@ func TestFuse(t *testing.T) {
 func TestQuote(t *testing.T) {
 	if got := quote("o'brien"); got != "'o''brien'" {
 		t.Fatalf("quote = %s", got)
+	}
+}
+
+// A chunk's locator comes back with every hit, and a vector search that sets
+// no refine factor uses the default.
+func TestLocatorRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	s, err := Open(Options{Dir: t.TempDir(), Dim: 4})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	hash := blob.Hash(strings.Repeat("ab", 32))
+	in := []store.Chunk{
+		{ID: "a", RunID: "r1", Kind: "reasoning", Text: "the oracle is wrong", Blob: hash, Offset: 123456789012, Vector: []float32{1, 0, 0, 0}, Embedder: "e/1"},
+		{ID: "b", RunID: "r1", Kind: "text", Text: "nothing to see", Vector: []float32{0, 1, 0, 0}, Embedder: "e/1"},
+	}
+	if err := s.Append(ctx, in); err != nil {
+		t.Fatal(err)
+	}
+	hits, err := s.Nearest(ctx, []float32{1, 0, 0, 0}, store.SearchOptions{Limit: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) != 1 || hits[0].ID != "a" || hits[0].Blob != hash || hits[0].Offset != 123456789012 {
+		t.Fatalf("hits = %+v", hits)
+	}
+	hits, err = s.Nearest(ctx, []float32{0, 1, 0, 0}, store.SearchOptions{Limit: 1, Refine: -1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) != 1 || hits[0].ID != "b" || hits[0].Blob != "" || hits[0].Offset != 0 {
+		t.Fatalf("hits = %+v", hits)
 	}
 }
