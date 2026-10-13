@@ -390,3 +390,14 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 09:40 | config: local.go, dropInherited, arms/, examples/config; stub model server | internal/config, internal/stubmodel, arms, examples | tests pass | ~9000 |
+
+## Session: 2026-10-13 09:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 09:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:05 | step 1 CLI: arm validate/show/diff, task ls/show/build, oracle verify, lane ls, endpoint ls; template arms; cgo split of cmd | cmd/automaticum, internal/config/arm.go, arms/base.toml, Makefile | make test passes; oracle verify proven via CLI | ~7000 |

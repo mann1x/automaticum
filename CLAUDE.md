@@ -49,7 +49,7 @@ caliber skills --query "go docker"
 bash .claude/hooks/caliber-check-sync.sh
 ```
 
-Native (cgo) builds run only in the build containers (`Makefile`; `SPIKE_ROOT` is a local directory for caches and sources, never stored in a tracked file). `make build` builds `cmd/automaticum` into `bin/automaticum` and `make bench` builds `spike/001-store/bench` into `bin/bench`, both in the link image. `make test` runs the pure-Go packages (`internal/store/blob`, `internal/legacyimport`) on the host; `make test-store` runs `internal/store/...` in the link image and needs the archive from `make lance-c` first, as does `make bench`:
+Native (cgo) builds run only in the build containers (`Makefile`; `SPIKE_ROOT` is a local directory for caches and sources, never stored in a tracked file). `make build` builds `cmd/automaticum` into `bin/automaticum` and `make bench` builds `spike/001-store/bench` into `bin/bench`, both in the link image. `make test` runs the pure-Go packages on the host (`internal/store/blob`, `internal/legacyimport`, `internal/config` and `internal/stubmodel` with `-race`; `internal/task` and `internal/docker` with `-short`; `cmd/automaticum` with `CGO_ENABLED=0`); `make test-store` runs `internal/store/...` in the link image and needs the archive from `make lance-c` first, as does `make bench`:
 
 ```bash
 make images
@@ -76,7 +76,7 @@ make shell SPIKE_ROOT=<dir>
 - **Tasks** (`tasks/`): `custom/manic_miner/` (`task.toml` · `README.md`) · `demo/answer/` (`task.toml`)
 - **Arms** (`arms/`): `base.toml` · `stub.toml`
 - **Example configuration** (`examples/config/`): `automaticum.toml` · `endpoints/local-ollama.toml` · `endpoints/stub.toml` · `lanes/lane-1.toml`
-- **Command line** (`cmd/automaticum/`): `main.go` (`automaticum version` · `automaticum legacy import` · `automaticum store check`)
+- **Command line** (`cmd/automaticum/`): `main.go` (`automaticum version` and the `<noun> <verb>` dispatch) · `config_cmds.go` (`automaticum arm validate` · `automaticum arm show` · `automaticum arm diff` · `automaticum task ls` · `automaticum task show` · `automaticum task build` · `automaticum oracle verify` · `automaticum lane ls` · `automaticum endpoint ls`) · `store_cgo.go` (`automaticum legacy import` · `automaticum store check`; cgo builds only) · `store_nocgo.go` · `config_cmds_test.go`
 - **Local, untracked** (`docs/local/`): host mapping and private paths
 - **OpenWolf state** (`.wolf/`): `OPENWOLF.md` · `anatomy.md` · `cerebrum.md` · `memory.md` · `buglog.json` · `identity.md` · `config.json` · `token-ledger.json` · `cron-manifest.json` · `cron-state.json` · `suggestions.json` · `designqc-report.json` · `reframe-frameworks.md` · `daemon.log`
 - **OpenWolf hooks** (`.wolf/hooks/`): `session-start.js` · `pre-read.js` · `post-read.js` · `pre-write.js` · `post-write.js` · `stop.js` · `shared.js` · `package.json`

@@ -120,6 +120,14 @@
 - `automaticum-draft-spec-0.4.md` — automaticum — draft specification (~10389 tok)
 - `omnimergekit-evaluation-requirements-0.1.md` — automaticum — requirements from the omnimergekit evaluation protocol (~8226 tok)
 
+## cmd/automaticum/
+
+- `main.go` — command table and usage (~600 tok)
+- `config_cmds.go` — `arm validate|show|diff`, `task ls|show|build`, `oracle verify`, `lane ls`, `endpoint ls`; pure Go (~3300 tok)
+- `config_cmds_test.go` — flags among arguments (~150 tok)
+- `store_cgo.go` — `legacy import`, `store check`; needs cgo, built in the link image (~2700 tok)
+- `store_nocgo.go` — the same two commands in a build without cgo: an error (~120 tok)
+
 ## internal/config/
 
 - `arm.go` — the arm format: every setting stated, `extends` with origins, `Validate`, identity hash, `Diff` (~5000 tok)

@@ -11,12 +11,13 @@ import (
 const armsDir = "../../arms"
 
 func TestRepositoryArms(t *testing.T) {
-	// base is a parent only: it must fail, and say exactly what is missing.
-	_, err := LoadArm(armsDir, "base")
-	var ae *ArmError
-	if !errors.As(err, &ae) {
-		t.Fatalf("base: %v", err)
+	// base is a template: it loads, and as an arm it would miss exactly
+	// what each real arm must state for itself.
+	base, err := LoadArm(armsDir, "base")
+	if err != nil || !base.Template {
+		t.Fatalf("base: %+v, %v", base, err)
 	}
+	ae := &ArmError{Arm: "base", Problems: base.Validate()}
 	want := []string{"endpoint", "model.provider", "model.model", "model.context_window", "model.output_tokens", "thinking.owner", "sampler.owner"}
 	for _, w := range want {
 		found := false
@@ -272,5 +273,35 @@ func TestLocal(t *testing.T) {
 	l, _ = LoadLocal(dir)
 	if _, err := l.Token(); err == nil {
 		t.Error("a short token was accepted")
+	}
+}
+
+func TestTemplate(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, body string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, name+".toml"), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("parent", "template = true\n[agent]\nmode = \"act\"\n")
+	write("child", "extends = \"parent\"\n")
+	p, err := LoadArm(dir, "parent")
+	if err != nil || !p.Template || p.ID != "" {
+		t.Fatalf("template: %+v, %v", p, err)
+	}
+	// The mark is not inherited: the child is a real arm and must be whole.
+	c, err := LoadArm(dir, "child")
+	var ae *ArmError
+	if !errors.As(err, &ae) {
+		t.Fatalf("child of a template loaded without its own values: %+v, %v", c, err)
+	}
+	if _, err := LoadArms(dir); err == nil {
+		t.Fatal("LoadArms accepted an incomplete arm")
+	}
+	os.Remove(filepath.Join(dir, "child.toml"))
+	all, err := LoadArms(dir)
+	if err != nil || len(all) != 0 {
+		t.Fatalf("LoadArms returned a template: %v, %v", all, err)
 	}
 }

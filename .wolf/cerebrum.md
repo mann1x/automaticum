@@ -26,6 +26,9 @@
 - [2026-10-13] Synthetic vectors as evenly spread isotropic clusters are a worst case for PQ and unlike real embeddings. Draw scale sets as real vectors plus noise (`bench vectors -base`).
 - [2026-10-13] The host compiler (GCC 10) cannot link DuckDB, so anything importing `internal/store/duck`, including `cmd/automaticum`, is built in the link image (`make build`). Pure-Go packages (`blob`, `legacyimport`) build and test on the host.
 - [2026-10-13] The imported store holds private strings from the old corpus (endpoint addresses, absolute paths, host nicknames in invalid-run notes). Never quote imported records in a tracked file.
+- The command line builds two ways: with cgo (link image) it has the store commands; with `CGO_ENABLED=0` (host) it has everything that reads configuration and tasks. New store-touching commands go in `cmd/automaticum/store_cgo.go` with a stub in `store_nocgo.go`.
+- An arm that exists only to be extended carries `template = true` (not inherited). `LoadArm` returns it unvalidated with no ID; `LoadArms` leaves it out. `arms/base.toml` is one.
+- Go's `flag` stops at the first positional argument; commands use `parse()` in `config_cmds.go` so `automaticum oracle verify <task> -repeats 2` works.
 
 ## Do-Not-Repeat
 

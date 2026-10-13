@@ -1,271 +1,73 @@
-// Command automaticum is the command line of automaticum. At this stage it
-// has only what milestone 1 needs: the import of the old harness's corpus and
-// a consistency check of the store.
+// Command automaticum is the command line of automaticum.
 package main
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"flag"
 	"fmt"
-	"io"
 	"os"
 	"os/signal"
-	"path/filepath"
-	"strings"
 	"syscall"
-
-	"github.com/mann1x/automaticum/internal/legacyimport"
-	"github.com/mann1x/automaticum/internal/store"
-	"github.com/mann1x/automaticum/internal/store/blob"
-	"github.com/mann1x/automaticum/internal/store/duck"
 )
 
 // version is set at build time with -ldflags "-X main.version=...".
 var version = "dev"
 
-const usage = `usage: automaticum <command> [flags]
+const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
 
-  version                 print the version
-  legacy import           import the old harness's corpus (spec 100)
-  store check             verify every blob and every blob reference
+  version                       print the version
+  arm validate [<arm>...]       check arms; all of them when none is named
+  arm show <arm>                the resolved arm, with the origin of every value
+  arm diff <arm> <arm>          the fields in which two arms differ
+  task ls                       the tasks
+  task show <task>              one task and the hash of its files
+  task build <task>             build the task's artefacts and check their hashes
+  oracle verify <task>          prove the primary oracle against the fixtures
+  lane ls                       the lanes of this installation
+  endpoint ls                   the endpoints of this installation
+  legacy import                 import the old harness's corpus (spec 100)
+  store check                   verify every blob and every blob reference
 
-Paths come from flags or from the environment: AUTOMATICUM_DATA,
-AUTOMATICUM_ARCHIVE, AUTOMATICUM_LEGACY_ROOT, AUTOMATICUM_LEGACY_STATE_ARCHIVE.
+The checkout with arms/ and tasks/ is --repo, AUTOMATICUM_REPO, the "repo" of
+the configuration, or the current directory. The configuration directory is
+--config or AUTOMATICUM_CONFIG. Store paths come from flags or from
+AUTOMATICUM_DATA, AUTOMATICUM_ARCHIVE, AUTOMATICUM_LEGACY_ROOT and
+AUTOMATICUM_LEGACY_STATE_ARCHIVE.
 `
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	args := os.Args[1:]
-	var err error
-	switch {
-	case len(args) >= 1 && args[0] == "version":
+	if len(args) == 1 && args[0] == "version" {
 		fmt.Println(version)
-	case len(args) >= 2 && args[0] == "legacy" && args[1] == "import":
-		err = legacyImport(ctx, args[2:])
-	case len(args) >= 2 && args[0] == "store" && args[1] == "check":
-		err = storeCheck(ctx, args[2:])
-	default:
+		return
+	}
+	if len(args) < 2 {
 		fmt.Fprint(os.Stderr, usage)
 		os.Exit(2)
 	}
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "automaticum:", err)
+	cmds := map[string]func(context.Context, []string) error{
+		"legacy import": legacyImport,
+		"store check":   storeCheck,
+		"arm validate":  armValidate,
+		"arm show":      armShow,
+		"arm diff":      armDiff,
+		"task ls":       taskLs,
+		"task show":     taskShow,
+		"task build":    taskBuild,
+		"oracle verify": oracleVerify,
+		"lane ls":       laneLs,
+		"endpoint ls":   endpointLs,
+	}
+	cmd, ok := cmds[args[0]+" "+args[1]]
+	if !ok {
+		fmt.Fprint(os.Stderr, usage)
+		os.Exit(2)
+	}
+	if err := cmd(ctx, args[2:]); err != nil {
+		if err != errFailed {
+			fmt.Fprintln(os.Stderr, "automaticum:", err)
+		}
 		os.Exit(1)
 	}
-}
-
-// storeFlags are the flags every command that opens the store shares.
-type storeFlags struct{ data, archive *string }
-
-func addStoreFlags(fs *flag.FlagSet) storeFlags {
-	return storeFlags{
-		data:    fs.String("data", os.Getenv("AUTOMATICUM_DATA"), "data root (blobs and state)"),
-		archive: fs.String("archive", os.Getenv("AUTOMATICUM_ARCHIVE"), "archive root for old blobs (optional; must exist)"),
-	}
-}
-
-func (f storeFlags) open(ctx context.Context) (*blob.Store, *duck.State, error) {
-	if *f.data == "" {
-		return nil, nil, errors.New("no data root: pass -data or set AUTOMATICUM_DATA")
-	}
-	if err := os.MkdirAll(*f.data, 0o755); err != nil {
-		return nil, nil, err
-	}
-	blobs, err := blob.Open(blob.Options{Root: *f.data, ArchiveRoot: *f.archive})
-	if err != nil {
-		return nil, nil, err
-	}
-	st, err := duck.Open(ctx, filepath.Join(*f.data, "state.duckdb"))
-	if err != nil {
-		blobs.Close()
-		return nil, nil, err
-	}
-	return blobs, st, nil
-}
-
-// sink writes an import through the store.
-type sink struct {
-	blobs *blob.Store
-	store.State
-}
-
-func (s sink) PutBlob(ctx context.Context, r io.Reader) (string, int64, error) {
-	h, n, err := s.blobs.Put(ctx, r)
-	return string(h), n, err
-}
-
-func (s sink) ImportedFingerprint(ctx context.Context, runID string) (string, bool, error) {
-	r, err := s.GetRun(ctx, runID)
-	if errors.Is(err, store.ErrNotFound) {
-		return "", false, nil
-	}
-	if err != nil {
-		return "", false, err
-	}
-	fp := legacyimport.Fingerprint(r)
-	return fp, fp != "", nil
-}
-
-// laneFlags collects the repeatable -lane name=path flag.
-type laneFlags []legacyimport.Lane
-
-func (l *laneFlags) String() string { return fmt.Sprint(len(*l), " lanes") }
-
-func (l *laneFlags) Set(v string) error {
-	name, path, ok := strings.Cut(v, "=")
-	if !ok || name == "" || path == "" {
-		return errors.New("want name=path")
-	}
-	*l = append(*l, legacyimport.Lane{Name: name, Root: path})
-	return nil
-}
-
-func legacyImport(ctx context.Context, args []string) error {
-	fs := flag.NewFlagSet("legacy import", flag.ExitOnError)
-	sf := addStoreFlags(fs)
-	root := fs.String("legacy-root", os.Getenv("AUTOMATICUM_LEGACY_ROOT"), "the old harness's directory (read only)")
-	state := fs.String("state-archive", os.Getenv("AUTOMATICUM_LEGACY_STATE_ARCHIVE"), "directory of archived session state (optional)")
-	var lanes laneFlags
-	fs.Var(&lanes, "lane", "a sibling lane of the old harness as name=path (read only; repeatable)")
-	dry := fs.Bool("dry-run", false, "read and map everything, write nothing")
-	meta := fs.Bool("metadata-only", false, "with -dry-run: skip event streams and state archives")
-	workers := fs.Int("workers", 1, "runs processed at once")
-	report := fs.String("report", "", "write the full report as JSON to this file")
-	quiet := fs.Bool("quiet", false, "no line per run")
-	fs.Parse(args)
-	if *root == "" {
-		return errors.New("no legacy root: pass -legacy-root or set AUTOMATICUM_LEGACY_ROOT")
-	}
-	opts := legacyimport.Options{LegacyRoot: *root, StateArchive: *state, Lanes: lanes, DryRun: *dry, MetadataOnly: *meta, Workers: *workers}
-	if !*quiet {
-		opts.Progress = func(r legacyimport.RunSummary) {
-			fmt.Fprintf(os.Stderr, "%-9s %-8s %s\n", r.Status, r.Verdict, r.ID)
-		}
-	}
-	var st *duck.State
-	if !*dry {
-		blobs, s, err := sf.open(ctx)
-		if err != nil {
-			return err
-		}
-		defer blobs.Close()
-		defer s.Close()
-		st = s
-		opts.Sink = sink{blobs: blobs, State: s}
-	}
-	rep, err := legacyimport.Import(ctx, opts)
-	if rep != nil {
-		fmt.Print(rep)
-		if *report != "" {
-			if b, jerr := json.MarshalIndent(rep, "", "  "); jerr == nil {
-				if werr := os.WriteFile(*report, b, 0o644); werr != nil {
-					fmt.Fprintln(os.Stderr, "automaticum: report:", werr)
-				}
-			}
-		}
-	}
-	if err != nil {
-		return err
-	}
-	if st != nil {
-		if err := st.Checkpoint(ctx); err != nil {
-			return err
-		}
-	}
-	ver, err := legacyimport.VerifyAgainstLegacy(rep, *root, lanes...)
-	if err != nil {
-		return err
-	}
-	fmt.Print(ver)
-	if !ver.OK() {
-		return errors.New("the old verdict counts were not reproduced")
-	}
-	if len(rep.Failed) > 0 {
-		return fmt.Errorf("%d runs failed to import", len(rep.Failed))
-	}
-	return nil
-}
-
-func storeCheck(ctx context.Context, args []string) error {
-	fs := flag.NewFlagSet("store check", flag.ExitOnError)
-	sf := addStoreFlags(fs)
-	fs.Parse(args)
-	blobs, st, err := sf.open(ctx)
-	if err != nil {
-		return err
-	}
-	defer blobs.Close()
-	defer st.Close()
-
-	runs, err := st.CountRuns(ctx, store.RunFilter{})
-	if err != nil {
-		return err
-	}
-	rep, err := blobs.Check(ctx)
-	if err != nil {
-		return err
-	}
-	for _, table := range []string{"tool_calls", "findings"} {
-		var n int64
-		rows, err := st.Query(ctx, "SELECT count(*) FROM "+table)
-		if err != nil {
-			return err
-		}
-		if rows.Next() {
-			err = rows.Scan(&n)
-		}
-		rows.Close()
-		if err != nil {
-			return err
-		}
-		fmt.Printf("%s: %d\n", table, n)
-	}
-	fmt.Printf("runs: %d\nblobs verified: %d live, %d archived, %d bytes uncompressed\n", runs, rep.Live, rep.Archived, rep.Bytes)
-	for _, f := range rep.Corrupt {
-		fmt.Printf("corrupt: %s (%s) %s: %v\n", f.Hash, f.Tier, f.Path, f.Err)
-	}
-	for _, p := range rep.StrayTemps {
-		fmt.Println("stray temporary file:", p)
-	}
-	for _, p := range rep.StrayFiles {
-		fmt.Println("stray file:", p)
-	}
-	if rep.ArchiveErr != nil {
-		fmt.Println("archive not checked:", rep.ArchiveErr)
-	}
-
-	// Every reference must point at a blob one of the tiers holds.
-	rows, err := st.Query(ctx, `SELECT DISTINCT hash FROM blob_refs`)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	var refs, missing int
-	for rows.Next() {
-		var h string
-		if err := rows.Scan(&h); err != nil {
-			return err
-		}
-		refs++
-		ok, err := blobs.Has(blob.Hash(h))
-		if err != nil {
-			return err
-		}
-		if !ok {
-			missing++
-			fmt.Println("missing blob:", h)
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	fmt.Printf("distinct blobs referenced: %d, missing: %d\n", refs, missing)
-	if !rep.OK() || missing > 0 {
-		return errors.New("the store is not consistent")
-	}
-	fmt.Println("store check: OK")
-	return nil
 }

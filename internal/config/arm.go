@@ -28,6 +28,9 @@ type Arm struct {
 	Name string `toml:"-" json:"name"`
 	// Extends names a parent arm whose values this one overrides.
 	Extends string `toml:"extends" json:"-"`
+	// Template marks an arm that only exists to be extended. It may leave
+	// values unstated, is never run, and the mark is not inherited.
+	Template bool `toml:"template" json:"-"`
 	// Endpoint names an endpoint file. An arm never holds an address.
 	Endpoint string `toml:"endpoint" json:"endpoint"`
 
@@ -219,6 +222,11 @@ func LoadArm(dir, name string) (*Arm, error) {
 	}
 	a.Name, a.Origins = name, origins
 	a.dropInherited(armChain(dir, name))
+	delete(a.Origins, "template")
+	if a.Template {
+		// A template is checked when something extends it.
+		return &a, nil
+	}
 	if problems := a.Validate(); len(problems) > 0 {
 		return nil, &ArmError{Arm: name, Problems: problems}
 	}
@@ -226,7 +234,7 @@ func LoadArm(dir, name string) (*Arm, error) {
 	return &a, nil
 }
 
-// LoadArms loads every arm in dir, by name.
+// LoadArms loads every arm in dir, by name, templates left out.
 func LoadArms(dir string) (map[string]*Arm, error) {
 	paths, err := filepath.Glob(filepath.Join(dir, "*.toml"))
 	if err != nil {
@@ -238,6 +246,9 @@ func LoadArms(dir string) (map[string]*Arm, error) {
 		a, err := LoadArm(dir, name)
 		if err != nil {
 			return nil, err
+		}
+		if a.Template {
+			continue
 		}
 		out[name] = a
 	}
@@ -375,6 +386,8 @@ func loadArmTree(dir, name string, seen []string) (map[string]any, map[string]st
 	if err != nil {
 		return nil, nil, err
 	}
+	delete(pm, "template")
+	delete(po, "template")
 	mergeMaps(pm, m)
 	for k, v := range origins {
 		// A child that restates an array or scalar replaces the parent's;
@@ -653,4 +666,15 @@ func flatten(m map[string]any, prefix string, out map[string]string) {
 		b, _ := json.Marshal(v)
 		out[key] = string(b)
 	}
+}
+
+// Values returns every stated value of a resolved arm by its dotted field
+// name, as text. The keys are those of Origins.
+func Values(a *Arm) map[string]string {
+	var v map[string]any
+	json.Unmarshal(a.Resolved(), &v)
+	delete(v, "name")
+	out := map[string]string{}
+	flatten(v, "", out)
+	return out
 }

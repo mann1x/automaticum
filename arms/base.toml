@@ -5,6 +5,8 @@
 # most of them on when a field is left out (docs/specs/030 section 5.1). The
 # values marked "extension" are what the VS Code extension sets.
 
+template = true
+
 [agent]
 mode = "act"
 host_ide = "VS Code"        # extension
