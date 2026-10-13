@@ -14,7 +14,7 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeSync 
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { BUNDLED_SKILLS_ON_BY_DEFAULT, buildConfig, compareResolved, unsupported } from "./session.mjs";
+import { BUNDLED_SKILLS_ON_BY_DEFAULT, buildConfig, compareResolved, derivedFromArm, unsupported } from "./session.mjs";
 import { createWire, describe } from "./wire.mjs";
 
 const PROTOCOL = 1;
@@ -164,7 +164,7 @@ async function main() {
 		systemPrompt,
 		fetch: wire.fetch,
 		onConfigResolved: (resolved) => {
-			note("config_resolved", { resolved });
+			note("config_resolved", { resolved, derived: derivedFromArm(job, resolved) });
 			problems = compareResolved(job, built.config, resolved, { wroteGlobalSettings: switchedOff.length > 0 });
 			if (problems.length > 0) throw new Error("the session is not the arm: " + problems.join("; "));
 		},

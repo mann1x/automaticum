@@ -178,7 +178,7 @@
 
 - `base.toml` — every guard, compaction and limit stated; other arms extend it (~600 tok)
 - `stub.toml` — arm for the stub model server; measures nothing (~150 tok)
-- `qwen36-mtp-27b-xhigh.toml` — draft of the first real arm (D55): the old harness's last manual arm on the shared base; not yet run (~300 tok)
+- `qwen36-mtp-27b-high.toml` — the first real arm (D55, D59): the owner's tag, 128k window, effort high and sampler, on the shared base (~300 tok)
 
 ## examples/config/
 

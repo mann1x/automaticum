@@ -7,7 +7,7 @@ its job and reads what it prints. Spec: `docs/specs/040-runner.md`.
 **State on 2026-10-13:** run against SDK release 4.100.250 and the stub model
 server: a scripted session that reads, edits and checks a file ends
 `completed` and the harness's oracle passes. `wire.mjs` and `session.mjs`
-also have tests that need no SDK (`node --test test/`). zod is pinned in
+also have tests that need no SDK (`node --test`). zod is pinned in
 `package.json` to the version the SDK was built with; see the note there.
 
 ## In

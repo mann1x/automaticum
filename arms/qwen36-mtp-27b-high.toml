@@ -1,7 +1,6 @@
-# First real arm of milestone 2 (decisions D55 and D59). The context window
-# and the sampler are the owner's values of 2026-10-13; they are also what
-# the model tag declares. Thinking effort is the one value still taken from
-# the old harness's last manual arm.
+# First real arm of milestone 2 (decisions D55 and D59). Every value here is
+# the owner's of 2026-10-13: the tag, a 128k window, thinking effort high and
+# the sampler. Nothing is taken from the old harness's arms.
 #
 # Guards and compaction come from the base: all on (decision D60).
 extends = "base"
@@ -16,7 +15,7 @@ output_tokens = 0           # left to the SDK's rule
 [thinking]
 owner = "arm"
 enabled = true
-effort = "xhigh"
+effort = "high"
 
 [sampler]
 owner = "arm"

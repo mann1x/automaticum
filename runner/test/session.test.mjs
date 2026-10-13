@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { buildConfig, compareResolved, unsupported } from "../session.mjs";
+import { buildConfig, compareResolved, derivedFromArm, unsupported } from "../session.mjs";
 
 const stub = () => JSON.parse(readFileSync(new URL("./arm-stub.json", import.meta.url), "utf8"));
 const jobOf = (arm) => ({
@@ -92,6 +92,19 @@ test("a sampler and thinking owned by the arm are sent, under the session's prov
 	assert.equal(config.maxTokensPerTurn, 4096);
 	assert.deepEqual(toolPolicies, { web_fetch: { enabled: false } });
 	assert.deepEqual(compareResolved(jobOf(arm), config, reportOf(config)), []);
+
+	// The SDK derives a thinking budget from the effort. The arm states
+	// none, so that is recorded, not refused; a stated one must survive.
+	const report = reportOf(config);
+	report.thinking.budgetTokens = 76800;
+	report.maxOutputTokens = 24576;
+	assert.deepEqual(compareResolved(jobOf(arm), config, report), []);
+	assert.deepEqual(derivedFromArm(jobOf(arm), report), { thinking_budget_tokens: 76800 });
+	arm.thinking.budget_tokens = 4096;
+	const again = build(arm).config;
+	const problems = compareResolved(jobOf(arm), again, { ...reportOf(again), thinking: { enabled: true, effort: "xhigh", budgetTokens: 76800 } });
+	assert.equal(problems.length, 1);
+	assert.ok(problems[0].startsWith("thinking.budget_tokens"));
 });
 
 test("an honest report compares clean; each difference is named", () => {

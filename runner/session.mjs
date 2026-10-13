@@ -166,7 +166,12 @@ export function compareResolved(job, config, resolved, { wroteGlobalSettings = f
 	if (arm.thinking.owner === "arm") {
 		differ("thinking.enabled", arm.thinking.enabled, resolved.thinking?.enabled);
 		differ("thinking.effort", arm.thinking.effort || undefined, resolved.thinking?.effort);
-		differ("thinking.budget_tokens", arm.thinking.budget_tokens, resolved.thinking?.budgetTokens);
+		// A budget the arm states must survive. One the arm does not state
+		// is derived by the SDK from the effort; that is reported by
+		// derivedFromArm, not refused.
+		if (arm.thinking.budget_tokens !== undefined) {
+			differ("thinking.budget_tokens", arm.thinking.budget_tokens, resolved.thinking?.budgetTokens);
+		}
 	} else {
 		for (const [k, v] of Object.entries(resolved.thinking ?? {})) {
 			if (v !== undefined) out.push(`thinking is owned by the model tag, but the session has thinking.${k} = ${show(v)}`);
@@ -181,5 +186,19 @@ export function compareResolved(job, config, resolved, { wroteGlobalSettings = f
 
 	const session = resolved.session ?? {};
 	for (const key of READ_BACK) differ(`session ${key}`, config[key], session[key]);
+	return out;
+}
+
+/**
+ * derivedFromArm lists values the SDK worked out from what the arm states,
+ * so the record holds them although no arm field does.
+ */
+export function derivedFromArm(job, resolved) {
+	const out = {};
+	const arm = job.arm;
+	if (arm.thinking.owner === "arm" && arm.thinking.budget_tokens === undefined && resolved.thinking?.budgetTokens !== undefined) {
+		out.thinking_budget_tokens = resolved.thinking.budgetTokens;
+	}
+	if (!(arm.model.output_tokens > 0) && resolved.maxOutputTokens !== undefined) out.max_output_tokens = resolved.maxOutputTokens;
 	return out;
 }

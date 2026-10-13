@@ -514,3 +514,14 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 10:50 | Owner corrections: host is windows-2 (Windows, RTX 3090), 128k window (131072), sampler t1 k20 rln0 rp1 pp0; D59-D61 recorded; arm rewritten (28e390f61fed) | arms/, docs/specs/decisions.md, .wolf/cerebrum.md | validated | ~3000 |
+
+## Session: 2026-10-13 10:46
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 10:46
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:52 | Owner: thinking effort is high. Arm renamed qwen36-mtp-27b-high; read-back no longer refuses a derived thinking budget (bug-010); five INVALID runs recorded, no model loaded | arms/, runner/ | 8 runner tests pass; images rebuilt | ~4000 |
