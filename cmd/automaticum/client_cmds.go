@@ -766,6 +766,13 @@ func printInference(r daemon.RunView) {
 			row("model on the GPU", human.Percent(*inf.GPU.Share), "server, after the run")
 		}
 		row("model tag", inf.Model.Tag, "arm")
+		var said struct {
+			Quantization string `json:"quantization_level"`
+			Size         string `json:"parameter_size"`
+		}
+		if json.Unmarshal(inf.Model.Server, &said) == nil && said.Quantization != "" {
+			row("quantization", strings.TrimSpace(said.Quantization+" "+said.Size), "server, at the start of this run")
+		}
 		if len(inf.Model.Digest) >= 12 {
 			row("model digest", inf.Model.Digest[:12], "server")
 		}

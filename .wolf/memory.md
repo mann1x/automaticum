@@ -824,3 +824,14 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 19:05 | D79 unload_others, D80 identity queried from weights, D81 closing batch; OmniMerge v4 arm and catalogue entry | internal/run/probe.go, run.go, daemon.go, config, arms/, models/, 030, decisions | tests pass | ~9000 |
+
+## Session: 2026-10-13 18:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 18:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:20 | D82: served-model facts per arm in compare, quantization in run show | internal/daemon/compare.go, cmd/automaticum, 020, decisions | tests pass | ~3000 |

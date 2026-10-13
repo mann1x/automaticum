@@ -65,6 +65,40 @@ func compare(ctx context.Context, args []string) error {
 			fmt.Println("  " + d)
 		}
 	}
+	fmt.Println("\nthe model, as the server said at the start of every run:")
+	facts := map[string]bool{}
+	for _, g := range v.Groups {
+		for f := range g.Served {
+			facts[f] = true
+		}
+	}
+	sw := table()
+	fmt.Fprint(sw, "  FACT")
+	for i := range v.Groups {
+		fmt.Fprintf(sw, "\t%s", letter(i))
+	}
+	fmt.Fprintln(sw)
+	changed := false
+	for _, f := range sorted(facts) {
+		fmt.Fprintf(sw, "  %s", f)
+		for _, g := range v.Groups {
+			vals := g.Served[f]
+			switch {
+			case len(vals) == 0:
+				fmt.Fprint(sw, "\tnot said")
+			case len(vals) > 1:
+				changed = true
+				fmt.Fprintf(sw, "\tCHANGED BETWEEN RUNS: %s", strings.Join(vals, " | "))
+			default:
+				fmt.Fprintf(sw, "\t%s", vals[0])
+			}
+		}
+		fmt.Fprintln(sw)
+	}
+	sw.Flush()
+	if changed {
+		fmt.Println("  A fact that changed between the runs of one arm: those runs did not all run on the same thing.")
+	}
 	fmt.Printf("\nverdicts (intervals at %s):\n", human.Percent(v.Level))
 	w := table()
 	fmt.Fprint(w, "  \tRUNS\tPASS\tINTERVAL\tOTHER\tTOKENS PER SOLVED\n")

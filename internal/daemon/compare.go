@@ -1,8 +1,11 @@
 package daemon
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 
@@ -42,6 +45,11 @@ type CompareGroup struct {
 	Metrics  map[string]stats.Summary `json:"metrics"`
 	// Findings counts the runs with at least one finding of a detector.
 	Findings map[string]int `json:"findings"`
+	// Served holds what the server said of the model at the start of each
+	// run, every distinct answer per fact (D82). More than one answer for
+	// a fact means it changed between the runs of this group: a cloud model
+	// moved to another quantization, a tag was rebuilt, a server upgraded.
+	Served map[string][]string `json:"served"`
 	// TokensPerSolved is the group's completion tokens over its PASS runs.
 	TokensPerSolved float64 `json:"tokens_per_solved,omitempty"`
 
@@ -57,6 +65,51 @@ type ComparePair struct {
 	// PassP is Fisher's exact test of the two pass counts, two-sided.
 	PassP   float64               `json:"pass_p"`
 	Metrics map[string]stats.Rank `json:"metrics"`
+}
+
+// served reads, from a run's record, what the server said of the model
+// when the run started.
+func served(provenance json.RawMessage) map[string]string {
+	var p struct {
+		Before *struct {
+			ServerVersion  string `json:"server_version"`
+			Digest         string `json:"digest"`
+			TemplateSHA256 string `json:"template_sha256"`
+			Parameters     string `json:"parameters"`
+			Renderer       string `json:"renderer"`
+			Parser         string `json:"parser"`
+			Details        struct {
+				Format        string `json:"format"`
+				Family        string `json:"family"`
+				ParameterSize string `json:"parameter_size"`
+				Quantization  string `json:"quantization_level"`
+			} `json:"details"`
+		} `json:"endpoint_before"`
+	}
+	out := map[string]string{}
+	if json.Unmarshal(provenance, &p) != nil || p.Before == nil {
+		return out
+	}
+	b := p.Before
+	cut := func(s string) string {
+		if len(s) > 12 {
+			return s[:12]
+		}
+		return s
+	}
+	params := ""
+	if b.Parameters != "" {
+		sum := sha256.Sum256([]byte(b.Parameters))
+		params = hex.EncodeToString(sum[:6])
+	}
+	for fact, value := range map[string]string{"server version": b.ServerVersion, "model digest": cut(b.Digest), "quantization": b.Details.Quantization,
+		"parameter size": b.Details.ParameterSize, "format": b.Details.Format, "family, by the server": b.Details.Family,
+		"template": cut(b.TemplateSHA256), "tag parameters": params, "renderer": b.Renderer, "parser": b.Parser} {
+		if value != "" {
+			out[fact] = value
+		}
+	}
+	return out
 }
 
 // counter says whether a metric counts events, so that a run without it
@@ -98,7 +151,7 @@ func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
 				i = len(v.Groups)
 				index[key] = i
 				g := CompareGroup{ArmID: run.ArmID, Task: task, Model: run.Model, SDK: run.Harness, Runs: []string{},
-					Verdicts: map[string]int{}, Metrics: map[string]stats.Summary{}, Findings: map[string]int{}, values: map[string][]float64{}}
+					Verdicts: map[string]int{}, Metrics: map[string]stats.Summary{}, Findings: map[string]int{}, Served: map[string][]string{}, values: map[string][]float64{}}
 				var a config.Arm
 				if json.Unmarshal(run.Arm, &a) == nil {
 					g.Arm, arms[i] = a.Name, &a
@@ -117,6 +170,11 @@ func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
 			g.Runs = append(g.Runs, run.ID)
 			if run.Verdict == store.Pass {
 				g.Pass++
+			}
+			for fact, value := range served(run.Provenance) {
+				if !slices.Contains(g.Served[fact], value) {
+					g.Served[fact] = append(g.Served[fact], value)
+				}
 			}
 			metrics, err := d.State.Metrics(ctx, run.ID)
 			if err != nil {

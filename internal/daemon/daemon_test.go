@@ -802,3 +802,26 @@ func TestCompare(t *testing.T) {
 		t.Errorf("an unknown batch: %d", code)
 	}
 }
+
+// What the server said of the model at each run's start is kept per arm,
+// every distinct answer: a quantization that changed between runs shows.
+func TestCompareServed(t *testing.T) {
+	g := newRig(t, false)
+	ctx := context.Background()
+	for i, q := range []string{"FP4", "FP4", "FP8"} {
+		g.state.UpsertRun(ctx, &store.Run{ID: fmt.Sprintf("r%d", i), Batch: "b", Suite: "demo", TaskID: "answer", ArmID: "a", Verdict: store.Pass,
+			Arm:        json.RawMessage(`{"name":"a","model":{"model":"m"}}`),
+			Provenance: json.RawMessage(`{"endpoint_before":{"digest":"abc","server_version":"1.0","details":{"quantization_level":"` + q + `"}}}`)})
+	}
+	var v CompareView
+	if code := g.call("GET", "/v1/compare?batch=b", nil, &v); code != 200 || len(v.Groups) != 1 {
+		t.Fatalf("%d %+v", code, v)
+	}
+	s := v.Groups[0].Served
+	if strings.Join(s["quantization"], ",") != "FP4,FP8" && strings.Join(s["quantization"], ",") != "FP8,FP4" {
+		t.Errorf("quantization: %v", s["quantization"])
+	}
+	if len(s["model digest"]) != 1 || len(s["server version"]) != 1 {
+		t.Errorf("unchanged facts: %v", s)
+	}
+}
