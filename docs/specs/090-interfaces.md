@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.7, 2026-10-13.
+**Status:** draft 0.8, 2026-10-13.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -38,6 +38,18 @@ automaticum agent                           # agent mode on a remote host
 ```
 
 Every mutating command has `--dry-run` and accepts `--idempotency-key`.
+
+**Built in milestone 2:** `status`; `arm validate|show|diff`; `task
+ls|show|build`; `oracle verify`; `lane ls`; `endpoint ls` (prints no address
+unless asked); `run start|ls|show|tail|stop|abort|invalidate`; `logs`
+(`--events`, `--wire`, `--runner`, `--oracle`, `--kind`); `legacy import`;
+`store check`. `task build` is new in this list: it builds a task's artefacts
+and checks their pinned hashes. Of these, `--dry-run` and
+`--idempotency-key` exist on `run start` so far.
+
+The API is HTTP and JSON on a loopback address. Everything that changes
+something needs the token; reading from the same host does not. A run in
+flight is streamed as server-sent events.
 
 Live output in plain commands: `status --watch`, progress bars, and a `run
 tail` that renders the transcript as it streams.

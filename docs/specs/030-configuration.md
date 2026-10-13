@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.6, 2026-10-13.
+**Status:** draft 0.7, 2026-10-13.
 
 ## 1. Rules
 
@@ -123,6 +123,14 @@ For a test of what the model does, the arm states them off.
 - `automaticum arm diff A B` prints exactly the fields that differ.
 - An arm's identity is the hash of its resolved content, so two files that
   resolve to the same values are the same arm.
+- **As built in milestone 2 (not an owner decision):** an arm file that only
+  exists to be extended carries `template = true`. A template may leave values
+  unstated, has no identity and is never run; the mark is not inherited, so
+  every arm that extends it is checked whole. `arms/base.toml` is one.
+- A child that switches a feature off (loop detection, compaction, the
+  protocol, task progress, thinking or sampler ownership by the arm) also drops
+  the settings of that feature it inherited. Settings stated beside the switch
+  in the same file stay an error.
 
 ## 6. Campaigns
 

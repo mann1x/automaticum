@@ -1,10 +1,10 @@
 # 040 — The runner
 
-**Status:** draft 0.8, 2026-10-13. Facts about the SDK in this file were read
+**Status:** draft 0.9, 2026-10-13. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
 running it. The parity table in §6 was checked row by row by the Cerebriline
 session on 2026-10-13 against its main branch (release 4.100.249 plus requests
-1 to 3); §6.1 and §6.2 were not checked. Items under "Requests to Cerebriline" are dependencies on another
+1 to 3); §6.1 was checked by it the same day (§6.1.1); §6.2 was not checked. Items under "Requests to Cerebriline" are dependencies on another
 project.
 
 ## 1. What it is
@@ -45,6 +45,16 @@ The harness build is part of the arm and of the basis.
   start. A build from a commit therefore still names the release it carries.
   Milestone 2 runs on release 4.100.250, which contains requests 1 to 3
   (§8.2).
+  **State on 2026-10-13:** 4.100.250 is not released: there is no tag and
+  nothing on the registry, and the Cerebriline session releases only on the
+  owner's word. Until then no lane image can be built and no run starts; there
+  is no fallback to another build.
+- **How the release is established (as built):** the lane image carries the
+  label `automaticum.sdk.release`, checked before a run starts; the runner then
+  reads the version of the installed package from disk and refuses on a
+  difference. A run's record holds a release only once it is established, never
+  the one its arm merely names. The SDK's own build constant is not used: it
+  carries another number than the release.
 - **Refuse to run** when the installed package does not match what the arm
   names. This is a gate (050 §3).
 
@@ -159,6 +169,46 @@ default is the value the extension sends, since that is what users run.
 Not emulated, and listed as known differences: the webview's own behaviour, and
 the error-retry prompt for authentication and balance errors (§8.1).
 
+#### 6.1.1 What the emulation must copy
+
+Reported by the Cerebriline session on 2026-10-13 from its main branch; not
+verified here, and nothing was run. All four rows hold. An emulation is the
+same behaviour only if it copies these details, and each one it does not copy
+is a recorded difference.
+
+- **Diagnostics after edits.** Only after the tools `editor` and `apply_patch`,
+  and only when the edit succeeded. Only what the edit **introduced**: the
+  diagnostics are read before the tool and the difference is reported. Only
+  errors and warnings. Files with opaque extensions are skipped. Settling:
+  poll every 250 ms, stop when the file's diagnostics stop changing, give up at
+  2,000 ms; a language server in a container that needs longer reports nothing
+  under that rule, and a larger budget is a recorded difference. When there is
+  a diagnostics block, a second block follows with the delimiter-balance
+  verdict for the touched files (the SDK exports the function). The result is
+  marked as regressed when the count of errors and warnings went up. The text
+  is appended to the tool result, not sent as a message.
+- **Terminal.** The extension's default is the visible VS Code terminal; the
+  background executor is the user's other choice and the forced mode of the
+  standalone build. The runner therefore emulates the **non-default** mode,
+  and the record says so. Auto-proceed is at 300 s: the pending call returns
+  the partial output with a sentence saying so, the command keeps running and
+  its further output goes to a log file capped at 10 MiB. Not verified by
+  either side: how far output capture and exit-code reporting differ between
+  the two modes.
+- **`@problems`** appends the **whole** workspace's problems to the user
+  message. Same source as the first row, another filter.
+- **Mentions** are expanded by the extension before the prompt is sent, each
+  into its own wrapper appended to the message. **File mentions**, the most
+  used kind, were missing from the table above and belong to this row.
+- **The IDE name** is used twice: in the system prompt's IDE line and in a
+  token that tool descriptions may carry. One arm field sets both.
+
+Two behaviours were missing from the table and are added as known
+differences until emulated: `check_file` in the extension reads the editor's
+diagnostics for the file, so it needs the same language servers; and semantic
+search is supplied by the extension from VS Code's own code search, so
+without an emulation that mode of the search tool is absent or differs.
+
 ### 6.2 The scripted user
 
 A task may ship a script that plays the user. It is declarative and part of the
@@ -186,6 +236,28 @@ task version.
   SDK reports it.
 
 The runner never runs the oracle and never sees it (060 §3).
+
+### 7.1 The contract with the harness (protocol 1, as built)
+
+- **In:** one job file, mounted read-only: the run id, a session id made
+  beforehand, the resolved arm, the endpoint as the container reaches it, the
+  prompt, the default answer, the wall limit and the SDK release that must be
+  installed.
+- **Out, on stdout:** one JSON object per line with a kind: `event` (an SDK
+  event, unchanged, under `event`), `runner` (the runner's own notes), and one
+  last `end` line. The harness stores the stream as it arrives and measures
+  idleness on it.
+- **Out, in the output directory:** the wire capture and the session's data
+  directory.
+- **The `end` line** carries an outcome (`completed`, `refused`, `invalid`,
+  `wall_limit`, `error`) with its reason, how the agent ended, whether it
+  claimed success, usage, the SDK release and package hash found installed,
+  and whether the read-back was made. `refused` is a run that never started
+  (`SKIPPED`); `invalid` lists the settings that did not survive (`INVALID`).
+- A runner that ends without its `end` line crashed: `ABORTED`.
+- The wall limit is enforced twice: by the runner, which stops the agent and
+  still writes its `end` line, and by the harness, which kills the container a
+  grace period later. The record says which of the two fired.
 
 ## 8. Requests to Cerebriline
 

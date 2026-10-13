@@ -428,3 +428,19 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 10:10 | step 5: queue in the store (schema 2), internal/daemon (loop, recovery, API), cmd/automaticumd, client commands; smoke test on the real daemon | internal/store, internal/daemon, cmd | all tests pass; runs SKIPPED for want of a lane image, as they must | ~20000 |
+
+## Session: 2026-10-13 10:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 10:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 10:03
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:25 | specs: 030 templates, 040 release state + 6.1.1 + runner contract 7.1, 050 control as built, 090 commands built, 110 status, X6/X7 | docs/specs | drafts bumped | ~5000 |

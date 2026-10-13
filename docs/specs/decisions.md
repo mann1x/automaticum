@@ -113,7 +113,8 @@ Requests to the Cerebriline SDK (040 §8). The owner approved the work on
 | X3 | A strict mode that refuses stored provider profiles and global settings. | provider profiles: on main, unreleased. Global settings: no switch | a fresh data directory, asserted through the resolved-configuration report |
 | X4 | Mention expansion as an SDK function. | worked around | the scripted user sends expanded text; expansion is not exercised |
 | X5 | A hook for the error-retry decision. | withdrawn (D34) | retries are observed and recorded, not decided |
-| X6 | Confirmation of the extension-parity inventory. | done 2026-10-13 for 040 §6: 11 rows confirmed, 2 corrected, 6 added. §6.1 offered, not yet checked | §6.1 and §6.2 rest on a source read |
+| X6 | Confirmation of the extension-parity inventory. | done 2026-10-13 for 040 §6: 11 rows confirmed, 2 corrected, 6 added. §6.1 checked the same day: 4 rows hold with details the emulation must copy, 2 behaviours added (040 §6.1.1) | §6.2 rests on a source read |
+| X7 | Release 4.100.250 of the SDK, which carries X1 to X3 and which every milestone 2 run must use (D54). | not released on 2026-10-13: no tag, nothing on the registry; the Cerebriline session releases on the owner's word | none: no lane image, no run; no fallback to another build |
 
 ## 5. Not adopted
 

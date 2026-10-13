@@ -1,6 +1,6 @@
 # 050 — Orchestration: scheduling, gates, control
 
-**Status:** draft 0.5, 2026-10-12.
+**Status:** draft 0.6, 2026-10-13.
 
 ## 1. Scheduling
 
@@ -97,6 +97,27 @@ batch, campaign, lane and whole daemon.
   command does not start a second campaign; re-running a cell with the same key
   resumes it (065 §2).
 - **Dry run** for every mutating command, returning exactly what would start.
+
+**As built in milestone 2** (one lane, runs only; batches and pause come
+later):
+
+- `run stop` takes a queued run off the queue and records it `SKIPPED` with
+  that reason. It refuses a run in flight, which finishes by itself or is
+  ended with `run abort`.
+- `run abort` kills the run's container by its recorded id. The run is still
+  collected and the oracle still runs, for the record; the verdict is
+  `ABORTED`. Confirming on the server side that generation stopped is not
+  done yet: it needs agent mode on the endpoint's host.
+- The daemon's first termination signal drains: the run in flight finishes and
+  nothing else starts. A second signal aborts the run in flight, which is
+  recorded `ABORTED(daemon stop)`.
+- After a stop without warning, a run in flight is recorded
+  `ABORTED(daemon restart)` from what the lane's state held, its container is
+  removed by id, and it leaves the queue. A queued run that already has a
+  record is not run again.
+- The idempotency key names the batch: a repeated `run start` with the same
+  key starts nothing and answers with the runs the first one made.
+- The arm and the task are read when a run starts, not when it is queued.
 
 ## 5. Watchdogs
 
