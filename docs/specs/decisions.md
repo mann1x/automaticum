@@ -71,6 +71,10 @@ All dated 2026-10-12.
 | D59 | The first real arm (2026-10-13): context window 128k, sent as the 131072 the model tag declares; thinking effort `high`; sampler temperature 1, top-k 20, repeat last-n 0, repeat penalty 1, presence penalty 0. The values of the old harness's last manual arm (96000, effort xhigh, temperature 0.8 and so on) are not used. | `arms/qwen36-mtp-27b-high.toml` |
 | D60 | Compaction and every guard are enabled by default: the shared base states them all as on, and an arm that wants one off says so (2026-10-13). | 030 §5.1, `arms/base.toml` |
 | D61 | Real runs on `windows-2` must be stoppable at any moment, gracefully or not: the owner may need the host at short notice (2026-10-13). | 050 §4 |
+| D62 | Milestone 3 plan approved (2026-10-13): ingest with metrics; the comparison of every request with the arm; the detector library with controls; the gate engine with `doctor`, without the gates that need agent mode; `reanalyse`; refusing gates notify through a webhook and the daemon's log. | 110 §3 |
+| D63 | An arm value that the provider does not send (first seen: thinking effort on `xollama`) does **not** stop the run: the run starts, a finding "stated, not sent" is attached, and reports show the effective value. | 050 §3.1, 070 §4 |
+| D64 | When the endpoint is busy at the start of a run (another model loaded, or a request that is not ours), the run **waits** in the queue and the gate notifies once; nothing is unloaded or disturbed. | 050 §3.1 |
+| D65 | The old corpus gets the text detectors, through `reanalyse`; metrics that need the wire capture exist for new runs only. | 070 §3, 100 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked

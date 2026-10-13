@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.6, 2026-10-12.
+**Status:** draft 0.6, 2026-10-13.
 
 ## 1. The rule: no custom script
 
@@ -120,6 +120,9 @@ Requirements:
   guard fire.
 - When a detector changes, findings are recomputed over the whole corpus
   (`automaticum reanalyse`).
+  **Decided by the owner (2026-10-13):** the imported old corpus gets the
+  text detectors this way; metrics that need the wire capture exist for new
+  runs only.
 
 ## 4. Other findings
 

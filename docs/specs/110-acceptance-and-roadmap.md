@@ -9,7 +9,9 @@ the questions it raised (D46 to D51). Milestone 2 was planned and approved on
 task with its proven oracle, the run lifecycle with the verdict rules, the
 daemon with its API and the command line. Since SDK release 4.100.250 was published
 on 2026-10-13: the lane images, the runner, whole runs against the stub
-server, and the first five real runs (§3.1).
+server, and the first five real runs (§3.1). Milestone 2 is
+carried out. Milestone 3 was planned and approved on 2026-10-13 (D62 to
+D65) and is in progress.
 
 ## 1. Acceptance: when it replaces the old harness
 

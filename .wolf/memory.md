@@ -571,3 +571,14 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 12:55 | Old corpus imported into the daemon's store (531 runs, counts unchanged); comparison with the old harness added to 110 §3.1 | docs/specs/110 | one store now | ~1500 |
+
+## Session: 2026-10-13 12:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 12:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:05 | Owner decisions D62-D65 recorded; milestone 3 approved | docs/specs | - | ~1200 |

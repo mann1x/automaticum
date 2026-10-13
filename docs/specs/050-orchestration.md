@@ -1,6 +1,6 @@
 # 050 — Orchestration: scheduling, gates, control
 
-**Status:** draft 0.6, 2026-10-13.
+**Status:** draft 0.7, 2026-10-13.
 
 ## 1. Scheduling
 
@@ -42,8 +42,8 @@ run.
 | sampler | the arm's sampler parses, was written, and was read back |
 | GPU residency | the model is fully on the GPU after load, and no named tensor is parked on the CPU |
 | GPU ownership | the lane's device binding is explicit, and the process landed only on that device |
-| thinking | the request's thinking level and the tag's budget agree, or the arm says which wins |
-| free | the lane and the endpoint are free |
+| thinking | the request's thinking level and the tag's budget agree, or the arm says which wins. **Decided by the owner (2026-10-13):** an arm value the provider does not send does not stop the run; it is a finding ("stated, not sent") and reports show the effective value |
+| free | the lane and the endpoint are free. **Decided by the owner (2026-10-13):** a busy endpoint makes the run wait in the queue, with one notification; nothing is unloaded |
 | expert | an expert model, if configured, answers a real request |
 | harness build | the installed SDK is the one named; the session started from an empty data directory (040 §5) |
 | server log level | the level diagnostics need |
