@@ -4,12 +4,14 @@
 package daemon
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -18,6 +20,7 @@ import (
 	"time"
 
 	"github.com/mann1x/automaticum/internal/config"
+	"github.com/mann1x/automaticum/internal/gate"
 	"github.com/mann1x/automaticum/internal/ingest"
 	"github.com/mann1x/automaticum/internal/run"
 	"github.com/mann1x/automaticum/internal/store"
@@ -55,6 +58,14 @@ type Daemon struct {
 	Version string
 	Token   string
 	Log     *slog.Logger
+	// Gates asks every gate about one arm on one task on one lane. Nil
+	// means no gate is asked.
+	Gates func(ctx context.Context, lane string, arm *config.Arm, tk *task.Task, image string) []gate.Result
+	// GateRetry is how long a waiting run waits before the gates are asked
+	// again; zero means half a minute.
+	GateRetry time.Duration
+	// HTTP sends notifications; nil means a client with a short timeout.
+	HTTP *http.Client
 
 	mu       sync.Mutex
 	flights  map[string]*flight // by lane
@@ -63,6 +74,10 @@ type Daemon struct {
 	started  time.Time
 	// reanalysis is the one running, or the last that ran.
 	reanalysis *ReanalyseStatus
+	// holds says until when a lane's waiting run is left alone, and
+	// notified which waiting runs were already told about.
+	holds    map[string]time.Time
+	notified map[string]bool
 }
 
 // flight is a run in flight on a lane.
@@ -140,6 +155,8 @@ func (f *flight) close() {
 // laneDetail is what the lane's state holds while a run is in flight: enough
 // for a restarted daemon to clean up and to write the run's record.
 type laneDetail struct {
+	// Waiting is why the lane's next run has not started: a gate's words.
+	Waiting     string          `json:"waiting,omitempty"`
 	ContainerID string          `json:"container_id,omitempty"`
 	Run         *store.Run      `json:"run,omitempty"`
 	Item        store.QueueItem `json:"item"`
@@ -150,6 +167,8 @@ func (d *Daemon) init() {
 	defer d.mu.Unlock()
 	if d.flights == nil {
 		d.flights = map[string]*flight{}
+		d.holds = map[string]time.Time{}
+		d.notified = map[string]bool{}
 		d.wake = make(chan struct{}, 1)
 		d.started = time.Now()
 	}
@@ -292,9 +311,31 @@ func (d *Daemon) startReady(ctx context.Context, wg *sync.WaitGroup) {
 		d.Log.Error("reading the queue", "error", err)
 		return
 	}
+	// A lane whose waiting run was taken off the queue is idle again.
+	queued := map[string]bool{}
+	for _, it := range queue {
+		queued[it.Lane] = true
+	}
+	d.mu.Lock()
+	var freed []string
+	for lane := range d.holds {
+		if !queued[lane] {
+			delete(d.holds, lane)
+			freed = append(freed, lane)
+		}
+	}
+	d.mu.Unlock()
+	for _, lane := range freed {
+		if err := d.State.SetLaneState(ctx, store.LaneState{Lane: lane, State: "idle"}); err != nil {
+			d.Log.Error("writing the lane's state", "error", err)
+		}
+	}
 	for _, it := range queue {
 		d.mu.Lock()
 		_, busy := d.flights[it.Lane]
+		if until, held := d.holds[it.Lane]; held && time.Now().Before(until) {
+			busy = true
+		}
 		var f *flight
 		var fctx context.Context
 		if !busy {
@@ -313,17 +354,31 @@ func (d *Daemon) startReady(ctx context.Context, wg *sync.WaitGroup) {
 			// The daemon's own end aborts the run, with that cause.
 			stop := context.AfterFunc(ctx, func() { f.cancel(run.ErrDaemonStop) })
 			defer stop()
-			d.fly(fctx, f)
+			waiting := d.fly(fctx, f)
 			d.mu.Lock()
 			delete(d.flights, f.item.Lane)
+			if waiting {
+				retry := d.GateRetry
+				if retry == 0 {
+					retry = 30 * time.Second
+				}
+				d.holds[f.item.Lane] = time.Now().Add(retry)
+				time.AfterFunc(retry, d.poke)
+			} else {
+				delete(d.holds, f.item.Lane)
+				delete(d.notified, f.runID)
+			}
 			d.mu.Unlock()
-			d.poke()
+			if !waiting {
+				d.poke()
+			}
 		}()
 	}
 }
 
-// fly runs one queued run to its end.
-func (d *Daemon) fly(ctx context.Context, f *flight) {
+// fly runs one queued run to its end. It returns true when the run did not
+// start because a gate says to wait: the run stays queued.
+func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 	it := f.item
 	bg := context.WithoutCancel(ctx)
 	defer f.close()
@@ -362,18 +417,43 @@ func (d *Daemon) fly(ctx context.Context, f *flight) {
 	arm, err := config.LoadArm(filepath.Join(d.Repo, "arms"), it.Arm)
 	if err != nil {
 		skip("the arm cannot be used: " + err.Error())
-		return
+		return false
 	}
 	tk, err := task.Find(filepath.Join(d.Repo, "tasks"), it.Task)
 	if err != nil {
 		skip("the task cannot be used: " + err.Error())
-		return
+		return false
+	}
+	// The gates (050 §3). A refusal skips the run with the gate's name; a
+	// wait leaves it queued (D64). Both are notified, a wait once.
+	var answers []gate.Result
+	if d.Gates != nil {
+		answers = d.Gates(ctx, it.Lane, arm, tk, LaneImage(tk.Layers))
+		if w := gate.Worst(answers); w != nil && ctx.Err() == nil {
+			note := Notification{Kind: "gate", Status: string(w.Status), Gate: w.Gate, Detail: w.Detail,
+				Lane: it.Lane, Run: it.RunID, Arm: it.Arm, Task: it.Task}
+			if w.Status == gate.Wait {
+				setLane("waiting", &laneDetail{Item: it, Waiting: w.Gate + ": " + w.Detail})
+				d.mu.Lock()
+				told := d.notified[it.RunID]
+				d.notified[it.RunID] = true
+				d.mu.Unlock()
+				if !told {
+					log.Warn("run waits", "gate", w.Gate, "detail", w.Detail)
+					d.notify(bg, note)
+				}
+				return true
+			}
+			d.notify(bg, note)
+			skip("gate " + w.Gate + ": " + w.Detail)
+			return false
+		}
 	}
 	det := &laneDetail{Item: it}
 	setLane("running", det)
 	log.Info("run starts", "arm", it.Arm, "task", it.Task)
 	r, err := d.Runner.Execute(ctx, run.Request{
-		ID: it.RunID, Arm: arm, Task: tk, Lane: it.Lane, Image: LaneImage(tk.Layers), Batch: it.Batch,
+		ID: it.RunID, Arm: arm, Task: tk, Lane: it.Lane, Image: LaneImage(tk.Layers), Batch: it.Batch, Gates: answers,
 		OnStart: func(partial *store.Run, containerID string) {
 			copy := *partial
 			det.ContainerID, det.Run = containerID, &copy
@@ -389,7 +469,7 @@ func (d *Daemon) fly(ctx context.Context, f *flight) {
 		d.mu.Lock()
 		d.draining = true
 		d.mu.Unlock()
-		return
+		return false
 	}
 	log.Info("run ended", "verdict", r.Verdict, "reason", r.VerdictReason)
 	if r.Verdict != store.Skipped {
@@ -402,6 +482,7 @@ func (d *Daemon) fly(ctx context.Context, f *flight) {
 		}
 	}
 	done()
+	return false
 }
 
 // Abort ends a run in flight; the cause is recorded as its reason.
@@ -460,4 +541,52 @@ func (d *Daemon) laneFor(arm *config.Arm, asked string) (string, error) {
 	}
 	sort.Strings(names)
 	return names[0], nil
+}
+
+// Notification is what a refusing or waiting gate sends (050 §2).
+type Notification struct {
+	Source string    `json:"source"`
+	Kind   string    `json:"kind"`   // gate
+	Status string    `json:"status"` // refuse or wait
+	Gate   string    `json:"gate"`
+	Detail string    `json:"detail"`
+	Lane   string    `json:"lane"`
+	Run    string    `json:"run"`
+	Arm    string    `json:"arm"`
+	Task   string    `json:"task"`
+	Time   time.Time `json:"time"`
+}
+
+// notify tells the configured webhook; the daemon's log always has it. A
+// webhook that fails is logged and stops nothing.
+func (d *Daemon) notify(ctx context.Context, n Notification) {
+	n.Source, n.Time = "automaticum", time.Now().UTC()
+	d.Log.Warn("gate "+n.Status, "gate", n.Gate, "run", n.Run, "lane", n.Lane, "detail", n.Detail)
+	hook := d.Local.Daemon.Notify.Webhook
+	if hook == "" {
+		return
+	}
+	body, _ := json.Marshal(n)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "POST", hook, bytes.NewReader(body))
+	if err != nil {
+		d.Log.Error("the webhook's address is not usable")
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	hc := d.HTTP
+	if hc == nil {
+		hc = &http.Client{Timeout: 10 * time.Second}
+	}
+	resp, err := hc.Do(req)
+	if err != nil {
+		// The address is private; say that it failed, not where.
+		d.Log.Error("the webhook did not take the notification")
+		return
+	}
+	resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		d.Log.Error("the webhook refused the notification", "status", resp.StatusCode)
+	}
 }

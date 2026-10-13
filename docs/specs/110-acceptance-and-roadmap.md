@@ -1,6 +1,6 @@
 # 110 — Acceptance and roadmap
 
-**Status:** draft 0.10, 2026-10-13. The milestone order in §3 was approved by the owner
+**Status:** draft 0.11, 2026-10-13. The milestone order in §3 was approved by the owner
 on 2026-10-12. Milestone 1 has been carried out: the store, the importer and
 the spike's measurements exist (080 §7.4, 100 §7), and the owner has decided
 the questions it raised (D46 to D51). Milestone 2 was planned and approved on
@@ -11,7 +11,9 @@ daemon with its API and the command line. Since SDK release 4.100.250 was publis
 on 2026-10-13: the lane images, the runner, whole runs against the stub
 server, and the first five real runs (§3.1). Milestone 2 is
 carried out. Milestone 3 was planned and approved on 2026-10-13 (D62 to
-D65) and is in progress.
+D65) and is built (§3.2): ingest with metrics, the comparison of every
+request with the arm, the detector library, the gates with `doctor`, and
+`reanalyse`. What it leaves open is listed there.
 
 ## 1. Acceptance: when it replaces the old harness
 
@@ -166,3 +168,45 @@ context window and the sampler all differ, and the old runs' thinking
 setting was not recorded. What it does show is that the new harness produces
 verdicts and times in the range the old one did for this tag, and close to
 the owner's reference in the editor.
+
+### 3.2 Milestone 3 as built, against criterion 3 (2026-10-13)
+
+Built: metrics and tool calls at ingest (070 §4.1), the comparison of every
+request with the arm, the detector library with its controls (070 §3.2), the
+gates with `doctor` and notification (050 §3.1.1), `reanalyse` over stored
+material including the imported corpus, and `run show` with metrics and
+findings.
+
+Criterion 3 asks that every failure of 000 §1.1 be a gate, an `INVALID`
+verdict or a finding, each with a test that injects the fault:
+
+| failure (000 §1.1) | what catches it | test that injects it |
+|---|---|---|
+| a verdict word with four meanings; a timeout that exited 0 | six verdicts with one precedence; an exit 0 at the cap is `TIMEOUT` | `internal/run`: `TestDecide`, `TestVerdicts` |
+| an oracle that scored broken code as fixed | fixtures that must fail, `oracle verify`; gate `oracle` refuses a run whose oracle is not proven for the task as it is now | `internal/task` (fixtures), `internal/gate` ("oracle not proven", "task changed since the proof"), `internal/run` `TestTamperedOracle` |
+| a thinking flag that overrode the tag's budget, with no record of what was sent | the wire capture; finding `wire_arm` (stated and not sent, sent and not stated) with the value in effect | `internal/ingest`: `TestCompareWire`, `TestCompareWireTagOwns` |
+| a sampler written to the wrong field, never applied | the runner's read-back (`INVALID`) and finding `wire_arm` on the wire | `runner/test/session.test.mjs`, `internal/ingest` `TestCompareWire` |
+| a stale SDK build that died at import and exited 0 | gate `harness_build` and the run's own check (`SKIPPED`, D54); an empty stream is `ABORTED` | `internal/gate` (three image faults), `internal/run` `TestVerdicts` |
+| the session state deleted | the data directory is stored as a blob of every run; `store check` finds a missing blob | `internal/store/blob` (check); **no test deletes a run's session blob and asks the run record** |
+| a grep that dropped lowercase verdicts | verdicts are one typed column; nothing is counted by text search | by construction; the importer's mapping of old words is tested in `internal/legacyimport` |
+| edits to a running script taking effect mid-campaign | the arm and the task are read once at a run's start and fixed; an arm's identity is the hash of its resolved content | per run only. **Across a batch or campaign: milestone 4** |
+| six hours of zeros on the wrong port | gates `model_tag` and `bind_address`: the endpoint must answer and have the model; its identity is probed before and after | `internal/gate` ("endpoint down", "model not on the endpoint"), `internal/run` `TestOperatorAbortAndEndpointChange`. The first-generations canary (050 §3.3) is milestone 4 |
+| a score that was mostly the scaffold | the agent engine as part of the arm (064) | **milestone 5** |
+
+So seven of the ten are caught with an injected-fault test now, one is
+caught without such a test, and two belong to milestones 4 and 5.
+
+Not done in milestone 3, and carried forward:
+
+- **The second half of criterion 3:** "every way a run was silently invalid
+  in the old harness's notes" is not yet tabulated against gates and
+  findings one by one.
+- **Criterion 8:** the library passes its own controls; reproducing the
+  firings of omnimergekit's reference implementation on **its** fixture set
+  waits for that set (asked for on 2026-10-13).
+- `reanalyse --detector` and `--where`; the timeline and the baseline
+  highlighting of the per-run report (070 §1.1); a mailbox notifier; the
+  detectors near-duplicate rounds, edit oscillation and re-read loop.
+- The gates that need an agent on the endpoint's host (milestone 7), and the
+  parts of `free`, `gpu_residency`, `host` and `bind_address` that 050 §3.1.1
+  lists as not yet looked at.

@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/mann1x/automaticum/internal/config"
 	"github.com/mann1x/automaticum/internal/detect"
+	"github.com/mann1x/automaticum/internal/gate"
 	"github.com/mann1x/automaticum/internal/ingest"
 	"github.com/mann1x/automaticum/internal/run"
 	"github.com/mann1x/automaticum/internal/store"
@@ -46,6 +48,16 @@ type LaneStatus struct {
 	Task      string    `json:"task,omitempty"`
 	Since     time.Time `json:"since,omitzero"`
 	Endpoints []string  `json:"endpoints"`
+	// Waiting is why the lane's next run has not started.
+	Waiting string `json:"waiting,omitempty"`
+}
+
+// DoctorEntry is every gate's answer for one arm on one task on one lane.
+type DoctorEntry struct {
+	Lane  string        `json:"lane"`
+	Arm   string        `json:"arm"`
+	Task  string        `json:"task"`
+	Gates []gate.Result `json:"gates"`
 }
 
 // QueueEntry is a queued run.
@@ -224,6 +236,7 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/runs/{id}/abort", d.handleAbort)
 	mux.HandleFunc("POST /v1/runs/{id}/invalidate", d.handleInvalidate)
 	mux.HandleFunc("GET /v1/runs/{id}/detect", d.handleDetect)
+	mux.HandleFunc("GET /v1/doctor", d.handleDoctor)
 	mux.HandleFunc("POST /v1/reanalyse", d.handleReanalyse)
 	mux.HandleFunc("GET /v1/reanalyse", func(w http.ResponseWriter, r *http.Request) { reply(w, http.StatusOK, d.reanalyseStatus()) })
 	mux.HandleFunc("POST /v1/drain", func(w http.ResponseWriter, r *http.Request) {
@@ -283,6 +296,10 @@ func (d *Daemon) handleStatus(w http.ResponseWriter, r *http.Request) {
 		ls := LaneStatus{Lane: n, Host: l.Host, State: "idle", Endpoints: l.Endpoints}
 		if s, ok := stored[n]; ok && s.State != "" {
 			ls.State = s.State
+			var det laneDetail
+			if s.State == "waiting" && json.Unmarshal(s.Detail, &det) == nil {
+				ls.RunID, ls.Arm, ls.Task, ls.Waiting = s.RunID, det.Item.Arm, det.Item.Task, det.Waiting
+			}
 		}
 		if f := flying[n]; f != nil {
 			ls.State, ls.RunID, ls.Arm, ls.Task, ls.Since = "running", f.runID, f.item.Arm, f.item.Task, f.started
@@ -614,6 +631,58 @@ func (d *Daemon) reanalyseStatus() ReanalyseStatus {
 	st := *d.reanalysis
 	st.Failed = maps.Clone(st.Failed)
 	return st
+}
+
+// handleDoctor asks every gate now, without starting a run: for every lane,
+// every arm whose endpoint the lane may use, on every task. The query may
+// narrow it to one lane, arm or task.
+func (d *Daemon) handleDoctor(w http.ResponseWriter, r *http.Request) {
+	if d.Gates == nil {
+		fail(w, http.StatusServiceUnavailable, "this daemon asks no gates")
+		return
+	}
+	q := r.URL.Query()
+	arms, err := config.LoadArms(filepath.Join(d.Repo, "arms"))
+	if err != nil {
+		fail(w, http.StatusInternalServerError, "the arms cannot be read: %v", err)
+		return
+	}
+	tasks, err := task.LoadAll(filepath.Join(d.Repo, "tasks"))
+	if err != nil {
+		fail(w, http.StatusInternalServerError, "the tasks cannot be read: %v", err)
+		return
+	}
+	var lanes, names []string
+	for n := range d.Local.Lanes {
+		lanes = append(lanes, n)
+	}
+	for n := range arms {
+		names = append(names, n)
+	}
+	sort.Strings(lanes)
+	sort.Strings(names)
+	out := []DoctorEntry{}
+	for _, lane := range lanes {
+		if v := q.Get("lane"); v != "" && v != lane {
+			continue
+		}
+		for _, name := range names {
+			a := arms[name]
+			// Without a question about one arm, a lane is asked about the
+			// arms it could run.
+			if v := q.Get("arm"); v != "" && v != name || v == "" && !slices.Contains(d.Local.Lanes[lane].Endpoints, a.Endpoint) {
+				continue
+			}
+			for _, tk := range tasks {
+				if v := q.Get("task"); v != "" && v != tk.Name() && v != tk.ID {
+					continue
+				}
+				out = append(out, DoctorEntry{Lane: lane, Arm: name, Task: tk.Name(),
+					Gates: d.Gates(r.Context(), lane, a, tk, LaneImage(tk.Layers))})
+			}
+		}
+	}
+	reply(w, http.StatusOK, out)
 }
 
 // handleDetect runs the detector library over one run's stored stream.

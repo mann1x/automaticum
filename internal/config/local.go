@@ -39,6 +39,15 @@ type Daemon struct {
 	Repo string `toml:"repo"`
 	// DockerSocket is the engine's socket; empty means the default.
 	DockerSocket string `toml:"docker_socket"`
+	// Notify says where a refusing or waiting gate is told to (050 §2).
+	Notify Notify `toml:"notify"`
+}
+
+// Notify is the [notify] table of automaticum.toml.
+type Notify struct {
+	// Webhook is a URL that gets one JSON object per notification, by
+	// POST. Empty means the daemon's log only.
+	Webhook string `toml:"webhook"`
 }
 
 // Lane is lanes/<name>.toml: an isolated place where one run executes.

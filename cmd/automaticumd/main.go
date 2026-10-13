@@ -20,6 +20,7 @@ import (
 	"github.com/mann1x/automaticum/internal/daemon"
 	"github.com/mann1x/automaticum/internal/detect"
 	"github.com/mann1x/automaticum/internal/docker"
+	"github.com/mann1x/automaticum/internal/gate"
 	"github.com/mann1x/automaticum/internal/run"
 	"github.com/mann1x/automaticum/internal/store/blob"
 	"github.com/mann1x/automaticum/internal/store/duck"
@@ -45,6 +46,16 @@ func free(path string) (uint64, error) {
 		return 0, err
 	}
 	return st.Bavail * uint64(st.Bsize), nil
+}
+
+// ramBacked reports whether a path is on a file system held in memory.
+func ramBacked(path string) (bool, error) {
+	var st syscall.Statfs_t
+	if err := syscall.Statfs(path, &st); err != nil {
+		return false, err
+	}
+	const tmpfs, ramfs = 0x01021994, 0x858458f6
+	return int64(st.Type) == tmpfs || int64(st.Type) == ramfs, nil
 }
 
 func serve(cfgDir string, log *slog.Logger) error {
@@ -90,6 +101,10 @@ func serve(cfgDir string, log *slog.Logger) error {
 		Local: local, State: state, Blobs: blobs, Containers: engine,
 		Runner: &run.Executor{Engine: engine, Blobs: blobs, State: state, Tasks: tasks, Local: local, RunsDir: runs, Version: version, Free: free},
 		Repo:   d.Repo, RunsDir: runs, Version: version, Token: token, Log: log,
+	}
+	dm.Gates = func(ctx context.Context, lane string, arm *config.Arm, tk *task.Task, image string) []gate.Result {
+		return gate.Run(ctx, &gate.Input{Local: local, Lane: lane, Arm: arm, Task: tk, Image: image,
+			Engine: engine, Tasks: tasks, RunsDir: runs, Free: free, Tmpfs: ramBacked})
 	}
 	if err := dm.Recover(ctx); err != nil {
 		return fmt.Errorf("recovering after the last stop: %w", err)

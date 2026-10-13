@@ -16,9 +16,11 @@ import (
 	"time"
 
 	"github.com/mann1x/automaticum/internal/config"
+	"github.com/mann1x/automaticum/internal/gate"
 	"github.com/mann1x/automaticum/internal/run"
 	"github.com/mann1x/automaticum/internal/store"
 	"github.com/mann1x/automaticum/internal/store/blob"
+	"github.com/mann1x/automaticum/internal/task"
 )
 
 // memState is a store.State in memory.
@@ -607,5 +609,121 @@ func TestRecover(t *testing.T) {
 	defer g.runner.mu.Unlock()
 	if strings.Join(g.runner.seen, ",") != "r2" {
 		t.Errorf("ran after recovery: %v", g.runner.seen)
+	}
+}
+
+// A refusing gate skips the run with the gate's name and tells the webhook;
+// a waiting gate leaves the run queued, tells once, and the run starts when
+// the gate lets it (D64).
+func TestGates(t *testing.T) {
+	var mu sync.Mutex
+	var told []Notification
+	hook := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var n Notification
+		json.NewDecoder(r.Body).Decode(&n)
+		mu.Lock()
+		told = append(told, n)
+		mu.Unlock()
+	}))
+	defer hook.Close()
+	answer := gate.Result{Gate: "free", Version: "1", Status: gate.Wait, Detail: "the endpoint holds another model"}
+	asked := 0
+	g := newRig(t, false)
+	g.d.Local.Daemon.Notify.Webhook = hook.URL
+	g.d.GateRetry = 20 * time.Millisecond
+	g.d.Gates = func(context.Context, string, *config.Arm, *task.Task, string) []gate.Result {
+		mu.Lock()
+		defer mu.Unlock()
+		asked++
+		return []gate.Result{{Gate: "lane", Status: gate.Pass}, answer, {Gate: "expert", Status: gate.Unchecked}}
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go g.d.Serve(ctx)
+
+	var resp StartResponse
+	if code := g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer"}, &resp); code != 202 {
+		t.Fatalf("start: %d", code)
+	}
+	id := resp.RunIDs[0]
+	waitFor := func(what string, ok func() bool) {
+		t.Helper()
+		for deadline := time.Now().Add(10 * time.Second); time.Now().Before(deadline); time.Sleep(5 * time.Millisecond) {
+			if ok() {
+				return
+			}
+		}
+		t.Fatalf("never happened: %s", what)
+	}
+	// It waits: queued, not run, the lane says why, and it is asked again.
+	waitFor("the gates are asked three times", func() bool { mu.Lock(); defer mu.Unlock(); return asked >= 3 })
+	var st Status
+	st = Status{}
+	g.call("GET", "/v1/status", nil, &st)
+	if len(st.Queue) != 1 || st.Lanes[0].State != "waiting" || st.Lanes[0].RunID != id || !strings.Contains(st.Lanes[0].Waiting, "free: the endpoint holds another model") {
+		t.Fatalf("status while waiting: %+v", st)
+	}
+	g.runner.mu.Lock()
+	ran := len(g.runner.seen)
+	g.runner.mu.Unlock()
+	mu.Lock()
+	n := len(told)
+	mu.Unlock()
+	if ran != 0 || n != 1 || told[0].Status != "wait" || told[0].Gate != "free" || told[0].Run != id || told[0].Source != "automaticum" {
+		t.Fatalf("while waiting: ran %d, told %+v", ran, told)
+	}
+	// The endpoint is free: the run starts, with the gates' answers.
+	mu.Lock()
+	answer = gate.Result{Gate: "free", Status: gate.Pass}
+	mu.Unlock()
+	if v := g.waitFinished(id); v.Verdict != "PASS" {
+		t.Fatalf("after the wait: %+v", v)
+	}
+	st = Status{}
+	g.call("GET", "/v1/status", nil, &st)
+	if st.Lanes[0].State != "idle" || st.Lanes[0].Waiting != "" {
+		t.Errorf("status after the run: %+v", st.Lanes[0])
+	}
+
+	// A refusal: SKIPPED, with the gate's name, told once, never run.
+	mu.Lock()
+	answer = gate.Result{Gate: "oracle", Status: gate.Refuse, Detail: "not proven"}
+	told = nil
+	mu.Unlock()
+	g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer"}, &resp)
+	v := g.waitFinished(resp.RunIDs[0])
+	if v.Verdict != "SKIPPED" || v.VerdictReason != "gate oracle: not proven" {
+		t.Errorf("refused run: %+v", v)
+	}
+	mu.Lock()
+	if len(told) != 1 || told[0].Status != "refuse" || told[0].Gate != "oracle" {
+		t.Errorf("told %+v", told)
+	}
+	mu.Unlock()
+	g.runner.mu.Lock()
+	if len(g.runner.seen) != 1 {
+		t.Errorf("runs started: %v", g.runner.seen)
+	}
+	g.runner.mu.Unlock()
+
+	// A waiting run that is taken off the queue frees the lane.
+	mu.Lock()
+	answer = gate.Result{Gate: "free", Status: gate.Wait, Detail: "busy"}
+	mu.Unlock()
+	g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer"}, &resp)
+	waitFor("the lane waits", func() bool {
+		st = Status{}
+		g.call("GET", "/v1/status", nil, &st)
+		return st.Lanes[0].State == "waiting"
+	})
+	if code := g.call("POST", "/v1/runs/"+resp.RunIDs[0]+"/stop", nil, nil); code != 200 {
+		t.Fatalf("taking a waiting run off the queue: %d", code)
+	}
+	waitFor("the lane is idle again", func() bool { st = Status{}; g.call("GET", "/v1/status", nil, &st); return st.Lanes[0].State == "idle" })
+
+	// doctor asks without starting anything.
+	var entries []DoctorEntry
+	if code := g.call("GET", "/v1/doctor?task=answer&arm=stub", nil, &entries); code != 200 || len(entries) != 1 || len(entries[0].Gates) != 3 || entries[0].Lane != "lane-1" {
+		t.Errorf("doctor: %d %+v", code, entries)
 	}
 }

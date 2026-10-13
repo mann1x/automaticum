@@ -354,6 +354,31 @@ func TestRun(t *testing.T) {
 
 }
 
+// A model that ended the run partly off the GPU is a finding.
+func TestResidencyAfter(t *testing.T) {
+	r := &store.Run{ID: "r", Provenance: json.RawMessage(`{"endpoint_after":{"loaded":{"size":100,"size_vram":60}}}`)}
+	res := Analyse(r, &Events{Notices: map[string]int{}}, nil)
+	found := false
+	for _, f := range res.Findings {
+		found = found || (f.Detector == GPUResidency && strings.Contains(string(f.Evidence), `"share":0.6`))
+	}
+	share := -1.0
+	for _, m := range res.Metrics {
+		if m.Name == "endpoint.gpu_share" {
+			share = m.Value
+		}
+	}
+	if !found || share != 0.6 {
+		t.Errorf("partly on the GPU: found %v, share %v, findings %+v", found, share, res.Findings)
+	}
+	r.Provenance = json.RawMessage(`{"endpoint_after":{"loaded":{"size":100,"size_vram":100}}}`)
+	for _, f := range Analyse(r, &Events{Notices: map[string]int{}}, nil).Findings {
+		if f.Detector == GPUResidency {
+			t.Errorf("fully on the GPU, and yet: %+v", f)
+		}
+	}
+}
+
 // An imported run has the older harness's stream and no wire capture: it
 // gets the detectors' findings and nothing else is touched (D65).
 func TestRunImported(t *testing.T) {

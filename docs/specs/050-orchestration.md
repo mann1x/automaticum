@@ -1,6 +1,6 @@
 # 050 — Orchestration: scheduling, gates, control
 
-**Status:** draft 0.7, 2026-10-13.
+**Status:** draft 0.8, 2026-10-13.
 
 ## 1. Scheduling
 
@@ -51,6 +51,44 @@ run.
 | oracle | the oracle verifies against its fixtures (060 §3) |
 | workspace | pristine: restored from source and hash-checked. A run never inherits what the previous one left |
 | bind address | the model server is not bound to all interfaces and is reachable from the lane |
+
+### 3.1.1 As built (milestone 3)
+
+The gates are `internal/gate`, asked by the daemon before every run and by
+`automaticum doctor`. Each has a name and a version and gives one of four
+answers: **pass**, **refuse** (the run is `SKIPPED` with
+`gate <name>: <reason>`), **wait** (the run stays queued, the lane shows
+why, and the gates are asked again every half minute) and **unchecked** (the
+gate could not look and says why; it does not stop a run and is never shown
+as a pass). Every gate's answer is recorded in the run (020 §1, `gates`).
+The gates ask the endpoint what it is and what it holds; **no gate generates
+text, loads a model or unloads one**.
+
+| gate | what it looks at now | not yet |
+|---|---|---|
+| `lane` | the lane exists, may use the arm's endpoint, the arm is not a template | |
+| `free` | the endpoint holds no other model in memory; if it does, **wait** (D64) | requests in flight for someone else: needs the agent |
+| `model_tag` | the endpoint has the tag; its digest equals the arm's pin when the arm pins one | |
+| `template` | the server lists tool calls among what the tag can do; template size and hash, renderer and parser are recorded | the template's text is not parsed |
+| `sampler` | the arm is complete; the tag's own sampler values are listed next to it | "written and read back" is the wire comparison after the run (070 §4.1) |
+| `thinking` | who owns thinking and the tag's budget; never refuses (D63) | |
+| `gpu_residency` | a loaded model is fully on the GPU; unchecked when it is not loaded. After the run the same look is a metric and, when partly off the GPU, a finding | named tensors parked on the CPU: needs the server log |
+| `harness_build` | the lane image carries the SDK release the arm names (D54); the runner checks the installed package again | |
+| `host` | free space against the floor, inotify watches | clock sync, the user-namespace setting |
+| `oracle` | the task's artefacts are built and `automaticum oracle verify` proved the oracle for the task **as it is now** (the proof is kept by the task's hash) | |
+| `workspace` | the runs directory is writable and not on a RAM-backed file system; the seed is there. The copy and its hash check are the run's | |
+| `bind_address` | the endpoint's address names a server and answers from this host | whether the server listens on every interface of its host: needs the agent |
+| `gpu_ownership`, `server_log_level`, `expert` | nothing: unchecked, with the reason | milestone 7 |
+
+**Notification.** A refusal is notified every time, a wait once per run: one
+line in the daemon's log and, when `[notify] webhook` is set in
+`automaticum.toml`, one JSON object by POST (`source`, `kind`, `status`,
+`gate`, `detail`, `lane`, `run`, `arm`, `task`, `time`). A webhook that fails
+is logged and stops nothing. A mailbox notifier is not built.
+
+`automaticum doctor [--lane L] [--arm A] [--task T] [--all]` asks every gate
+for every lane, every arm the lane may run and every task, and fails when a
+gate refuses.
 
 ### 3.2 Before a cell or batch
 

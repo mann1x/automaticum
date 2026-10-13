@@ -81,6 +81,8 @@ type Request struct {
 	OnStart func(r *store.Run, containerID string)
 	// OnLine is called with every line the runner prints.
 	OnLine func(line []byte)
+	// Gates is what the gates said before this run; it is recorded as is.
+	Gates any
 }
 
 // NewID returns a run id that sorts by time.
@@ -128,6 +130,8 @@ type provenance struct {
 		Files  map[string]string `json:"files"`
 		Prompt string            `json:"prompt"`
 	} `json:"task"`
+	// Gates is every gate's answer before the run (050 §3).
+	Gates          any       `json:"gates,omitempty"`
 	EndpointBefore *Identity `json:"endpoint_before"`
 	EndpointAfter  *Identity `json:"endpoint_after"`
 	Limits         struct {
@@ -189,11 +193,12 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 	p.Automaticum, p.Protocol = x.Version, Protocol
 	p.SDK.Named = a.Harness.SDKRelease
 	p.Image.Ref = req.Image
+	p.Gates = req.Gates
 	p.Task.Hash, p.Task.Files, p.Task.Prompt = t.Hash, t.Files, t.Prompt
 	p.NotRecorded = map[string]string{
 		"server_log":     "needs agent mode on the endpoint's host",
 		"weights":        "needs agent mode on the endpoint's host",
-		"host_facts":     "not collected before the gate engine exists",
+		"host_facts":     "free space and inotify limits are in the host gate's answer; clock sync and kernel settings are not read",
 		"workspace_diff": "the workspaces before and after are stored whole; no textual diff is made",
 	}
 	var facts Facts

@@ -242,7 +242,10 @@ func sampler(_ context.Context, in *Input) (Status, string) {
 				have = append(have, f[0]+" "+strings.Join(f[1:], " "))
 			}
 		}
-		tag = "; the tag's own: " + strings.Join(have, ", ")
+		tag = "; the tag sets none of its own"
+		if len(have) > 0 {
+			tag = "; the tag's own: " + strings.Join(have, ", ")
+		}
 	}
 	if in.Arm.Sampler.Owner == "tag" {
 		return Pass, "the sampler is left to the tag" + tag

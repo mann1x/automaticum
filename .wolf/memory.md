@@ -619,3 +619,24 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 13:21 | M3 step 3 and 5: internal/detect (4 reference detectors + repeated tool call, controls, self-test), detectors at ingest for new and imported runs, `detect` command, reanalysis as a daemon job | internal/detect/*, internal/ingest/*, internal/daemon/api.go, cmd/* | tests pass; self-test 15/15; whole-corpus reanalysis started | ~9000 |
+
+## Session: 2026-10-13 13:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 13:26
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 13:27
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 13:29
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:35 | M3 steps 4 and 6: gates asked by the daemon before every run (refuse = SKIPPED, wait = stays queued, D64), webhook notification, `doctor`, gates recorded in provenance, GPU residency after the run; criterion 3 table in 110 §3.2 | internal/gate/*, internal/daemon/*, cmd/*, internal/ingest/analyse.go, docs/specs/050,030,090,110, README.md | tests pass; doctor on the real configuration; stub run through gates PASS | ~8000 |

@@ -4,13 +4,17 @@ A test harness that runs coding agents against tasks with a verdict, on lanes it
 orchestrates itself, and answers the questions about those runs without a
 throwaway script.
 
-> **Status: milestone 2 of 7 carried out.** A walking skeleton exists: the
-> daemon `automaticumd` and the command line, one Docker lane, the runner on
-> a pinned SDK release with every request and response recorded, the
-> `manic_miner` task with a proven oracle, the six verdicts and the run
-> record. It has run against a scripted stub model server and against a real
-> model ([first runs](docs/specs/110-acceptance-and-roadmap.md)). There are no
-> gates, detectors, batches, statistics or dashboards yet. The design is the
+> **Status: milestone 3 of 7 built.** The daemon `automaticumd` and the
+> command line run an agent on a task in one Docker lane, on a pinned SDK
+> release, with every request and response recorded, and give one of six
+> verdicts from an oracle that is proven against fixtures. Before a run the
+> gates are asked (`automaticum doctor` asks them at any time); after it,
+> metrics, tool calls and findings are derived from the stored material: the
+> detector library for loops and runaways, and a comparison of what was sent
+> with what the arm states. It has run against a scripted stub model server
+> and against a real model
+> ([first runs](docs/specs/110-acceptance-and-roadmap.md)). There are no
+> batches, statistics or dashboards yet. The design is the
 > spec set in [`docs/specs/`](docs/specs/000-overview.md). Items a
 > spec marks **Open** are questions, not decisions; they are listed in
 > [`docs/specs/decisions.md`](docs/specs/decisions.md).

@@ -17,6 +17,7 @@ import (
 
 	"github.com/mann1x/automaticum/internal/daemon"
 	"github.com/mann1x/automaticum/internal/detect"
+	"github.com/mann1x/automaticum/internal/gate"
 	"github.com/mann1x/automaticum/internal/ingest"
 	"math"
 	"strconv"
@@ -126,6 +127,11 @@ func status(ctx context.Context, args []string) error {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", l.Lane, l.Host, l.State, l.RunID, l.Arm, l.Task, ago(l.Since))
 	}
 	w.Flush()
+	for _, l := range st.Lanes {
+		if l.Waiting != "" {
+			fmt.Printf("\n%s waits: %s\n", l.Lane, l.Waiting)
+		}
+	}
 	waiting := 0
 	for _, q := range st.Queue {
 		if !q.Running {
@@ -420,6 +426,14 @@ func findingLine(f daemon.FindingView) string {
 	head := fmt.Sprintf("%-8s %s", f.Severity, f.Detector)
 	switch f.Detector {
 	case ingest.WireArm:
+	case ingest.GPUResidency:
+		var e struct {
+			Size     int64   `json:"size"`
+			SizeVRAM int64   `json:"size_vram"`
+			Share    float64 `json:"share"`
+		}
+		json.Unmarshal(f.Evidence, &e)
+		return fmt.Sprintf("%s  the model ended the run only partly on the GPU: %.0f%% (%d of %d bytes)", head, e.Share*100, e.SizeVRAM, e.Size)
 	case detect.RepeatedToolCall:
 		var c detect.RepeatedCall
 		json.Unmarshal(f.Evidence, &c)
@@ -604,4 +618,63 @@ func orNone(v []string) string {
 		return "-"
 	}
 	return strings.Join(v, ", ")
+}
+
+// doctor asks every gate now, without starting a run. It fails when a gate
+// refuses.
+func doctor(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("doctor", flag.ExitOnError)
+	_, dial := addClient(fs)
+	q := url.Values{}
+	lane := fs.String("lane", "", "one lane")
+	arm := fs.String("arm", "", "one arm; without it, every arm a lane may run")
+	tk := fs.String("task", "", "one task")
+	all := fs.Bool("all", false, "show every gate's answer, not only those that stand in the way or could not look")
+	if rest := parse(fs, args); len(rest) != 0 {
+		return errors.New("usage: automaticum doctor [--lane L] [--arm A] [--task T] [--all]")
+	}
+	for k, v := range map[string]string{"lane": *lane, "arm": *arm, "task": *tk} {
+		if v != "" {
+			q.Set(k, v)
+		}
+	}
+	c, err := dial()
+	if err != nil {
+		return err
+	}
+	var entries []daemon.DoctorEntry
+	if err := c.do(ctx, "GET", "/v1/doctor?"+q.Encode(), nil, &entries); err != nil {
+		return err
+	}
+	if c.json {
+		return printJSON(entries)
+	}
+	refused, waits := 0, 0
+	for _, e := range entries {
+		counts := map[gate.Status]int{}
+		for _, g := range e.Gates {
+			counts[g.Status]++
+		}
+		refused += counts[gate.Refuse]
+		waits += counts[gate.Wait]
+		fmt.Printf("%s  %s  %s: %d pass, %d refuse, %d wait, %d not looked at\n", e.Lane, e.Arm, e.Task,
+			counts[gate.Pass], counts[gate.Refuse], counts[gate.Wait], counts[gate.Unchecked])
+		w := table()
+		for _, g := range e.Gates {
+			if *all || g.Status != gate.Pass {
+				fmt.Fprintf(w, "  %s\t%s\t%s\n", g.Status, g.Gate, g.Detail)
+			}
+		}
+		w.Flush()
+	}
+	if len(entries) == 0 {
+		fmt.Println("nothing to ask: no lane, arm and task match")
+	}
+	switch {
+	case refused > 0:
+		return fmt.Errorf("%d gates refuse", refused)
+	case waits > 0:
+		fmt.Printf("%d gates say wait: a run would stay queued\n", waits)
+	}
+	return nil
 }

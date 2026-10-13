@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.7, 2026-10-13.
+**Status:** draft 0.8, 2026-10-13.
 
 ## 1. Rules
 
@@ -25,7 +25,7 @@ and tasks are tracked. An arm names an endpoint and never an address.
 
 ```
 <config>/                 local, not tracked
-  automaticum.toml        daemon: data root, archive root, bind address, token
+  automaticum.toml        daemon: data root, archive root, bind address, token, [notify] webhook
   lanes/*.toml
   endpoints/*.toml
 arms/*.toml               tracked

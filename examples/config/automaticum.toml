@@ -8,3 +8,6 @@ free_floor_gb = 50                          # start no run with less free space
 listen = "127.0.0.1:7411"                   # loopback; anything else needs the token
 token_file = "token"                        # mode 0600, 32 characters or more
 repo = "/opt/automaticum"                   # the checkout with arms/, tasks/, images/
+
+[notify]
+webhook = ""                                # a URL that gets one JSON object per refusing or waiting gate; empty: the log only

@@ -27,9 +27,13 @@ type Result struct {
 	Blocks    []Block
 }
 
+// GPUResidency is the finding that the model was only partly on the GPU
+// when the run ended: its speed is then not the arm's.
+const GPUResidency = "gpu_residency"
+
 // owned names the detectors whose findings ingest writes. Findings of any
 // other detector are kept as they are.
-var owned = map[string]bool{WireArm: true, detect.ShortUnitRepeat: true, detect.CharRun: true,
+var owned = map[string]bool{WireArm: true, GPUResidency: true, detect.ShortUnitRepeat: true, detect.CharRun: true,
 	detect.SentenceRepeat: true, detect.Runaway: true, detect.RepeatedToolCall: true}
 
 // Run derives metrics, tool calls and findings from a run's stored material
@@ -273,6 +277,27 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 			tag = prov.EndpointBefore.Parameters
 		}
 		res.Findings = wireFindings(r.ID, CompareWire(&arm, tag, reqs))
+	}
+
+	// Where the model sat after the run. The gate before the run can only
+	// look when the model is already loaded; this is the look after load.
+	var after struct {
+		EndpointAfter *struct {
+			Loaded *struct {
+				Size     int64 `json:"size"`
+				SizeVRAM int64 `json:"size_vram"`
+			} `json:"loaded"`
+		} `json:"endpoint_after"`
+	}
+	json.Unmarshal(r.Provenance, &after)
+	if e := after.EndpointAfter; e != nil && e.Loaded != nil && e.Loaded.Size > 0 {
+		share := float64(e.Loaded.SizeVRAM) / float64(e.Loaded.Size)
+		m("endpoint.gpu_share", share)
+		if e.Loaded.SizeVRAM < e.Loaded.Size {
+			raw, _ := json.Marshal(map[string]any{"size": e.Loaded.Size, "size_vram": e.Loaded.SizeVRAM, "share": share})
+			res.Findings = append(res.Findings, store.Finding{RunID: r.ID, Detector: GPUResidency, DetectorVersion: "1",
+				Severity: "warning", Count: 1, Evidence: raw})
+		}
 	}
 
 	// What the model wrote and called, through the detector library. The

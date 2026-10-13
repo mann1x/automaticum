@@ -12,7 +12,7 @@ codes.
 
 ```
 automaticum status                          # lanes, queue, what is running
-automaticum doctor                          # every gate, on every lane, now
+automaticum doctor [--lane L] [--arm A] [--task T] [--all]   # every gate, on every lane, now
 automaticum lane ls|show|pause|resume|drain|quarantine
 automaticum endpoint ls|probe|show|models
 automaticum arm ls|show|diff|validate

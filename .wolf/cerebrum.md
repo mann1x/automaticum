@@ -58,6 +58,10 @@
 - 2026-10-13: the short-unit detector follows the reference pattern `(.{2,40}?)\1{7,}` exactly: shortest unit at the leftmost place, letters rule on that unit, a failing repeat passed over whole. Check a change against that pattern in Python before trusting a test's expectation.
 - 2026-10-13: the older harness's stream is `{"ts","type":"agent_event","event":{...}}` with the same inner SDK events; `internal/ingest` reads both envelopes.
 
+- 2026-10-13: a run now needs its task's oracle proven for the task's current hash: `automaticum oracle verify <task>` writes the proof under the data root (`artefacts/proven/<hash>.json`); any change to a task's files voids it and gate `oracle` refuses until it is run again.
+- 2026-10-13: gates are asked by the daemon (`Daemon.Gates`, set in `cmd/automaticumd`), not by `run.Executor`, which keeps its own checks; `internal/gate` imports `internal/run` (probe), never the other way.
+- 2026-10-13: decoding JSON into a struct that already holds values keeps the fields the new document omits; zero the struct first (a stale `waiting` in a daemon test).
+
 ## Do-Not-Repeat
 
 <!-- Mistakes made and corrected. Each entry prevents the same mistake recurring. -->
