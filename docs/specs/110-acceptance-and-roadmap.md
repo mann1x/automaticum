@@ -1,15 +1,15 @@
 # 110 — Acceptance and roadmap
 
-**Status:** draft 0.8, 2026-10-13. The milestone order in §3 was approved by the owner
+**Status:** draft 0.9, 2026-10-13. The milestone order in §3 was approved by the owner
 on 2026-10-12. Milestone 1 has been carried out: the store, the importer and
 the spike's measurements exist (080 §7.4, 100 §7), and the owner has decided
 the questions it raised (D46 to D51). Milestone 2 was planned and approved on
 2026-10-13 (D53 to D58) and is in progress; its first real runs are on
 `windows-2` (D55). Built and tested so far: configuration and arms, the
 task with its proven oracle, the run lifecycle with the verdict rules, the
-daemon with its API and the command line. Waiting for SDK release 4.100.250
-(040 §3): the runner, the lane images, the run against the stub server and
-the real runs.
+daemon with its API and the command line. Since SDK release 4.100.250 was published
+on 2026-10-13: the lane images, the runner, whole runs against the stub
+server, and the first five real runs (§3.1).
 
 ## 1. Acceptance: when it replaces the old harness
 
@@ -81,3 +81,49 @@ Acceptance criteria map to milestones: 1 and 2 need milestone 2; 3 needs 3;
 Milestone 2 does not start until the spike has answered its first question:
 whether both store engines link into one static binary. **Answered on
 2026-10-13: yes** (080 §7.1.1), with glibc and the C++ runtime dynamic.
+
+### 3.1 The first real runs (2026-10-13)
+
+Arm `qwen36-mtp-27b-high` (D55, D59) on `manic_miner` version 4, five runs,
+one lane on `linux-gpu-1`, the model served by xollama 0.40.3 on `windows-2`,
+SDK release 4.100.250.
+
+| run | verdict | wall | agent requests | tokens out | generation |
+|---|---|---|---|---|---|
+| 1 | `PASS` | 733 s | 18 | 34,136 | 57.5 tok/s |
+| 2 | `PASS` | 828 s | 28 | 38,099 | 63.7 tok/s |
+| 3 | `PASS` | 689 s | 31 | 29,306 | 61.8 tok/s |
+| 4 | `PASS` | 360 s | 19 | 13,886 | 66.2 tok/s |
+| 5 | `PASS` | 1,582 s | 26 | 73,050 | 52.2 tok/s |
+
+Median 733 s. The owner's reference for this tag in VS Code with the
+extension is about 12 minutes (720 s). Every run ended by the agent itself,
+no limit fired, the oracle's copy in the workspace was untouched, the
+endpoint's identity was the same before and after, and the model was fully
+on the GPU with the 131072 window.
+
+What the wire shows, on every one of the 122 agent requests: `num_ctx`
+131072, temperature 1, top-k 20, repeat last-n 0, repeat penalty 1, as the
+arm states. Two values of the arm did **not** reach the wire, although the
+SDK reported them as resolved:
+
+- **Thinking effort.** The request carries `think: true` and nothing else.
+  The server answered with its own budget, the tag's (`medium`, 24,000
+  tokens). The effort `high`, and the 48,000-token budget the SDK derived
+  from it, changed nothing that was sent.
+- **Presence penalty 0** is not among the options sent. The tag gives 0 too,
+  so the effective value is the same.
+
+So the read-back (040 §4, layer 2) is not proof of what was sent; only the
+wire (layer 3) is, and comparing the first request with the arm is not yet
+automatic.
+
+Before these, five runs of an earlier draft of the arm were recorded
+`INVALID` within seconds by a fault in the runner's read-back (a thinking
+budget derived by the SDK was taken for a deviation). No request reached the
+model. They stay in the store.
+
+Not done: a comparison with the old harness's runs from the store. The
+daemon of this milestone writes to its own new store; the imported corpus is
+in another one. Bringing them together is a configuration step that has not
+been taken.

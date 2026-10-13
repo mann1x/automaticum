@@ -525,3 +525,22 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 10:52 | Owner: thinking effort is high. Arm renamed qwen36-mtp-27b-high; read-back no longer refuses a derived thinking budget (bug-010); five INVALID runs recorded, no model loaded | arms/, runner/ | 8 runner tests pass; images rebuilt | ~4000 |
+
+## Session: 2026-10-13 10:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 10:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 10:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:54 | Created ../../../../root/.claude/projects/-srv-dev-disk-by-label-opt-dev-automaticum/memory/arm-values-come-from-the-owner.md | — | ~402 |
+| 10:54 | Session end: 1 writes across 1 files (arm-values-come-from-the-owner.md) | 0 reads | ~431 tok |
+| 11:33 | Session end: 1 writes across 1 files (arm-values-come-from-the-owner.md) | 0 reads | ~431 tok |
+| 12:10 | First five real runs (D55 arm, manic_miner v4): 5/5 PASS, walls 733 828 689 360 1582 s (median 733; owner's reference 720). Wire: sampler and num_ctx as the arm; thinking effort and presence penalty 0 not sent | docs/specs/110 | recorded; daemon stopped | ~6000 |

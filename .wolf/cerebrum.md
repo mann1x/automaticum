@@ -46,6 +46,8 @@
 - Verified on the real daemon 2026-10-13: `kill -KILL` mid-run, restart, the run is `ABORTED (daemon restart)` once, its container removed, the next queued run runs once.
 - Owner's reference (2026-10-13): this tag, configured as in D59, takes about 12 minutes on `manic_miner` in VS Code with the Cerebriline extension on the owner's desktop. Compare real runs with that.
 - With a reasoning effort and no budget stated, the SDK derives a thinking budget (high and xhigh give tens of thousands of tokens); the runner records it under `derived` in its `config_resolved` note.
+- The read-back is not proof of what was sent. On 4.100.250 with xollama, `reasoningEffort` (and the budget the SDK derives from it) is reported as resolved but the request carries only `think: true`, and the server applies the tag's own think budget; a sampler value of 0 (`presencePenalty`) is reported but not sent. Always check the wire of the first request.
+- The daemon's store (its `data_root`) and the store holding the imported old corpus are two different stores on this installation. Queries through the daemon see no imported run.
 
 ## Do-Not-Repeat
 
