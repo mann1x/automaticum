@@ -279,7 +279,11 @@ func where(f store.RunFilter) (string, []any) {
 // ListRuns returns the runs matching f, ordered by id.
 func (s *State) ListRuns(ctx context.Context, f store.RunFilter) ([]store.Run, error) {
 	w, args := where(f)
-	q := `SELECT ` + runColumns + ` FROM runs` + w + ` ORDER BY id`
+	order := ` ORDER BY id`
+	if f.Newest {
+		order = ` ORDER BY started_at DESC NULLS LAST, id DESC`
+	}
+	q := `SELECT ` + runColumns + ` FROM runs` + w + order
 	if f.Limit > 0 {
 		q += fmt.Sprintf(" LIMIT %d OFFSET %d", f.Limit, f.Offset)
 	}

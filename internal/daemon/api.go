@@ -360,6 +360,7 @@ func (d *Daemon) handleRuns(w http.ResponseWriter, r *http.Request) {
 		b := v == "true"
 		f.Imported = &b
 	}
+	f.Newest = true
 	f.Limit = 50
 	if v, err := strconv.Atoi(q.Get("limit")); err == nil && v > 0 && v <= 10000 {
 		f.Limit = v

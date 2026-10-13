@@ -166,6 +166,8 @@ type RunFilter struct {
 	Until    time.Time
 	Limit    int
 	Offset   int
+	// Newest lists the runs that started last first; otherwise by id.
+	Newest bool
 }
 
 // State holds runs and their derived tables. One process writes.

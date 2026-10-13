@@ -42,6 +42,8 @@
 - The SDK refuses an `editor` call on a file not read in the session, and nudges for `check_file` after an edit: a stub script must read, edit, check, then answer. Stub turns are chosen by the count of assistant messages in the request.
 - To try the harness by hand: `automaticum stub serve --listen <bridge gateway>:7412 --script <file>` and `automaticumd --config <dir>`; stop both with SIGTERM (`pidof automaticum`, `pidof automaticumd`).
 - First wire of 4.100.250: `num_ctx` follows `contextWindow`; `think: true` is sent even when the arm leaves thinking to the model tag (the stub advertises the thinking capability); `num_predict` and `max_output_tokens` are sent by the SDK's own rule when the arm states 0.
+- The private-string check matches `/shared/` in registry URLs of `runner/package-lock.json` (packages named `shared`): a false positive. Look at the matching lines before deciding, do not skip the check.
+- Verified on the real daemon 2026-10-13: `kill -KILL` mid-run, restart, the run is `ABORTED (daemon restart)` once, its container removed, the next queued run runs once.
 
 ## Do-Not-Repeat
 

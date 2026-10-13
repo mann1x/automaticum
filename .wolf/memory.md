@@ -471,3 +471,24 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 10:30 | SDK 4.100.250 released: lockfile (zod pinned 4.4.3), lane images base+typescript, image build/ls, stub serve; first full runs on the stub: FAIL (no-op), PASS (read, edit, check) | runner/, images/, cmd/automaticum | end to end through daemon and CLI; bug-009 zod | ~15000 |
+
+## Session: 2026-10-13 10:29
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 10:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 10:31
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 10:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:40 | manic_miner on the stub: PASS (23/23) and FAIL; daemon killed mid-run and recovered; run ls newest first | internal/store, internal/daemon | verified on the real daemon | ~6000 |

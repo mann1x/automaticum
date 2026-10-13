@@ -232,6 +232,16 @@ func TestQueue(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	base := time.Date(2026, 10, 13, 8, 0, 0, 0, time.UTC)
+	for i, id := range []string{"n-a", "n-c", "n-b"} {
+		if err := s.UpsertRun(ctx, &store.Run{ID: id, Batch: "new", Verdict: store.Fail, StartedAt: base.Add(time.Duration(i) * time.Minute)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	newest, err := s.ListRuns(ctx, store.RunFilter{Batch: "new", Newest: true, Limit: 2})
+	if err != nil || len(newest) != 2 || newest[0].ID != "n-b" || newest[1].ID != "n-c" {
+		t.Fatalf("newest first: %+v (err %v)", newest, err)
+	}
 	if n, err := s.CountRuns(ctx, store.RunFilter{Batch: "b1"}); err != nil || n != 2 {
 		t.Fatalf("batch b1 has %d runs (err %v)", n, err)
 	}
