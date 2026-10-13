@@ -1,0 +1,9 @@
+# OmniMerge v4 against the base model (owner, 2026-10-13): the same
+# settings as qwen36-mtp-27b-high-sdk-4.100.251 in every field, another
+# model tag. The two tags declare the same parameters (window 131072,
+# sampler, thinking budget medium), so the model is the one thing that
+# differs between the two arms.
+extends = "qwen36-mtp-27b-high-sdk-4.100.251"
+
+[model]
+model = "omnimerge-v4-mtp_tb:27b-q4km-128k"

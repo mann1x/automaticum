@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.11, 2026-10-13.
+**Status:** draft 0.12, 2026-10-13.
 
 ## 1. Rules
 
@@ -85,6 +85,15 @@ how to ask it to load or unload a model, capacity (sessions served at once).
   probed and gated like any other, and automaticum never loads, unloads, starts
   or stops anything on it.
 
+**Decided by the owner (2026-10-13), D79:** an endpoint of kind `ollama` or
+`xollama` may state `unload_others = true`. Before a run starts, the daemon
+then asks the server to drop any other model it holds in memory and waits
+until it has, so that arms on different models can follow each other on one
+device. It is off unless stated, because on a device shared with other work
+it pushes that work's model out. The model the run uses is never dropped,
+and the models dropped are in the run's record (`unloaded_before_run`).
+Without the switch the gate `free` waits, as before.
+
 ### 4.1 The model catalogue
 
 `models/*.toml`, tracked, one file per model tag (D70): `tag`, `family`,
@@ -93,6 +102,13 @@ the tag) and `notes`. It says what a tag **is**, in the owner's words. An
 arm names a tag and never repeats this; every arm on a tag gets the same
 identity, and an arm's own identity does not change when an entry does.
 An unknown field is an error; a tag described in two files is an error.
+
+**Decided by the owner (2026-10-13), D80:** `family` and `size` may be left
+empty. On an endpoint of kind `ollama` or `xollama` they are then read from
+the weights file through the server (the base model's name without its
+size label, and the size label), and the run's record lists them as
+`queried`. What the entry states is never replaced. The `variant` is never
+read from anywhere: no file can say what a merge is called.
 
 ### 4.2 What an endpoint runs on
 

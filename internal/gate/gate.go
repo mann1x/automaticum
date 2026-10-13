@@ -178,7 +178,7 @@ func free(_ context.Context, in *Input) (Status, string) {
 		return Unchecked, "this kind of endpoint does not say what it holds in memory"
 	}
 	if len(id.OtherModels) > 0 {
-		return Wait, fmt.Sprintf("endpoint %s holds %s in memory; loading %s would push it out, and nothing is unloaded for a run",
+		return Wait, fmt.Sprintf("endpoint %s holds %s in memory; loading %s would push it out, and this endpoint is not set to drop other models (unload_others)",
 			in.endpoint.Name, strings.Join(id.OtherModels, ", "), in.Arm.Model.Model)
 	}
 	if id.Loaded != nil {

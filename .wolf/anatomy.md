@@ -415,3 +415,9 @@
 
 - `internal/daemon/compare.go` — GET /v1/compare: runs of batches grouped by arm, summaries, findings, pairwise tests, arm diff (~1700 tok)
 - `cmd/automaticum/compare_cmds.go` — `automaticum compare <batch> ...`, main metrics by default, --all (~1700 tok)
+
+## arms and models added 2026-10-13
+
+- `arms/omnimerge-v4-mtp-27b-high-sdk-4.100.251.toml` — OmniMerge v4, same settings as the base arm on SDK 4.100.251 (~120 tok)
+- `models/omnimerge-v4-mtp_tb-27b-q4km-128k.toml` — variant "OmniMerge v4"; family and size read from the weights (~80 tok)
+- `internal/run/identity_test.go` — FillIdentity and Unload against a fake server (~900 tok)

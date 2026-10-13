@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -201,4 +202,130 @@ func Probe(ctx context.Context, hc *http.Client, e *config.Endpoint, apiKey, mod
 		}
 	}
 	return id, nil
+}
+
+// Ollama says whether an endpoint is of a kind that answers the Ollama
+// API: it tells what a model's weights file says of itself and can be asked
+// to drop a model from memory.
+func Ollama(e *config.Endpoint) bool { return e != nil && (e.Kind == "ollama" || e.Kind == "xollama") }
+
+// FillIdentity completes what the catalogue states of a model with what
+// the weights file says of itself, for the facts the entry leaves empty:
+// the family from the base model's name, the size from the size label
+// (D80). The catalogue's own words are never replaced, and the variant is
+// never guessed: a file cannot say what a merge is called. The result
+// lists what was read this way.
+func FillIdentity(stated *config.ModelIdentity, tag string, weights map[string]any) *config.ModelIdentity {
+	out := config.ModelIdentity{Tag: tag}
+	if stated != nil {
+		out = *stated
+	}
+	out.Queried = nil
+	text := func(key string) string {
+		s, _ := weights[key].(string)
+		return strings.TrimSpace(s)
+	}
+	size := text("general.size_label")
+	if strings.TrimSpace(out.Size) == "" && size != "" {
+		out.Size, out.Queried = size, append(out.Queried, "size")
+	}
+	if strings.TrimSpace(out.Family) == "" {
+		family := text("general.base_model.0.name")
+		if family == "" {
+			family = text("general.basename")
+		}
+		// "Qwen3.6 27B" and "Qwen3.6-27B" name the size too.
+		if size != "" {
+			family = strings.TrimRight(strings.TrimSuffix(family, size), " -")
+		}
+		if family != "" {
+			out.Family, out.Queried = family, append(out.Queried, "family")
+		}
+	}
+	if stated == nil && len(out.Queried) == 0 {
+		return nil
+	}
+	sort.Strings(out.Queried)
+	return &out
+}
+
+// Unload asks an Ollama-kind server to drop every model it holds in memory
+// other than keep, and waits until it has. It returns the models dropped.
+// The model a run is about to use is never dropped.
+func Unload(ctx context.Context, hc *http.Client, e *config.Endpoint, apiKey, keep string) ([]string, error) {
+	base := strings.TrimRight(e.BaseURL, "/")
+	call := func(method, path string, in, out any) error {
+		var body io.Reader
+		if in != nil {
+			b, _ := json.Marshal(in)
+			body = bytes.NewReader(b)
+		}
+		req, err := http.NewRequestWithContext(ctx, method, base+path, body)
+		if err != nil {
+			return err
+		}
+		if in != nil {
+			req.Header.Set("Content-Type", "application/json")
+		}
+		if apiKey != "" {
+			req.Header.Set("Authorization", "Bearer "+apiKey)
+		}
+		resp, err := hc.Do(req)
+		if err != nil {
+			return fmt.Errorf("endpoint %s does not answer %s", e.Name, path)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("endpoint %s: %s gave status %d", e.Name, path, resp.StatusCode)
+		}
+		if out == nil {
+			_, err = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
+			return err
+		}
+		return json.NewDecoder(io.LimitReader(resp.Body, 16<<20)).Decode(out)
+	}
+	held := func() ([]string, error) {
+		var ps struct {
+			Models []struct {
+				Name  string `json:"name"`
+				Model string `json:"model"`
+			} `json:"models"`
+		}
+		if err := call("GET", "/api/ps", nil, &ps); err != nil {
+			return nil, err
+		}
+		var others []string
+		for _, m := range ps.Models {
+			if m.Name != keep && m.Model != keep {
+				others = append(others, m.Name)
+			}
+		}
+		return others, nil
+	}
+	others, err := held()
+	if err != nil || len(others) == 0 {
+		return nil, err
+	}
+	for _, name := range others {
+		// A generate request without a prompt and with no time to live is
+		// the server's way of dropping a model: it generates nothing.
+		if err := call("POST", "/api/generate", map[string]any{"model": name, "keep_alive": 0, "stream": false}, nil); err != nil {
+			return nil, err
+		}
+	}
+	for range 60 {
+		left, err := held()
+		if err != nil {
+			return others, err
+		}
+		if len(left) == 0 {
+			return others, nil
+		}
+		select {
+		case <-ctx.Done():
+			return others, ctx.Err()
+		case <-time.After(time.Second):
+		}
+	}
+	return others, fmt.Errorf("endpoint %s still holds another model a minute after it was asked to drop it", e.Name)
 }

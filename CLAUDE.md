@@ -73,7 +73,7 @@ make shell SPIKE_ROOT=<dir>
 - **Stub model server** (`internal/stubmodel/`): `stubmodel.go` · `stubmodel_test.go`
 - **Docker client** (`internal/docker/`): `docker.go` · `docker_test.go`
 - **Task loader** (`internal/task/`): `task.go` · `exec.go` · `task_test.go`
-- **Run executor** (`internal/run/`): `run.go` · `protocol.go` · `probe.go` · `verdict.go` · `run_test.go`
+- **Run executor** (`internal/run/`): `run.go` · `protocol.go` · `probe.go` · `verdict.go` · `run_test.go` · `identity_test.go`
 - **SDK builds** (`internal/sdk/`): `sdk.go` · `sdk_test.go`
 - **Human formatter** (`internal/human/`): `human.go` · `human_test.go`
 - **Statistics** (`internal/stats/`): `stats.go` · `stats_test.go`
@@ -85,8 +85,8 @@ make shell SPIKE_ROOT=<dir>
 - **Runner** (`runner/`, Node ESM, runs only inside the lane container): `PROTOCOL.md` · `package.json` · `runner.mjs` · `session.mjs` · `wire.mjs` · `sdk/` (`4.100.250/` and `4.100.251/`, each with `package.json` · `package-lock.json` · `sdk.toml`) · `test/` (`arm-stub.json` · `session.test.mjs` · `wire.test.mjs`)
 - **Lane images** (`images/`): `base/Dockerfile` · `layers/typescript/Dockerfile`
 - **Tasks** (`tasks/`): `custom/manic_miner/` (`task.toml` · `README.md`) · `demo/answer/` (`task.toml`)
-- **Arms** (`arms/`): `base.toml` · `stub.toml` · `stub-sdk-4.100.251.toml` · `qwen36-mtp-27b-high.toml` · `qwen36-mtp-27b-high-sdk-4.100.251.toml`
-- **Model catalogue** (`models/`): `stub.toml` · `qwen36-base-mtp_tb-27b-q4km-128k.toml`
+- **Arms** (`arms/`): `base.toml` · `stub.toml` · `stub-sdk-4.100.251.toml` · `qwen36-mtp-27b-high.toml` · `qwen36-mtp-27b-high-sdk-4.100.251.toml` · `omnimerge-v4-mtp-27b-high-sdk-4.100.251.toml`
+- **Model catalogue** (`models/`): `stub.toml` · `qwen36-base-mtp_tb-27b-q4km-128k.toml` · `omnimerge-v4-mtp_tb-27b-q4km-128k.toml`
 - **Example configuration** (`examples/config/`): `automaticum.toml` · `endpoints/local-ollama.toml` · `endpoints/stub.toml` · `lanes/lane-1.toml`
 - **Command line** (`cmd/automaticum/`): `main.go` (`automaticum version` and the `<noun> <verb>` dispatch) · `config_cmds.go` (`automaticum arm validate` · `automaticum arm show` · `automaticum arm diff` · `automaticum task ls` · `automaticum task show` · `automaticum task build` · `automaticum oracle verify` · `automaticum lane ls` · `automaticum endpoint ls`) · `image_cmds.go` (`automaticum image build` · `automaticum image ls`) · `sdk_cmds.go` (`automaticum sdk add` · `automaticum sdk ls` · `automaticum sdk verify`) · `stub_cmds.go` (`automaticum stub serve`) · `client_cmds.go` (`automaticum status` · `automaticum run start` · `automaticum run ls` · `automaticum run show` · `automaticum run tail` · `automaticum run stop` · `automaticum run abort` · `automaticum run invalidate` · `automaticum run identify` · `automaticum logs` · `automaticum doctor` · `automaticum reanalyse` · `automaticum detect`; these talk to the daemon) · `compare_cmds.go` (`automaticum compare`; talks to the daemon) · `store_cgo.go` (`automaticum legacy import` · `automaticum store check`; cgo builds only) · `store_nocgo.go` · `config_cmds_test.go`
 - **Local, untracked** (`docs/local/`): host mapping and private paths

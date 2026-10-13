@@ -997,6 +997,9 @@ func (d *Daemon) handleIdentify(w http.ResponseWriter, r *http.Request) {
 			Host: endpoint.Host, LaneHost: lane.Host}
 		inf.GPU.Declared, inf.GPU.VRAMGB, inf.GPU.Notes = endpoint.Hardware.GPU, endpoint.Hardware.VRAMGB, endpoint.Hardware.Notes
 		inf.Model.Tag, inf.Model.Digest = arm.Model.Model, before.Digest
+		if run.Ollama(endpoint) {
+			stated = run.FillIdentity(stated, arm.Model.Model, before.Weights)
+		}
 		inf.Model.Stated, inf.Model.NotStated = stated, stated.Missing()
 		inf.Model.Server, inf.Model.Weights = before.Details, before.Weights
 		if after != nil && after.Loaded != nil && after.Loaded.Size > 0 {

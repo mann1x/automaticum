@@ -808,3 +808,19 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 18:50 | milestone 4 first part: internal/stats, interleaved several-arm batches, compare command (D78) | internal/stats, internal/daemon/compare.go, api.go, cmd/automaticum/compare_cmds.go, 070, 090, decisions | tests pass; tried on today's ten runs | ~15000 |
+
+## Session: 2026-10-13 18:29
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 18:29
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 18:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:05 | D79 unload_others, D80 identity queried from weights, D81 closing batch; OmniMerge v4 arm and catalogue entry | internal/run/probe.go, run.go, daemon.go, config, arms/, models/, 030, decisions | tests pass | ~9000 |

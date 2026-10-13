@@ -120,6 +120,9 @@
 - 2026-10-13 D71: a tag without a stated identity runs and is marked unknown with a finding.
 - 2026-10-13 D72: GPU declared in the endpoint's configuration now, measured with agent mode later.
 - 2026-10-13 D73: model reloaded mid-run or partly off the GPU makes a run INVALID by default; an arm may accept either (`[accepts] model_reload`, `partial_gpu`) because the owner may want to test exactly that. Closes O21.
+- 2026-10-13 D81: closing batch of milestone 4 is OmniMerge v4 against base Qwen 3.6 27B, 10 runs per arm, interleaved; tell the xOllama session start and ETA. Later Qwen 3.8 27B base against OmniMerge v6.
+- 2026-10-13 D80: empty family/size in the catalogue are queried from the weights on Ollama/xOllama endpoints; variant is always the owner's word.
+- 2026-10-13 D79: the daemon may unload the other model on an Ollama/xOllama endpoint before a run (`unload_others`, per endpoint); a must-have per the owner.
 - 2026-10-13 D78: reports give every statistic and no verdict on "distinguishable"; goals are quant-vs-quant and SDK-version-vs-version on the same tag and lane (pass rate, thinking, compaction, loops, wall time).
 - 2026-10-13 D77: pause inside a run waits for SDK support (asked by mail 1271); pause between runs only until then.
 - 2026-10-13 D76: looping detectors use every match (the older first-match-only code is a blind spot); published loop rates are not reworked; every finding records `matching` and the library version.

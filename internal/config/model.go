@@ -27,6 +27,9 @@ type ModelIdentity struct {
 	// Digest pins the entry to one build of the tag; empty means any.
 	Digest string `toml:"digest" json:"digest,omitempty"`
 	Notes  string `toml:"notes" json:"notes,omitempty"`
+	// Queried lists the facts above that the entry left empty and that
+	// were read from the weights file through the server instead (D80).
+	Queried []string `toml:"-" json:"queried,omitempty"`
 	// File is the entry's file, for messages.
 	File string `toml:"-" json:"-"`
 }

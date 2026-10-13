@@ -81,6 +81,12 @@ type Endpoint struct {
 	Capacity int `toml:"capacity"`
 	// APIKeyFile holds a credential; relative to the directory. Optional.
 	APIKeyFile string `toml:"api_key_file"`
+	// UnloadOthers lets the daemon ask an Ollama or xOllama server to drop
+	// whatever other model it holds before a run starts, so that arms on
+	// different models can follow each other on one device (D79). Off
+	// unless stated: on a device shared with other work it pushes that
+	// work's model out.
+	UnloadOthers bool `toml:"unload_others"`
 	// Hardware is what the server runs on, as the installation's owner
 	// declares it. It is recorded in every run as declared, not measured.
 	Hardware Hardware `toml:"hardware"`

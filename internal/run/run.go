@@ -145,6 +145,9 @@ type Request struct {
 	// Identity is the catalogue's entry for the arm's model tag: what the
 	// model is, in the owner's words. Nil when the tag has none.
 	Identity *config.ModelIdentity
+	// Unloaded lists the models the endpoint was asked to drop before the
+	// run, when its configuration allows that (D79).
+	Unloaded []string
 }
 
 // NewID returns a run id that sorts by time.
@@ -201,6 +204,9 @@ type provenance struct {
 	} `json:"task"`
 	// Inference says where and on what the run's model ran (020 §1.1).
 	Inference *Inference `json:"inference,omitempty"`
+	// Unloaded lists the models dropped from the endpoint's memory before
+	// the run (D79).
+	Unloaded []string `json:"unloaded_before_run,omitempty"`
 	// Gates is every gate's answer before the run (050 §3).
 	Gates          any       `json:"gates,omitempty"`
 	EndpointBefore *Identity `json:"endpoint_before"`
@@ -265,6 +271,7 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 	p.SDK.Named = a.Harness.SDKRelease
 	p.Image.Ref = req.Image
 	p.Gates = req.Gates
+	p.Unloaded = req.Unloaded
 	p.Task.Hash, p.Task.Files, p.Task.Prompt = t.Hash, t.Files, t.Prompt
 	p.NotRecorded = map[string]string{
 		"server_log":     "needs agent mode on the endpoint's host",
@@ -342,7 +349,11 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		Host: endpoint.Host, LaneHost: lane.Host}
 	inf.GPU.Declared, inf.GPU.VRAMGB, inf.GPU.Notes = endpoint.Hardware.GPU, endpoint.Hardware.VRAMGB, endpoint.Hardware.Notes
 	inf.Model.Tag, inf.Model.Digest = a.Model.Model, before.Digest
-	inf.Model.Stated, inf.Model.NotStated = req.Identity, req.Identity.Missing()
+	stated := req.Identity
+	if Ollama(endpoint) {
+		stated = FillIdentity(stated, a.Model.Model, before.Weights)
+	}
+	inf.Model.Stated, inf.Model.NotStated = stated, stated.Missing()
 	inf.Model.Server, inf.Model.Weights = before.Details, before.Weights
 	p.Inference = inf
 

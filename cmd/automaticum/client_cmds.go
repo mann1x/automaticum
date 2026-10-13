@@ -770,7 +770,11 @@ func printInference(r daemon.RunView) {
 			row("model digest", inf.Model.Digest[:12], "server")
 		}
 		if st := inf.Model.Stated; st != nil {
-			row("model family", or(strings.TrimSpace(st.Family+" "+st.Size), "not stated"), "catalogue")
+			from := "catalogue"
+			if len(st.Queried) > 0 {
+				from = "weights file (" + strings.Join(st.Queried, ", ") + "), read through the server"
+			}
+			row("model family", or(strings.TrimSpace(st.Family+" "+st.Size), "not stated"), from)
 			row("model variant", or(st.Variant, "not stated"), "catalogue")
 			if st.Lineage != "" {
 				row("lineage", st.Lineage, "catalogue")

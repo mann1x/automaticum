@@ -424,6 +424,25 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 		skip("the task cannot be used: " + err.Error())
 		return false
 	}
+	// An endpoint that allows it is asked to drop any other model before
+	// the gates look (D79): arms on different models can then follow each
+	// other on one device. When it fails the gate "free" waits, as before.
+	var unloaded []string
+	if ep := d.Local.Endpoints[arm.Endpoint]; run.Ollama(ep) && ep.UnloadOthers {
+		key, err := d.Local.APIKey(ep)
+		if err == nil {
+			hc := d.HTTP
+			if hc == nil {
+				hc = &http.Client{Timeout: 90 * time.Second}
+			}
+			unloaded, err = run.Unload(ctx, hc, ep, key, arm.Model.Model)
+		}
+		if err != nil {
+			log.Warn("the endpoint did not drop its other model", "error", err)
+		} else if len(unloaded) > 0 {
+			log.Info("the endpoint dropped another model for this run", "models", strings.Join(unloaded, ", "))
+		}
+	}
 	// The gates (050 §3). A refusal skips the run with the gate's name; a
 	// wait leaves it queued (D64). Both are notified, a wait once.
 	var answers []gate.Result
@@ -460,7 +479,7 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 	setLane("running", det)
 	log.Info("run starts", "arm", it.Arm, "task", it.Task)
 	r, err := d.Runner.Execute(ctx, run.Request{
-		ID: it.RunID, Arm: arm, Task: tk, Lane: it.Lane, Image: LaneImage(tk.Layers), Batch: it.Batch, Gates: answers, Identity: models[arm.Model.Model],
+		ID: it.RunID, Arm: arm, Task: tk, Lane: it.Lane, Image: LaneImage(tk.Layers), Batch: it.Batch, Gates: answers, Identity: models[arm.Model.Model], Unloaded: unloaded,
 		OnStart: func(partial *store.Run, containerID string) {
 			copy := *partial
 			det.ContainerID, det.Run = containerID, &copy
