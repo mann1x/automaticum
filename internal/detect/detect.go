@@ -52,6 +52,26 @@ type Options struct {
 	// hundreds of thousands of characters a turn), so the detector reports
 	// only where a size is declared (D75).
 	RunawayChars int
+	// FirstMatch makes the short-unit and letter-run detectors look only
+	// at the first repeat in a block, as the older reference code did: a
+	// block that opens with layout is then never flagged, whatever comes
+	// after. It is a blind spot, kept only so that older counts can be
+	// reproduced; the reference is every match (D76).
+	FirstMatch bool
+}
+
+// The two ways of matching; every finding says which one made it.
+const (
+	EveryMatch = "every_match"
+	FirstMatch = "first_match"
+)
+
+// Matching names the way of matching these options ask for.
+func (o Options) Matching() string {
+	if o.FirstMatch {
+		return FirstMatch
+	}
+	return EveryMatch
 }
 
 // Hit is one detector firing on one block.
@@ -93,7 +113,7 @@ func Block(text string, o Options) []Hit {
 // pattern (.{2,40}?)\1{7,} finds it: in "abababab..." the unit is "ab", which
 // has two letters, and the repeat is passed over whole. A longer unit made
 // of the same repeat is not looked for inside it.
-func shortUnit(r []rune, _ string, _ Options) *Hit {
+func shortUnit(r []rune, _ string, o Options) *Hit {
 	for i := 0; i+unitMin*unitRepeats <= len(r); {
 		next := i + 1
 		for n := unitMin; n <= unitMax && i+n*unitRepeats <= len(r); n++ {
@@ -107,6 +127,9 @@ func shortUnit(r []rune, _ string, _ Options) *Hit {
 			if letters(r[i:i+n]) >= unitLetters {
 				return &Hit{Detector: ShortUnitRepeat, Count: reps, Unit: string(r[i : i+n]), Offset: i}
 			}
+			if o.FirstMatch {
+				return nil
+			}
 			next = i + n*reps
 			break
 		}
@@ -117,7 +140,7 @@ func shortUnit(r []rune, _ string, _ Options) *Hit {
 
 // charRun: one character 41 or more times in a row, only when it is a
 // letter. A run of "=" or "-" is a separator.
-func charRun(r []rune, _ string, _ Options) *Hit {
+func charRun(r []rune, _ string, o Options) *Hit {
 	for i := 0; i < len(r); {
 		j := i + 1
 		for j < len(r) && r[j] == r[i] {
@@ -125,6 +148,9 @@ func charRun(r []rune, _ string, _ Options) *Hit {
 		}
 		if j-i >= runLength && unicode.IsLetter(r[i]) {
 			return &Hit{Detector: CharRun, Count: j - i, Unit: string(r[i]), Offset: i}
+		}
+		if j-i >= runLength && o.FirstMatch {
+			return nil
 		}
 		i = j
 	}

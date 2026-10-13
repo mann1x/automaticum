@@ -242,3 +242,19 @@ func TestReasoningGuards(t *testing.T) {
 		t.Errorf("one line 21 times: %+v", h)
 	}
 }
+
+// Every match is the reference: a block that opens with layout and then
+// loops is flagged. The older first-match way misses it (D76).
+func TestMatching(t *testing.T) {
+	for _, text := range []string{strings.Repeat("    ", 12) + strings.Repeat("hello wor ", 10), strings.Repeat("=", 41) + strings.Repeat("a", 41)} {
+		if got := Block(text, Options{}); len(got) != 1 {
+			t.Errorf("every match on %.20q: %+v", text, got)
+		}
+		if got := Block(text, Options{FirstMatch: true}); len(got) != 0 {
+			t.Errorf("first match on %.20q: %+v", text, got)
+		}
+	}
+	if (Options{}).Matching() != EveryMatch || (Options{FirstMatch: true}).Matching() != FirstMatch {
+		t.Error("the options do not name their way of matching")
+	}
+}

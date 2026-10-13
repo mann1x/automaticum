@@ -451,7 +451,11 @@ func findingLine(f daemon.FindingView) string {
 	case detect.ShortUnitRepeat, detect.CharRun, detect.SentenceRepeat, detect.Runaway, detect.ReasoningRepetition, detect.ReasoningLoop:
 		var fire ingest.Firing
 		json.Unmarshal(f.Evidence, &fire)
-		return fmt.Sprintf("%s  %d of %d %s blocks, first in turn %d: %s", head, fire.Blocks, fire.Of, fire.Channel, f.Turn, hitLine(fire.First))
+		how := ""
+		if fire.Matching == detect.FirstMatch {
+			how = " [older matching: first match only]"
+		}
+		return fmt.Sprintf("%s  %d of %d %s blocks, first in turn %d: %s%s", head, fire.Blocks, fire.Of, fire.Channel, f.Turn, hitLine(fire.First), how)
 	default:
 		return fmt.Sprintf("%s  turn %d, %d times  %s", head, f.Turn, f.Count, f.Evidence)
 	}
@@ -563,7 +567,8 @@ func detectCmd(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("detect", flag.ExitOnError)
 	p, dial := addClient(fs)
 	self := fs.Bool("self-test", false, "run the library's controls")
-	size := fs.Int("runaway", 0, "the block size, in characters, that counts as a runaway (a file only; 0 is the default)")
+	size := fs.Int("runaway", 0, "the block size, in characters, that counts as a runaway (a file only; 0 reports none)")
+	first := fs.Bool("first-match", false, "a file only: look at the first repeat alone, as the older reference code did (a blind spot; for reproducing older counts)")
 	rest := parse(fs, args)
 	if *self {
 		results, ok := detect.SelfTest()
@@ -593,14 +598,19 @@ func detectCmd(ctx context.Context, args []string) error {
 		return errors.New("usage: automaticum detect <file|run> [--runaway N], or automaticum detect --self-test")
 	}
 	if text, err := os.ReadFile(rest[0]); err == nil {
-		hits := detect.Block(string(text), detect.Options{RunawayChars: *size})
+		opt := detect.Options{RunawayChars: *size, FirstMatch: *first}
+		hits := detect.Block(string(text), opt)
 		if *p.json {
 			if hits == nil {
 				hits = []detect.Hit{}
 			}
 			return printJSON(hits)
 		}
-		fmt.Printf("%s: one block of %d characters\n", rest[0], len([]rune(string(text))))
+		how := "every match (the reference)"
+		if opt.FirstMatch {
+			how = "first match only (the older way, with its blind spot)"
+		}
+		fmt.Printf("%s: one block of %d characters; detector library version %s, matching: %s\n", rest[0], len([]rune(string(text))), detect.Version, how)
 		for _, h := range hits {
 			fmt.Printf("  %-18s %s\n", h.Detector, hitLine(h))
 		}

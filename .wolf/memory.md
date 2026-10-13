@@ -759,3 +759,14 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 16:45 | owner correction: no invented thresholds; ported the SDK's reasoning guards and tool-call thresholds (library v2, D75), corpus analysed again | internal/detect/guards.go, detect.go, controls.go, ingest/detectors.go, specs 070, decisions | 559 runs in 4m 10s; O19, O20 closed | ~14000 |
+
+## Session: 2026-10-13 16:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 16:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:10 | D76: every match is the reference; first-match option and `matching` recorded in every detector finding | internal/detect/detect.go, ingest/detectors.go, cmd/automaticum/client_cmds.go, 070, decisions | tests pass | ~3000 |

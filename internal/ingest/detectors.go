@@ -14,6 +14,9 @@ type Firing struct {
 	Blocks  int    `json:"blocks"`  // blocks it fired on
 	Of      int    `json:"of"`      // blocks of that channel in the run
 	Turns   []int  `json:"turns"`   // the turn of each, the first maxTurns
+	// Matching says which way of matching made the finding: every match
+	// (the reference) or the older first match only (D76).
+	Matching string `json:"matching"`
 	// First is the firing on the first of those blocks.
 	First detect.Hit `json:"first"`
 }
@@ -43,7 +46,7 @@ func detectorFindings(runID string, ev *Events, opt detect.Options) ([]store.Fin
 			}
 			f := fired[key{h.Detector, b.Kind}]
 			if f == nil {
-				f = &Firing{Channel: b.Kind, First: h}
+				f = &Firing{Channel: b.Kind, Matching: opt.Matching(), First: h}
 				fired[key{h.Detector, b.Kind}] = f
 			}
 			f.Blocks++

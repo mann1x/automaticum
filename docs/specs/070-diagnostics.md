@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.9, 2026-10-13.
+**Status:** draft 0.10, 2026-10-13.
 
 ## 1. The rule: no custom script
 
@@ -190,6 +190,18 @@ is stated in `internal/detect/guards.go`.
   reference pattern). Where they and the SDK's guards disagree, both are on
   record: on code quoted again and again, `sentence_repeat` fires and
   `reasoning_repetition`, which asks for a sentence, does not.
+- **Decided by the owner (2026-10-13), D76: every match is the reference.**
+  The older reference code of the requirements looks only at the first
+  repeat in a block, so a block that opens with layout (indentation, a
+  separator line) is never flagged, whatever follows. That is a blind spot
+  and is not reproduced: `short_unit_repeat` and `char_run` pass over a
+  repeat that fails the letters rule and keep looking. Loop rates published
+  with the older code stay as they were published and are not recomputed.
+  Every detector finding states which way made it (`matching`:
+  `every_match`, or `first_match` for the older way), next to the library
+  version, so a count can always be told from an older one.
+  `automaticum detect <file> --first-match` reads a text the older way, to
+  reproduce an older count; ingest never does.
 - Not ported yet from the same source: the count of failed identical calls
   (6, and 4 for a call the tool refused in advance) and the repeated pair
   of call and result (3, and 6 for writing tools). Both need each call's
