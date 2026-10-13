@@ -24,9 +24,12 @@ type Request struct {
 	// What the server said at the end of its answer.
 	PromptTokens, CachedTokens, EvalTokens int
 	PromptNS, EvalNS                       int64
-	DoneReason                             string
-	ThinkBudget                            string
-	ThinkBudgetTokens                      int
+	// LoadNS is how long the server spent loading the model for this
+	// request: milliseconds when it was in memory, seconds when it was not.
+	LoadNS            int64
+	DoneReason        string
+	ThinkBudget       string
+	ThinkBudgetTokens int
 	// Empty is true when the answer held no text, no thinking and no call.
 	Empty bool
 }
@@ -92,6 +95,11 @@ func request(l *wireLine) Request {
 		q.Agent = true
 	}
 	if !q.Agent {
+		// The SDK's own chat requests still say how the model was loaded.
+		if l.ResponseBody != nil {
+			q.answer(*l.ResponseBody)
+			q.Empty = false
+		}
 		return q
 	}
 	json.Unmarshal(body["options"], &q.Options)
@@ -117,6 +125,7 @@ func (q *Request) answer(body string) {
 		DoneReason        string `json:"done_reason"`
 		ThinkBudget       string `json:"think_budget"`
 		ThinkBudgetTokens int    `json:"think_budget_tokens"`
+		LoadNS            int64  `json:"load_duration"`
 		PromptEvalCount   int    `json:"prompt_eval_count"`
 		PromptCached      int    `json:"prompt_eval_cached_count"`
 		PromptEvalNS      int64  `json:"prompt_eval_duration"`
@@ -139,6 +148,7 @@ func (q *Request) answer(body string) {
 			q.DoneReason, q.ThinkBudget, q.ThinkBudgetTokens = m.DoneReason, m.ThinkBudget, m.ThinkBudgetTokens
 			q.PromptTokens, q.CachedTokens, q.PromptNS = m.PromptEvalCount, m.PromptCached, m.PromptEvalNS
 			q.EvalTokens, q.EvalNS = m.EvalCount, m.EvalNS
+			q.LoadNS = m.LoadNS
 		}
 	}
 	q.Empty = !q.Failed && !something

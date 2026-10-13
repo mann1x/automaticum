@@ -105,6 +105,7 @@ Each of these waits for a measurement or for the planning of its milestone.
 | O6 | Which external harnesses need the offline event path. | 064 §3.2 | milestone 5, per harness |
 | O19 | Repeated tool call: how many identical calls, and whether they must be in a row. Built as 3 or more in a row; recommendation: keep as the default, a suite may declare another. | 070 §3.2 | the owner; nothing waits, the built default is in use |
 | O20 | Severity of a runaway block: built as a note, with the default size of 10,000 characters for every run until suites declare theirs; recommendation: keep. | 070 §3.2 | the owner; nothing waits |
+| O21 | A run whose model was loaded again mid-run (finding `model_reloaded`), or that ended partly off the GPU (`gpu_residency`): is it `INVALID`, or a finding only? Built as findings only; recommendation: `INVALID`, since its times are not the arm's, once the owner agrees. | 110 §3.2, 070 §4.1 | the owner; nothing waits |
 
 Closed since the first revision: O2 (D32), O4 (D30), O7 (S4, then D34), O9
 (D31), O10 (D42), O11 (D33), O12 (D28), O13 (D29), O14 (D46), O8 (D47), O15

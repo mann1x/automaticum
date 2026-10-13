@@ -426,6 +426,8 @@ func findingLine(f daemon.FindingView) string {
 	head := fmt.Sprintf("%-8s %s", f.Severity, f.Detector)
 	switch f.Detector {
 	case ingest.WireArm:
+	case ingest.ModelReloaded:
+		return fmt.Sprintf("%s  the server loaded the model again %d times after the run's first request, first at request #%d: %s", head, f.Count, f.Turn, f.Evidence)
 	case ingest.GPUResidency:
 		var e struct {
 			Size     int64   `json:"size"`

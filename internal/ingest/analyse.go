@@ -31,9 +31,17 @@ type Result struct {
 // when the run ended: its speed is then not the arm's.
 const GPUResidency = "gpu_residency"
 
+// ModelReloaded is the finding that the server loaded the model again
+// after the run's first request.
+const ModelReloaded = "model_reloaded"
+
+// reloadSeconds is the load time from which a request counts as a reload. A
+// model in memory answers "load" in milliseconds; a load takes seconds.
+const reloadSeconds = 1.0
+
 // owned names the detectors whose findings ingest writes. Findings of any
 // other detector are kept as they are.
-var owned = map[string]bool{WireArm: true, GPUResidency: true, detect.ShortUnitRepeat: true, detect.CharRun: true,
+var owned = map[string]bool{WireArm: true, GPUResidency: true, ModelReloaded: true, detect.ShortUnitRepeat: true, detect.CharRun: true,
 	detect.SentenceRepeat: true, detect.Runaway: true, detect.RepeatedToolCall: true}
 
 // Run derives metrics, tool calls and findings from a run's stored material
@@ -298,6 +306,35 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 			res.Findings = append(res.Findings, store.Finding{RunID: r.ID, Detector: GPUResidency, DetectorVersion: "1",
 				Severity: "warning", Count: 1, Evidence: raw})
 		}
+	}
+
+	// A model that had to be loaded again in the middle of a run was pushed
+	// out of memory by something else: the run's times are not the arm's.
+	// The server says how long it spent loading for every chat request.
+	type load struct {
+		Seq     int     `json:"seq"`
+		Seconds float64 `json:"seconds"`
+	}
+	var loads []load
+	chats := 0
+	for _, q := range reqs {
+		if q.Path != "/api/chat" || q.Failed {
+			continue
+		}
+		chats++
+		if sec := float64(q.LoadNS) / 1e9; chats == 1 {
+			m("endpoint.first_load_s", sec)
+		} else if sec >= reloadSeconds {
+			loads = append(loads, load{q.Seq, sec})
+		}
+	}
+	if chats > 0 {
+		m("endpoint.reloads", float64(len(loads)))
+	}
+	if len(loads) > 0 {
+		raw, _ := json.Marshal(map[string]any{"reloads": loads, "threshold_s": reloadSeconds})
+		res.Findings = append(res.Findings, store.Finding{RunID: r.ID, Detector: ModelReloaded, DetectorVersion: "1",
+			Severity: "warning", Turn: loads[0].Seq, Count: len(loads), Evidence: raw})
 	}
 
 	// What the model wrote and called, through the detector library. The

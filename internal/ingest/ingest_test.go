@@ -354,6 +354,37 @@ func TestRun(t *testing.T) {
 
 }
 
+// A model loaded again in the middle of a run is a finding; the load before
+// the first request is not.
+func TestModelReloaded(t *testing.T) {
+	done := func(loadNS int64) string {
+		return fmt.Sprintf(`{"message":{"content":"ok"}}`+"\n"+`{"done":true,"done_reason":"stop","load_duration":%d,"eval_count":1}`, loadNS)
+	}
+	probe := `{"model":"m:1","messages":[]}` // the SDK's own chat request, without tools
+	r := &store.Run{ID: "r"}
+	find := func(reqs []Request) (*store.Finding, map[string]float64) {
+		res := Analyse(r, &Events{Notices: map[string]int{}}, reqs)
+		got := map[string]float64{}
+		for _, m := range res.Metrics {
+			got[m.Name] = m.Value
+		}
+		for _, f := range res.Findings {
+			if f.Detector == ModelReloaded {
+				return &f, got
+			}
+		}
+		return nil, got
+	}
+	f, m := find(wire(t, chat(1, probe, done(8_000_000_000)), chat(2, sent, done(15_000_000)), chat(3, sent, done(14_000_000))))
+	if f != nil || m["endpoint.first_load_s"] != 8 || m["endpoint.reloads"] != 0 {
+		t.Errorf("a run whose model stayed in memory: %+v %v", f, m)
+	}
+	f, m = find(wire(t, chat(1, probe, done(8_000_000_000)), chat(2, sent, done(15_000_000)), chat(3, sent, done(6_500_000_000)), chat(4, sent, done(1_000_000))))
+	if f == nil || f.Count != 1 || f.Turn != 3 || !strings.Contains(string(f.Evidence), `"seconds":6.5`) || m["endpoint.reloads"] != 1 {
+		t.Errorf("a run whose model was loaded again: %+v %v", f, m)
+	}
+}
+
 // A model that ended the run partly off the GPU is a finding.
 func TestResidencyAfter(t *testing.T) {
 	r := &store.Run{ID: "r", Provenance: json.RawMessage(`{"endpoint_after":{"loaded":{"size":100,"size_vram":60}}}`)}

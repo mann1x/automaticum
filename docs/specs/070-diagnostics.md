@@ -228,6 +228,13 @@ field the arm governs and a note otherwise; an output budget the arm leaves
 to the SDK is a note. `think: true` with thinking left to the tag is not a
 finding: it says "on, budget from the tag".
 
+Two more findings are written at ingest from what the endpoint itself said:
+`model_reloaded`, when the server reports a load of a second or more on any
+chat request after the run's first (a model in memory reports milliseconds),
+and `gpu_residency`, when the probe after the run shows the model only
+partly on the GPU. **Open (O21):** whether either makes the run `INVALID`.
+Built as findings only; recommendation: `INVALID`.
+
 Metrics written at ingest so far: time (wall, agent, first token, in tools,
 in the model), turns, requests, tool calls and failures by tool, tokens as
 the server counted them (prompt, cached, fresh, completion) with the SDK's

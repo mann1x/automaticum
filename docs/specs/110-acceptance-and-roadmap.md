@@ -196,11 +196,21 @@ verdict or a finding, each with a test that injects the fault:
 So seven of the ten are caught with an injected-fault test now, one is
 caught without such a test, and two belong to milestones 4 and 5.
 
+The second half of the criterion: every way a run was silently invalid in
+the old harness's notes (100 §2 and §8).
+
+| way an old run was invalid | what catches it now | test that injects it |
+|---|---|---|
+| a template that swallowed its directives | gate `template` refuses a tag that no longer offers tool calls; the tag's digest can be pinned in the arm (gate `model_tag`); template hash, renderer and parser are recorded before and after, and a change makes the run `INVALID` | `internal/gate` ("no tools", "digest pinned and other"), `internal/run` `TestOperatorAbortAndEndpointChange`. **A template that lost directives and still offers tools is only caught by a pinned digest** |
+| a run voided by hand with a marker file | `automaticum run invalidate --reason`: `INVALID`, the earlier verdict kept beside it | `internal/daemon` `TestStreamAbortStopInvalidate` |
+| partial states and operator kills recorded as failures | an operator's end is `ABORTED`, with its own place in the precedence; a daemon restart makes the run in flight `ABORTED` | `internal/run` `TestVerdicts`, `TestOperatorAbortAndEndpointChange`; `internal/daemon` `TestRecover` |
+| the CLI's own clock recorded as a failure | `TIMEOUT`, with which limit fired and who owned it | `internal/run` `TestVerdicts` |
+| a lane script four days stale (old oracle, other limits) | there is no lane script: one daemon whose version is in every run; the lane image's SDK release is a gate; the oracle must be proven for the task as it is now; limits come from the arm and the task and are recorded with their owner | `internal/gate` (image faults, "task changed since the proof") |
+| a model unloaded mid-run by another model's load | gate `free` makes the run wait while the endpoint holds another model; finding `model_reloaded` when the server loads the model again after the run's first request (read from the server's own load times on the wire) | `internal/gate` ("another model is in memory"), `internal/ingest` `TestModelReloaded`. **A finding, not a verdict: whether such a run is `INVALID` is not decided** |
+| a workspace that was not pristine | every run gets a fresh directory copied from the task's files, with the hash of what it started from recorded; nothing is inherited | `internal/task` (workspace manifest); gate `workspace` |
+
 Not done in milestone 3, and carried forward:
 
-- **The second half of criterion 3:** "every way a run was silently invalid
-  in the old harness's notes" is not yet tabulated against gates and
-  findings one by one.
 - **Criterion 8:** the library passes its own controls; reproducing the
   firings of omnimergekit's reference implementation on **its** fixture set
   waits for that set (asked for on 2026-10-13).

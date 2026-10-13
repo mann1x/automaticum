@@ -640,3 +640,14 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 13:35 | M3 steps 4 and 6: gates asked by the daemon before every run (refuse = SKIPPED, wait = stays queued, D64), webhook notification, `doctor`, gates recorded in provenance, GPU residency after the run; criterion 3 table in 110 §3.2 | internal/gate/*, internal/daemon/*, cmd/*, internal/ingest/analyse.go, docs/specs/050,030,090,110, README.md | tests pass; doctor on the real configuration; stub run through gates PASS | ~8000 |
+
+## Session: 2026-10-13 13:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 13:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:38 | finding model_reloaded from the server's load times; table of the old harness's invalid-run causes against gates, verdicts and findings (110 §3.2); O21 | internal/ingest/*, docs/specs/110,070,decisions | tests pass | ~3000 |
