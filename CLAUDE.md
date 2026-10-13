@@ -76,7 +76,7 @@ make shell SPIKE_ROOT=<dir>
 - **Run executor** (`internal/run/`): `run.go` · `protocol.go` · `probe.go` · `verdict.go` · `run_test.go`
 - **SDK builds** (`internal/sdk/`): `sdk.go` · `sdk_test.go`
 - **Human formatter** (`internal/human/`): `human.go` · `human_test.go`
-- **Detector library** (`internal/detect/`): `detect.go` · `guards.go` · `controls.go` · `detect_test.go`
+- **Detector library** (`internal/detect/`): `detect.go` · `guards.go` · `controls.go` · `detect_test.go` · `reference_test.go`
 - **Gates** (`internal/gate/`): `gate.go` · `gate_test.go`
 - **Ingest** (`internal/ingest/`): `analyse.go` · `detectors.go` · `events.go` · `sampler.go` · `wire.go` · `wirearm.go` · tests (`ingest_test.go` · `sample_test.go`)
 - **Daemon** (`internal/daemon/`): `daemon.go` · `api.go` · `daemon_test.go`

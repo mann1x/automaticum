@@ -1,8 +1,11 @@
 package ingest
 
 import (
+	"compress/gzip"
 	"encoding/json"
+	"io"
 	"os"
+	"strings"
 
 	"github.com/mann1x/automaticum/internal/store"
 	"testing"
@@ -35,8 +38,6 @@ func TestSample(t *testing.T) {
 	t.Logf("lines %d bad %d iterations %d end %q span %s", ev.Lines, ev.BadLines, ev.Iterations, ev.AgentEnd, ev.Last.Sub(ev.First))
 	t.Logf("tool calls %d failed %d by tool %v", len(ev.ToolCalls), fails, byTool)
 	t.Logf("blocks %d notices %v", len(ev.Blocks), ev.Notices)
-	t.Logf("first token %.0f ms; split r %d t %d ti %d (%s); derived %v; questions %d",
-		ev.FirstTokenMS, ev.ReasoningTokens, ev.TextTokens, ev.ToolInputTokens, ev.SplitMethod, ev.Derived, ev.Questions)
 	w, err := os.Open(dir + "/wire.jsonl")
 	if err != nil {
 		t.Fatal(err)
@@ -89,5 +90,43 @@ func TestSample(t *testing.T) {
 	}
 	for _, f := range res.Findings {
 		t.Logf("%s %s seq %d x%d %s", f.Detector, f.Severity, f.Turn, f.Count, f.Evidence)
+	}
+}
+
+// TestDumpBlocks writes the texts of every block of some event streams to
+// one JSON file, for the comparison with the reference detector
+// (internal/detect, TestAgainstReference). AUTOMATICUM_STREAMS lists the
+// streams, separated by ":", plain or gzipped; AUTOMATICUM_BLOCKS names the
+// file to write.
+func TestDumpBlocks(t *testing.T) {
+	streams, out := os.Getenv("AUTOMATICUM_STREAMS"), os.Getenv("AUTOMATICUM_BLOCKS")
+	if streams == "" || out == "" {
+		t.Skip("AUTOMATICUM_STREAMS and AUTOMATICUM_BLOCKS not set")
+	}
+	texts := []string{}
+	for _, p := range strings.Split(streams, ":") {
+		f, err := os.Open(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var rd io.Reader = f
+		if strings.HasSuffix(p, ".gz") {
+			if rd, err = gzip.NewReader(f); err != nil {
+				t.Fatal(err)
+			}
+		}
+		ev, err := ReadEvents(rd)
+		f.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, b := range ev.Blocks {
+			texts = append(texts, b.Text)
+		}
+		t.Logf("%s: %d blocks", p[strings.LastIndex(p, "/")+1:], len(ev.Blocks))
+	}
+	raw, _ := json.Marshal(texts)
+	if err := os.WriteFile(out, raw, 0o644); err != nil {
+		t.Fatal(err)
 	}
 }

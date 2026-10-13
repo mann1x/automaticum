@@ -9,9 +9,11 @@ import (
 // The two detectors of this file are the reasoning guards of the agent's
 // own SDK, read after the run instead of during it. Their definitions and
 // every threshold are the SDK's (packages/agents/src/reasoning-repetition.ts
-// and reasoning-loop-guard.ts, as of commit daa9edb883), which set them on
-// recorded sessions; none is chosen here (D75). A change there is a new
-// Version here.
+// and reasoning-loop-guard.ts), which set them on recorded sessions; none
+// is chosen here (D75). The numbers are those of the SDK's release tags
+// v4.100.250 and v4.100.251, which the SDK's own session confirmed to be
+// equal. The source of truth is the tag of the SDK build under test: a
+// build with other numbers needs its own set here, and a new Version.
 //
 // One difference is unavoidable. The SDK's loop guard looks each time a
 // piece of the stream arrives; here the whole block is at hand, so it is

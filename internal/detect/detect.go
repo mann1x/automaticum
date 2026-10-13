@@ -226,8 +226,8 @@ type Call struct {
 }
 
 // The SDK's own thresholds for identical calls in a row
-// (packages/core/src/runtime/safety/loop-detection.ts, as of commit
-// daa9edb883): from RepeatedCallsSoft it warns the model, at
+// (packages/core/src/runtime/safety/loop-detection.ts, release tags
+// v4.100.250 and v4.100.251): from RepeatedCallsSoft it warns the model, at
 // RepeatedCallsHard it escalates (D75). A sequence is reported from the
 // first, and is a warning from the second.
 const (

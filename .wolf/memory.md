@@ -770,3 +770,19 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 17:10 | D76: every match is the reference; first-match option and `matching` recorded in every detector finding | internal/detect/detect.go, ingest/detectors.go, cmd/automaticum/client_cmds.go, 070, decisions | tests pass | ~3000 |
+
+## Session: 2026-10-13 17:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 17:09
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 17:09
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:40 | compared the detectors with omnimergekit's reference code on 907 blocks; thresholds keyed to SDK release tags (mail 1266) | internal/detect/reference_test.go, internal/ingest/sample_test.go, guards.go, 070 | 0 differences the older way; 3 more firings the reference way | ~6000 |

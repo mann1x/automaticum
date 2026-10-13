@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.10, 2026-10-13.
+**Status:** draft 0.11, 2026-10-13.
 
 ## 1. The rule: no custom script
 
@@ -170,9 +170,14 @@ O20):
 | `reasoning_loop` | from 4,000 characters of a block, any of: 4 or fewer distinct lines in a full window of 60 lines (`low-uniqueness`); the same 1 to 6 lines repeating with an exact period 20 or more times (`line-cycle`); in one unbroken line of 2,000 characters or more, a unit of 4 to 120 characters 13 or more times in a row (`phrase-cycle`) | `packages/agents/src/reasoning-loop-guard.ts` |
 | `repeated_tool_call` | identical name and arguments in a row: reported from 2 (where the SDK warns the model), a warning from 5 (where it escalates) | `packages/core/src/runtime/safety/loop-detection.ts` |
 
-Read at the SDK's commit `daa9edb883`. A change of a threshold there is a
-new library version here; which SDK build's values a library version holds
-is stated in `internal/detect/guards.go`.
+These are the numbers of the SDK's release tags `v4.100.250` and
+`v4.100.251` (equal in both, as the SDK's session confirmed on 2026-10-13).
+The source of truth is the release tag of the SDK build under test, not a
+development tree. A build with other numbers needs its own set and a new
+library version; `internal/detect/guards.go` states which builds a version
+holds. A session may also set a guard's numbers itself: what was in effect
+for a run is its resolved configuration, which the run record holds; the
+detector always reads with the release's defaults, so that runs compare.
 
 - **`runaway` has no default size.** The SDK's own data says length is
   never the signal: healthy reasoning runs to hundreds of thousands of
@@ -183,8 +188,9 @@ is stated in `internal/detect/guards.go`.
   every character. What fires in the SDK fires here.
 - With a window of 60 lines and 20 cycles asked for, the SDK's `line-cycle`
   can only be reached by a period of 1 or 2 lines; periods of 3 to 6 are in
-  its definition and cannot fire. Kept as it is, and reported to the SDK's
-  session.
+  its definition and cannot fire. The SDK's session confirmed it; the
+  detector says what the guard does, and whether the guard changes is the
+  owner's decision there.
 - `short_unit_repeat`, `char_run` and `sentence_repeat` stay as the
   requirements define them (their thresholds are that document's, with its
   reference pattern). Where they and the SDK's guards disagree, both are on
@@ -202,6 +208,14 @@ is stated in `internal/detect/guards.go`.
   version, so a count can always be told from an older one.
   `automaticum detect <file> --first-match` reads a text the older way, to
   reproduce an older count; ingest never does.
+- **Against the reference code** (criterion 8 of 110 §1): the reference's
+  own fixtures are tests here (`internal/detect/reference_test.go`), and a
+  second test runs the reference code itself and compares block by block.
+  On 2026-10-13, over 907 blocks (the fixtures, this library's controls,
+  and every block of one run of this harness and four looping runs of the
+  old corpus): the older way of matching gives the reference's three flags
+  on every block, with no difference; the reference way finds 3 firings
+  more (2 on texts made for it, 1 on a real block) and loses none.
 - Not ported yet from the same source: the count of failed identical calls
   (6, and 4 for a call the tool refused in advance) and the repeated pair
   of call and result (3, and 6 for writing tools). Both need each call's

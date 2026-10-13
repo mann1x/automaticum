@@ -182,6 +182,7 @@
 - `detect_test.go` — edges of each definition; answers pinned to the reference pattern (~2600 tok)
 - `detect.go` — the detector library, version 2: Block (short_unit_repeat, char_run, sentence_repeat, reasoning_repetition, reasoning_loop, runaway only with a declared size), RepeatedCalls (2 and 5, the SDK's) (~2600 tok)
 - `guards.go` — the SDK's reasoning guards read after the run, with the SDK's thresholds (D75): reasoningRepetition, reasoningLoop (low-uniqueness, line-cycle, phrase-cycle) (~1900 tok)
+- `reference_test.go` — the reference detector's own fixtures as tests; TestAgainstReference runs the reference code (AUTOMATICUM_REFERENCE, AUTOMATICUM_BLOCKS) and compares block by block (~1700 tok)
 
 ## internal/docker/
 
