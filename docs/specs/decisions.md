@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-10-12 (revision 6).
+**Status:** current as of 2026-10-12 (revision 7).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -53,6 +53,8 @@ All dated 2026-10-12.
 | D41 | Hybrid ranking is our own code if the binding lacks it. | 080 §7.1 |
 | D42 | The spike's pass thresholds T1 to T15, with T1 to T3 as hard gates. | 080 §7.3 |
 | D43 | Spike data: live tier and indexes on a dedicated NVMe that is neither the development disk nor the old harness's disk; archive tier on the large array. Real embeddings for about 100k chunks, synthetic vectors for scale. The store interface, blob store and importer are kept; the benchmark harness is throwaway. | 080 §7 |
+| D44 | Lance binding: `lance-c` behind our own cgo wrapper, with our own rank fusion. `lancedb-go` main is the fallback. | 080 §7.1.1 |
+| D45 | Build base for the native parts: `manylinux_2_28`. Revises the "built on Debian 11" part of D39. | 080 §7.1 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked
@@ -82,8 +84,6 @@ Each of these waits for a measurement or for the planning of its milestone.
 | O3 | Configuration directory layout and file names. | 030 §1 | milestone 2; as proposed there unless the owner objects |
 | O5 | Which published C/C++ SWE-bench-style set, at which version; the order of languages after it. | 062 §6 | milestone 5 |
 | O6 | Which external harnesses need the offline event path. | 064 §3.2 | milestone 5, per harness |
-| O14 | Confirm the build base: `manylinux_2_28` in place of Debian 11 (forced by the link gate; revises D39). | 080 §7.1 | now |
-| O15 | Which Lance binding is adopted: L1 `lancedb-go` main, or L2 `lance-c` with our own wrapper. Both passed T1. | 080 §7.1.1 | now; recommendation L2 |
 | O8 | Deduplication scheme for wire captures. | 080 §4 | the spike |
 
 Closed since the first revision: O2 (D32), O4 (D30), O7 (S4, then D34), O9
