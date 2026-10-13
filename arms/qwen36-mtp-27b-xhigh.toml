@@ -1,0 +1,31 @@
+# First real arm of milestone 2 (decision D55): the values of the old
+# harness's last manual arm, on the settings every arm here shares.
+#
+# What differs from the old harness is not in this file: it is the base
+# (compaction and guards stated one by one), the SDK release, the lane
+# container and the task version. Reports say so.
+extends = "base"
+endpoint = "xollama-gpu-2"
+
+[model]
+provider = "xollama"
+model = "qwen36-base-mtp_tb:27b-q4km-128k"
+context_window = 96000      # old harness: 96000, under the tag's 128k
+output_tokens = 0           # old harness: automatic
+
+[thinking]
+owner = "arm"
+enabled = true
+effort = "xhigh"
+
+[sampler]
+owner = "arm"
+name = "old-harness-manual"
+temperature = 0.8
+repeat_last_n = 96
+repeat_penalty = 1.05
+presence_penalty = 1.1
+
+[limits]
+wall_s = 7200               # old harness: 7200
+idle_s = 1800

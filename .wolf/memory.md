@@ -492,3 +492,14 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 10:40 | manic_miner on the stub: PASS (23/23) and FAIL; daemon killed mid-run and recovered; run ls newest first | internal/store, internal/daemon | verified on the real daemon | ~6000 |
+
+## Session: 2026-10-13 10:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 10:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:45 | D55 arm drafted and validated (07b3b87af8d8); endpoint file written (untracked); model present on linux-gpu-2, nothing loaded; servers stopped; waiting for the owner before real runs | arms/qwen36-mtp-27b-xhigh.toml | no run started | ~2500 |
