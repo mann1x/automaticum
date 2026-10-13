@@ -4,12 +4,11 @@ The runner is a Node program that runs **one** agent session for one run,
 inside the lane's container, and exits. The harness (`internal/run`) writes
 its job and reads what it prints. Spec: `docs/specs/040-runner.md`.
 
-**State on 2026-10-13: not yet run against the SDK.** `wire.mjs` and
-`session.mjs` have tests that need no SDK (`node --test test/`).
-`runner.mjs` was written from a read of the SDK's main branch and waits for
-release 4.100.250 to be installable; expect corrections at its first run
-against the stub model server. There is no `package-lock.json` yet for the
-same reason.
+**State on 2026-10-13:** run against SDK release 4.100.250 and the stub model
+server: a scripted session that reads, edits and checks a file ends
+`completed` and the harness's oracle passes. `wire.mjs` and `session.mjs`
+also have tests that need no SDK (`node --test test/`). zod is pinned in
+`package.json` to the version the SDK was built with; see the note there.
 
 ## In
 

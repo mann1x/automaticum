@@ -455,3 +455,19 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 10:15 | runner written (wire, session mapping + read-back, main program, PROTOCOL.md); real import 0.2.0 with lanes: 531 runs, store check OK | runner/, docs/specs/100 | 8 runner tests pass in the Node image; runner.mjs not run against the SDK (4.100.250 unreleased) | ~12000 |
+
+## Session: 2026-10-13 10:12
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 10:12
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 10:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:30 | SDK 4.100.250 released: lockfile (zod pinned 4.4.3), lane images base+typescript, image build/ls, stub serve; first full runs on the stub: FAIL (no-op), PASS (read, edit, check) | runner/, images/, cmd/automaticum | end to end through daemon and CLI; bug-009 zod | ~15000 |

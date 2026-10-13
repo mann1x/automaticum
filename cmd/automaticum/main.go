@@ -22,6 +22,8 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   task show <task>              one task and the hash of its files
   task build <task>             build the task's artefacts and check their hashes
   oracle verify <task>          prove the primary oracle against the fixtures
+  image build [<image>...]      build the lane images: base, then the language layers
+  image ls                      the lane images and the SDK release each carries
   lane ls                       the lanes of this installation
   endpoint ls                   the endpoints of this installation
   status                        lanes, queue, what is running
@@ -33,11 +35,12 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   run abort <run>               end a run in flight
   run invalidate <run>          mark a finished run INVALID, --reason "..."
   logs <run>                    a run's raw material [--events|--wire|--runner|--oracle]
+  stub serve --script F         a scripted model server, for trying the harness without a GPU
   legacy import                 import the old harness's corpus (spec 100)
   store check                   verify every blob and every blob reference
 
-Commands about runs talk to the daemon. The checkout with arms/ and tasks/ is --repo, AUTOMATICUM_REPO, the "repo" of
-the configuration, or the current directory. The configuration directory is
+Commands about runs talk to the daemon. The checkout with arms/ and tasks/ is
+--repo, AUTOMATICUM_REPO, the "repo" of the configuration, or the current directory. The configuration directory is
 --config or AUTOMATICUM_CONFIG. Store paths come from flags or from
 AUTOMATICUM_DATA, AUTOMATICUM_ARCHIVE, AUTOMATICUM_LEGACY_ROOT and
 AUTOMATICUM_LEGACY_STATE_ARCHIVE.
@@ -79,6 +82,9 @@ func main() {
 		"task build":     taskBuild,
 		"oracle verify":  oracleVerify,
 		"lane ls":        laneLs,
+		"image build":    imageBuild,
+		"image ls":       imageLs,
+		"stub serve":     stubServe,
 		"endpoint ls":    endpointLs,
 	}
 	cmd, ok := cmds[args[0]+" "+args[1]]

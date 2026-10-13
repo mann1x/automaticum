@@ -124,6 +124,24 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-13T10:05:00+02:00"
+    },
+    {
+      "id": "bug-009",
+      "timestamp": "2026-10-13T10:27:00+02:00",
+      "error_message": "TypeError: Cannot read properties of undefined (reading 'push') at recordProcessor (zod/v4/core/json-schema-processors.js:640) when a session of @cerebriline/sdk 4.100.250 builds its tool schemas",
+      "file": "runner/package.json",
+      "root_cause": "The SDK is built and tested with zod 4.4.3 (its own lockfile) but publishes the range ^4.3.6; a fresh npm install resolved zod 4.6.7, whose JSON-schema internals (ctx.deferred) the SDK's bundle does not provide.",
+      "fix": "npm overrides pin zod to 4.4.3 for @cerebriline/shared, core and llms; lockfile regenerated. Reported to the Cerebriline session.",
+      "tags": [
+        "node",
+        "sdk",
+        "zod",
+        "lockfile",
+        "runner"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-13T10:27:00+02:00"
     }
   ]
 }

@@ -38,6 +38,10 @@
 - No test image may carry the `automaticum.sdk.release` label unless that SDK is really installed in it: the label is what a run's record trusts before the runner confirms.
 - Runner tests run in the pinned Node image, never with a host Node: `docker run --rm --network none -v $PWD/runner:/runner:ro -w /runner node@sha256:86f07bc9… node --test test/`. `runner/test/arm-stub.json` must be rewritten with `automaticum arm show stub --json` whenever `arms/stub.toml` or `arms/base.toml` changes (a Go test fails otherwise).
 - The SDK source keeps the `@cline/*` names; a pack script renames the five packages to `@cerebriline/*` at one version. `@cerebriline/sdk` re-exports core. The system prompt builder is exported from core only as `getClineDefaultSystemPrompt`. `ask_question` is absent unless the host supplies an executor. (From a sub-agent's read of the SDK main branch; unverified until the runner runs.)
+- SDK 4.100.250 needs zod 4.4.3 exactly (pinned by `overrides` in `runner/package.json`); regenerate the lockfile with the lane's Node 22 image, not Node 26.
+- The SDK refuses an `editor` call on a file not read in the session, and nudges for `check_file` after an edit: a stub script must read, edit, check, then answer. Stub turns are chosen by the count of assistant messages in the request.
+- To try the harness by hand: `automaticum stub serve --listen <bridge gateway>:7412 --script <file>` and `automaticumd --config <dir>`; stop both with SIGTERM (`pidof automaticum`, `pidof automaticumd`).
+- First wire of 4.100.250: `num_ctx` follows `contextWindow`; `think: true` is sent even when the arm leaves thinking to the model tag (the stub advertises the thinking capability); `num_predict` and `max_output_tokens` are sent by the SDK's own rule when the arm states 0.
 
 ## Do-Not-Repeat
 

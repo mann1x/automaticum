@@ -125,6 +125,8 @@
 - `main.go` — command table and usage (~600 tok)
 - `config_cmds.go` — `arm validate|show|diff`, `task ls|show|build`, `oracle verify`, `lane ls`, `endpoint ls`; pure Go (~3300 tok)
 - `config_cmds_test.go` — flags among arguments (~150 tok)
+- `image_cmds.go` — `image build|ls`: lane images through the Engine API, build context of `runner/` and `images/` (~1400 tok)
+- `stub_cmds.go` — `stub serve`: the scripted model server as a process (~450 tok)
 - `client_cmds.go` — the daemon's client: `status`, `run start|ls|show|tail|stop|abort|invalidate`, `logs` (~3600 tok)
 - `store_cgo.go` — `legacy import`, `store check`; needs cgo, built in the link image (~2700 tok)
 - `store_nocgo.go` — the same two commands in a build without cgo: an error (~120 tok)
@@ -151,8 +153,13 @@
 - `runner.mjs` — one session for one run: SDK release check, clean home, wire, system prompt, read-back, events as lines, wall limit, last line (~2600 tok)
 - `session.mjs` — resolved arm to session configuration, and the comparison with what the SDK reports; no SDK import (~2300 tok)
 - `wire.mjs` — a fetch that records every request and response whole with timing; `describe` for errors (~1500 tok)
-- `package.json` — pins `@cerebriline/sdk` 4.100.250; no lockfile until that release exists (~100 tok)
+- `package.json`, `package-lock.json` — `@cerebriline/sdk` 4.100.250 by lockfile; zod pinned to the SDK's own tested version (lock ~47000 tok, do not read)
 - `test/wire.test.mjs`, `test/session.test.mjs`, `test/arm-stub.json` — tests that need no SDK; the fixture is checked by `internal/config/runner_fixture_test.go` (~3500 tok)
+
+## images/
+
+- `base/Dockerfile` — Node 22 slim by digest, shell tools, the runner and the SDK by lockfile; fails to build if the label's release is not what was installed (~350 tok)
+- `layers/typescript/Dockerfile` — TypeScript and the language servers, on the base (~100 tok)
 
 ## internal/run/
 
