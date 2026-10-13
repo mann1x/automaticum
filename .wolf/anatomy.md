@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-12T22:11:59.161Z
-> Files: 61 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-13T03:58:24.460Z
+> Files: 66 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -114,9 +114,16 @@
 - `automaticum-draft-spec-0.4.md` — automaticum — draft specification (~10389 tok)
 - `omnimergekit-evaluation-requirements-0.1.md` — automaticum — requirements from the omnimergekit evaluation protocol (~8226 tok)
 
+## internal/legacyimport/
+
+- `importer.go` — Struct: Options (~7326 tok)
+- `mapping.go` — Struct: Boundary (~3263 tok)
+- `parse.go` — Struct: KV (~3478 tok)
+- `scan.go` — Struct: RunSource (~3551 tok)
+- `stream.go` — Struct: StreamStats (~3877 tok)
+
 ## spike/001-store/linkcheck/
 
-- `README.md` — the T1 gate report: results, build findings, Windows attempt, reproduction, recommendation
 - `README.md` — Project documentation (~1941 tok)
 
 ## spike/001-store/linkcheck/l1/
@@ -130,3 +137,10 @@
 - `go.mod` — Go module definition (~304 tok)
 - `go.sum` — Go dependency checksums (~1202 tok)
 - `main.go` — Command linkcheck-l2 is threshold T1 of the store spike for Lance candidate (~1947 tok)
+
+## internal/store/
+
+- `store.go` — the store interface: Run, BlobRef, ToolCall, Finding, LaneState, Chunk, Hit; State and Search interfaces
+- `blob/` — content-addressed blob store: seekable zstd frames, two tiers, archive-by-age with verify, Check; format in `blob/FORMAT.md`
+- `duck/duck.go` — store.State on DuckDB (autoload/autoinstall off, appender for derived tables)
+- `lance/lance.go` — store.Search on lance-c via cgo and the Arrow C Data Interface; build tag `lance`; rank fusion in Go

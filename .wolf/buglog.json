@@ -26,6 +26,20 @@
         "apt",
         "debian11"
       ]
+    },
+    {
+      "id": "bug-003",
+      "timestamp": "2026-10-13T06:05:00+02:00",
+      "error_message": "Lance search hits contain garbage in string fields (ID, RunID, Kind, Text); earlier: panic 'fixed-size list value count must equal list length times list size' on a chunk with no vector",
+      "root_cause": "(1) arrow-go String.Value returns a string that aliases the Arrow buffer; buffers imported from lance-c through the C Data Interface are freed when the record batch is released, so the Go strings dangle. (2) FixedSizeListBuilder.AppendNull already appends the child slots; appending them again doubles the child length.",
+      "fix": "strings.Clone every value read from an imported Arrow array before the batch is released; call only AppendNull for a null list.",
+      "tags": [
+        "cgo",
+        "arrow",
+        "lance",
+        "memory",
+        "store"
+      ]
     }
   ]
 }
