@@ -59,7 +59,10 @@ type Inference struct {
 	// that of the host the agent ran on.
 	Host     string `json:"host"`
 	LaneHost string `json:"lane_host"`
-	GPU      struct {
+	// AddedLater is set when these facts were not recorded by the run but
+	// added to its record afterwards (D74): when, and from what.
+	AddedLater *AddedLater `json:"added_later,omitempty"`
+	GPU        struct {
 		// Declared is what the endpoint's configuration states.
 		Declared string  `json:"declared"`
 		VRAMGB   float64 `json:"vram_gb,omitempty"`
@@ -82,6 +85,12 @@ type Inference struct {
 		Server  json.RawMessage `json:"server,omitempty"`
 		Weights map[string]any  `json:"weights,omitempty"`
 	} `json:"model"`
+}
+
+// AddedLater marks facts of a record that the run itself did not write.
+type AddedLater struct {
+	At     time.Time `json:"at"`
+	Source string    `json:"source"`
 }
 
 // Bundles gives the SDK build a run's arm names. *sdk.Env is one.

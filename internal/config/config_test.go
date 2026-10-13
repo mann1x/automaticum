@@ -305,3 +305,27 @@ func TestTemplate(t *testing.T) {
 		t.Fatalf("LoadArms returned a template: %v, %v", all, err)
 	}
 }
+
+// An arm that accepts a model reload or a model partly on the GPU is
+// another arm; one that states nothing keeps its identity (D73).
+func TestAccepts(t *testing.T) {
+	dir := arms(t, map[string]string{"a": good, "reload": "extends = \"a\"\n[accepts]\nmodel_reload = true\n", "none": "extends = \"a\"\n[accepts]\nmodel_reload = false\n"})
+	a, err := LoadArm(dir, "a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	reload, err := LoadArm(dir, "reload")
+	if err != nil {
+		t.Fatal(err)
+	}
+	none, err := LoadArm(dir, "none")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reload.Accepts.ModelReload || reload.Accepts.PartialGPU || reload.ID == a.ID {
+		t.Errorf("an arm that accepts a reload: %+v, same identity %v", reload.Accepts, reload.ID == a.ID)
+	}
+	if none.ID != a.ID || strings.Contains(string(a.Resolved()), "accepts") {
+		t.Errorf("an arm that accepts nothing changed identity, or says so: %s", a.Resolved())
+	}
+}

@@ -37,6 +37,7 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   run stop <run>                take a queued run off the queue
   run abort <run>               end a run in flight
   run invalidate <run>          mark a finished run INVALID, --reason "..."
+  run identify <run>            add where and on what a run ran to its record, marked as added later
   logs <run>                    a run's raw material [--events|--wire|--runner|--oracle]
   doctor                        every gate, on every lane, now [--lane L] [--arm A] [--task T] [--all]
   reanalyse                     derive metrics and findings again from what is stored [--run R | --batch B] [--imported]
@@ -78,6 +79,7 @@ func main() {
 		"run stop":       runPost("stop", "taken off the queue"),
 		"run abort":      runPost("abort", "aborting"),
 		"run invalidate": runPost("invalidate", "marked INVALID"),
+		"run identify":   runPost("identify", "where and on what it ran is now in the record, marked as added later"),
 		"legacy import":  legacyImport,
 		"store check":    storeCheck,
 		"arm validate":   armValidate,

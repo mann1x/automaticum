@@ -542,3 +542,46 @@ func TestRunImported(t *testing.T) {
 		t.Errorf("an imported run's metrics and tool calls were touched: %+v %+v", m.metrics, m.calls)
 	}
 }
+
+func (m *memory) UpsertRun(_ context.Context, r *store.Run) error { m.run = *r; return nil }
+
+// A run that ended partly off the GPU is INVALID and keeps the verdict it
+// had; an arm that accepts the condition keeps its verdict, and a verdict
+// this rule set is taken back once the cause is gone (D73).
+func TestEndpointConductInvalidates(t *testing.T) {
+	partly := json.RawMessage(`{"endpoint_after":{"loaded":{"size":100,"size_vram":60}}}`)
+	m := &memory{run: store.Run{ID: "r", Verdict: store.Pass, Arm: json.RawMessage(`{"model":{"model":"m:1"}}`), Provenance: partly}}
+	ctx := context.Background()
+	if _, err := Run(ctx, m, m, "r"); err != nil {
+		t.Fatal(err)
+	}
+	if m.run.Verdict != store.Invalid || m.run.PriorVerdict != store.Pass || !strings.Contains(m.run.VerdictReason, "partly on the GPU (60%)") {
+		t.Errorf("partly on the GPU: %s (was %s), %q", m.run.Verdict, m.run.PriorVerdict, m.run.VerdictReason)
+	}
+	if len(m.findings) != 1 || m.findings[0].Severity != "error" {
+		t.Errorf("findings: %+v", m.findings)
+	}
+	// Analysed again, nothing changes.
+	Run(ctx, m, m, "r")
+	if m.run.Verdict != store.Invalid || m.run.PriorVerdict != store.Pass {
+		t.Errorf("a second analysis: %s (was %s)", m.run.Verdict, m.run.PriorVerdict)
+	}
+	// The cause gone, the verdict comes back.
+	m.run.Provenance = json.RawMessage(`{"endpoint_after":{"loaded":{"size":100,"size_vram":100}}}`)
+	Run(ctx, m, m, "r")
+	if m.run.Verdict != store.Pass || m.run.PriorVerdict != "" || m.run.VerdictReason != "" {
+		t.Errorf("cause gone: %s (was %s), %q", m.run.Verdict, m.run.PriorVerdict, m.run.VerdictReason)
+	}
+	// An arm that accepts it: the finding stays, as a note.
+	m.run.Provenance, m.run.Arm = partly, json.RawMessage(`{"model":{"model":"m:1"},"accepts":{"partial_gpu":true}}`)
+	Run(ctx, m, m, "r")
+	if m.run.Verdict != store.Pass || len(m.findings) != 1 || m.findings[0].Severity != "note" {
+		t.Errorf("accepted: %s, %+v", m.run.Verdict, m.findings)
+	}
+	// An operator's INVALID is not this rule's to take back.
+	m.run.Verdict, m.run.PriorVerdict, m.run.VerdictReason = store.Invalid, store.Pass, "operator: wrong lane"
+	Run(ctx, m, m, "r")
+	if m.run.Verdict != store.Invalid {
+		t.Errorf("an operator's verdict was changed to %s", m.run.Verdict)
+	}
+}

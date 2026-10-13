@@ -25,6 +25,9 @@ type Result struct {
 	ToolCalls []store.ToolCall
 	Findings  []store.Finding
 	Blocks    []Block
+	// Invalid lists what makes the run INVALID by the endpoint's conduct
+	// (D73); empty when nothing does or the arm accepts it.
+	Invalid []string
 }
 
 // GPUResidency is the finding that the model was only partly on the GPU
@@ -109,7 +112,31 @@ func Run(ctx context.Context, st store.State, blobs Blobs, runID string) (*Resul
 	if err := st.ReplaceFindings(ctx, runID, keep); err != nil {
 		return nil, err
 	}
-	return res, nil
+	// A run whose model was loaded again, or sat partly off the GPU, did
+	// not run under the arm's conditions: INVALID, unless the arm accepts
+	// it (D73). The verdict it had is kept beside it. A verdict this rule
+	// set is taken back when the cause is gone on a later analysis.
+	const by = "endpoint: "
+	switch {
+	case len(res.Invalid) > 0 && r.Verdict != store.Invalid && r.Verdict != store.Skipped:
+		if r.PriorVerdict == "" {
+			r.PriorVerdict = r.Verdict
+		}
+		r.Verdict, r.VerdictReason = store.Invalid, by+strings.Join(res.Invalid, "; ")
+		err = st.UpsertRun(ctx, r)
+	case len(res.Invalid) == 0 && r.Verdict == store.Invalid && strings.HasPrefix(r.VerdictReason, by) && r.PriorVerdict != "":
+		r.Verdict, r.PriorVerdict, r.VerdictReason = r.PriorVerdict, "", ""
+		err = st.UpsertRun(ctx, r)
+	}
+	return res, err
+}
+
+// severity of a condition the arm accepts or does not.
+func severity(accepted bool) string {
+	if accepted {
+		return "note"
+	}
+	return "error"
 }
 
 // Analyse derives everything from a run record and what was read from its
@@ -287,6 +314,13 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 		res.Findings = wireFindings(r.ID, CompareWire(&arm, tag, reqs))
 	}
 
+	// What the arm accepts of the two conditions below (D73).
+	var stated struct {
+		Accepts config.Accepts `json:"accepts"`
+	}
+	json.Unmarshal(r.Arm, &stated)
+	accepts := stated.Accepts
+
 	// Where the model sat after the run. The gate before the run can only
 	// look when the model is already loaded; this is the look after load.
 	var after struct {
@@ -304,7 +338,10 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 		if e.Loaded.SizeVRAM < e.Loaded.Size {
 			raw, _ := json.Marshal(map[string]any{"size": e.Loaded.Size, "size_vram": e.Loaded.SizeVRAM, "share": share})
 			res.Findings = append(res.Findings, store.Finding{RunID: r.ID, Detector: GPUResidency, DetectorVersion: "1",
-				Severity: "warning", Count: 1, Evidence: raw})
+				Severity: severity(accepts.PartialGPU), Count: 1, Evidence: raw})
+			if !accepts.PartialGPU {
+				res.Invalid = append(res.Invalid, fmt.Sprintf("the model was only partly on the GPU (%.0f%%)", 100*share))
+			}
 		}
 	}
 
@@ -351,7 +388,10 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 	if len(loads) > 0 {
 		raw, _ := json.Marshal(map[string]any{"reloads": loads, "threshold_s": reloadSeconds})
 		res.Findings = append(res.Findings, store.Finding{RunID: r.ID, Detector: ModelReloaded, DetectorVersion: "1",
-			Severity: "warning", Turn: loads[0].Seq, Count: len(loads), Evidence: raw})
+			Severity: severity(accepts.ModelReload), Turn: loads[0].Seq, Count: len(loads), Evidence: raw})
+		if !accepts.ModelReload {
+			res.Invalid = append(res.Invalid, fmt.Sprintf("the model was loaded again during the run (%d times)", len(loads)))
+		}
 	}
 
 	// What the model wrote and called, through the detector library. The

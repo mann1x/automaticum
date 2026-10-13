@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.7, 2026-10-13.
+**Status:** draft 0.8, 2026-10-13.
 
 ## 1. The rule: no custom script
 
@@ -232,8 +232,16 @@ Two more findings are written at ingest from what the endpoint itself said:
 `model_reloaded`, when the server reports a load of a second or more on any
 chat request after the run's first (a model in memory reports milliseconds),
 and `gpu_residency`, when the probe after the run shows the model only
-partly on the GPU. **Open (O21):** whether either makes the run `INVALID`.
-Built as findings only; recommendation: `INVALID`.
+partly on the GPU.
+
+**Decided by the owner (2026-10-13), D73:** either makes the run `INVALID`,
+with the reason "endpoint: ..." and the verdict it had kept beside it: its
+times are not the arm's. An arm may state that it accepts one or both
+(030 §5.3), when that condition is what it tests; its runs then keep their
+verdict and the finding is a note. The rule is applied at ingest, so
+`reanalyse` applies it to earlier runs, and takes back an `INVALID` it set
+itself when the cause is no longer found. It never touches an operator's
+`INVALID`.
 
 Metrics written at ingest so far: time (wall, agent, first token, in tools,
 in the model), turns, requests, tool calls and failures by tool, tokens as

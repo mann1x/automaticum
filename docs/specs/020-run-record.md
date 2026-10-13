@@ -1,6 +1,6 @@
 # 020 — The run record, verdicts and the basis
 
-**Status:** draft 0.6, 2026-10-13.
+**Status:** draft 0.7, 2026-10-13.
 
 Nothing in this file is optional. Each item is here because its absence
 invalidated or blinded a real campaign. A value is recorded **as probed or as
@@ -44,6 +44,7 @@ its sampling parameters (D70 to D72). As built, the run's record holds an
 | the endpoint's host and the lane's host, by neutral name | the configuration |
 | GPU and its memory | **declared** in the endpoint's `[hardware]` table (030 §4.2); `measured` stays empty until an agent on that host reads the device (milestone 7) |
 | share of the model on a GPU after the run | the server |
+| `added_later`: when, and from what | set only when the facts were added to a finished run's record by `automaticum run identify` (D74); the server's answers in it are still the run's own |
 | model tag and digest | the arm and the server |
 | model family, size, variant, lineage | **stated** by the owner in the model catalogue (030 §4.1); what is not stated is listed as such |
 | family, parameter size, quantization, format | the server's own words for the tag |

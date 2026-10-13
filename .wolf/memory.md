@@ -732,3 +732,14 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 15:45 | five real runs on SDK 4.100.251 read and recorded against the five on 4.100.250 | docs/specs/110-acceptance-and-roadmap.md | 5/5 PASS on both; budget 48,000 served; ranges overlap | ~1500 |
+
+## Session: 2026-10-13 15:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 15:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:55 | D73 (reload / partial GPU = INVALID unless the arm accepts), D74 (variant base, run identify on ten runs) | internal/config/arm.go, internal/ingest/analyse.go, internal/gate/gate.go, internal/daemon/api.go, cmd/automaticum, models/, specs 020 030 070 090, decisions | built, tested, daemon restarted | ~9000 |

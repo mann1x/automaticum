@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.10, 2026-10-13.
+**Status:** draft 0.11, 2026-10-13.
 
 ## 1. Rules
 
@@ -151,6 +151,23 @@ For a test of what the model does, the arm states them off.
   protocol, task progress, thinking or sampler ownership by the arm) also drops
   the settings of that feature it inherited. Settings stated beside the switch
   in the same file stay an error.
+
+### 5.3 Conditions an arm accepts
+
+**Decided by the owner (2026-10-13), D73:** a run whose model is loaded
+again in its middle, or sits only partly on the GPU, is `INVALID`
+(070 §4.1). An arm that tests exactly that says so:
+
+```toml
+[accepts]
+model_reload = true
+partial_gpu = true
+```
+
+Each is false when left out. An arm that states one is another arm, with
+another identity; an arm without the section keeps the identity it had.
+With `partial_gpu`, the `gpu_residency` gate lets the run start with the
+model partly on the GPU.
 
 ## 6. Campaigns
 

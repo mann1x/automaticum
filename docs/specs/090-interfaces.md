@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.11, 2026-10-13.
+**Status:** draft 0.12, 2026-10-13.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -21,7 +21,7 @@ automaticum basis show|diff
 automaticum task ls|show|verify
 automaticum oracle verify <task>
 automaticum run start --arm A --task T [-n 5] [--lane L]
-automaticum run ls|show|tail|stop|abort|retry|invalidate
+automaticum run ls|show|tail|stop|abort|retry|invalidate|identify
 automaticum batch|campaign start|ls|show|pause|resume|abort
 automaticum cell run|show|ls
 automaticum cohort ls|show
@@ -42,7 +42,7 @@ Every mutating command has `--dry-run` and accepts `--idempotency-key`.
 
 **Built in milestone 2:** `status`; `arm validate|show|diff`; `task
 ls|show|build`; `oracle verify`; `lane ls`; `endpoint ls` (prints no address
-unless asked); `run start|ls|show|tail|stop|abort|invalidate`; `logs`
+unless asked); `run start|ls|show|tail|stop|abort|invalidate|identify` (`run identify <run>` adds where and on what a run ran to a record that lacks it, from today's configuration and catalogue, marked as added later, D74); `logs`
 (`--events`, `--wire`, `--runner`, `--oracle`, `--kind`); `legacy import`;
 `store check`. `task build` is new in this list: it builds a task's artefacts
 and checks their pinned hashes. Of these, `--dry-run` and

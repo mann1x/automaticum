@@ -725,11 +725,14 @@ func printInference(r daemon.RunView) {
 			point += ", engine " + inf.Engine
 		}
 		row("inference point", point+")", "server")
+		if l := inf.AddedLater; l != nil {
+			row("added to the record", human.Time(l.At), l.Source)
+		}
 		row("endpoint host", or(inf.Host, "not declared"), "configuration")
 		row("lane host", inf.LaneHost, "configuration")
 		gpu := or(inf.GPU.Declared, "not declared")
 		if inf.GPU.VRAMGB > 0 {
-			gpu += fmt.Sprintf(", %s GiB", human.Number(inf.GPU.VRAMGB))
+			gpu += fmt.Sprintf(", %s GB", human.Number(inf.GPU.VRAMGB))
 		}
 		row("GPU", gpu, "declared in the configuration, not measured")
 		if inf.GPU.Share != nil {

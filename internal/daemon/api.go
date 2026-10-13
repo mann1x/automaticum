@@ -238,6 +238,7 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/runs/{id}/stop", d.handleStop)
 	mux.HandleFunc("POST /v1/runs/{id}/abort", d.handleAbort)
 	mux.HandleFunc("POST /v1/runs/{id}/invalidate", d.handleInvalidate)
+	mux.HandleFunc("POST /v1/runs/{id}/identify", d.handleIdentify)
 	mux.HandleFunc("GET /v1/runs/{id}/detect", d.handleDetect)
 	mux.HandleFunc("GET /v1/doctor", d.handleDoctor)
 	mux.HandleFunc("POST /v1/reanalyse", d.handleReanalyse)
@@ -867,6 +868,101 @@ func (d *Daemon) handleAbort(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	reply(w, http.StatusAccepted, map[string]string{"run_id": id, "state": "aborting"})
+}
+
+// handleIdentify adds to a finished run's record where and on what it ran,
+// when the run did not record it or its model's identity was not stated
+// then (D74). The facts come from today's configuration and catalogue, and
+// the record says that they were added later. Nothing the run recorded
+// itself is changed.
+func (d *Daemon) handleIdentify(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := r.PathValue("id")
+	rec, err := d.State.GetRun(ctx, id)
+	if errors.Is(err, store.ErrNotFound) {
+		fail(w, http.StatusNotFound, "there is no finished run %s", id)
+		return
+	}
+	if err != nil {
+		fail(w, http.StatusInternalServerError, "%v", err)
+		return
+	}
+	var arm config.Arm
+	if rec.Imported || json.Unmarshal(rec.Arm, &arm) != nil || arm.Model.Model == "" {
+		fail(w, http.StatusConflict, "run %s is not a run of this harness: its record has no arm to identify", id)
+		return
+	}
+	prov := map[string]json.RawMessage{}
+	if err := json.Unmarshal(rec.Provenance, &prov); err != nil {
+		fail(w, http.StatusInternalServerError, "the record of run %s cannot be read: %v", id, err)
+		return
+	}
+	var inf *run.Inference
+	if raw, ok := prov["inference"]; ok {
+		json.Unmarshal(raw, &inf)
+	}
+	if inf != nil && len(inf.Model.NotStated) == 0 {
+		fail(w, http.StatusConflict, "run %s already records where and on what it ran", id)
+		return
+	}
+	models, err := config.LoadModels(filepath.Join(d.Repo, "models"))
+	if err != nil {
+		fail(w, http.StatusInternalServerError, "%v", err)
+		return
+	}
+	stated := models[arm.Model.Model]
+	now := time.Now().UTC().Truncate(time.Second)
+	if inf != nil {
+		// The run recorded the place; only the model's stated identity
+		// was missing.
+		if len(stated.Missing()) >= len(inf.Model.NotStated) {
+			fail(w, http.StatusConflict, "the catalogue states no more of %s than run %s already records", arm.Model.Model, id)
+			return
+		}
+		inf.Model.Stated, inf.Model.NotStated = stated, stated.Missing()
+		inf.AddedLater = &run.AddedLater{At: now, Source: "the model's stated identity, from the catalogue"}
+	} else {
+		endpoint, lane := d.Local.Endpoints[arm.Endpoint], d.Local.Lanes[rec.Lane]
+		if endpoint == nil || lane == nil {
+			fail(w, http.StatusConflict, "the configuration no longer has endpoint %q or lane %q of run %s", arm.Endpoint, rec.Lane, id)
+			return
+		}
+		var before, after *run.Identity
+		json.Unmarshal(prov["endpoint_before"], &before)
+		json.Unmarshal(prov["endpoint_after"], &after)
+		if before == nil {
+			fail(w, http.StatusConflict, "run %s never asked its endpoint what it was", id)
+			return
+		}
+		inf = &run.Inference{Endpoint: endpoint.Name, Kind: endpoint.Kind, ServerVersion: before.ServerVersion, Engine: before.Engine,
+			Host: endpoint.Host, LaneHost: lane.Host}
+		inf.GPU.Declared, inf.GPU.VRAMGB, inf.GPU.Notes = endpoint.Hardware.GPU, endpoint.Hardware.VRAMGB, endpoint.Hardware.Notes
+		inf.Model.Tag, inf.Model.Digest = arm.Model.Model, before.Digest
+		inf.Model.Stated, inf.Model.NotStated = stated, stated.Missing()
+		inf.Model.Server, inf.Model.Weights = before.Details, before.Weights
+		if after != nil && after.Loaded != nil && after.Loaded.Size > 0 {
+			share := float64(after.Loaded.SizeVRAM) / float64(after.Loaded.Size)
+			inf.GPU.Share = &share
+			if inf.Engine == "" {
+				inf.Engine = after.Engine
+			}
+		}
+		inf.AddedLater = &run.AddedLater{At: now, Source: "today's configuration and catalogue; the server's answers are the run's own"}
+	}
+	prov["inference"], _ = json.Marshal(inf)
+	if rec.Provenance, err = json.Marshal(prov); err != nil {
+		fail(w, http.StatusInternalServerError, "%v", err)
+		return
+	}
+	if err := d.State.UpsertRun(ctx, rec); err != nil {
+		fail(w, http.StatusInternalServerError, "%v", err)
+		return
+	}
+	if _, err := ingest.Run(ctx, d.State, d.Blobs, id); err != nil {
+		fail(w, http.StatusInternalServerError, "the record is written, the analysis failed: %v", err)
+		return
+	}
+	reply(w, http.StatusOK, map[string]string{"run_id": id, "state": "identified"})
 }
 
 // handleInvalidate marks a finished run INVALID. What the verdict was is

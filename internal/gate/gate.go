@@ -304,6 +304,8 @@ func residency(_ context.Context, in *Input) (Status, string) {
 	switch {
 	case l == nil:
 		return Unchecked, "the model is not loaded; the run loads it and the probe after the run records where it sits"
+	case l.SizeVRAM < l.Size && in.Arm.Accepts.PartialGPU:
+		return Pass, fmt.Sprintf("the model is only partly on the GPU (%d of %d bytes), which the arm accepts", l.SizeVRAM, l.Size)
 	case l.SizeVRAM < l.Size:
 		return Refuse, fmt.Sprintf("the model is only partly on the GPU: %d of %d bytes", l.SizeVRAM, l.Size)
 	}

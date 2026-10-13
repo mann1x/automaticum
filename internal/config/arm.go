@@ -43,6 +43,7 @@ type Arm struct {
 	Protocol   Protocol   `toml:"protocol" json:"protocol"`
 	Limits     ArmLimits  `toml:"limits" json:"limits"`
 	Harness    Harness    `toml:"harness" json:"harness"`
+	Accepts    Accepts    `toml:"accepts" json:"accepts,omitzero"`
 
 	// Origins says, for every stated value, which arm file it came from.
 	Origins map[string]string `toml:"-" json:"-"`
@@ -183,6 +184,16 @@ type ArmLimits struct {
 }
 
 // Harness pins what runs the agent.
+// Accepts names what would make a run INVALID and is, for this arm, the
+// thing under test (D73). Left out, nothing is accepted; an arm that leaves
+// the section out keeps the identity it had before the section existed.
+type Accepts struct {
+	// ModelReload: the server loading the model again in the middle of a run.
+	ModelReload bool `toml:"model_reload" json:"model_reload,omitempty"`
+	// PartialGPU: a model that sits only partly on the GPU.
+	PartialGPU bool `toml:"partial_gpu" json:"partial_gpu,omitempty"`
+}
+
 type Harness struct {
 	// SDKRelease is the SDK's release version. A run whose installed SDK
 	// is another release does not start (decision D54).
