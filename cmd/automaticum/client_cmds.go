@@ -1,0 +1,398 @@
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/mann1x/automaticum/internal/daemon"
+)
+
+// client talks to the daemon of this installation.
+type client struct {
+	base, token string
+	json        bool
+}
+
+func addClient(fs *flag.FlagSet) (place, func() (*client, error)) {
+	p := addPlace(fs)
+	return p, func() (*client, error) {
+		l, err := p.local()
+		if err != nil {
+			return nil, err
+		}
+		// The token is only needed to change something; a command that
+		// reads works without the right to read the token file.
+		token, _ := l.Token()
+		return &client{base: "http://" + l.Daemon.Listen, token: token, json: *p.json}, nil
+	}
+}
+
+// do sends a request and decodes the answer into out. A refusal comes back
+// as an error holding the daemon's own words.
+func (c *client) do(ctx context.Context, method, path string, in, out any) error {
+	resp, err := c.open(ctx, method, path, in)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if out == nil {
+		return nil
+	}
+	return json.NewDecoder(resp.Body).Decode(out)
+}
+
+func (c *client) open(ctx context.Context, method, path string, in any) (*http.Response, error) {
+	var body io.Reader
+	if in != nil {
+		b, _ := json.Marshal(in)
+		body = bytes.NewReader(b)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, c.base+path, body)
+	if err != nil {
+		return nil, err
+	}
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, errors.New("the daemon does not answer; is automaticumd running?")
+	}
+	if resp.StatusCode >= 400 {
+		defer resp.Body.Close()
+		var e struct {
+			Error string `json:"error"`
+		}
+		json.NewDecoder(resp.Body).Decode(&e)
+		if e.Error == "" {
+			e.Error = resp.Status
+		}
+		return nil, errors.New(e.Error)
+	}
+	return resp, nil
+}
+
+func printJSON(v any) error {
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	return enc.Encode(v)
+}
+
+func ago(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return time.Since(t).Round(time.Second).String()
+}
+
+func status(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("status", flag.ExitOnError)
+	_, dial := addClient(fs)
+	parse(fs, args)
+	c, err := dial()
+	if err != nil {
+		return err
+	}
+	var st daemon.Status
+	if err := c.do(ctx, "GET", "/v1/status", nil, &st); err != nil {
+		return err
+	}
+	if c.json {
+		return printJSON(st)
+	}
+	state := "up"
+	if st.Draining {
+		state = "draining"
+	}
+	fmt.Printf("automaticumd %s, %s for %s\n\n", st.Version, state, ago(st.Started))
+	w := table()
+	fmt.Fprintln(w, "LANE\tHOST\tSTATE\tRUN\tARM\tTASK\tFOR")
+	for _, l := range st.Lanes {
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", l.Lane, l.Host, l.State, l.RunID, l.Arm, l.Task, ago(l.Since))
+	}
+	w.Flush()
+	waiting := 0
+	for _, q := range st.Queue {
+		if !q.Running {
+			waiting++
+		}
+	}
+	fmt.Printf("\n%d queued\n", waiting)
+	if waiting > 0 {
+		w = table()
+		fmt.Fprintln(w, "RUN\tARM\tTASK\tLANE\tWAITING")
+		for _, q := range st.Queue {
+			if !q.Running {
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", q.RunID, q.Arm, q.Task, q.Lane, ago(q.EnqueuedAt))
+			}
+		}
+		w.Flush()
+	}
+	return nil
+}
+
+func runStart(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("run start", flag.ExitOnError)
+	_, dial := addClient(fs)
+	var req daemon.StartRequest
+	fs.StringVar(&req.Arm, "arm", "", "the arm")
+	fs.StringVar(&req.Task, "task", "", "the task")
+	fs.StringVar(&req.Lane, "lane", "", "the lane; the first that may use the arm's endpoint when not given")
+	fs.IntVar(&req.Count, "n", 1, "how many runs")
+	fs.StringVar(&req.Key, "idempotency-key", "", "repeating the command with the same key starts nothing new")
+	fs.BoolVar(&req.DryRun, "dry-run", false, "say what would start, start nothing")
+	if rest := parse(fs, args); len(rest) > 0 || req.Arm == "" || req.Task == "" {
+		return errors.New("usage: automaticum run start --arm <arm> --task <task> [-n 5] [--lane <lane>]")
+	}
+	c, err := dial()
+	if err != nil {
+		return err
+	}
+	var resp daemon.StartResponse
+	if err := c.do(ctx, "POST", "/v1/runs", req, &resp); err != nil {
+		return err
+	}
+	if c.json {
+		return printJSON(resp)
+	}
+	what := "queued"
+	switch {
+	case resp.DryRun:
+		what = "would be queued"
+	case resp.Repeated:
+		what = "already made by this key; nothing new was started"
+	}
+	fmt.Printf("%d %s on %s: arm %s, task %s, image %s, batch %s\n", len(resp.RunIDs), what, resp.Lane, resp.ArmID[:12], resp.Task, resp.Image, resp.Batch)
+	for _, id := range resp.RunIDs {
+		fmt.Println(id)
+	}
+	return nil
+}
+
+func runLs(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("run ls", flag.ExitOnError)
+	_, dial := addClient(fs)
+	q := url.Values{}
+	batch := fs.String("batch", "", "only this batch")
+	verdict := fs.String("verdict", "", "only this verdict")
+	taskID := fs.String("task", "", "only this task id")
+	imported := fs.Bool("imported", false, "only runs imported from the old harness")
+	limit := fs.Int("limit", 30, "how many")
+	parse(fs, args)
+	for k, v := range map[string]string{"batch": *batch, "verdict": *verdict, "task": *taskID} {
+		if v != "" {
+			q.Set(k, v)
+		}
+	}
+	if *imported {
+		q.Set("imported", "true")
+	}
+	q.Set("limit", fmt.Sprint(*limit))
+	c, err := dial()
+	if err != nil {
+		return err
+	}
+	var runs []daemon.RunView
+	if err := c.do(ctx, "GET", "/v1/runs?"+q.Encode(), nil, &runs); err != nil {
+		return err
+	}
+	if c.json {
+		return printJSON(runs)
+	}
+	w := table()
+	fmt.Fprintln(w, "RUN\tSTATE\tVERDICT\tTASK\tMODEL\tSDK\tWALL\tREASON")
+	for _, r := range runs {
+		wall := ""
+		if r.WallMS > 0 {
+			wall = (time.Duration(r.WallMS) * time.Millisecond).Round(time.Second).String()
+		}
+		reason := r.VerdictReason
+		if len(reason) > 60 {
+			reason = reason[:57] + "..."
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", r.ID, r.State, r.Verdict, r.Task, r.Model, r.SDKRelease, wall, reason)
+	}
+	return w.Flush()
+}
+
+func runShow(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("run show", flag.ExitOnError)
+	_, dial := addClient(fs)
+	rest := parse(fs, args)
+	if len(rest) != 1 {
+		return errors.New("usage: automaticum run show <run>")
+	}
+	c, err := dial()
+	if err != nil {
+		return err
+	}
+	var r daemon.RunView
+	if err := c.do(ctx, "GET", "/v1/runs/"+url.PathEscape(rest[0]), nil, &r); err != nil {
+		return err
+	}
+	if c.json {
+		return printJSON(r)
+	}
+	line := func(k, v string) {
+		if v != "" {
+			fmt.Printf("%-16s %s\n", k, v)
+		}
+	}
+	line("run", r.ID)
+	line("state", r.State)
+	line("verdict", r.Verdict)
+	line("reason", r.VerdictReason)
+	line("verdict before", r.PriorVerdict)
+	line("agent ended", r.AgentEnd)
+	if r.Claimed != nil {
+		line("claimed success", fmt.Sprint(*r.Claimed))
+	}
+	line("task", fmt.Sprintf("%s, version %d", r.Task, r.TaskVersion))
+	line("arm", strings.TrimSpace(r.Arm+" "+r.ArmID))
+	line("batch", r.Batch)
+	if r.Host != "" {
+		line("lane", r.Lane+" on "+r.Host)
+	} else {
+		line("lane", r.Lane)
+	}
+	line("endpoint", r.Endpoint)
+	line("model", strings.TrimSpace(r.Provider+" "+r.Model))
+	line("thinking", r.Thinking)
+	if r.SDKRelease != "" {
+		line("SDK release", r.SDKRelease)
+	} else if r.State == "finished" && !r.Imported {
+		line("SDK release", "not established")
+	}
+	if !r.StartedAt.IsZero() {
+		line("started", r.StartedAt.Local().Format(time.RFC3339))
+	}
+	if r.WallMS > 0 {
+		line("wall", (time.Duration(r.WallMS) * time.Millisecond).Round(time.Millisecond).String())
+	}
+	if len(r.Blobs) > 0 {
+		fmt.Println("\nraw material:")
+		w := table()
+		for _, b := range r.Blobs {
+			fmt.Fprintf(w, "  %s\t%s\t%d bytes\t%s\n", b.Kind, b.Name, b.Size, b.Hash[:12])
+		}
+		w.Flush()
+	}
+	if len(r.Provenance) > 0 {
+		var buf bytes.Buffer
+		json.Indent(&buf, r.Provenance, "", "  ")
+		fmt.Printf("\nhow it was made:\n%s\n", buf.String())
+	}
+	fmt.Printf("\nThe resolved arm: automaticum run show %s --json. The first request as sent: automaticum logs %s --wire.\n", r.ID, r.ID)
+	return nil
+}
+
+// runTail prints what a run in flight prints, as it arrives.
+func runTail(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("run tail", flag.ExitOnError)
+	_, dial := addClient(fs)
+	rest := parse(fs, args)
+	if len(rest) != 1 {
+		return errors.New("usage: automaticum run tail <run>")
+	}
+	c, err := dial()
+	if err != nil {
+		return err
+	}
+	resp, err := c.open(ctx, "GET", "/v1/runs/"+url.PathEscape(rest[0])+"/stream", nil)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	rd := bufio.NewReaderSize(resp.Body, 1<<20)
+	for {
+		line, err := rd.ReadString('\n')
+		if data, ok := strings.CutPrefix(strings.TrimRight(line, "\n"), "data: "); ok && data != "{}" {
+			fmt.Println(data)
+		}
+		if err != nil {
+			return nil
+		}
+	}
+}
+
+func runPost(verb, done string) func(context.Context, []string) error {
+	return func(ctx context.Context, args []string) error {
+		fs := flag.NewFlagSet("run "+verb, flag.ExitOnError)
+		_, dial := addClient(fs)
+		reason := fs.String("reason", "", "why (needed to mark a run invalid)")
+		rest := parse(fs, args)
+		if len(rest) != 1 {
+			return fmt.Errorf("usage: automaticum run %s <run>", verb)
+		}
+		c, err := dial()
+		if err != nil {
+			return err
+		}
+		var in any
+		if verb == "invalidate" {
+			in = map[string]string{"reason": *reason}
+		}
+		var out map[string]any
+		if err := c.do(ctx, "POST", "/v1/runs/"+url.PathEscape(rest[0])+"/"+verb, in, &out); err != nil {
+			return err
+		}
+		if c.json {
+			return printJSON(out)
+		}
+		fmt.Printf("%s: %s\n", rest[0], done)
+		return nil
+	}
+}
+
+// logs prints one kind of a run's raw material.
+func logs(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("logs", flag.ExitOnError)
+	_, dial := addClient(fs)
+	kinds := map[string]*bool{
+		"events":        fs.Bool("events", false, "the event stream (the default)"),
+		"wire":          fs.Bool("wire", false, "every request and response as sent"),
+		"runner_stderr": fs.Bool("runner", false, "what the runner wrote to stderr"),
+		"oracle":        fs.Bool("oracle", false, "the oracle's output"),
+	}
+	kind := fs.String("kind", "", "any other kind, as `run show` lists them")
+	name := fs.String("name", "", "the name, when a run has several of one kind")
+	rest := parse(fs, args)
+	if len(rest) != 1 {
+		return errors.New("usage: automaticum logs <run> [--events|--wire|--runner|--oracle|--kind K]")
+	}
+	chosen := *kind
+	for k, set := range kinds {
+		if *set {
+			chosen = k
+		}
+	}
+	if chosen == "" {
+		chosen = "events"
+	}
+	c, err := dial()
+	if err != nil {
+		return err
+	}
+	path := "/v1/runs/" + url.PathEscape(rest[0]) + "/blobs/" + url.PathEscape(chosen)
+	if *name != "" {
+		path += "?name=" + url.QueryEscape(*name)
+	}
+	resp, err := c.open(ctx, "GET", path, nil)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	_, err = io.Copy(os.Stdout, resp.Body)
+	return err
+}

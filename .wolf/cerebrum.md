@@ -33,6 +33,9 @@
 - `internal/run` is pure Go: it reaches the store through `store.State` and a `Blobs` interface, so its tests run on the host with fakes. Verdict rules live only in `run.Decide`.
 - Run tests with `-race`: `Execute` stores the runner's two output streams from two goroutines.
 - 2026-10-13: `@cerebriline/sdk` 4.100.250 is neither tagged nor on the registry; the SDK main branch is at "start 4.100.250". Runner install and real runs wait for it (D54: no fallback).
+- `Run.Harness` holds the SDK release only once established (image label, then the runner's own finding). The release an arm names is in the resolved arm and in `provenance.sdk.named`. Never show a named release as the run's release.
+- The daemon runs on the host as `bin/automaticumd --config <dir>` (built by `make build` in the link image; glibc of manylinux 2.28 runs on the host). First SIGTERM drains, the second aborts. Find its pid with `pidof automaticumd`.
+- No test image may carry the `automaticum.sdk.release` label unless that SDK is really installed in it: the label is what a run's record trusts before the runner confirms.
 
 ## Do-Not-Repeat
 

@@ -188,3 +188,51 @@ func TestLaneState(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestQueue(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "state.duckdb")
+	s := open(t, path)
+	items := []store.QueueItem{
+		{RunID: "r1", Batch: "b1", Arm: "stub", Task: "demo/answer", Lane: "lane-1"},
+		{RunID: "r2", Batch: "b1", Arm: "stub", Task: "demo/answer", Lane: "lane-1"},
+		{RunID: "r3", Arm: "stub", Task: "demo/answer", Lane: "lane-1"},
+	}
+	if err := s.Enqueue(ctx, items); err != nil {
+		t.Fatal(err)
+	}
+	// Queued twice is queued once, in its first place.
+	if err := s.Enqueue(ctx, items[:1]); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Enqueue(ctx, []store.QueueItem{{RunID: "r4"}}); err == nil {
+		t.Fatal("an incomplete item was queued")
+	}
+	if err := s.Unqueue(ctx, "r2"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Unqueue(ctx, "absent"); err != nil {
+		t.Fatal(err)
+	}
+	s.Close()
+	// The queue survives a restart, in order.
+	s = open(t, path)
+	defer s.Close()
+	q, err := s.Queue(ctx)
+	if err != nil || len(q) != 2 || q[0].RunID != "r1" || q[1].RunID != "r3" || q[0].Batch != "b1" || q[0].EnqueuedAt.IsZero() {
+		t.Fatalf("queue = %+v (err %v)", q, err)
+	}
+	// The batch filter.
+	for i, id := range []string{"x1", "x2", "x3"} {
+		batch := "b1"
+		if i == 2 {
+			batch = "b2"
+		}
+		if err := s.UpsertRun(ctx, &store.Run{ID: id, Batch: batch, Verdict: store.Pass}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n, err := s.CountRuns(ctx, store.RunFilter{Batch: "b1"}); err != nil || n != 2 {
+		t.Fatalf("batch b1 has %d runs (err %v)", n, err)
+	}
+}

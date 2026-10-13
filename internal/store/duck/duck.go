@@ -22,7 +22,7 @@ import (
 )
 
 // SchemaVersion is the version of the tables this package creates.
-const SchemaVersion = 1
+const SchemaVersion = 2
 
 const schema = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -59,6 +59,14 @@ CREATE TABLE IF NOT EXISTS tool_calls (
 CREATE TABLE IF NOT EXISTS findings (
 	run_id VARCHAR NOT NULL, detector VARCHAR, detector_version VARCHAR,
 	severity VARCHAR, turn INTEGER, count INTEGER, evidence VARCHAR
+);
+
+-- Version 2. seq orders items enqueued in the same instant.
+CREATE SEQUENCE IF NOT EXISTS queue_seq;
+CREATE TABLE IF NOT EXISTS queue (
+	run_id VARCHAR PRIMARY KEY, seq BIGINT NOT NULL DEFAULT nextval('queue_seq'),
+	batch VARCHAR, arm VARCHAR NOT NULL, task VARCHAR NOT NULL, lane VARCHAR NOT NULL,
+	enqueued_at TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS lane_state (
@@ -113,6 +121,11 @@ func (s *State) migrate(ctx context.Context) error {
 		return err
 	case v.Int64 > SchemaVersion:
 		return fmt.Errorf("duck: database has schema version %d, this build knows %d", v.Int64, SchemaVersion)
+	case v.Int64 < SchemaVersion:
+		// Every change so far only adds tables, which the schema above
+		// creates when they are missing.
+		_, err := s.db.ExecContext(ctx, `INSERT INTO schema_version VALUES (?)`, SchemaVersion)
+		return err
 	}
 	return nil
 }
@@ -244,6 +257,9 @@ func where(f store.RunFilter) (string, []any) {
 	}
 	if f.Verdict != "" {
 		add("verdict = ?", string(f.Verdict))
+	}
+	if f.Batch != "" {
+		add("batch = ?", f.Batch)
 	}
 	if f.Imported != nil {
 		add("imported = ?", *f.Imported)
@@ -426,6 +442,54 @@ func (s *State) LaneStates(ctx context.Context) ([]store.LaneState, error) {
 		out = append(out, l)
 	}
 	return out, rows.Err()
+}
+
+// Enqueue adds runs to the queue. An item already queued is left as it is.
+func (s *State) Enqueue(ctx context.Context, items []store.QueueItem) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, it := range items {
+		if it.RunID == "" || it.Arm == "" || it.Task == "" || it.Lane == "" {
+			return fmt.Errorf("duck: queue item %+v is incomplete", it)
+		}
+		if it.EnqueuedAt.IsZero() {
+			it.EnqueuedAt = time.Now()
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO queue (run_id, batch, arm, task, lane, enqueued_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING`,
+			it.RunID, it.Batch, it.Arm, it.Task, it.Lane, it.EnqueuedAt.UTC()); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// Queue lists the queued runs, oldest first.
+func (s *State) Queue(ctx context.Context) ([]store.QueueItem, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT run_id, batch, arm, task, lane, enqueued_at FROM queue ORDER BY seq`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []store.QueueItem
+	for rows.Next() {
+		var it store.QueueItem
+		var batch sql.NullString
+		if err := rows.Scan(&it.RunID, &batch, &it.Arm, &it.Task, &it.Lane, &it.EnqueuedAt); err != nil {
+			return nil, err
+		}
+		it.Batch, it.EnqueuedAt = batch.String, it.EnqueuedAt.UTC()
+		out = append(out, it)
+	}
+	return out, rows.Err()
+}
+
+// Unqueue takes a run off the queue; it is not an error if it is not there.
+func (s *State) Unqueue(ctx context.Context, runID string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM queue WHERE run_id = ?`, runID)
+	return err
 }
 
 // Query runs read-only SQL in DuckDB's dialect.

@@ -89,6 +89,41 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-13T10:40:00+02:00"
+    },
+    {
+      "id": "bug-007",
+      "timestamp": "2026-10-13T10:00:00+02:00",
+      "error_message": "TestStartRunsInOrder: runs of one `run start -n 3` listed in another order than queued",
+      "file": "internal/daemon/api.go",
+      "root_cause": "Each run of a batch got its own random id (timestamp plus random suffix plus sequence number), so ids of the same second did not sort in queue order.",
+      "fix": "One id stem per command; the runs differ only in the -NNN suffix.",
+      "tags": [
+        "go",
+        "daemon",
+        "run-id",
+        "ordering"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-13T10:00:00+02:00"
+    },
+    {
+      "id": "bug-008",
+      "timestamp": "2026-10-13T10:05:00+02:00",
+      "error_message": "A SKIPPED run showed SDK release 4.100.250 although no SDK release had been established",
+      "file": "internal/run/run.go",
+      "root_cause": "Run.Harness was filled from the arm's named release at the start of Execute, before the lane image's label or the runner confirmed anything.",
+      "fix": "Harness stays empty until the image label matches, and is then set from what the runner reports installed; the CLI prints 'not established' otherwise.",
+      "tags": [
+        "go",
+        "run",
+        "sdk-release",
+        "D54",
+        "record"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-13T10:05:00+02:00"
     }
   ]
 }

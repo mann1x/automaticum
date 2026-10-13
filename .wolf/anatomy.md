@@ -125,6 +125,7 @@
 - `main.go` — command table and usage (~600 tok)
 - `config_cmds.go` — `arm validate|show|diff`, `task ls|show|build`, `oracle verify`, `lane ls`, `endpoint ls`; pure Go (~3300 tok)
 - `config_cmds_test.go` — flags among arguments (~150 tok)
+- `client_cmds.go` — the daemon's client: `status`, `run start|ls|show|tail|stop|abort|invalidate`, `logs` (~3600 tok)
 - `store_cgo.go` — `legacy import`, `store check`; needs cgo, built in the link image (~2700 tok)
 - `store_nocgo.go` — the same two commands in a build without cgo: an error (~120 tok)
 
@@ -133,6 +134,16 @@
 - `arm.go` — the arm format: every setting stated, `extends` with origins, `Validate`, identity hash, `Diff` (~5000 tok)
 - `local.go` — the untracked side: `Local` (daemon, lanes, endpoints), `LoadLocal`, token and API key files (~2500 tok)
 - `config_test.go` — arm inheritance, switching off an inherited feature, rejections, local config loading (~3500 tok)
+
+## cmd/automaticumd/
+
+- `main.go` — the daemon: opens the store, recovers, serves the API, drains on the first signal and aborts on the second; needs cgo (~1300 tok)
+
+## internal/daemon/
+
+- `daemon.go` — queue loop with one worker per lane, flights with a bounded line buffer, `Recover`, `Drain`, `Abort`, `LaneImage` (~3800 tok)
+- `api.go` — the HTTP API and its types: status, runs (start, list, show, stream, blobs, stop, abort, invalidate), drain; token rule (~5200 tok)
+- `daemon_test.go` — in-memory state and fake runner: order, idempotency, stream, abort, stop, invalidate, drain, daemon stop, recovery (~5200 tok)
 
 ## internal/run/
 

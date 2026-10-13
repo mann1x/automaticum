@@ -141,6 +141,18 @@ type LaneState struct {
 	Detail    json.RawMessage
 }
 
+// QueueItem is a run that was asked for and has not finished. Its id is
+// already the run's id. The arm and the task are named, not resolved: they
+// are read when the run starts, and fixed from then on.
+type QueueItem struct {
+	RunID      string
+	Batch      string
+	Arm        string
+	Task       string // "suite/task"
+	Lane       string
+	EnqueuedAt time.Time
+}
+
 // RunFilter selects runs. Zero fields do not filter.
 type RunFilter struct {
 	Suite    string
@@ -148,6 +160,7 @@ type RunFilter struct {
 	ArmID    string
 	Model    string
 	Verdict  Verdict
+	Batch    string
 	Imported *bool
 	Since    time.Time
 	Until    time.Time
@@ -171,6 +184,12 @@ type State interface {
 
 	SetLaneState(ctx context.Context, s LaneState) error
 	LaneStates(ctx context.Context) ([]LaneState, error)
+
+	// The queue survives a restart. Enqueue ignores an item whose run id
+	// is already queued; Queue lists oldest first.
+	Enqueue(ctx context.Context, items []QueueItem) error
+	Queue(ctx context.Context) ([]QueueItem, error)
+	Unqueue(ctx context.Context, runID string) error
 
 	// Query runs read-only SQL for reports and statistics. It is the one
 	// place the engine's dialect shows through the interface.

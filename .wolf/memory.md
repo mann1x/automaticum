@@ -417,3 +417,14 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 10:50 | step 4: internal/run (protocol, verdict rules, endpoint probe, Execute) with fault-injection tests; docker.Image labels | internal/run, internal/docker/docker.go | go test -race passes; race fixed (bug-006) | ~14000 |
+
+## Session: 2026-10-13 09:52
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 09:52
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:10 | step 5: queue in the store (schema 2), internal/daemon (loop, recovery, API), cmd/automaticumd, client commands; smoke test on the real daemon | internal/store, internal/daemon, cmd | all tests pass; runs SKIPPED for want of a lane image, as they must | ~20000 |

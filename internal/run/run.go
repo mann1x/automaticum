@@ -177,7 +177,13 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		ID: req.ID, Batch: req.Batch, Suite: t.Suite, TaskID: t.ID, TaskVersion: t.Version,
 		ArmID: a.ID, Lane: req.Lane, StartedAt: now.UTC(),
 		Provider: a.Model.Provider, Model: a.Model.Model, Endpoint: a.Endpoint,
-		Thinking: thinkingWord(a), Harness: a.Harness.SDKRelease, Arm: a.Resolved(),
+		Thinking: thinkingWord(a), Arm: a.Resolved(),
+	}
+	// Harness is the SDK release once it is established, never the one the
+	// arm merely names: first by the lane image's label, then by what the
+	// runner finds installed.
+	if l := x.Local.Lanes[req.Lane]; l != nil {
+		r.Host = l.Host
 	}
 	var p provenance
 	p.Automaticum, p.Protocol = x.Version, Protocol
@@ -243,7 +249,7 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		facts.Skipped = skip
 		return finish()
 	}
-	r.Host = lane.Host
+	r.Harness = p.SDK.ImageLabel
 	p.Container.User = lane.User
 	key, err := x.Local.APIKey(endpoint)
 	if err != nil {
@@ -345,6 +351,9 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 	if end != nil {
 		r.AgentEnd, r.ClaimedSuccess = end.AgentEnd, end.ClaimedSuccess
 		p.SDK.Release, p.SDK.PackageSHA256 = end.SDK.Release, end.SDK.PackageSHA256
+		if end.SDK.Release != "" {
+			r.Harness = end.SDK.Release
+		}
 	}
 
 	// Collect what the run left, whatever became of it.

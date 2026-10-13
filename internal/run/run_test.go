@@ -324,6 +324,10 @@ func TestVerdicts(t *testing.T) {
 				t.Fatalf("verdict %s (%s), want %s (…%s…)", r.Verdict, r.VerdictReason, c.want, c.reason)
 			}
 			if c.runner == nil {
+				// No release is claimed for a run that established none.
+				if strings.Contains(c.name, "image") && r.Harness != "" {
+					t.Errorf("a run without an established SDK release records %q", r.Harness)
+				}
 				if len(w.engine.specs) != 0 {
 					t.Errorf("a skipped run started a container")
 				}

@@ -1,0 +1,541 @@
+package daemon
+
+import (
+	"bufio"
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"sort"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/mann1x/automaticum/internal/config"
+	"github.com/mann1x/automaticum/internal/run"
+	"github.com/mann1x/automaticum/internal/store"
+	"github.com/mann1x/automaticum/internal/store/blob"
+)
+
+// memState is a store.State in memory.
+type memState struct {
+	store.State
+	mu    sync.Mutex
+	runs  map[string]store.Run
+	queue []store.QueueItem
+	lanes map[string]store.LaneState
+	refs  []store.BlobRef
+}
+
+func newMemState() *memState {
+	return &memState{runs: map[string]store.Run{}, lanes: map[string]store.LaneState{}}
+}
+
+func (s *memState) UpsertRun(_ context.Context, r *store.Run) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !r.Verdict.Valid() {
+		return fmt.Errorf("not a verdict: %q", r.Verdict)
+	}
+	s.runs[r.ID] = *r
+	return nil
+}
+
+func (s *memState) GetRun(_ context.Context, id string) (*store.Run, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	r, ok := s.runs[id]
+	if !ok {
+		return nil, store.ErrNotFound
+	}
+	return &r, nil
+}
+
+func (s *memState) ListRuns(_ context.Context, f store.RunFilter) ([]store.Run, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var out []store.Run
+	for _, r := range s.runs {
+		if (f.Batch == "" || r.Batch == f.Batch) && (f.Verdict == "" || r.Verdict == f.Verdict) {
+			out = append(out, r)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID > out[j].ID })
+	return out, nil
+}
+
+func (s *memState) BlobRefs(_ context.Context, id string) ([]store.BlobRef, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var out []store.BlobRef
+	for _, r := range s.refs {
+		if r.RunID == id {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
+func (s *memState) SetLaneState(_ context.Context, l store.LaneState) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	l.UpdatedAt = time.Now()
+	s.lanes[l.Lane] = l
+	return nil
+}
+
+func (s *memState) LaneStates(context.Context) ([]store.LaneState, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var out []store.LaneState
+	for _, l := range s.lanes {
+		out = append(out, l)
+	}
+	return out, nil
+}
+
+func (s *memState) Enqueue(_ context.Context, items []store.QueueItem) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+next:
+	for _, it := range items {
+		for _, q := range s.queue {
+			if q.RunID == it.RunID {
+				continue next
+			}
+		}
+		s.queue = append(s.queue, it)
+	}
+	return nil
+}
+
+func (s *memState) Queue(context.Context) ([]store.QueueItem, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]store.QueueItem(nil), s.queue...), nil
+}
+
+func (s *memState) Unqueue(_ context.Context, id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, q := range s.queue {
+		if q.RunID == id {
+			s.queue = append(s.queue[:i:i], s.queue[i+1:]...)
+			break
+		}
+	}
+	return nil
+}
+
+func (s *memState) lane(name string) store.LaneState {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.lanes[name]
+}
+
+// fakeRunner stands in for run.Executor.
+type fakeRunner struct {
+	state *memState
+	mu    sync.Mutex
+	seen  []string
+	// hold, when set, makes a run wait until it is closed or the run is
+	// cancelled.
+	hold    chan struct{}
+	started chan string
+}
+
+func (f *fakeRunner) Execute(ctx context.Context, req run.Request) (*store.Run, error) {
+	f.mu.Lock()
+	f.seen = append(f.seen, req.ID)
+	hold := f.hold
+	f.mu.Unlock()
+	r := &store.Run{ID: req.ID, Batch: req.Batch, Suite: req.Task.Suite, TaskID: req.Task.ID, Lane: req.Lane, ArmID: req.Arm.ID,
+		StartedAt: time.Now().UTC(), Harness: req.Arm.Harness.SDKRelease, Verdict: store.Pass, VerdictReason: "oracle passed"}
+	if req.OnStart != nil {
+		req.OnStart(r, "container-"+req.ID)
+	}
+	if req.OnLine != nil {
+		req.OnLine([]byte(`{"k":"event","n":1}`))
+		req.OnLine([]byte(`{"k":"event","n":2}`))
+	}
+	if f.started != nil {
+		f.started <- req.ID
+	}
+	if hold != nil {
+		select {
+		case <-hold:
+		case <-ctx.Done():
+			r.Verdict, r.VerdictReason = store.Aborted, context.Cause(ctx).Error()
+		}
+	}
+	if req.OnLine != nil {
+		req.OnLine([]byte(`{"k":"end"}`))
+	}
+	r.EndedAt = time.Now().UTC()
+	if err := f.state.UpsertRun(context.Background(), r); err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
+type fakeContainers struct {
+	mu      sync.Mutex
+	removed []string
+}
+
+func (c *fakeContainers) Kill(context.Context, string, string) error { return nil }
+func (c *fakeContainers) Remove(_ context.Context, id string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.removed = append(c.removed, id)
+	return nil
+}
+
+type memBlobs map[blob.Hash]string
+
+func (b memBlobs) Reader(_ context.Context, h blob.Hash) (io.ReadCloser, blob.Info, error) {
+	return io.NopCloser(strings.NewReader(b[h])), blob.Info{}, nil
+}
+
+const token = "0123456789abcdef0123456789abcdef"
+
+type rig struct {
+	t      *testing.T
+	d      *Daemon
+	state  *memState
+	runner *fakeRunner
+	cont   *fakeContainers
+	srv    *httptest.Server
+	stop   context.CancelFunc
+	served chan struct{}
+}
+
+func newRig(t *testing.T, serve bool) *rig {
+	t.Helper()
+	state := newMemState()
+	g := &rig{t: t, state: state, runner: &fakeRunner{state: state}, cont: &fakeContainers{}, served: make(chan struct{})}
+	g.d = &Daemon{
+		Local: &config.Local{
+			Lanes:     map[string]*config.Lane{"lane-1": {Name: "lane-1", Host: "linux-gpu-1", Endpoints: []string{"stub"}}},
+			Endpoints: map[string]*config.Endpoint{"stub": {Name: "stub", Kind: "ollama"}},
+		},
+		State: state, Runner: g.runner, Containers: g.cont, Blobs: memBlobs{"h1": "the events"},
+		Repo: "../..", Version: "test", Token: token,
+	}
+	g.srv = httptest.NewServer(g.d.Handler())
+	t.Cleanup(g.srv.Close)
+	ctx, cancel := context.WithCancel(context.Background())
+	g.stop = cancel
+	t.Cleanup(cancel)
+	if serve {
+		go func() { g.d.Serve(ctx); close(g.served) }()
+	}
+	return g
+}
+
+func (g *rig) call(method, path string, body any, out any) int {
+	g.t.Helper()
+	var rd io.Reader
+	if body != nil {
+		b, _ := json.Marshal(body)
+		rd = bytes.NewReader(b)
+	}
+	req, _ := http.NewRequest(method, g.srv.URL+path, rd)
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		g.t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	data, _ := io.ReadAll(resp.Body)
+	if out != nil {
+		if err := json.Unmarshal(data, out); err != nil {
+			g.t.Fatalf("%s %s: %s", method, path, data)
+		}
+	}
+	return resp.StatusCode
+}
+
+func (g *rig) waitFinished(id string) RunView {
+	g.t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		var v RunView
+		if g.call("GET", "/v1/runs/"+id, nil, &v) == 200 && v.State == "finished" {
+			// The lane is freed a moment after the record is written.
+			if g.d.flight(id) == nil {
+				return v
+			}
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	g.t.Fatalf("run %s did not finish", id)
+	return RunView{}
+}
+
+func TestStartRunsInOrder(t *testing.T) {
+	g := newRig(t, true)
+	var dry StartResponse
+	if code := g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Count: 2, DryRun: true}, &dry); code != 200 || len(dry.RunIDs) != 2 || !dry.DryRun {
+		t.Fatalf("dry run: %d %+v", code, dry)
+	}
+	if q, _ := g.state.Queue(context.Background()); len(q) != 0 {
+		t.Fatal("a dry run queued something")
+	}
+	var resp StartResponse
+	if code := g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Count: 3, Key: "once"}, &resp); code != 202 {
+		t.Fatalf("start: %d", code)
+	}
+	if len(resp.RunIDs) != 3 || resp.Lane != "lane-1" || resp.Task != "demo/answer" || resp.Image != "automaticum-lane:base" || resp.ArmID == "" {
+		t.Fatalf("start: %+v", resp)
+	}
+	for _, id := range resp.RunIDs {
+		if v := g.waitFinished(id); v.Verdict != "PASS" || v.Batch != "k-once" || v.SDKRelease != "4.100.250" {
+			t.Fatalf("run: %+v", v)
+		}
+	}
+	g.runner.mu.Lock()
+	seen := strings.Join(g.runner.seen, ",")
+	g.runner.mu.Unlock()
+	if seen != strings.Join(resp.RunIDs, ",") {
+		t.Errorf("runs ran as %s, queued as %v", seen, resp.RunIDs)
+	}
+	// The same key again starts nothing.
+	var again StartResponse
+	if code := g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Count: 3, Key: "once"}, &again); code != 200 || !again.Repeated || strings.Join(again.RunIDs, ",") != seen {
+		t.Fatalf("repeat: %d %+v", code, again)
+	}
+	var list []RunView
+	if g.call("GET", "/v1/runs?batch=k-once", nil, &list); len(list) != 3 {
+		t.Fatalf("list: %+v", list)
+	}
+	var st Status
+	g.call("GET", "/v1/status", nil, &st)
+	if len(st.Lanes) != 1 || st.Lanes[0].State != "idle" || len(st.Queue) != 0 || st.Version != "test" {
+		t.Fatalf("status: %+v", st)
+	}
+	if ls := g.state.lane("lane-1"); ls.State != "idle" || ls.RunID != "" {
+		t.Fatalf("lane state: %+v", ls)
+	}
+}
+
+func TestRefusals(t *testing.T) {
+	g := newRig(t, false)
+	for _, c := range []struct {
+		req  StartRequest
+		want string
+	}{
+		{StartRequest{Arm: "base", Task: "answer"}, "template"},
+		{StartRequest{Arm: "absent", Task: "answer"}, "no arm"},
+		{StartRequest{Arm: "stub", Task: "absent"}, "absent"},
+		{StartRequest{Arm: "stub", Task: "answer", Lane: "lane-9"}, "no lane"},
+		{StartRequest{Arm: "stub"}, "needs an arm"},
+	} {
+		var e apiError
+		if code := g.call("POST", "/v1/runs", c.req, &e); code < 400 || !strings.Contains(e.Error, c.want) {
+			t.Errorf("%+v: %d %q", c.req, code, e.Error)
+		}
+	}
+	// Changing something needs the token; reading from this host does not.
+	resp, err := http.Post(g.srv.URL+"/v1/runs", "application/json", strings.NewReader(`{"arm":"stub","task":"answer"}`))
+	if err != nil || resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("post without a token: %v %v", resp, err)
+	}
+	resp.Body.Close()
+	resp, err = http.Get(g.srv.URL + "/v1/status")
+	if err != nil || resp.StatusCode != http.StatusOK {
+		t.Fatalf("get without a token: %v %v", resp, err)
+	}
+	resp.Body.Close()
+}
+
+func TestStreamAbortStopInvalidate(t *testing.T) {
+	g := newRig(t, true)
+	g.runner.hold = make(chan struct{})
+	g.runner.started = make(chan string, 4)
+	var resp StartResponse
+	g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Count: 2}, &resp)
+	first, second := resp.RunIDs[0], resp.RunIDs[1]
+	if id := <-g.runner.started; id != first {
+		t.Fatalf("%s started first", id)
+	}
+	var st Status
+	g.call("GET", "/v1/status", nil, &st)
+	if st.Lanes[0].State != "running" || st.Lanes[0].RunID != first || len(st.Queue) != 2 || !st.Queue[0].Running || st.Queue[1].Running {
+		t.Fatalf("status: %+v", st)
+	}
+	// The lane's state holds what a restart needs.
+	var det laneDetail
+	json.Unmarshal(g.state.lane("lane-1").Detail, &det)
+	if det.ContainerID != "container-"+first || det.Run == nil || det.Run.ID != first {
+		t.Fatalf("lane detail: %+v", det)
+	}
+
+	// A client that attaches late gets what was printed, then the rest.
+	sresp, err := http.Get(g.srv.URL + "/v1/runs/" + first + "/stream")
+	if err != nil || sresp.StatusCode != 200 {
+		t.Fatalf("stream: %v %v", sresp, err)
+	}
+	defer sresp.Body.Close()
+	sc := bufio.NewScanner(sresp.Body)
+	read := func() string {
+		for sc.Scan() {
+			if line := sc.Text(); line != "" {
+				return line
+			}
+		}
+		return ""
+	}
+	if a, b := read(), read(); a != `data: {"k":"event","n":1}` || b != `data: {"k":"event","n":2}` {
+		t.Fatalf("stream: %q %q", a, b)
+	}
+
+	// A run in flight is not stopped; the queued one is.
+	var e apiError
+	if code := g.call("POST", "/v1/runs/"+first+"/stop", nil, &e); code != http.StatusConflict {
+		t.Fatalf("stop of a run in flight: %d", code)
+	}
+	var stopped RunView
+	if code := g.call("POST", "/v1/runs/"+second+"/stop", nil, &stopped); code != 200 || stopped.Verdict != "SKIPPED" {
+		t.Fatalf("stop: %d %+v", code, stopped)
+	}
+	if code := g.call("POST", "/v1/runs/"+first+"/abort", nil, nil); code != http.StatusAccepted {
+		t.Fatalf("abort: %d", code)
+	}
+	if a, b := read(), read(); a != `data: {"k":"end"}` || b != "event: end" {
+		t.Fatalf("end of stream: %q %q", a, b)
+	}
+	v := g.waitFinished(first)
+	if v.Verdict != "ABORTED" || v.VerdictReason != "operator abort" {
+		t.Fatalf("aborted run: %+v", v)
+	}
+	g.runner.mu.Lock()
+	ran := len(g.runner.seen)
+	g.runner.mu.Unlock()
+	if ran != 1 {
+		t.Errorf("the stopped run ran")
+	}
+	if code := g.call("GET", "/v1/runs/"+first+"/stream", nil, &e); code != http.StatusGone {
+		t.Errorf("stream of a finished run: %d", code)
+	}
+
+	// Invalid by the operator: the verdict it had is kept.
+	if code := g.call("POST", "/v1/runs/"+first+"/invalidate", map[string]string{"reason": ""}, &e); code != http.StatusBadRequest {
+		t.Errorf("invalidate without a reason: %d", code)
+	}
+	var inv RunView
+	g.call("POST", "/v1/runs/"+first+"/invalidate", map[string]string{"reason": "wrong model tag"}, &inv)
+	g.call("POST", "/v1/runs/"+first+"/invalidate", map[string]string{"reason": "and the GPU was shared"}, &inv)
+	if inv.Verdict != "INVALID" || inv.PriorVerdict != "ABORTED" || inv.VerdictReason != "operator: and the GPU was shared" {
+		t.Fatalf("invalidate: %+v", inv)
+	}
+
+	// Raw material.
+	g.state.refs = append(g.state.refs, store.BlobRef{RunID: first, Kind: "events", Hash: "h1", Size: 10})
+	resp2, _ := http.Get(g.srv.URL + "/v1/runs/" + first + "/blobs/events")
+	data, _ := io.ReadAll(resp2.Body)
+	resp2.Body.Close()
+	if string(data) != "the events" {
+		t.Errorf("blob: %q", data)
+	}
+	var full RunView
+	g.call("GET", "/v1/runs/"+first, nil, &full)
+	if len(full.Blobs) != 1 || full.Blobs[0].Kind != "events" {
+		t.Errorf("blobs of the run: %+v", full.Blobs)
+	}
+}
+
+func TestDaemonStopAndDrain(t *testing.T) {
+	// The daemon's end aborts the run in flight, and says so.
+	g := newRig(t, true)
+	g.runner.hold = make(chan struct{})
+	g.runner.started = make(chan string, 4)
+	var resp StartResponse
+	g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Count: 2}, &resp)
+	<-g.runner.started
+	g.stop()
+	<-g.served
+	r, err := g.state.GetRun(context.Background(), resp.RunIDs[0])
+	if err != nil || r.Verdict != store.Aborted || r.VerdictReason != "daemon stop" {
+		t.Fatalf("%+v %v", r, err)
+	}
+	if q, _ := g.state.Queue(context.Background()); len(q) != 1 || q[0].RunID != resp.RunIDs[1] {
+		t.Fatalf("queue after the stop: %+v", q)
+	}
+
+	// Draining lets the run in flight finish and starts no other.
+	g = newRig(t, true)
+	g.runner.hold = make(chan struct{})
+	g.runner.started = make(chan string, 4)
+	g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Count: 2}, &resp)
+	<-g.runner.started
+	if code := g.call("POST", "/v1/drain", nil, nil); code != 200 {
+		t.Fatalf("drain: %d", code)
+	}
+	var e apiError
+	if code := g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer"}, &e); code != http.StatusConflict {
+		t.Errorf("a draining daemon took a run: %d", code)
+	}
+	close(g.runner.hold)
+	<-g.served
+	r, _ = g.state.GetRun(context.Background(), resp.RunIDs[0])
+	if r == nil || r.Verdict != store.Pass {
+		t.Fatalf("the run in flight did not finish: %+v", r)
+	}
+	if q, _ := g.state.Queue(context.Background()); len(q) != 1 {
+		t.Fatalf("queue after draining: %+v", q)
+	}
+}
+
+func TestRecover(t *testing.T) {
+	g := newRig(t, false)
+	ctx := context.Background()
+	started := time.Now().Add(-time.Minute).UTC()
+	// What a daemon killed mid-run leaves: a queue, and a lane marked
+	// running with the run's record so far.
+	g.state.Enqueue(ctx, []store.QueueItem{
+		{RunID: "r1", Arm: "stub", Task: "demo/answer", Lane: "lane-1"},
+		{RunID: "r2", Arm: "stub", Task: "demo/answer", Lane: "lane-1"},
+		{RunID: "r0", Arm: "stub", Task: "demo/answer", Lane: "lane-1"}, // finished, not yet unqueued
+	})
+	g.state.UpsertRun(ctx, &store.Run{ID: "r0", Verdict: store.Fail})
+	det, _ := json.Marshal(laneDetail{ContainerID: "c1", Run: &store.Run{ID: "r1", Lane: "lane-1", Model: "stub:latest", StartedAt: started}})
+	g.state.SetLaneState(ctx, store.LaneState{Lane: "lane-1", State: "running", RunID: "r1", Detail: det})
+
+	if err := g.d.Recover(ctx); err != nil {
+		t.Fatal(err)
+	}
+	r1, err := g.state.GetRun(ctx, "r1")
+	if err != nil || r1.Verdict != store.Aborted || r1.VerdictReason != "daemon restart" || r1.Model != "stub:latest" || r1.WallMS < 59000 {
+		t.Fatalf("r1: %+v %v", r1, err)
+	}
+	if len(g.cont.removed) != 1 || g.cont.removed[0] != "c1" {
+		t.Errorf("containers removed: %v", g.cont.removed)
+	}
+	if r0, _ := g.state.GetRun(ctx, "r0"); r0.Verdict != store.Fail {
+		t.Errorf("a finished run was touched: %+v", r0)
+	}
+	if q, _ := g.state.Queue(ctx); len(q) != 1 || q[0].RunID != "r2" {
+		t.Fatalf("queue: %+v", q)
+	}
+	if ls := g.state.lane("lane-1"); ls.State != "idle" || ls.RunID != "" {
+		t.Errorf("lane: %+v", ls)
+	}
+	// Recovering twice changes nothing, and what was queued then runs once.
+	if err := g.d.Recover(ctx); err != nil {
+		t.Fatal(err)
+	}
+	sctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go g.d.Serve(sctx)
+	g.waitFinished("r2")
+	g.runner.mu.Lock()
+	defer g.runner.mu.Unlock()
+	if strings.Join(g.runner.seen, ",") != "r2" {
+		t.Errorf("ran after recovery: %v", g.runner.seen)
+	}
+}

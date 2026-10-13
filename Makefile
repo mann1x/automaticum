@@ -36,6 +36,7 @@ lance-c:
 # The command line (DuckDB and the blob store; no Lance yet) into bin/.
 build:
 	$(DOCKER_RUN) -w /src $(LINK_IMAGE) go build -o bin/automaticum ./cmd/automaticum
+	$(DOCKER_RUN) -w /src $(LINK_IMAGE) go build -o bin/automaticumd ./cmd/automaticumd
 
 # The spike's measurement program into bin/.
 bench:
@@ -44,7 +45,7 @@ bench:
 
 # Pure-Go packages: run on the host.
 test:
-	go test -race ./internal/store/blob/... ./internal/legacyimport/... ./internal/config/... ./internal/stubmodel/... ./internal/run/...
+	go test -race ./internal/store/blob/... ./internal/legacyimport/... ./internal/config/... ./internal/stubmodel/... ./internal/run/... ./internal/daemon/...
 	go test -short ./internal/task/... ./internal/docker/...
 	CGO_ENABLED=0 go test ./cmd/automaticum/...
 
