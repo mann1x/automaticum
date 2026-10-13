@@ -6,9 +6,9 @@ Follow `.wolf/OPENWOLF.md` every session. Check `.wolf/anatomy.md` before readin
 
 ## Status
 
-- Milestone 1 (store spike and legacy importer) is approved and in progress; the only application code so far is the store interface in `internal/store/`. The source of truth is the spec set in `docs/specs/` (`000-overview.md` to `110-acceptance-and-roadmap.md`, plus `decisions.md`). The two input documents are in `docs/specs/archive/` and are not edited.
+- Milestone 1 (store spike and legacy importer) is approved and in progress; the application code so far is the store in `internal/store/` and the legacy importer in `internal/legacyimport/`. The source of truth is the spec set in `docs/specs/` (`000-overview.md` to `110-acceptance-and-roadmap.md`, plus `decisions.md`). The two input documents are in `docs/specs/archive/` and are not edited.
 - automaticum is a test harness that runs coding agents against tasks with a verdict, on lanes it orchestrates itself.
-- Executable code today: tooling in `.wolf/hooks/` (Node ESM) and `.claude/hooks/` (Shell), the build setup (`go.mod`, `go.sum`, `Makefile`, `build/`), the store spike in `spike/001-store/` and the store interface in `internal/store/`.
+- Executable code today: tooling in `.wolf/hooks/` (Node ESM) and `.claude/hooks/` (Shell), the build setup (`go.mod`, `go.sum`, `Makefile`, `build/`), the store spike in `spike/001-store/`, the store in `internal/store/` and the legacy importer in `internal/legacyimport/`.
 - Do not invent Go packages or build commands outside a milestone plan the owner has approved: check `docs/specs/110-acceptance-and-roadmap.md` section 3 and `docs/specs/decisions.md` first.
 
 ## Owner decisions
@@ -49,12 +49,14 @@ caliber skills --query "go docker"
 bash .claude/hooks/caliber-check-sync.sh
 ```
 
-Native (cgo) builds run only in the build container (`Makefile`; `SPIKE_ROOT` is a local directory for caches and sources, never stored in a tracked file):
+Native (cgo) builds run only in the build containers (`Makefile`; `SPIKE_ROOT` is a local directory for caches and sources, never stored in a tracked file). `make test` runs the pure-Go packages (`internal/store/blob`, `internal/legacyimport`) on the host; `make test-store` runs `internal/store/...` in the link image and needs the archive from `make lance-c` first:
 
 ```bash
-make image
-make shell SPIKE_ROOT=<dir>
+make images
+make lance-c SPIKE_ROOT=<dir>
 make test
+make test-store SPIKE_ROOT=<dir>
+make shell SPIKE_ROOT=<dir>
 ```
 
 ## Layout
@@ -63,7 +65,8 @@ make test
 - **Inputs** (`docs/specs/archive/`): `automaticum-draft-spec-0.4.md` · `omnimergekit-evaluation-requirements-0.1.md`
 - **Build** (repo root and `build/`): `go.mod` · `go.sum` · `Makefile` · `LICENSE` · `build/Dockerfile.build` · `build/Dockerfile.cross`
 - **Store spike** (`spike/001-store/`): `linkcheck/README.md`
-- **Store** (`internal/store/`): `store.go` · `blob/doc.go`
+- **Store** (`internal/store/`): `store.go` · `blob/` (`doc.go` · `blob.go` · `put.go` · `read.go` · `archive.go` · `check.go` · `format.go` · `FORMAT.md`) · `duck/duck.go` · `lance/lance.go` · `storetest/` (`doc.go` · `crash_test.go`)
+- **Legacy importer** (`internal/legacyimport/`): `doc.go` · `importer.go` · `scan.go` · `parse.go` · `stream.go` · `mapping.go` · `sink.go` · `verify.go` · `types.go`
 - **Local, untracked** (`docs/local/`): host mapping and private paths
 - **OpenWolf state** (`.wolf/`): `OPENWOLF.md` · `anatomy.md` · `cerebrum.md` · `memory.md` · `buglog.json` · `identity.md` · `config.json` · `token-ledger.json` · `cron-manifest.json` · `cron-state.json` · `suggestions.json` · `designqc-report.json` · `reframe-frameworks.md` · `daemon.log`
 - **OpenWolf hooks** (`.wolf/hooks/`): `session-start.js` · `pre-read.js` · `post-read.js` · `pre-write.js` · `post-write.js` · `stop.js` · `shared.js` · `package.json`
