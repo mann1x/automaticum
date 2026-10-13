@@ -38,6 +38,10 @@ type RunSource struct {
 	Set        string // one of the Set constants
 	Loop       string // native, atomic or teams; refined from build.txt later
 	Annotation string
+	// Lane and OriginalID are set by Import, which then makes ID the
+	// imported id (LaneRunID). Discover leaves both empty.
+	Lane       string
+	OriginalID string
 }
 
 // Discovery is the result of walking the run sets.
@@ -433,7 +437,11 @@ func (sa *StateArchive) find(src RunSource) (archiveFile, bool) {
 	if sa == nil {
 		return archiveFile{}, false
 	}
-	for _, key := range []string{src.DirName, src.ID} {
+	id := src.OriginalID
+	if id == "" {
+		id = src.ID
+	}
+	for _, key := range []string{src.DirName, id} {
 		if f, ok := sa.byName[key]; ok {
 			return f, true
 		}

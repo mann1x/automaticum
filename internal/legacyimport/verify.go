@@ -12,7 +12,8 @@ import (
 
 // FileCheck compares one verdict file of the old harness with a report.
 type FileCheck struct {
-	File      string
+	File      string // for a sibling lane, "<lane>:<file>"
+	Lane      string
 	Loop      string
 	Lines     int            // non-empty lines in the file
 	Malformed int            // of which are not run lines
@@ -27,6 +28,9 @@ type FileCheck struct {
 // Verification is the result of VerifyAgainstLegacy.
 type Verification struct {
 	Files []FileCheck
+	// NoVerdictFile lists the sibling lanes that have no verdict file. There
+	// is nothing to compare them with, which is not a difference.
+	NoVerdictFile []string
 	// Differences is empty when every verdict file is reproduced exactly:
 	// every run line has an imported run with the same id and the same
 	// original word, the word maps to the verdict the run carries, and the
@@ -39,11 +43,16 @@ type Verification struct {
 func (v *Verification) OK() bool { return len(v.Differences) == 0 }
 
 // VerifyAgainstLegacy recomputes the verdict counts from the old harness's
-// verdict files under legacyRoot and compares them with the runs in report.
-// It reads the verdict files only.
-func VerifyAgainstLegacy(report *Report, legacyRoot string) (*Verification, error) {
+// verdict files under legacyRoot, and under the root of every lane given,
+// and compares them with the runs in report. It reads the verdict files
+// only. A sibling lane without a verdict file is named in NoVerdictFile; the
+// legacy root must have one.
+func VerifyAgainstLegacy(report *Report, legacyRoot string, lanes ...Lane) (*Verification, error) {
 	if report == nil {
 		return nil, errors.New("legacyimport: no report")
+	}
+	if err := checkLanes(lanes); err != nil {
+		return nil, fmt.Errorf("legacyimport: %w", err)
 	}
 	byID := map[string]*RunSummary{}
 	for i := range report.Runs {
@@ -55,81 +64,105 @@ func VerifyAgainstLegacy(report *Report, legacyRoot string) (*Verification, erro
 		loops = append(loops, loop)
 	}
 	sort.Strings(loops)
-	found := 0
-	for _, loop := range loops {
-		name := verdictFiles[loop]
-		f, err := os.Open(filepath.Join(legacyRoot, name))
-		if errors.Is(err, fs.ErrNotExist) {
-			continue
-		}
-		if err != nil {
-			return nil, err
-		}
-		vf, err := ParseVerdictFile(f)
-		f.Close()
-		if err != nil {
-			return nil, fmt.Errorf("%s: %w", name, err)
-		}
-		found++
-		fc := FileCheck{
-			File: name, Loop: loop, Lines: vf.Lines, Malformed: len(vf.Malformed),
-			Expected: vf.Counts(), Imported: map[string]int{},
-		}
-		for _, l := range vf.Runs {
-			r, ok := byID[l.RunID]
-			switch {
-			case !ok:
-				fc.MissingIDs = append(fc.MissingIDs, l.RunID)
-			case r.Status == StatusFailed:
-				fc.Mismatches = append(fc.Mismatches, fmt.Sprintf("%s: the run failed to import", l.RunID))
-			default:
-				fc.Imported[r.OriginalVerdict]++
-				if r.OriginalVerdict != l.Verdict {
-					fc.Mismatches = append(fc.Mismatches,
-						fmt.Sprintf("%s: file says %s, imported as %q", l.RunID, l.Verdict, r.OriginalVerdict))
-					continue
-				}
-				want, known := MapVerdict(l.Verdict)
-				got := r.Verdict
-				if got == Invalid {
-					got = r.PriorVerdict
-				}
-				if !known || got != want {
-					fc.Mismatches = append(fc.Mismatches,
-						fmt.Sprintf("%s: %s should map to %q, run carries %q", l.RunID, l.Verdict, want, got))
-				}
+	for _, lane := range append([]Lane{{Name: MainLane, Root: legacyRoot}}, lanes...) {
+		found := 0
+		for _, loop := range loops {
+			fc, err := verifyFile(byID, lane, loop)
+			if errors.Is(err, fs.ErrNotExist) {
+				continue
 			}
-		}
-		for _, id := range fc.MissingIDs {
-			v.Differences = append(v.Differences, fmt.Sprintf("%s: run %s is not in the import", name, id))
-		}
-		for _, m := range fc.Mismatches {
-			v.Differences = append(v.Differences, name+": "+m)
-		}
-		words := map[string]bool{}
-		for w := range fc.Expected {
-			words[w] = true
-		}
-		for w := range fc.Imported {
-			words[w] = true
-		}
-		sorted := make([]string, 0, len(words))
-		for w := range words {
-			sorted = append(sorted, w)
-		}
-		sort.Strings(sorted)
-		for _, w := range sorted {
-			if fc.Expected[w] != fc.Imported[w] {
-				v.Differences = append(v.Differences,
-					fmt.Sprintf("%s: %s: %d in the file, %d imported", name, w, fc.Expected[w], fc.Imported[w]))
+			if err != nil {
+				return nil, err
 			}
+			found++
+			v.Files = append(v.Files, *fc)
+			v.Differences = append(v.Differences, fc.differences()...)
 		}
-		v.Files = append(v.Files, fc)
-	}
-	if found == 0 {
-		return nil, errors.New("legacyimport: no verdict file under the legacy root")
+		switch {
+		case found > 0:
+		case lane.Name == MainLane:
+			return nil, errors.New("legacyimport: no verdict file under the legacy root")
+		default:
+			v.NoVerdictFile = append(v.NoVerdictFile, lane.Name)
+		}
 	}
 	return v, nil
+}
+
+// verifyFile compares one loop's verdict file of one lane with the imported
+// runs. The error is fs.ErrNotExist when the lane has no such file.
+func verifyFile(byID map[string]*RunSummary, lane Lane, loop string) (*FileCheck, error) {
+	name := verdictFiles[loop]
+	f, err := os.Open(filepath.Join(lane.Root, name))
+	if err != nil {
+		return nil, err
+	}
+	vf, err := ParseVerdictFile(f)
+	f.Close()
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", laneLabel(lane.Name, name), err)
+	}
+	fc := &FileCheck{
+		File: laneLabel(lane.Name, name), Lane: lane.Name, Loop: loop, Lines: vf.Lines, Malformed: len(vf.Malformed),
+		Expected: vf.Counts(), Imported: map[string]int{},
+	}
+	for _, l := range vf.Runs {
+		r, ok := byID[LaneRunID(lane.Name, l.RunID)]
+		switch {
+		case !ok:
+			fc.MissingIDs = append(fc.MissingIDs, l.RunID)
+		case r.Status == StatusFailed:
+			fc.Mismatches = append(fc.Mismatches, fmt.Sprintf("%s: the run failed to import", l.RunID))
+		default:
+			fc.Imported[r.OriginalVerdict]++
+			if r.OriginalVerdict != l.Verdict {
+				fc.Mismatches = append(fc.Mismatches,
+					fmt.Sprintf("%s: file says %s, imported as %q", l.RunID, l.Verdict, r.OriginalVerdict))
+				continue
+			}
+			// A run marked INVALID or re-mapped carries the plain mapping
+			// of its word beside its verdict.
+			want, known := MapVerdict(l.Verdict)
+			got := r.Verdict
+			if got == Invalid || r.Remap != nil {
+				got = r.PriorVerdict
+			}
+			if !known || got != want {
+				fc.Mismatches = append(fc.Mismatches,
+					fmt.Sprintf("%s: %s should map to %q, run carries %q", l.RunID, l.Verdict, want, got))
+			}
+		}
+	}
+	return fc, nil
+}
+
+// differences lists where the file and the import disagree.
+func (fc *FileCheck) differences() []string {
+	var out []string
+	for _, id := range fc.MissingIDs {
+		out = append(out, fmt.Sprintf("%s: run %s is not in the import", fc.File, id))
+	}
+	for _, m := range fc.Mismatches {
+		out = append(out, fc.File+": "+m)
+	}
+	words := map[string]bool{}
+	for w := range fc.Expected {
+		words[w] = true
+	}
+	for w := range fc.Imported {
+		words[w] = true
+	}
+	sorted := make([]string, 0, len(words))
+	for w := range words {
+		sorted = append(sorted, w)
+	}
+	sort.Strings(sorted)
+	for _, w := range sorted {
+		if fc.Expected[w] != fc.Imported[w] {
+			out = append(out, fmt.Sprintf("%s: %s: %d in the file, %d imported", fc.File, w, fc.Expected[w], fc.Imported[w]))
+		}
+	}
+	return out
 }
 
 // String renders the verification as text.
@@ -138,6 +171,9 @@ func (v *Verification) String() string {
 	for _, f := range v.Files {
 		fmt.Fprintf(&b, "%s: %d lines, %d not run lines; file %s; imported %s\n",
 			f.File, f.Lines, f.Malformed, countsText(f.Expected), countsText(f.Imported))
+	}
+	for _, lane := range v.NoVerdictFile {
+		fmt.Fprintf(&b, "lane %s: no verdict file\n", lane)
 	}
 	if v.OK() {
 		b.WriteString("verdict counts reproduced exactly, original run ids kept\n")
@@ -176,6 +212,9 @@ func (r *Report) String() string {
 		}
 	}
 	fmt.Fprintf(&b, "%s, %s\n", r.ImporterVersion, mode)
+	if len(r.Lanes) > 1 {
+		fmt.Fprintf(&b, "lanes: %s\n", strings.Join(r.Lanes, " "))
+	}
 	section := func(title string, m map[string]*Counts) {
 		keys := make([]string, 0, len(m))
 		for k := range m {
@@ -201,7 +240,7 @@ func (r *Report) String() string {
 	versions := map[string]int{}
 	for _, run := range r.Runs {
 		if run.Status != StatusFailed {
-			versions[fmt.Sprintf("%s/v%d", run.Loop, run.TaskVersion)]++
+			versions[fmt.Sprintf("%s/v%d", laneKey(run.Lane, run.Loop), run.TaskVersion)]++
 		}
 	}
 	fmt.Fprintf(&b, "task versions: %s\n", countsText(versions))
@@ -219,6 +258,17 @@ func (r *Report) String() string {
 		fmt.Fprintf(&b, "boundary %s from %s (%s)\n", bd.Kind, bd.From, bd.Source)
 	}
 	fmt.Fprintf(&b, "invalid notes: %d; ignored entries: %d; id collisions: %d\n", len(r.InvalidNotes), len(r.Ignored), len(r.IDCollisions))
+	fmt.Fprintf(&b, "second pass: invalid by table=%d, invalid by stale lane script=%d, re-mapped to ABORTED=%d, re-mapped to TIMEOUT=%d\n",
+		r.InvalidByTable, r.InvalidStale, r.RemappedAborted, r.RemappedTimeout)
+	for _, run := range r.Runs {
+		if rm := run.Remap; rm != nil {
+			fmt.Fprintf(&b, "re-mapped %s: %s -> %s (%s) exit=%d wall=%ds", run.ID, rm.From, rm.To, rm.Basis, rm.ExitCode, rm.WallSeconds)
+			if rm.CapSeconds > 0 {
+				fmt.Fprintf(&b, " cap=%ds", rm.CapSeconds)
+			}
+			fmt.Fprintf(&b, ": %s\n", rm.Cause)
+		}
+	}
 	for _, s := range r.Skipped {
 		fmt.Fprintf(&b, "skipped %s: %s\n", s.RelDir, s.Reason)
 	}

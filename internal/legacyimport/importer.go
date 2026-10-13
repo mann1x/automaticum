@@ -28,6 +28,10 @@ type Options struct {
 	// compressed tar per run. Optional. The state-archive directory inside
 	// the legacy root is always consulted as well.
 	StateArchive string
+	// Lanes are sibling directories with the layout of the legacy root. The
+	// legacy root itself is the lane MainLane and keeps its run ids; a run of
+	// a lane listed here gets the id LaneRunID(lane, original id).
+	Lanes []Lane
 
 	// Sink receives the import. It may be nil in a dry run.
 	Sink Sink
@@ -49,8 +53,8 @@ type Options struct {
 	// MaxLine bounds one line of an event stream. Zero means DefaultMaxLine.
 	MaxLine int
 
-	// TaskV2From and TaskV3From are the first runs of task versions 2 and 3.
-	// Empty means the defaults of spec 100 section 3.
+	// TaskV2From and TaskV3From are the first runs of task versions 2 and 3
+	// in the main lane. Empty means the defaults of spec 100 section 3.
 	TaskV2From string
 	TaskV3From string
 
@@ -69,7 +73,9 @@ const (
 
 // RunSummary is one run in a report.
 type RunSummary struct {
-	ID              string
+	ID              string // LaneRunID(Lane, OriginalID)
+	Lane            string
+	OriginalID      string // the id in the old harness
 	Loop            string
 	Set             string
 	RelDir          string
@@ -78,7 +84,10 @@ type RunSummary struct {
 	OriginalVerdict string
 	Verdict         Verdict
 	PriorVerdict    Verdict
-	TaskVersion     int
+	Remap           *Remap // set when the mapped verdict was changed (spec 100 section 8)
+	InvalidByTable  bool   // INVALID by the importer's table of recorded invalid runs
+	StaleLaneScript bool   // INVALID because the lane script was stale
+	TaskVersion     int    // 0 when it cannot be established (sibling lanes only)
 	Missing         []string
 	ToolCalls       int
 	Blobs           int
@@ -108,12 +117,17 @@ type Report struct {
 	DryRun          bool
 	MetadataOnly    bool
 
+	// Lanes are the lanes read, the main lane first.
+	Lanes []string
+
+	// Loops and Sets are keyed by name for the main lane and by
+	// "<lane>/<name>" for a sibling lane.
 	Loops map[string]*Counts // by loop: native, atomic, teams
 	Sets  map[string]*Counts // by run set: the loops plus discarded and abandoned
 
 	// OriginalVerdicts counts the old harness's verdict words per loop;
 	// the key "" counts runs that have none. Verdicts counts the mapped
-	// verdicts per loop. Failed runs are in neither.
+	// verdicts per loop. Failed runs are in neither. Keys as for Loops.
 	OriginalVerdicts map[string]map[string]int
 	Verdicts         map[string]map[string]int
 
@@ -143,6 +157,12 @@ type Report struct {
 	Boundaries   []Boundary
 	InvalidNotes []InvalidNote
 
+	// The second pass (spec 100 section 8), in runs.
+	InvalidByTable  int // INVALID by the importer's table of recorded invalid runs
+	InvalidStale    int // INVALID because a sibling lane's script was stale
+	RemappedAborted int // recorded as failed, ended by an operator: ABORTED
+	RemappedTimeout int // recorded as failed, ended by the CLI's clock: TIMEOUT
+
 	StateOnDisk        int // runs with a state directory still on disk
 	StateArchived      int // runs with an archived state tar
 	StateArchiveFiles  int // archives indexed
@@ -151,12 +171,23 @@ type Report struct {
 	IDCollisions       []string
 }
 
-type importer struct {
-	o       Options
+// laneContext is what applies to one lane as a whole. Run ids in it are the
+// old harness's.
+type laneContext struct {
+	lane    Lane
 	archive *StateArchive
 	invalid map[string]InvalidNote
 	lines   map[string]map[string]*VerdictLine // loop -> run id -> verdict line
 	changes []Boundary
+	listed  map[string]bool // runs of invalidByRecord (main lane only)
+	// stale is the lane's backup of its replaced lane script; "" when the
+	// stale-script rule does not apply to the lane.
+	stale string
+}
+
+type importer struct {
+	o     Options
+	lanes map[string]*laneContext
 
 	mu      sync.Mutex // guards rep, results and bytesIn
 	rep     *Report
@@ -203,14 +234,13 @@ func Import(ctx context.Context, o Options) (*Report, error) {
 		o.Workers = 1
 	}
 
-	disc, err := Discover(o.LegacyRoot)
-	if err != nil {
+	if err := checkLanes(o.Lanes); err != nil {
 		return nil, fmt.Errorf("legacyimport: %w", err)
 	}
+
 	im := &importer{
 		o:       o,
-		invalid: map[string]InvalidNote{},
-		lines:   map[string]map[string]*VerdictLine{},
+		lanes:   map[string]*laneContext{},
 		results: map[string]RunSummary{},
 		rep: &Report{
 			ImporterVersion:  ImporterVersion,
@@ -222,21 +252,19 @@ func Import(ctx context.Context, o Options) (*Report, error) {
 			Verdicts:         map[string]map[string]int{},
 			UnknownFields:    map[string]int{},
 			EventTypes:       map[string]int64{},
-			Ignored:          disc.Ignored,
-			IDCollisions:     disc.Collisions,
 		},
 	}
-	if err := im.loadContext(); err != nil {
-		return nil, fmt.Errorf("legacyimport: %w", err)
+	var all []RunSource
+	lanes := append([]Lane{{Name: MainLane, Root: o.LegacyRoot, StateArchive: o.StateArchive}}, o.Lanes...)
+	for _, l := range lanes {
+		found, err := im.openLane(l)
+		if err != nil {
+			return nil, fmt.Errorf("legacyimport: %w", err)
+		}
+		all = append(all, found...)
 	}
-	im.archive, err = OpenStateArchive(o.StateArchive, filepath.Join(o.LegacyRoot, "state-archive"))
-	if err != nil {
-		return nil, fmt.Errorf("legacyimport: state archive: %w", err)
-	}
-	im.rep.StateArchiveFiles = im.archive.Len()
-	im.rep.OrphanStateArchive = im.archive.orphans(disc.Runs)
 
-	runs := filterRuns(disc.Runs, o)
+	runs := filterRuns(all, o)
 	jobs := make(chan RunSource)
 	var wg sync.WaitGroup
 	for w := 0; w < o.Workers; w++ {
@@ -263,7 +291,7 @@ feed:
 
 	// Report runs in discovery order, whatever order the workers finished in.
 	for _, src := range runs {
-		if s, ok := im.results[src.RelDir]; ok {
+		if s, ok := im.results[src.ID]; ok {
 			im.rep.Runs = append(im.rep.Runs, s)
 		}
 	}
@@ -295,10 +323,67 @@ func filterRuns(all []RunSource, o Options) []RunSource {
 	return out
 }
 
-// loadContext reads what applies to the whole corpus: the verdict files,
-// the notes that void runs, and the change logs.
-func (im *importer) loadContext() error {
-	root := im.o.LegacyRoot
+// openLane discovers the runs of one lane and reads what applies to the lane
+// as a whole. The runs come back with their lane and their imported id.
+func (im *importer) openLane(l Lane) ([]RunSource, error) {
+	wrap := func(err error) error {
+		if l.Name == MainLane {
+			return err
+		}
+		return fmt.Errorf("lane %s: %w", l.Name, err)
+	}
+	disc, err := Discover(l.Root)
+	if err != nil {
+		return nil, wrap(err)
+	}
+	lc := &laneContext{lane: l, invalid: map[string]InvalidNote{}, lines: map[string]map[string]*VerdictLine{}, listed: map[string]bool{}}
+	im.lanes[l.Name] = lc
+	im.rep.Lanes = append(im.rep.Lanes, l.Name)
+	if err := im.loadContext(lc); err != nil {
+		return nil, wrap(err)
+	}
+	if lc.archive, err = OpenStateArchive(l.StateArchive, filepath.Join(l.Root, "state-archive")); err != nil {
+		return nil, wrap(fmt.Errorf("state archive: %w", err))
+	}
+	im.rep.StateArchiveFiles += lc.archive.Len()
+	for _, rel := range lc.archive.orphans(disc.Runs) {
+		im.rep.OrphanStateArchive = append(im.rep.OrphanStateArchive, laneLabel(l.Name, rel))
+	}
+	for _, rel := range disc.Ignored {
+		im.rep.Ignored = append(im.rep.Ignored, laneLabel(l.Name, rel))
+	}
+	for _, rel := range disc.Collisions {
+		im.rep.IDCollisions = append(im.rep.IDCollisions, laneLabel(l.Name, rel))
+	}
+	ids := map[string]bool{}
+	for i := range disc.Runs {
+		r := &disc.Runs[i]
+		ids[r.ID] = true
+		r.Lane, r.OriginalID, r.ID = l.Name, r.ID, LaneRunID(l.Name, r.ID)
+	}
+	if l.Name == MainLane {
+		// A run the tables of the second pass name must exist.
+		for _, n := range invalidByRecord {
+			if !ids[n.RunID] {
+				im.rep.Inconsistencies = append(im.rep.Inconsistencies,
+					fmt.Sprintf("run %s is listed as invalid by the old harness's records but is not in the corpus", n.RunID))
+			}
+		}
+		for _, e := range abortedByOperator {
+			if !ids[e.RunID] {
+				im.rep.Inconsistencies = append(im.rep.Inconsistencies,
+					fmt.Sprintf("run %s is listed as an operator abort recorded as failed but is not in the corpus", e.RunID))
+			}
+		}
+	}
+	return disc.Runs, nil
+}
+
+// loadContext reads what applies to a whole lane: the verdict files, the
+// notes that void runs, and the change logs.
+func (im *importer) loadContext(lc *laneContext) error {
+	root, main := lc.lane.Root, lc.lane.Name == MainLane
+	label := func(rel string) string { return laneLabel(lc.lane.Name, rel) }
 	for loop, name := range verdictFiles {
 		f, err := os.Open(filepath.Join(root, name))
 		if errors.Is(err, fs.ErrNotExist) {
@@ -317,30 +402,45 @@ func (im *importer) loadContext() error {
 			l := &vf.Runs[i]
 			if _, dup := byID[l.RunID]; dup {
 				im.rep.Inconsistencies = append(im.rep.Inconsistencies,
-					fmt.Sprintf("%s: run %s has more than one line; the last one is used", name, l.RunID))
+					fmt.Sprintf("%s: run %s has more than one line; the last one is used", label(name), l.RunID))
 			}
 			byID[l.RunID] = l
 		}
-		im.lines[loop] = byID
+		lc.lines[loop] = byID
 		for _, n := range vf.Notes {
 			if strings.Contains(strings.ToUpper(n.Text), "VOID") {
-				im.addInvalid(InvalidNote{RunID: n.RunID, Reason: n.Text, Source: name})
+				im.addInvalid(lc, InvalidNote{RunID: n.RunID, Reason: n.Text, Source: name})
 			}
 		}
 	}
 	if b, err := readSmall(filepath.Join(root, "INVALID-RUNS.md")); err == nil {
 		for _, n := range ParseInvalidRuns(string(b)) {
 			n.Source = "INVALID-RUNS.md"
-			im.addInvalid(n)
+			im.addInvalid(lc, n)
 		}
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
 
-	im.rep.Boundaries = append(im.rep.Boundaries,
-		Boundary{Kind: "task_version", From: im.o.TaskV2From, TaskVersion: 2, Source: "spec 100 section 3"},
-		Boundary{Kind: "task_version", From: im.o.TaskV3From, TaskVersion: 3, Source: "spec 100 section 3"},
-	)
+	if main {
+		for _, n := range invalidByRecord {
+			lc.listed[n.RunID] = true
+			im.addInvalid(lc, n)
+		}
+		im.rep.Boundaries = append(im.rep.Boundaries,
+			Boundary{Kind: "task_version", From: im.o.TaskV2From, TaskVersion: 2, Source: "spec 100 section 3"},
+			Boundary{Kind: "task_version", From: im.o.TaskV3From, TaskVersion: 3, Source: "spec 100 section 3"},
+		)
+	} else {
+		stale, err := staleLaneScript(root)
+		if err != nil {
+			return err
+		}
+		if lc.stale = stale; stale != "" {
+			im.rep.Boundaries = append(im.rep.Boundaries,
+				Boundary{Kind: "stale_lane_script", From: staleLaneScriptUntil, Source: label(stale)})
+		}
+	}
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		return err
@@ -360,19 +460,20 @@ func (im *importer) loadContext() error {
 			// text it sorts before every run id of that day.
 			from = strings.TrimPrefix(e.Name(), "changes-")
 		}
-		bd := Boundary{Kind: "harness_change", From: from, Source: rel}
+		bd := Boundary{Kind: "harness_change", From: from, Source: label(rel)}
 		im.rep.Boundaries = append(im.rep.Boundaries, bd)
-		im.changes = append(im.changes, bd)
+		lc.changes = append(lc.changes, bd)
 	}
 	return nil
 }
 
-func (im *importer) addInvalid(n InvalidNote) {
-	if old, ok := im.invalid[n.RunID]; ok {
+func (im *importer) addInvalid(lc *laneContext, n InvalidNote) {
+	if old, ok := lc.invalid[n.RunID]; ok {
 		n.Reason = old.Reason + "; " + n.Reason
 		n.Source = old.Source + ", " + n.Source
 	}
-	im.invalid[n.RunID] = n
+	lc.invalid[n.RunID] = n
+	n.RunID = LaneRunID(lc.lane.Name, n.RunID)
 	im.rep.InvalidNotes = append(im.rep.InvalidNotes, n)
 }
 
@@ -407,7 +508,8 @@ func (im *importer) one(ctx context.Context, src RunSource) {
 		}
 	}
 
-	loop, set := counts(rep.Loops, sum.Loop), counts(rep.Sets, sum.Set)
+	loopKey := laneKey(sum.Lane, sum.Loop)
+	loop, set := counts(rep.Loops, loopKey), counts(rep.Sets, laneKey(sum.Lane, sum.Set))
 	loop.Dirs++
 	set.Dirs++
 	if sum.Finished {
@@ -440,13 +542,27 @@ func (im *importer) one(ctx context.Context, src RunSource) {
 		if sum.StateArchived {
 			rep.StateArchived++
 		}
-		bump(rep.OriginalVerdicts, sum.Loop, sum.OriginalVerdict)
-		bump(rep.Verdicts, sum.Loop, string(sum.Verdict))
+		bump(rep.OriginalVerdicts, loopKey, sum.OriginalVerdict)
+		bump(rep.Verdicts, loopKey, string(sum.Verdict))
+		if sum.Verdict == Invalid && sum.InvalidByTable {
+			rep.InvalidByTable++
+		}
+		if sum.Verdict == Invalid && sum.StaleLaneScript {
+			rep.InvalidStale++
+		}
+		if sum.Remap != nil {
+			switch sum.Remap.To {
+			case Aborted:
+				rep.RemappedAborted++
+			case Timeout:
+				rep.RemappedTimeout++
+			}
+		}
 		for _, f := range sum.Missing {
 			rep.UnknownFields[f]++
 		}
 	}
-	im.results[src.RelDir] = sum
+	im.results[src.ID] = sum
 	if im.o.Progress != nil {
 		im.o.Progress(sum)
 	}
@@ -559,9 +675,11 @@ func (im *importer) process(ctx context.Context, src RunSource) (
 	sum RunSummary, bytesIn, streamBytes, files, blobs int64,
 	stats *StreamStats, warns, incons []string, skip string, err error,
 ) {
-	sum = RunSummary{ID: src.ID, Loop: src.Loop, Set: src.Set, RelDir: src.RelDir}
+	sum = RunSummary{ID: src.ID, Lane: src.Lane, OriginalID: src.OriginalID, Loop: src.Loop, Set: src.Set, RelDir: src.RelDir}
+	lc := im.lanes[src.Lane]
+	where := laneLabel(src.Lane, src.RelDir)
 	warn := func(format string, a ...any) {
-		warns = append(warns, src.RelDir+": "+fmt.Sprintf(format, a...))
+		warns = append(warns, where+": "+fmt.Sprintf(format, a...))
 	}
 
 	arts, listing, skippedLinks, lerr := ListArtefacts(src.Dir)
@@ -574,7 +692,7 @@ func (im *importer) process(ctx context.Context, src RunSource) (
 	files = int64(len(arts))
 
 	// Phase A: the small text files. Cheap, and enough for the verdict.
-	m := &runMeta{files: len(arts), txs: map[string]*txMeta{}}
+	m := &runMeta{lane: src.Lane, originalID: src.OriginalID, files: len(arts), txs: map[string]*txMeta{}}
 	text := func(a Artefact) (string, bool) {
 		b, rerr := readSmall(a.Path)
 		if rerr != nil {
@@ -693,12 +811,21 @@ func (im *importer) process(ctx context.Context, src RunSource) (
 		return sum, bytesIn, 0, files, 0, nil, warns, nil, "", exitErr
 	}
 
-	if byID := im.lines[src.Loop]; byID != nil {
-		m.verdictLine = byID[src.ID]
+	if byID := lc.lines[src.Loop]; byID != nil {
+		m.verdictLine = byID[src.OriginalID]
 	}
-	if n, ok := im.invalid[src.ID]; ok {
+	if n, ok := lc.invalid[src.OriginalID]; ok {
 		n := n
 		m.invalid = &n
+		sum.InvalidByTable = lc.listed[src.OriginalID]
+	}
+	if ts := RunIDPattern.FindString(src.OriginalID); lc.stale != "" && ts != "" && ts < staleLaneScriptUntil {
+		n := InvalidNote{RunID: src.OriginalID, Reason: staleLaneScriptReason, Source: lc.stale}
+		if m.invalid != nil {
+			n.Reason, n.Source = m.invalid.Reason+"; "+n.Reason, m.invalid.Source+", "+n.Source
+		}
+		m.invalid = &n
+		sum.StaleLaneScript = true
 	}
 	if strings.Contains(strings.ToUpper(src.Annotation), "VOID") {
 		reason := "directory marked " + src.Annotation + " by the operator"
@@ -711,14 +838,14 @@ func (im *importer) process(ctx context.Context, src RunSource) (
 		m.invalid = &InvalidNote{RunID: src.ID, Reason: reason, Source: src.RelDir}
 	}
 
-	arch, hasArch := im.archive.find(src)
+	arch, hasArch := lc.archive.find(src)
 	m.hasArchive, m.archiveRel = hasArch, arch.rel
 	sum.StateOnDisk, sum.StateArchived = m.stateDirs > 0, hasArch
 
 	// The fingerprint covers everything the mapping reads: the listing of
 	// the run directory, the archive, the notes and the verdict line.
 	h := sha256.New()
-	fmt.Fprintf(h, "%s\n%s\n%s\n%s\n%d\n", ImporterVersion, src.RelDir, listing, arch.rel, arch.size)
+	fmt.Fprintf(h, "%s\n%s\n%s\n%s\n%d\n", ImporterVersion, where, listing, arch.rel, arch.size)
 	if m.verdictLine != nil {
 		fmt.Fprintln(h, m.verdictLine.Raw)
 	}
@@ -733,8 +860,8 @@ func (im *importer) process(ctx context.Context, src RunSource) (
 	if verr != nil {
 		return sum, bytesIn, 0, files, 0, nil, warns, nil, "", verr
 	}
-	sum.Verdict, sum.OriginalVerdict, sum.PriorVerdict = v, original, prior
-	sum.TaskVersion = TaskVersionFor(src.ID, im.o.TaskV2From, im.o.TaskV3From)
+	sum.Verdict, sum.OriginalVerdict, sum.PriorVerdict, sum.Remap = v, original, prior, m.remap
+	sum.TaskVersion, _ = taskVersionOf(src, m, &im.o)
 	incons = im.crossCheck(src, m, sum.TaskVersion)
 
 	if !im.o.DryRun {
@@ -805,7 +932,7 @@ func (im *importer) process(ctx context.Context, src RunSource) (
 	blobs = int64(len(refs))
 	sum.ToolCalls, sum.Blobs = len(calls), len(refs)
 
-	run, berr := buildRun(src, m, stats, st, len(calls), &im.o, im.changes)
+	run, berr := buildRun(src, m, stats, st, len(calls), &im.o, lc.changes)
 	if berr != nil {
 		return sum, bytesIn, streamBytes, files, blobs, stats, warns, incons, "", berr
 	}
@@ -830,7 +957,7 @@ func (im *importer) process(ctx context.Context, src RunSource) (
 		return sum, bytesIn, streamBytes, files, blobs, stats, warns, incons, "", fmt.Errorf("sink: tool calls: %w", err)
 	}
 	if fs, ok := im.o.Sink.(FindingSink); ok {
-		if err := fs.ReplaceFindings(ctx, src.ID, importFindings(run)); err != nil {
+		if err := fs.ReplaceFindings(ctx, src.ID, importFindings(run, m.remap)); err != nil {
 			return sum, bytesIn, streamBytes, files, blobs, stats, warns, incons, "", fmt.Errorf("sink: findings: %w", err)
 		}
 	}
@@ -950,12 +1077,18 @@ func (im *importer) stateArchive(ctx context.Context, f archiveFile, bytesIn *in
 func (im *importer) crossCheck(src RunSource, m *runMeta, version int) []string {
 	var out []string
 	say := func(format string, a ...any) {
-		out = append(out, src.RelDir+": "+fmt.Sprintf(format, a...))
+		out = append(out, laneLabel(src.Lane, src.RelDir)+": "+fmt.Sprintf(format, a...))
+	}
+	main := src.Lane == "" || src.Lane == MainLane
+	if m.remapNote != "" {
+		say("%s", m.remapNote)
 	}
 	if m.hasExit && m.verdictLine != nil && m.exit.Verdict != m.verdictLine.Verdict {
 		say("exit.txt says %s, the verdict file says %s", m.exit.Verdict, m.verdictLine.Verdict)
 	}
-	if src.Loop == SetNative && m.build != nil {
+	// A sibling lane's task version is read from these same files, so
+	// only the main lane's boundaries can be checked against them.
+	if main && src.Loop == SetNative && m.build != nil {
 		v3 := m.build.Fields["oracle_version"] == "v3"
 		if v3 != (version == 3) {
 			say("build.txt oracle_version=%q but the run falls in task version %d", m.build.Fields["oracle_version"], version)

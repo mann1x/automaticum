@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/mann1x/automaticum/internal/legacyimport"
@@ -108,11 +109,27 @@ func (s sink) ImportedFingerprint(ctx context.Context, runID string) (string, bo
 	return fp, fp != "", nil
 }
 
+// laneFlags collects the repeatable -lane name=path flag.
+type laneFlags []legacyimport.Lane
+
+func (l *laneFlags) String() string { return fmt.Sprint(len(*l), " lanes") }
+
+func (l *laneFlags) Set(v string) error {
+	name, path, ok := strings.Cut(v, "=")
+	if !ok || name == "" || path == "" {
+		return errors.New("want name=path")
+	}
+	*l = append(*l, legacyimport.Lane{Name: name, Root: path})
+	return nil
+}
+
 func legacyImport(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("legacy import", flag.ExitOnError)
 	sf := addStoreFlags(fs)
 	root := fs.String("legacy-root", os.Getenv("AUTOMATICUM_LEGACY_ROOT"), "the old harness's directory (read only)")
 	state := fs.String("state-archive", os.Getenv("AUTOMATICUM_LEGACY_STATE_ARCHIVE"), "directory of archived session state (optional)")
+	var lanes laneFlags
+	fs.Var(&lanes, "lane", "a sibling lane of the old harness as name=path (read only; repeatable)")
 	dry := fs.Bool("dry-run", false, "read and map everything, write nothing")
 	meta := fs.Bool("metadata-only", false, "with -dry-run: skip event streams and state archives")
 	workers := fs.Int("workers", 1, "runs processed at once")
@@ -122,7 +139,7 @@ func legacyImport(ctx context.Context, args []string) error {
 	if *root == "" {
 		return errors.New("no legacy root: pass -legacy-root or set AUTOMATICUM_LEGACY_ROOT")
 	}
-	opts := legacyimport.Options{LegacyRoot: *root, StateArchive: *state, DryRun: *dry, MetadataOnly: *meta, Workers: *workers}
+	opts := legacyimport.Options{LegacyRoot: *root, StateArchive: *state, Lanes: lanes, DryRun: *dry, MetadataOnly: *meta, Workers: *workers}
 	if !*quiet {
 		opts.Progress = func(r legacyimport.RunSummary) {
 			fmt.Fprintf(os.Stderr, "%-9s %-8s %s\n", r.Status, r.Verdict, r.ID)
@@ -158,7 +175,7 @@ func legacyImport(ctx context.Context, args []string) error {
 			return err
 		}
 	}
-	ver, err := legacyimport.VerifyAgainstLegacy(rep, *root)
+	ver, err := legacyimport.VerifyAgainstLegacy(rep, *root, lanes...)
 	if err != nil {
 		return err
 	}

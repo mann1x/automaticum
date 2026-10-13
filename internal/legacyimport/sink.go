@@ -24,7 +24,8 @@ type Sink interface {
 
 // FindingSink is an optional extension of Sink. When the sink implements it,
 // the findings the import itself makes (a run scored by the first oracle,
-// which could not fail) are written as findings of the run.
+// which could not fail; a run whose mapped verdict was changed) are written
+// as findings of the run.
 type FindingSink interface {
 	ReplaceFindings(ctx context.Context, runID string, findings []Finding) error
 }

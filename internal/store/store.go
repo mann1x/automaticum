@@ -68,7 +68,9 @@ type Run struct {
 	Verdict         Verdict
 	OriginalVerdict string // the word an older harness used, kept verbatim
 	VerdictReason   string // which limit, gate or check produced the verdict
-	// PriorVerdict is set when a run was marked INVALID after it finished.
+	// PriorVerdict is what the verdict was before it was changed: a run
+	// marked INVALID after it finished, or an imported run whose recorded
+	// verdict was contradicted by how it ended.
 	PriorVerdict   Verdict
 	AgentEnd       string // completed, aborted, max_iterations, stopped, mistake_limit
 	ClaimedSuccess *bool  // nil when not known

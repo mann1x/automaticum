@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -125,7 +127,7 @@ func TestImportFixture(t *testing.T) {
 	if got, want := rep.OriginalVerdicts[SetNative], (map[string]int{"FIXED": 3, "broken": 4, "TIMEOUT": 1, "ABORTED": 1, "": 1}); !reflect.DeepEqual(got, want) {
 		t.Errorf("native original verdicts %v", got)
 	}
-	if got, want := rep.Verdicts[SetNative], (map[string]int{"PASS": 3, "FAIL": 2, "INVALID": 2, "TIMEOUT": 1, "ABORTED": 2}); !reflect.DeepEqual(got, want) {
+	if got, want := rep.Verdicts[SetNative], (map[string]int{"PASS": 3, "FAIL": 2, "INVALID": 4, "TIMEOUT": 1}); !reflect.DeepEqual(got, want) {
 		t.Errorf("native verdicts %v", got)
 	}
 	if got, want := rep.Verdicts[SetAtomic], (map[string]int{"PASS": 1, "ABORTED": 1}); !reflect.DeepEqual(got, want) {
@@ -287,9 +289,10 @@ func TestImportFixture(t *testing.T) {
 		t.Errorf("0213 arm: %v", arm)
 	}
 
-	// No exit.txt.
+	// No exit.txt, and listed as invalid by the old harness's records: the
+	// verdict it never had is still named as missing.
 	r = sink.Runs["20260913-214530-0296"]
-	if r.Verdict != Aborted || r.OriginalVerdict != "" || !has(r.Missing, "verdict") || !strings.Contains(r.VerdictReason, "no exit.txt") {
+	if r.Verdict != Invalid || r.OriginalVerdict != "" || r.PriorVerdict != "" || !has(r.Missing, "verdict") || !strings.Contains(r.VerdictReason, "killed in flight") {
 		t.Errorf("0296: %+v", r)
 	}
 	if s := summary(t, rep, r.ID); s.Finished {
@@ -316,13 +319,14 @@ func TestImportFixture(t *testing.T) {
 		t.Errorf("0411 kinds: %v", kinds)
 	}
 
-	// TIMEOUT and ABORTED are unchanged, with the harness's reason.
+	// TIMEOUT is unchanged, with the harness's reason.
 	r = sink.Runs["20261011-112103-0430"]
 	if r.Verdict != Timeout || r.OriginalVerdict != "TIMEOUT" || r.VerdictReason != "clock: 7203s vs 7200s cap, exit=0" {
 		t.Errorf("0430: %+v", r)
 	}
+	// Listed as invalid, with the word and its mapping kept beside it.
 	r = sink.Runs["20261011-132114-0431"]
-	if r.Verdict != Aborted || r.OriginalVerdict != "ABORTED" || r.VerdictReason != "exit=143 (SIGTERM)" {
+	if r.Verdict != Invalid || r.OriginalVerdict != "ABORTED" || r.PriorVerdict != Aborted || !strings.Contains(r.VerdictReason, "unloaded the arm's model") {
 		t.Errorf("0431: %+v", r)
 	}
 	// Its stream is not valid gzip: kept as written, and said so.
@@ -401,8 +405,18 @@ func TestImportFixture(t *testing.T) {
 	if rep.BytesRead == 0 || rep.StreamBytes == 0 || rep.ToolCalls != 3*11 || int(rep.Blobs) != sink.Puts {
 		t.Errorf("bytes=%d stream=%d calls=%d blobs=%d puts=%d", rep.BytesRead, rep.StreamBytes, rep.ToolCalls, rep.Blobs, sink.Puts)
 	}
-	if len(rep.Inconsistencies) != 0 {
+	// The fixture holds two of the fourteen runs the second pass lists by
+	// id; the other twelve are reported, and nothing else is.
+	if len(rep.Inconsistencies) != 12 {
 		t.Errorf("inconsistencies %v", rep.Inconsistencies)
+	}
+	for _, s := range rep.Inconsistencies {
+		if !strings.Contains(s, "is not in the corpus") {
+			t.Errorf("inconsistency %q", s)
+		}
+	}
+	if rep.InvalidByTable != 2 || rep.RemappedAborted != 0 || rep.RemappedTimeout != 0 || rep.InvalidStale != 0 {
+		t.Errorf("second pass: %d %d %d %d", rep.InvalidByTable, rep.RemappedAborted, rep.RemappedTimeout, rep.InvalidStale)
 	}
 
 	// The verdict files are reproduced.
@@ -605,16 +619,17 @@ func (errReader) Read([]byte) (int, error) { return 0, errors.New("read failed")
 
 // --- the real corpus ------------------------------------------------------
 
-// legacyPaths returns the real legacy root and state archive, from the
-// environment or from the untracked spike.local.toml at the repository root.
-func legacyPaths(t *testing.T) (root, archive string) {
+// legacyPaths returns the real legacy root, state archive and sibling lanes,
+// from the environment or from the untracked spike.local.toml at the
+// repository root.
+func legacyPaths(t *testing.T) (root, archive string, lanes []Lane) {
 	root, archive = os.Getenv("AUTOMATICUM_LEGACY_ROOT"), os.Getenv("AUTOMATICUM_LEGACY_STATE_ARCHIVE")
 	if root != "" {
-		return root, archive
+		return root, archive, parseLanes(os.Getenv("AUTOMATICUM_LEGACY_LANES"))
 	}
 	dir, err := os.Getwd()
 	if err != nil {
-		return "", ""
+		return "", "", nil
 	}
 	for {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
@@ -622,14 +637,15 @@ func legacyPaths(t *testing.T) (root, archive string) {
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return "", ""
+			return "", "", nil
 		}
 		dir = parent
 	}
 	b, err := os.ReadFile(filepath.Join(dir, "spike.local.toml"))
 	if err != nil {
-		return "", ""
+		return "", "", nil
 	}
+	laneList := ""
 	for _, line := range strings.Split(string(b), "\n") {
 		k, v, ok := strings.Cut(line, "=")
 		if !ok {
@@ -641,33 +657,58 @@ func legacyPaths(t *testing.T) (root, archive string) {
 			root = v
 		case "legacy_state_archive":
 			archive = v
+		case "legacy_lanes":
+			laneList = v
 		}
 	}
-	return root, archive
+	if env := os.Getenv("AUTOMATICUM_LEGACY_LANES"); env != "" {
+		laneList = env
+	}
+	return root, archive, parseLanes(laneList)
+}
+
+// parseLanes reads "name=path,name=path".
+func parseLanes(list string) []Lane {
+	var lanes []Lane
+	for _, item := range strings.Split(list, ",") {
+		if name, path, ok := strings.Cut(strings.TrimSpace(item), "="); ok && name != "" && path != "" {
+			lanes = append(lanes, Lane{Name: strings.TrimSpace(name), Root: strings.TrimSpace(path)})
+		}
+	}
+	return lanes
 }
 
 // TestRealCorpusDryRun runs a dry-run import over the real corpus when it is
 // available and checks it against what the corpus's own files say. With
 // -short it reads the metadata only. Set AUTOMATICUM_LEGACY_REPORT to a file
-// path to keep the report.
+// path to keep the report. Sibling lanes are covered when they are
+// configured and present.
 //
 // The numbers asserted here were taken from the corpus on 2026-10-13. The
 // old harness is paused, not retired: if it runs again they will move, and
 // the verdict-file check at the end is the part that must keep holding.
 func TestRealCorpusDryRun(t *testing.T) {
-	root, archive := legacyPaths(t)
+	root, archive, configured := legacyPaths(t)
 	if root == "" {
 		t.Skip("no legacy corpus configured")
 	}
 	if _, err := os.Stat(filepath.Join(root, "verdicts-native.txt")); err != nil {
 		t.Skip("legacy corpus not available")
 	}
-	o := Options{LegacyRoot: root, StateArchive: archive, DryRun: true, MetadataOnly: testing.Short(), Workers: 8}
+	var lanes []Lane
+	for _, l := range configured {
+		if _, err := os.Stat(filepath.Join(l.Root, "runs-native")); err != nil {
+			t.Logf("lane %s is configured but not available", l.Name)
+			continue
+		}
+		lanes = append(lanes, l)
+	}
+	o := Options{LegacyRoot: root, StateArchive: archive, Lanes: lanes, DryRun: true, MetadataOnly: testing.Short(), Workers: 8}
 	rep, err := Import(context.Background(), o)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ver, err := VerifyAgainstLegacy(rep, root)
+	ver, err := VerifyAgainstLegacy(rep, root, lanes...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -686,14 +727,28 @@ func TestRealCorpusDryRun(t *testing.T) {
 	if len(rep.Failed) != 0 {
 		t.Errorf("%d runs failed to import", len(rep.Failed))
 	}
+	// The three verdict files of the main lane, on the original words.
+	wantFiles := map[string]struct {
+		lines, malformed int
+		words            map[string]int
+	}{
+		SetNative: {424, 1, map[string]int{"FIXED": 284, "broken": 96, "TIMEOUT": 24, "ABORTED": 19}},
+		SetAtomic: {13, 0, map[string]int{"FIXED": 13}},
+		SetTeams:  {6, 0, map[string]int{"FIXED": 5, "broken": 1}},
+	}
+	checked := 0
 	for _, f := range ver.Files {
-		if f.Loop != SetNative {
+		if f.Lane != MainLane {
 			continue
 		}
-		want := map[string]int{"FIXED": 284, "broken": 96, "TIMEOUT": 24, "ABORTED": 19}
-		if f.Lines != 424 || f.Malformed != 1 || !reflect.DeepEqual(f.Expected, want) {
-			t.Errorf("verdicts-native.txt: %d lines, %d not run lines, %v", f.Lines, f.Malformed, f.Expected)
+		checked++
+		want := wantFiles[f.Loop]
+		if f.Lines != want.lines || f.Malformed != want.malformed || !reflect.DeepEqual(f.Expected, want.words) || !reflect.DeepEqual(f.Imported, want.words) {
+			t.Errorf("%s: %d lines, %d not run lines, file %v, imported %v", f.File, f.Lines, f.Malformed, f.Expected, f.Imported)
 		}
+	}
+	if checked != len(wantFiles) {
+		t.Errorf("%d verdict files of the main lane checked", checked)
 	}
 	wantSets := map[string]Counts{
 		SetNative:    {Dirs: 438, Finished: 418, Imported: 438},
@@ -707,12 +762,82 @@ func TestRealCorpusDryRun(t *testing.T) {
 			t.Errorf("set %s: %+v, want %+v", k, got, want)
 		}
 	}
+
+	// The second pass on the main lane (spec 100 section 8). Before it the
+	// native loop mapped to 284 PASS, 91 FAIL, 24 TIMEOUT, 41 ABORTED and
+	// 7 INVALID.
+	if rep.InvalidByTable != 8 || rep.RemappedAborted != 6 || rep.RemappedTimeout != 9 {
+		t.Errorf("second pass: %d invalid by table, %d re-mapped to ABORTED, %d to TIMEOUT", rep.InvalidByTable, rep.RemappedAborted, rep.RemappedTimeout)
+	}
+	if got, want := rep.Verdicts[SetNative], (map[string]int{"PASS": 282, "FAIL": 75, "TIMEOUT": 33, "ABORTED": 42, "INVALID": 15}); !reflect.DeepEqual(got, want) {
+		t.Errorf("mapped verdicts of the native loop: %v, want %v", got, want)
+	}
+	if got, want := rep.Verdicts[SetAtomic], (map[string]int{"PASS": 13, "ABORTED": 8}); !reflect.DeepEqual(got, want) {
+		t.Errorf("mapped verdicts of the atomic loop: %v, want %v", got, want)
+	}
+	if got, want := rep.Verdicts[SetTeams], (map[string]int{"PASS": 5, "FAIL": 1}); !reflect.DeepEqual(got, want) {
+		t.Errorf("mapped verdicts of the teams loop: %v, want %v", got, want)
+	}
+	// The runs the clock rule finds, by run number and cap. They are found
+	// by rule; this list is what the rule found, not what it looks for.
+	var clock []string
+	for _, r := range rep.Runs {
+		if r.Remap != nil && r.Remap.To == Timeout {
+			clock = append(clock, fmt.Sprintf("%s@%d", r.ID[len(r.ID)-4:], r.Remap.CapSeconds))
+		}
+		if r.Remap != nil && (r.Lane != MainLane || r.OriginalVerdict != FailedWord || r.PriorVerdict != Fail) {
+			t.Errorf("re-mapped %s: lane %s, original %q, prior %q", r.ID, r.Lane, r.OriginalVerdict, r.PriorVerdict)
+		}
+	}
+	sort.Strings(clock)
+	if want := []string{"0024@21600", "0045@21600", "0053@21600", "0055@21600", "0197@5402", "0199@5402", "0201@5402", "0204@5402", "0206@5402"}; !reflect.DeepEqual(clock, want) {
+		t.Errorf("runs re-mapped to TIMEOUT: %v, want %v", clock, want)
+	}
+
 	ids := map[string]bool{}
+	perLane := map[string]int{}
 	for _, r := range rep.Runs {
 		if ids[r.ID] {
 			t.Errorf("run id %s appears twice", r.ID)
 		}
 		ids[r.ID] = true
+		perLane[r.Lane]++
+		if r.ID != LaneRunID(r.Lane, r.OriginalID) || (r.Lane == MainLane) != (r.ID == r.OriginalID) {
+			t.Errorf("run %s: lane %q, original id %q", r.ID, r.Lane, r.OriginalID)
+		}
+		if r.Lane != MainLane && (r.InvalidByTable || r.Remap != nil) {
+			t.Errorf("run %s of lane %s was touched by a table of the main lane", r.ID, r.Lane)
+		}
+		if r.Lane == MainLane && (r.TaskVersion < 1 || r.StaleLaneScript) {
+			t.Errorf("run %s: task version %d, stale lane script %v", r.ID, r.TaskVersion, r.StaleLaneScript)
+		}
+	}
+	if perLane[MainLane] != 474 {
+		t.Errorf("%d runs in the main lane", perLane[MainLane])
+	}
+	if len(lanes) == 0 {
+		if rep.InvalidStale != 0 {
+			t.Errorf("%d runs under a stale lane script without a sibling lane", rep.InvalidStale)
+		}
+		return
+	}
+	// The sibling lanes, by size, since their names are local: one of 52
+	// run directories (51 and one abandoned), one of 5.
+	var sizes []int
+	for _, l := range lanes {
+		sizes = append(sizes, perLane[l.Name])
+	}
+	sort.Ints(sizes)
+	if len(configured) == 2 && !reflect.DeepEqual(sizes, []int{5, 52}) {
+		t.Errorf("sibling lane sizes %v", sizes)
+	}
+	if len(configured) == 2 && rep.InvalidStale != 18 {
+		t.Errorf("%d runs under the stale lane script", rep.InvalidStale)
+	}
+	for _, f := range ver.Files {
+		if f.Lane != MainLane && (len(f.MissingIDs) != 0 || len(f.Mismatches) != 0 || !reflect.DeepEqual(f.Expected, f.Imported)) {
+			t.Errorf("%s: file %v, imported %v, missing %v", f.File, f.Expected, f.Imported, f.MissingIDs)
+		}
 	}
 }
 
@@ -720,7 +845,7 @@ func TestRealCorpusDryRun(t *testing.T) {
 // not fail; later runs carry none.
 func TestImportFindings(t *testing.T) {
 	for v, want := range map[int]int{1: 1, 2: 0, 3: 0} {
-		got := importFindings(&Run{ID: "r", TaskVersion: v})
+		got := importFindings(&Run{ID: "r", TaskVersion: v}, nil)
 		if len(got) != want {
 			t.Errorf("task version %d: %d findings, want %d", v, len(got), want)
 		}

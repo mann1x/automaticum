@@ -198,7 +198,8 @@ harness's notes, change logs, directory markers and exit files.
   - recorded as failed, ended by the CLI's own clock before a timeout verdict
     existed: `TIMEOUT`;
   Each carries a finding that says whether the cause is **documented** in the
-  old notes or **inferred** from exit code and wall time.
+  old notes, **reported** by the session that ran the old harness without a
+  trace in the corpus, or **inferred** from exit code and wall time.
 - **The two sibling lanes are imported**: a second lane of 51 runs, of which
   18 ran under a lane script that was four days stale (old oracle, no timeout
   or abort verdicts, other limits), and a third of 5 runs. Their run numbers
@@ -213,3 +214,27 @@ verdict beside it.
 
 The verdict files are still reproduced exactly on the *original* words; the
 re-mapping changes the mapped verdict only.
+
+**Result of the second pass (importer `legacyimport/0.2.0`, 2026-10-13):**
+
+| | |
+|---|---|
+| runs | 474 in the main lane, 52 and 5 in the sibling lanes; none failed |
+| verdict files | the three of the main lane and one per sibling lane, all reproduced exactly |
+| `INVALID` by the old records | 8 more, 15 in all in the main native loop |
+| `INVALID` for the stale lane script | 18, all in the larger sibling lane |
+| re-mapped to `ABORTED` | 6: one documented, one reported, four inferred |
+| re-mapped to `TIMEOUT` | 9, all inferred: four at 21,601 to 21,602 s and five at 5,402 to 5,405 s, exit code 1 |
+| main native loop, mapped, before and after | `PASS` 284 to 282, `FAIL` 91 to 75, `TIMEOUT` 24 to 33, `ABORTED` 41 to 42, `INVALID` 7 to 15 |
+| larger sibling lane, mapped | 12 `PASS`, 11 `FAIL`, 5 `TIMEOUT`, 6 `ABORTED`, 18 `INVALID` |
+| smaller sibling lane, mapped | 1 `PASS`, 4 `ABORTED` |
+
+- A sibling lane's run id is the lane's name, a hyphen, and the original id.
+  Every run now carries its lane; the main lane's ids are unchanged.
+- Task versions in the sibling lanes come from each run's own files, not from
+  the main lane's boundaries: the 18 stale-script runs are version 1, the
+  other 39 are version 2.
+- The larger lane has 52 run directories, not 51: one sits among its
+  abandoned runs. Both sibling lanes have a verdict file.
+- The two `PASS` that became `INVALID` are runs of 2026-09-11 that the old
+  change log says must not be read as an arm.

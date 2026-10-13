@@ -352,3 +352,25 @@
 | 09:18 | Created internal/legacyimport/secondpass.go | — | ~2852 |
 - Milestone 2 planned and approved (D53 to D58). Step 2 done: `tasks/custom/manic_miner` ported (task version 4), oracle built reproducibly in node 26.11.1 (sha 13cdd05a…), `internal/docker` (Engine API client) and `internal/task` (load, build, prepare, oracle, verify) written; all tests pass, fixtures judged correctly, a replaced oracle is detected.
 - The oracle binary needs libatomic1: the lane base image must have it. Bind mounts need absolute host paths (task.Load now absolutises).
+
+## Session: 2026-10-13 09:21
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 09:21
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 09:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 09:24
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+- Importer 0.2.0 delivered by an agent and verified by me (real corpus, file counts unchanged): 8 more INVALID by the old records, 18 INVALID for the stale lane script, 6 re-mapped to ABORTED, 9 to TIMEOUT, two sibling lanes (52 and 5 runs) imported with a lane prefix. Run 0166's kill is labelled "reported", not "documented": nothing in the corpus records it.
+- `internal/config/arm.go` written: SDK guards are ON when omitted, so an arm states each one and the runner must send an explicit value.

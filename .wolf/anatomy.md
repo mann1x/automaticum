@@ -120,6 +120,10 @@
 - `automaticum-draft-spec-0.4.md` — automaticum — draft specification (~10389 tok)
 - `omnimergekit-evaluation-requirements-0.1.md` — automaticum — requirements from the omnimergekit evaluation protocol (~8226 tok)
 
+## internal/config/
+
+- `arm.go` — the arm format: every setting stated, `extends` with origins, `Validate`, identity hash, `Diff` (~5000 tok)
+
 ## internal/docker/
 
 - `docker.go` — small Docker Engine API client over the local socket: images (inspect, pull, build), containers (create, start, kill, remove, inspect, wait, logs), `Run` (~3900 tok)

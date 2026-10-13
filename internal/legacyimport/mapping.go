@@ -42,7 +42,8 @@ func MapVerdict(word string) (v Verdict, ok bool) {
 	return "", false
 }
 
-// TaskVersionFor returns the task version of a run from its id.
+// TaskVersionFor returns the task version of a run of the main lane from its
+// id.
 func TaskVersionFor(runID, v2From, v3From string) int {
 	id := RunIDPattern.FindString(runID)
 	if id == "" {
@@ -67,6 +68,13 @@ type Boundary struct {
 
 // runMeta is everything read from a run's small text files.
 type runMeta struct {
+	lane       string // "" in a test that maps a run on its own
+	originalID string
+	// remap is set by verdictOf when rule B changes the mapped verdict;
+	// remapNote when a run listed for it does not agree with its own files.
+	remap     *Remap
+	remapNote string
+
 	build     *Build
 	exit      *Exit
 	hasExit   bool
@@ -104,7 +112,10 @@ type txMeta struct {
 }
 
 // verdictOf decides the verdict fields of a run from what the old harness
-// recorded.
+// recorded. INVALID comes first; then, in the main lane, a verdict the end
+// of the run contradicts is re-mapped (remapVerdict). prior is what the
+// plain mapping of the original word gives, whenever the verdict is not
+// that.
 func verdictOf(m *runMeta) (v Verdict, original, reason string, prior Verdict, missing bool, err error) {
 	switch {
 	case m.hasExit:
@@ -129,7 +140,17 @@ func verdictOf(m *runMeta) (v Verdict, original, reason string, prior Verdict, m
 	}
 	if m.invalid != nil {
 		prior = v
-		return Invalid, original, m.invalid.Reason, prior, false, nil
+		// A verdict the old harness never recorded stays named as missing.
+		return Invalid, original, m.invalid.Reason, prior, original == "", nil
+	}
+	if m.lane == MainLane {
+		var exit *Exit
+		if m.hasExit {
+			exit = m.exit
+		}
+		if m.remap, m.remapNote = remapVerdict(m.originalID, original, exit); m.remap != nil {
+			return m.remap.To, original, m.remap.Cause, m.remap.From, false, nil
+		}
 	}
 	if original == "" {
 		// Not SKIPPED (it started) and not a default: no verdict could be
@@ -146,6 +167,28 @@ type stateFacts struct {
 	settings *ProviderSettings
 }
 
+// taskVersionOf returns the task version of a run and why. The main lane's
+// comes from its boundaries; a sibling lane's from the run's own files, and
+// is 0 when they do not say.
+func taskVersionOf(src RunSource, m *runMeta, o *Options) (version int, reason string) {
+	if src.Lane != "" && src.Lane != MainLane {
+		return laneTaskVersion(m)
+	}
+	id := src.OriginalID
+	if id == "" {
+		id = src.ID
+	}
+	switch version = TaskVersionFor(id, o.TaskV2From, o.TaskV3From); version {
+	case 1:
+		reason = "before " + o.TaskV2From + ": 30-frame oracle"
+	case 2:
+		reason = "from " + o.TaskV2From + ": 400 frames, must reach play"
+	case 3:
+		reason = "from " + o.TaskV3From + ": compiled oracle with game-logic traps"
+	}
+	return version, reason
+}
+
 // buildRun maps one run. stats is nil when the event stream was not read.
 func buildRun(src RunSource, m *runMeta, stats *StreamStats, st stateFacts, calls int, o *Options, changes []Boundary) (*Run, error) {
 	r := &Run{
@@ -153,7 +196,7 @@ func buildRun(src RunSource, m *runMeta, stats *StreamStats, st stateFacts, call
 		Campaign:        CampaignPrefix + src.Loop,
 		Suite:           LegacySuite,
 		TaskID:          LegacyTaskID,
-		TaskVersion:     TaskVersionFor(src.ID, o.TaskV2From, o.TaskV3From),
+		Lane:            src.Lane,
 		Imported:        true,
 		ImporterVersion: ImporterVersion,
 	}
@@ -171,6 +214,19 @@ func buildRun(src RunSource, m *runMeta, stats *StreamStats, st stateFacts, call
 		"thinking": true,
 	}
 	r.Host, r.ArmID, r.Thinking = Unknown, Unknown, Unknown
+	if r.Lane == "" {
+		r.Lane = MainLane
+	}
+	originalID := src.OriginalID
+	if originalID == "" {
+		originalID = src.ID
+	}
+	var versionReason string
+	if r.TaskVersion, versionReason = taskVersionOf(src, m, o); r.TaskVersion == 0 {
+		// The oracle generation of a sibling lane's run could not be read
+		// from its files. Not guessed, and not the main lane's boundaries.
+		missing["task_version"] = true
+	}
 
 	v, original, reason, prior, noVerdict, err := verdictOf(m)
 	if err != nil {
@@ -315,6 +371,8 @@ func buildRun(src RunSource, m *runMeta, stats *StreamStats, st stateFacts, call
 
 	prov := map[string]any{
 		"legacy": map[string]any{
+			"lane":           r.Lane,
+			"original_id":    originalID,
 			"loop":           src.Loop,
 			"set":            src.Set,
 			"dir":            src.RelDir,
@@ -326,21 +384,28 @@ func buildRun(src RunSource, m *runMeta, stats *StreamStats, st stateFacts, call
 		"files":              m.files,
 		"bytes_on_disk":      m.bytesOnDisk,
 	}
-	switch r.TaskVersion {
-	case 1:
-		prov["task_version_reason"] = "before " + o.TaskV2From + ": 30-frame oracle"
-		prov["findings"] = []map[string]any{{
+	prov["task_version_reason"] = versionReason
+	var findings []map[string]any
+	if r.TaskVersion == 1 {
+		findings = append(findings, map[string]any{
 			"detector": "legacy_oracle",
 			"severity": "warning",
-			"detail":   "task version 1: the oracle pumped 30 frames, never left the countdown and scored broken code as passing; it could not fail on game logic",
-		}}
-	case 2:
-		prov["task_version_reason"] = "from " + o.TaskV2From + ": 400 frames, must reach play"
-	case 3:
-		prov["task_version_reason"] = "from " + o.TaskV3From + ": compiled oracle with game-logic traps"
+			"detail":   oracleV1Detail,
+		})
+	}
+	if m.remap != nil {
+		prov["verdict_remap"] = m.remap
+		findings = append(findings, map[string]any{
+			"detector": RemapDetector,
+			"severity": "warning",
+			"detail":   fmt.Sprintf("%s re-mapped to %s (%s): %s", m.remap.From, m.remap.To, m.remap.Basis, m.remap.Cause),
+		})
+	}
+	if findings != nil {
+		prov["findings"] = findings
 	}
 	var crossed []string
-	id := RunIDPattern.FindString(src.ID)
+	id := RunIDPattern.FindString(originalID)
 	for _, b := range changes {
 		if b.Kind == "harness_change" && id != "" && id >= b.From {
 			crossed = append(crossed, b.From)
@@ -414,21 +479,27 @@ func buildRun(src RunSource, m *runMeta, stats *StreamStats, st stateFacts, call
 	return r, nil
 }
 
-// markComplete rewrites the provenance to say the import of the run
-// finished, which is what makes it skippable on the next pass.
+const oracleV1Detail = "task version 1: the oracle pumped 30 frames, never left the countdown and scored broken code as passing; it could not fail on game logic"
+
 // importFindings returns the findings the import makes about a run: a run
 // scored under task version 1 had an oracle that could not fail (spec 100
-// section 3).
-func importFindings(r *Run) []Finding {
-	if r.TaskVersion != 1 {
-		return nil
+// section 3), and a run whose mapped verdict was changed says from what, to
+// what and on which basis (spec 100 section 8). remap may be nil.
+func importFindings(r *Run, remap *Remap) []Finding {
+	var out []Finding
+	if r.TaskVersion == 1 {
+		ev, _ := json.Marshal(map[string]string{"detail": oracleV1Detail})
+		out = append(out, Finding{RunID: r.ID, Detector: "legacy_oracle", DetectorVersion: ImporterVersion, Severity: "warning", Count: 1, Evidence: ev})
 	}
-	ev, _ := json.Marshal(map[string]string{
-		"detail": "task version 1: the oracle pumped 30 frames, never left the countdown and scored broken code as passing; it could not fail on game logic",
-	})
-	return []Finding{{RunID: r.ID, Detector: "legacy_oracle", DetectorVersion: ImporterVersion, Severity: "warning", Count: 1, Evidence: ev}}
+	if remap != nil {
+		ev, _ := json.Marshal(remap)
+		out = append(out, Finding{RunID: r.ID, Detector: RemapDetector, DetectorVersion: ImporterVersion, Severity: "warning", Count: 1, Evidence: ev})
+	}
+	return out
 }
 
+// markComplete rewrites the provenance to say the import of the run
+// finished, which is what makes it skippable on the next pass.
 func markComplete(r *Run) error {
 	var prov map[string]json.RawMessage
 	if err := json.Unmarshal(r.Provenance, &prov); err != nil {
