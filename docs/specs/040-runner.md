@@ -40,6 +40,11 @@ The harness build is part of the arm and of the basis.
   **build container**, never on a host; the resulting tarball is stored by
   hash.
 - Record version, commit, dirty flag and the sha256 of the installed package.
+  **Decided by the owner (2026-10-13):** every run records the **SDK release
+  version**. A run whose release version cannot be established does not
+  start. A build from a commit therefore still names the release it carries.
+  Milestone 2 runs on release 4.100.250, which contains requests 1 to 3
+  (§8.2).
 - **Refuse to run** when the installed package does not match what the arm
   names. This is a gate (050 §3).
 

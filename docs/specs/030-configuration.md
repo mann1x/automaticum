@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.5, 2026-10-12.
+**Status:** draft 0.6, 2026-10-13.
 
 ## 1. Rules
 
@@ -17,18 +17,22 @@ pinned version, not vendored.
 - Validation is a command (`automaticum arm validate`, `task verify`,
   `doctor`) and runs before anything is queued.
 
-Proposed layout (**Open:** names and nesting):
+**Decided by the owner (2026-10-13):** the daemon reads **one configuration
+directory, given by `--config`**. Lanes and endpoints hold addresses and
+device bindings, so that directory is local to an installation and is not
+tracked; the repository carries `examples/config/` with neutral values. Arms
+and tasks are tracked. An arm names an endpoint and never an address.
 
 ```
-config/
-  automaticum.toml        daemon: data root, bind address, store paths
+<config>/                 local, not tracked
+  automaticum.toml        daemon: data root, archive root, bind address, token
   lanes/*.toml
   endpoints/*.toml
-  images/*.toml           base and language layer definitions
-arms/*.toml
-campaigns/*.toml
-tasks/<suite>/<task>/task.toml
-suites/*.toml             external suites: source, pinned version, scorer
+arms/*.toml               tracked
+tasks/<suite>/<task>/task.toml   tracked
+images/                   tracked: base and language layer definitions
+campaigns/*.toml          tracked (milestone 4)
+suites/*.toml             tracked (milestone 5): source, pinned version, scorer
 ```
 
 ## 2. Lanes

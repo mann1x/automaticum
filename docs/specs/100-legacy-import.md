@@ -1,6 +1,6 @@
 # 100 — Import of the old harness's corpus
 
-**Status:** draft 0.7, 2026-10-13. The importer exists
+**Status:** draft 0.8, 2026-10-13. The importer exists
 (`internal/legacyimport`) and has imported the run directories of the real
 corpus; §7 has the result. The figures in §1 are from a read-only survey on
 2026-10-12, corrected where the import showed otherwise. The old harness is
@@ -180,3 +180,36 @@ Build files and saved settings in the corpus hold endpoint addresses and
 absolute paths, and these are now in the imported arms. They stay in the store.
 An export of an imported run must pass them through the same redaction as any
 other export (010 §5).
+
+## 8. Second pass (decided 2026-10-13)
+
+The Cerebriline session assembled the invalid runs by id from the old
+harness's notes, change logs, directory markers and exit files.
+
+**Decided by the owner (2026-10-13):**
+
+- Runs the old harness's own records call invalid are `INVALID` (§2): the
+  five with a swallowed template, the two with a void marker, six runs of
+  2026-09-11 that were partial states and operator kills (numbers 0207 to
+  0212), and one of 2026-09-13 killed in flight (0296).
+- **Verdicts contradicted by how the run ended are re-mapped**, with the
+  original word kept beside the new verdict:
+  - recorded as failed, ended by an operator's kill: `ABORTED`;
+  - recorded as failed, ended by the CLI's own clock before a timeout verdict
+    existed: `TIMEOUT`;
+  Each carries a finding that says whether the cause is **documented** in the
+  old notes or **inferred** from exit code and wall time.
+- **The two sibling lanes are imported**: a second lane of 51 runs, of which
+  18 ran under a lane script that was four days stale (old oracle, no timeout
+  or abort verdicts, other limits), and a third of 5 runs. Their run numbers
+  restart at 0001, so their run ids carry a lane prefix.
+- A boundary for the four runs of one build with two defects since fixed was
+  offered and **not** chosen. Those runs stay as they are.
+
+Two cases follow from §2 as it already stood, and are not new decisions: the
+one run whose model was unloaded mid-run by another model's load, and the 18
+runs under the stale lane script, are `INVALID`, each with its original
+verdict beside it.
+
+The verdict files are still reproduced exactly on the *original* words; the
+re-mapping changes the mapped verdict only.

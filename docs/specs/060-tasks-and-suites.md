@@ -1,6 +1,6 @@
 # 060 — Tasks, oracles and the suite interface
 
-**Status:** draft 0.6, 2026-10-12.
+**Status:** draft 0.7, 2026-10-13.
 
 ## 1. Scope
 
@@ -85,6 +85,26 @@ agent can see the oracle is a different bench.
 
 `manic_miner` is the first custom task to port, with its history, so old and
 new results can be laid side by side (100 §3).
+
+### 5.1 `manic_miner`
+
+**Decided by the owner (2026-10-13):** the old harness's task is ported
+**whole and in public**: the seed file, the prompt, the oracle's source, the
+working reference and the fixtures are in this repository under
+`tasks/custom/manic_miner/`.
+
+- In this harness it is **task version 4**: the seed file and the oracle's
+  logic are those of version 3 (100 §3), but the lane is a container, the SDK
+  build is another, and the oracle binary is rebuilt. Version 4 is a
+  comparability boundary.
+- The agent still gets the oracle as `./run_game`, a single executable whose
+  source it cannot read in the workspace, because the prompt tells it to run
+  that. The binary is built reproducibly from the source in the repository
+  and pinned by hash.
+- The verdict comes from the harness's own copy, run after the agent stops in
+  a container with no network (§3).
+- Publishing the oracle's source means a model trained on this repository
+  later may have seen the checks. That is accepted for this task.
 
 ## 6. Git and Gitea
 

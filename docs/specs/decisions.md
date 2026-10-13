@@ -62,6 +62,12 @@ All dated 2026-10-12.
 | D50 | Every chunk carries a locator: the blob hash and byte offset of its source line. | 080 §7.4 |
 | D51 | The 30 earlier campaigns in the old harness's archive are imported only when a question needs them. | 100 §7 |
 | D52 | Embeddings are updated manually: an embedding pass is started by the operator for a stated scope, never scheduled and never automatic. | 080 §5.2, 090 §1 |
+| D53 | The `manic_miner` task is public and whole: seed, prompt, oracle source, reference and fixtures live in this repository. | 060 §5.1 |
+| D54 | The runner uses SDK release 4.100.250. Every run records the SDK release version; a run whose release version cannot be established does not start. | 040 §3 |
+| D55 | The first real runs of milestone 2: provider `xollama` on `linux-gpu-2`, model `qwen36-base-mtp_tb:27b-q4km-128k`. | 110 §3 |
+| D56 | Old corpus: verdicts contradicted by how the run ended are re-mapped (operator kills to `ABORTED`, the CLI's own clock to `TIMEOUT`), original word kept; the two sibling lanes are imported. A boundary for one defective build was offered and not chosen. | 100 §7 |
+| D57 | Configuration layout: the daemon reads one directory given by `--config`; lanes and endpoints live there and are not tracked; `arms/` and `tasks/` are tracked, and an arm names an endpoint, never an address. Approved with the milestone 2 plan. | 030 §1 |
+| D58 | Milestone 2 plan approved: Docker through the Engine API with our own small client; the runner is plain Node ESM, one process per run; the daemon is not linked with Lance until ingest writes chunks (milestone 3); `manic_miner` is task version 4 here; its workspace oracle is built reproducibly; the lane container is unprivileged with the default bridge network; a stub model server for tests. | 110 §3 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked
@@ -88,13 +94,12 @@ Each of these waits for a measurement or for the planning of its milestone.
 | id | question | where | waits for |
 |---|---|---|---|
 | O1 | How the native agent on Windows and macOS meets "a host runs only the Go application", given the runner needs Node. | 010 §4 | milestone 7 (D35) |
-| O3 | Configuration directory layout and file names. | 030 §1 | milestone 2; as proposed there unless the owner objects |
 | O5 | Which published C/C++ SWE-bench-style set, at which version; the order of languages after it. | 062 §6 | milestone 5 |
 | O6 | Which external harnesses need the offline event path. | 064 §3.2 | milestone 5, per harness |
 
 Closed since the first revision: O2 (D32), O4 (D30), O7 (S4, then D34), O9
 (D31), O10 (D42), O11 (D33), O12 (D28), O13 (D29), O14 (D46), O8 (D47), O15
-(D48), O16 (D49), O17 (D50), O18 (D51).
+(D48), O16 (D49), O17 (D50), O18 (D51), O3 (D57).
 
 ## 4. External dependencies
 

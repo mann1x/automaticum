@@ -3,7 +3,9 @@
 **Status:** draft 0.7, 2026-10-13. The milestone order in §3 was approved by the owner
 on 2026-10-12. Milestone 1 has been carried out: the store, the importer and
 the spike's measurements exist (080 §7.4, 100 §7), and the owner has decided
-the questions it raised (D46 to D51). Milestone 2 is the next to plan.
+the questions it raised (D46 to D51). Milestone 2 was planned and approved on
+2026-10-13 (D53 to D58) and is in progress; its first real runs are on
+`linux-gpu-2` (D55).
 
 ## 1. Acceptance: when it replaces the old harness
 
