@@ -93,6 +93,16 @@ type flight struct {
 	first  int // number of the first line still held
 	subs   map[chan []byte]struct{}
 	closed bool
+	// held is true while the runner says the run is held between two
+	// requests.
+	held bool
+}
+
+// holding says whether the run is held, and whether it is over.
+func (f *flight) holding() (held, over bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.held, f.closed
 }
 
 // What a flight keeps for clients that attach late.
@@ -106,6 +116,14 @@ func (f *flight) add(line []byte) {
 	defer f.mu.Unlock()
 	f.lines = append(f.lines, line)
 	f.bytes += len(line)
+	if bytes.Contains(line, []byte(`"k":"runner"`)) {
+		switch {
+		case bytes.Contains(line, []byte(`"note":"held"`)):
+			f.held = true
+		case bytes.Contains(line, []byte(`"note":"released"`)):
+			f.held = false
+		}
+	}
 	for len(f.lines) > maxFlightLines || (f.bytes > maxFlightBytes && len(f.lines) > 1) {
 		f.bytes -= len(f.lines[0])
 		f.lines = f.lines[1:]

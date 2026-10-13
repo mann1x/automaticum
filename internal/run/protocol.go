@@ -99,6 +99,18 @@ type stream struct {
 	bad     int
 	end     *End
 	onLine  func(line []byte)
+	// A run is held between two model requests when the operator asks
+	// (050 §4): the runner says "held" and "released". held is the time
+	// held so far, heldAt when the current hold began, holds each one.
+	held   time.Duration
+	heldAt time.Time
+	holds  []Hold
+}
+
+// Hold is one interval in which a run was held between two requests.
+type Hold struct {
+	From time.Time `json:"from"`
+	To   time.Time `json:"to"`
 }
 
 func newStream(now time.Time) *stream { return &stream{last: now} }
@@ -138,6 +150,21 @@ func (s *stream) line(line []byte) {
 		return
 	}
 	switch head.K {
+	case "runner":
+		var n struct {
+			T    time.Time `json:"t"`
+			Note string    `json:"note"`
+		}
+		if json.Unmarshal(line, &n) == nil {
+			switch {
+			case n.Note == "held" && s.heldAt.IsZero():
+				s.heldAt = n.T
+			case n.Note == "released" && !s.heldAt.IsZero():
+				s.held += n.T.Sub(s.heldAt)
+				s.holds = append(s.holds, Hold{s.heldAt, n.T})
+				s.heldAt = time.Time{}
+			}
+		}
 	case "event":
 		s.events++
 	case "end":
@@ -151,11 +178,31 @@ func (s *stream) line(line []byte) {
 	}
 }
 
-// idle is how long nothing has arrived.
+// idle is how long nothing has arrived. A held run is not idle.
 func (s *stream) idle(now time.Time) time.Duration {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if !s.heldAt.IsZero() {
+		return 0
+	}
 	return now.Sub(s.last)
+}
+
+// heldFor is how long the run has been held in all, the hold it is in
+// included; holding says whether it is in one.
+func (s *stream) heldFor(now time.Time) (total time.Duration, holding bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.heldAt.IsZero() {
+		return s.held, false
+	}
+	return s.held + now.Sub(s.heldAt), true
+}
+
+func (s *stream) heldIntervals() []Hold {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]Hold(nil), s.holds...)
 }
 
 func (s *stream) snapshot() (lines, events, bad int, end *End) {

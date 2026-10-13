@@ -22,6 +22,8 @@
 
 ## Key Learnings
 
+- 2026-10-13: the runner files are copied into the lane image; while a batch is running do not rebuild the lane image, rebuild `bin/` or restart the daemon, or the batch is split or its run aborted. Code can be written and unit-tested meanwhile, deployed after.
+
 - **Project:** automaticum — Go test harness for coding agents built on @cerebriline/sdk; spec stage, no code yet.
 - Source of truth: the spec set docs/specs/000..110 plus decisions.md (draft 0.5). Inputs, not edited: docs/specs/archive/ (draft spec 0.4 from the Cerebriline session, first user; omnimergekit requirements 0.1, second user).
 - Host mapping, old-harness paths and mailbox aliases live in docs/local/hosts.local.md (untracked). Published files use neutral host names (linux-gpu-1, linux-gpu-2, windows-1, mac-1) and no absolute paths. The old harness is READ-ONLY.
@@ -120,6 +122,7 @@
 - 2026-10-13 D71: a tag without a stated identity runs and is marked unknown with a finding.
 - 2026-10-13 D72: GPU declared in the endpoint's configuration now, measured with agent mode later.
 - 2026-10-13 D73: model reloaded mid-run or partly off the GPU makes a run INVALID by default; an arm may accept either (`[accepts] model_reload`, `partial_gpu`) because the owner may want to test exactly that. Closes O21.
+- 2026-10-13 D83: pause = release the endpoint (hold between requests via the SDK beforeModel hook, then unload on Ollama/xOllama; resume = release, the model reloads). Same process only. Needs a real test.
 - 2026-10-13 D82: query the model from Ollama/xOllama at every run start and record what it says (quantization can change under the same name, e.g. a cloud model going FP4 to FP8); compare shows a change between runs.
 - 2026-10-13 D81: closing batch of milestone 4 is OmniMerge v4 against base Qwen 3.6 27B, 10 runs per arm, interleaved; tell the xOllama session start and ETA. Later Qwen 3.8 27B base against OmniMerge v6.
 - 2026-10-13 D80: empty family/size in the catalogue are queried from the weights on Ollama/xOllama endpoints; variant is always the owner's word.

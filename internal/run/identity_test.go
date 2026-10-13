@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/mann1x/automaticum/internal/config"
 )
@@ -83,5 +86,58 @@ func TestUnload(t *testing.T) {
 	// Nothing else held: nothing is asked.
 	if got, err := Unload(context.Background(), srv.Client(), e, "", "mine:1"); err != nil || got != nil || len(asked) != 1 {
 		t.Errorf("a second time: %v %v, asked %v", got, err, asked)
+	}
+}
+
+// The stream reader keeps the intervals a run was held, counts a held run
+// as not idle, and gives the time held for the outer limit to move by.
+func TestStreamHolds(t *testing.T) {
+	t0 := time.Date(2026, 10, 13, 12, 0, 0, 0, time.UTC)
+	line := func(at time.Time, note string) string {
+		return `{"t":"` + at.Format(time.RFC3339Nano) + `","k":"runner","note":"` + note + `"}` + "\n"
+	}
+	s := newStream(t0)
+	s.Write([]byte(line(t0.Add(time.Minute), "prepared")))
+	s.Write([]byte(line(t0.Add(2*time.Minute), "held")))
+	s.Write([]byte(line(t0.Add(3*time.Minute), "holding")))
+	if total, holding := s.heldFor(t0.Add(10 * time.Minute)); !holding || total != 8*time.Minute {
+		t.Errorf("in a hold: %v %v", total, holding)
+	}
+	if s.idle(time.Now().Add(time.Hour)) != 0 {
+		t.Error("a held run counts as idle")
+	}
+	s.Write([]byte(line(t0.Add(12*time.Minute), "released")))
+	s.Write([]byte(line(t0.Add(20*time.Minute), "held")))
+	s.Write([]byte(line(t0.Add(21*time.Minute), "released")))
+	total, holding := s.heldFor(t0.Add(time.Hour))
+	if holding || total != 11*time.Minute || len(s.heldIntervals()) != 2 {
+		t.Errorf("after two holds: %v %v %v", total, holding, s.heldIntervals())
+	}
+	if s.idle(time.Now().Add(time.Hour)) == 0 {
+		t.Error("a released run is never idle")
+	}
+}
+
+// Hold and Release are a file next to the job; a run without a job cannot
+// be held.
+func TestHoldFile(t *testing.T) {
+	x := &Executor{RunsDir: t.TempDir()}
+	if err := x.Hold("r1"); err == nil {
+		t.Error("a run without a job was held")
+	}
+	dir := filepath.Join(x.RunsDir, "r1", "job")
+	os.MkdirAll(dir, 0o755)
+	os.WriteFile(filepath.Join(dir, jobFile), []byte("{}"), 0o644)
+	if err := x.Hold("r1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, HoldFile)); err != nil {
+		t.Error("no hold file")
+	}
+	if err := x.Release("r1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := x.Release("r1"); err != nil {
+		t.Errorf("releasing a run that is not held: %v", err)
 	}
 }

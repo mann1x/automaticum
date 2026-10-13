@@ -247,6 +247,8 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/runs/{id}/blobs/{kind}", d.handleBlob)
 	mux.HandleFunc("POST /v1/runs/{id}/stop", d.handleStop)
 	mux.HandleFunc("POST /v1/runs/{id}/abort", d.handleAbort)
+	mux.HandleFunc("POST /v1/runs/{id}/pause", d.handlePause)
+	mux.HandleFunc("POST /v1/runs/{id}/resume", d.handleResume)
 	mux.HandleFunc("GET /v1/compare", d.handleCompare)
 	mux.HandleFunc("POST /v1/runs/{id}/invalidate", d.handleInvalidate)
 	mux.HandleFunc("POST /v1/runs/{id}/identify", d.handleIdentify)
@@ -927,6 +929,112 @@ func (d *Daemon) handleAbort(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	reply(w, http.StatusAccepted, map[string]string{"run_id": id, "state": "aborting"})
+}
+
+// holder is what pausing needs of the runner of runs; *run.Executor is one.
+type holder interface {
+	Hold(runID string) error
+	Release(runID string) error
+}
+
+// handlePause holds a run in flight before its next model request and, on
+// an Ollama or xOllama endpoint, then asks the server to drop the model, so
+// that the device is free for something else (050 §4, D83). The request
+// being answered is finished first; that can take minutes, so the answer
+// comes at once and the lane's state says when the run is held.
+func (d *Daemon) handlePause(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	h, ok := d.Runner.(holder)
+	if !ok {
+		fail(w, http.StatusNotImplemented, "this daemon cannot hold a run")
+		return
+	}
+	var req struct {
+		// KeepModel leaves the model in memory: the run is held, the
+		// device is not freed.
+		KeepModel bool `json:"keep_model"`
+	}
+	json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&req)
+	d.mu.Lock()
+	var f *flight
+	for _, x := range d.flights {
+		if x.runID == id {
+			f = x
+		}
+	}
+	d.mu.Unlock()
+	if f == nil {
+		fail(w, http.StatusNotFound, "run %s is not in flight", id)
+		return
+	}
+	if err := h.Hold(id); err != nil {
+		fail(w, http.StatusConflict, "%v", err)
+		return
+	}
+	go d.afterHeld(f, !req.KeepModel)
+	reply(w, http.StatusAccepted, map[string]string{"run_id": id, "state": "pausing"})
+}
+
+// afterHeld waits until the runner says the run is held, then frees the
+// endpoint of every model when asked to.
+func (d *Daemon) afterHeld(f *flight, unload bool) {
+	log := d.Log.With("run", f.runID)
+	for {
+		held, over := f.holding()
+		if over {
+			return
+		}
+		if held {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	log.Info("run is held between two requests")
+	if !unload {
+		return
+	}
+	arm, err := config.LoadArm(filepath.Join(d.Repo, "arms"), f.item.Arm)
+	if err != nil {
+		log.Warn("the run is held, its model stays loaded", "error", err)
+		return
+	}
+	ep := d.Local.Endpoints[arm.Endpoint]
+	if !run.Ollama(ep) {
+		log.Info("the run is held; this kind of endpoint cannot be asked to drop a model")
+		return
+	}
+	key, err := d.Local.APIKey(ep)
+	if err == nil {
+		hc := d.HTTP
+		if hc == nil {
+			hc = &http.Client{Timeout: 90 * time.Second}
+		}
+		var dropped []string
+		// No model is kept: the point of a pause is a free device.
+		dropped, err = run.Unload(context.Background(), hc, ep, key, "")
+		if err == nil {
+			log.Info("the endpoint dropped its models for the pause", "models", strings.Join(dropped, ", "))
+		}
+	}
+	if err != nil {
+		log.Warn("the run is held, the endpoint did not drop its model", "error", err)
+	}
+}
+
+// handleResume lets a held run go on. Its next request makes the server
+// load the model again; nothing else is needed.
+func (d *Daemon) handleResume(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	h, ok := d.Runner.(holder)
+	if !ok {
+		fail(w, http.StatusNotImplemented, "this daemon cannot hold a run")
+		return
+	}
+	if err := h.Release(id); err != nil {
+		fail(w, http.StatusInternalServerError, "%v", err)
+		return
+	}
+	reply(w, http.StatusAccepted, map[string]string{"run_id": id, "state": "resuming"})
 }
 
 // handleIdentify adds to a finished run's record where and on what it ran,

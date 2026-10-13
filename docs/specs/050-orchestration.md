@@ -1,6 +1,6 @@
 # 050 — Orchestration: scheduling, gates, control
 
-**Status:** draft 0.10, 2026-10-13.
+**Status:** draft 0.11, 2026-10-13.
 
 ## 1. Scheduling
 
@@ -126,6 +126,20 @@ batch, campaign, lane and whole daemon.
   reports can filter it or show it apart.
   **Decided by the owner (2026-10-13), D77:** pause inside a run is added
   when the SDK supports it; until then pause works between runs only.
+  **Decided by the owner (2026-10-13), D83:** a pause is there to release
+  the endpoint, when the GPU is needed for something else. As built:
+  `automaticum run pause <run>` asks the runner to hold before its next
+  model request (the request being answered finishes first, which can take
+  minutes), and on an Ollama or xOllama endpoint the daemon then asks the
+  server to drop every model it holds. `automaticum run resume <run>`
+  releases the hold; the next request makes the server load the model
+  again. The run's process and container stay: every counter and guard of
+  the SDK is untouched. Each hold is in the record with its two times,
+  time held is taken out of the wall time, limits do not run while a run
+  is held, and the run carries the `paused` flag. Not offered: stopping the
+  container during a pause. The SDK cannot resume a session in a new
+  process as the same run (it would need one more user message, and its
+  guards start from nothing).
 - **Infrastructure errors** (endpoint down, 429, network) wait and retry and
   are recorded as such. They are never the model's failure.
 - **Restart:** the daemon survives its own restart. Runs in flight are

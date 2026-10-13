@@ -204,6 +204,10 @@ type provenance struct {
 	} `json:"task"`
 	// Inference says where and on what the run's model ran (020 §1.1).
 	Inference *Inference `json:"inference,omitempty"`
+	// Holds are the intervals in which the run was held between two model
+	// requests, and HeldMS their sum, which the wall time leaves out.
+	Holds  []Hold `json:"holds,omitempty"`
+	HeldMS int64  `json:"held_ms,omitempty"`
 	// Unloaded lists the models dropped from the endpoint's memory before
 	// the run (D79).
 	Unloaded []string `json:"unloaded_before_run,omitempty"`
@@ -308,9 +312,13 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 	}
 
 	dir := filepath.Join(x.RunsDir, r.ID)
+	var held time.Duration
 	finish := func() (*store.Run, error) {
 		r.EndedAt = time.Now().UTC()
-		r.WallMS = r.EndedAt.Sub(r.StartedAt).Milliseconds()
+		// Time held is taken out of the wall time, and the run says that
+		// it was held (050 §4).
+		r.WallMS = r.EndedAt.Sub(r.StartedAt).Milliseconds() - held.Milliseconds()
+		r.Paused = held > 0
 		r.Verdict, r.VerdictReason = Decide(facts)
 		p.Limits.Fired, p.Limits.FiredBy = facts.Limit, facts.LimitBy
 		r.Provenance, _ = json.Marshal(p)
@@ -425,6 +433,15 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		Tmpfs:       map[string]string{"/tmp": ""},
 		MemoryBytes: int64(lane.MemoryGB * (1 << 30)), NanoCPUs: int64(lane.CPUs * 1e9), PidsLimit: lane.Pids,
 		Labels: map[string]string{"automaticum": "run", "automaticum.run": r.ID, "automaticum.lane": req.Lane},
+		// Time held is not the run's time: the outer limit moves by it,
+		// and does not fall while the run is being held.
+		Extra: func() time.Duration {
+			total, holding := st.heldFor(time.Now())
+			if holding {
+				total += time.Minute
+			}
+			return total
+		},
 	}
 	res, runErr := x.Engine.Run(rctx, spec, time.Duration(wall.Seconds)*time.Second+grace,
 		io.MultiWriter(st, stdoutW), stderrW, func(id string) {
@@ -437,6 +454,9 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 	stderrW.Close()
 	<-stored
 	<-stored
+	os.Remove(filepath.Join(jobDir, HoldFile))
+	held, _ = st.heldFor(time.Now())
+	p.Holds, p.HeldMS = st.heldIntervals(), held.Milliseconds()
 	cause := context.Cause(rctx)
 	cancel(nil)
 	p.Container.ID, p.Container.ExitCode, p.Container.OOMKilled, p.Container.TimedOut = res.ID, res.ExitCode, res.OOMKilled, res.TimedOut
@@ -613,6 +633,31 @@ func (x *Executor) before(ctx context.Context, req Request, p *provenance) (*con
 		}
 	}
 	return lane, endpoint, ""
+}
+
+// HoldFile is the file whose presence in a run's job directory holds the
+// run: the runner looks for it before every model request and waits while
+// it is there (runner/PROTOCOL.md).
+const HoldFile = "hold"
+
+// Hold asks a run in flight to stop before its next model request. The
+// request being answered is finished first, and its tools run.
+func (x *Executor) Hold(runID string) error {
+	dir := filepath.Join(x.RunsDir, runID, "job")
+	if _, err := os.Stat(filepath.Join(dir, jobFile)); err != nil {
+		return fmt.Errorf("run %s has no job to hold", runID)
+	}
+	return os.WriteFile(filepath.Join(dir, HoldFile), []byte(time.Now().UTC().Format(time.RFC3339)+"\n"), 0o644)
+}
+
+// Release lets a held run go on. It is not an error to release a run that
+// is not held.
+func (x *Executor) Release(runID string) error {
+	err := os.Remove(filepath.Join(x.RunsDir, runID, "job", HoldFile))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	return err
 }
 
 func (x *Executor) http() *http.Client {

@@ -835,3 +835,15 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 19:20 | D82: served-model facts per arm in compare, quantization in run show | internal/daemon/compare.go, cmd/automaticum, 020, decisions | tests pass | ~3000 |
+
+## Session: 2026-10-13 18:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 18:42
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:43 | started the D81 batch (base Qwen 3.6 27B against OmniMerge v4, 10 each, interleaved) on windows-2; mail 1275 to the xOllama session with start and expected end | batch k-d81-base-vs-omnimerge-v4 | running | ~1500 |
+| 21:10 | D83: hold between requests (runner beforeModel hook), run pause/resume with unload, held time out of wall time; written and unit-tested, NOT deployed (batch running) | runner/runner.mjs, PROTOCOL.md, internal/run, internal/docker, internal/daemon/api.go, cmd/automaticum/main.go, 050, 090, decisions | tests pass | ~12000 |

@@ -233,6 +233,10 @@ type Mount struct {
 
 // Spec describes a container.
 type Spec struct {
+	// Extra, when set, is asked when the timeout is reached: the time it
+	// returns is added to the timeout, as often as it is more than was
+	// already added. A run that was held for a while gets that long more.
+	Extra   func() time.Duration
 	Name    string // optional; the id is what everything else uses
 	Image   string
 	Cmd     []string
@@ -461,11 +465,13 @@ func (c *Client) Run(ctx context.Context, s Spec, timeout time.Duration, stdout,
 	}()
 
 	var timer <-chan time.Time
+	var t *time.Timer
 	if timeout > 0 {
-		t := time.NewTimer(timeout)
+		t = time.NewTimer(timeout)
 		defer t.Stop()
 		timer = t.C
 	}
+	var added time.Duration
 	kill := func() {
 		kctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
@@ -473,16 +479,29 @@ func (c *Client) Run(ctx context.Context, s Spec, timeout time.Duration, stdout,
 	}
 	var w waited
 	var ctxErr error
-	select {
-	case w = <-waitDone:
-	case <-timer:
-		res.TimedOut = true
-		kill()
-		w = <-waitDone
-	case <-ctx.Done():
-		ctxErr = ctx.Err()
-		kill()
-		w = <-waitDone
+wait:
+	for {
+		select {
+		case w = <-waitDone:
+			break wait
+		case <-timer:
+			if s.Extra != nil {
+				if more := s.Extra() - added; more > 0 {
+					added += more
+					t.Reset(more)
+					continue
+				}
+			}
+			res.TimedOut = true
+			kill()
+			w = <-waitDone
+			break wait
+		case <-ctx.Done():
+			ctxErr = ctx.Err()
+			kill()
+			w = <-waitDone
+			break wait
+		}
 	}
 	res.Ended = time.Now()
 	// The log stream ends when the container does; give it a moment to drain.

@@ -10,7 +10,7 @@
 // The contract is in PROTOCOL.md.
 
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -171,15 +171,52 @@ async function main() {
 	});
 	if (hooks) built.config.hooks = hooks;
 
+	// 5a. The hold (PROTOCOL.md): while the file "hold" stands next to the
+	// job, the run waits before its next model request. The request being
+	// answered has finished and its tools have run; nothing is cut. The SDK
+	// awaits this hook before every request and keeps every counter and
+	// guard as it is. Time held is not the run's: the wall limit stops.
+	const holdFile = join(dirname(process.argv[2]), "hold");
+	const prior = built.config.hooks?.beforeModel;
+	let wall;
+	let wallLeft = job.wall_s * 1000;
+	let wallFrom = 0;
+	let wallFired = false;
+	const armWall = () => {
+		wallFrom = Date.now();
+		wall = setTimeout(() => {
+			wallFired = true;
+			note("wall_limit", { wall_s: job.wall_s });
+			core.abort(job.session_id, "wall limit").catch((err) => note("abort_failed", { error: describe(err) }));
+		}, wallLeft);
+	};
+	built.config.hooks = {
+		...built.config.hooks,
+		beforeModel: async (context) => {
+			if (existsSync(holdFile)) {
+				clearTimeout(wall);
+				wallLeft = Math.max(0, wallLeft - (Date.now() - wallFrom));
+				const since = Date.now();
+				note("held", { requests_so_far: wire.count() });
+				let beat = since;
+				while (existsSync(holdFile)) {
+					await new Promise((r) => setTimeout(r, 500));
+					if (Date.now() - beat >= 60000) {
+						beat = Date.now();
+						note("holding", { held_ms: beat - since });
+					}
+				}
+				note("released", { held_ms: Date.now() - since });
+				armWall();
+			}
+			return prior ? prior(context) : undefined;
+		},
+	};
+
 	core.subscribe((event) => out("event", { event }), { sessionId: job.session_id });
 
 	// 6. The wall limit is ours: the SDK has none.
-	let wallFired = false;
-	const wall = setTimeout(() => {
-		wallFired = true;
-		note("wall_limit", { wall_s: job.wall_s });
-		core.abort(job.session_id, "wall limit").catch((err) => note("abort_failed", { error: describe(err) }));
-	}, job.wall_s * 1000);
+	armWall();
 
 	let started;
 	let failure;

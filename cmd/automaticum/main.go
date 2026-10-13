@@ -36,6 +36,8 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   run tail <run>                what a run in flight prints, as it arrives
   run stop <run>                take a queued run off the queue
   run abort <run>               end a run in flight
+  run pause <run>               hold a run in flight between two model requests and free the endpoint of its model
+  run resume <run>              let a held run go on
   run invalidate <run>          mark a finished run INVALID, --reason "..."
   run identify <run>            add where and on what a run ran to its record, marked as added later
   logs <run>                    a run's raw material [--events|--wire|--runner|--oracle]
@@ -79,6 +81,8 @@ func main() {
 		"run tail":       runTail,
 		"run stop":       runPost("stop", "taken off the queue"),
 		"run abort":      runPost("abort", "aborting"),
+		"run pause":      runPost("pause", "will be held before its next model request, and the endpoint then freed of its model"),
+		"run resume":     runPost("resume", "released; its next request loads the model again"),
 		"run invalidate": runPost("invalidate", "marked INVALID"),
 		"run identify":   runPost("identify", "where and on what it ran is now in the record, marked as added later"),
 		"legacy import":  legacyImport,

@@ -1,7 +1,7 @@
 {
   "name": "automaticum-runner",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Runs one agent session for automaticum inside a lane's container (protocol 1). It holds no SDK: the build an arm names is mounted at node_modules (see sdk/).",
   "type": "module",
   "engines": {

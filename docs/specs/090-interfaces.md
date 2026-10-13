@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.13, 2026-10-13.
+**Status:** draft 0.14, 2026-10-13.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -21,7 +21,7 @@ automaticum basis show|diff
 automaticum task ls|show|verify
 automaticum oracle verify <task>
 automaticum run start --arm A --task T [-n 5] [--lane L]
-automaticum run ls|show|tail|stop|abort|retry|invalidate|identify
+automaticum run ls|show|tail|stop|abort|pause|resume|retry|invalidate|identify
 automaticum compare <batch> [<batch> ...]
 automaticum batch|campaign start|ls|show|pause|resume|abort
 automaticum cell run|show|ls

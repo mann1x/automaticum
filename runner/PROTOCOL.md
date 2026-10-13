@@ -26,6 +26,18 @@ also have tests that need no SDK (`node --test`). zod is pinned in
 | `wall_s` | the wall limit the runner enforces by stopping the agent |
 | `sdk_release` | the version the installed SDK package must be: that of the build the arm names, mounted at the runner's `node_modules` (the image holds no SDK) |
 
+## The hold
+
+While a file named `hold` stands next to the job file, the runner waits
+before its next model request. It looks before every request, through the
+SDK's `beforeModel` hook: the request being answered has finished and its
+tools have run, and nothing is cut. It writes a `runner` line with note
+`held` when the wait begins, `holding` once a minute, and `released` with
+`held_ms` when the file is gone. The wall limit does not run while the run
+is held. Inside the process nothing is reset: every counter and guard of
+the SDK is the same object before and after. The runner unloads nothing:
+freeing the endpoint is the daemon's step.
+
 ## Out: standard output
 
 One JSON object per line, each with a time `t` and a kind `k`.
