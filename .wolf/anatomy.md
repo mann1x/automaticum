@@ -173,6 +173,9 @@
 - `vectors.go` — T10/T11: synthetic clustered vectors, index build, recall and latency (~2200 tok)
 - `state.go` — T6/T7/T12: DuckDB statistics and census queries, lane-state updates under load (~2100 tok)
 - `rangeread.go` — T13: range reads from a multi-GB blob, live and archive tier (~1100 tok)
+- `corpus.go` — on the imported corpus: chunks (T4/T8), text (T8/T15), regex (T9), archive-half (T15) (~5000 tok)
+- `embed.go` — real embeddings through an Ollama-compatible server, search on them (~2600 tok)
+- `dedup.go` — O8: by-part against content-defined deduplication on simulated request bodies (~1900 tok)
 
 ## spike/001-store/linkcheck/
 

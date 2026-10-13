@@ -1,4 +1,4 @@
-# Native (cgo) builds run in the Debian 11 build container, never on a host.
+# Native (cgo) builds run in the build containers, never on a host.
 #
 # SPIKE_ROOT is a directory with room for build caches and third-party
 # sources: $(SPIKE_ROOT)/cache and $(SPIKE_ROOT)/src. Set it in the
@@ -20,7 +20,7 @@ DOCKER_RUN = docker run --rm \
 	-v $(SPIKE_ROOT)/cache/target:/target \
 	-e GOMODCACHE=/go/pkg/mod -e GOFLAGS=-buildvcs=false
 
-.PHONY: images lance-c test test-store shell
+.PHONY: images lance-c build bench test test-store shell
 
 # The link image (final cgo link, manylinux_2_28) and the cross image (Rust
 # archives for other targets, Debian 11).
@@ -32,6 +32,15 @@ images:
 lance-c:
 	$(DOCKER_RUN) -e CARGO_TARGET_DIR=/target/lance-c -w /work/lance-c $(CROSS_IMAGE) \
 		cargo +1.99.0 build --release --target x86_64-unknown-linux-gnu
+
+# The command line (DuckDB and the blob store; no Lance yet) into bin/.
+build:
+	$(DOCKER_RUN) -w /src $(LINK_IMAGE) go build -o bin/automaticum ./cmd/automaticum
+
+# The spike's measurement program into bin/.
+bench:
+	$(DOCKER_RUN) -w /src -e CGO_CFLAGS=-I$(LANCE_C)/include -e CGO_LDFLAGS=$(LANCE_LIB) $(LINK_IMAGE) \
+		go build -tags lance -o bin/bench ./spike/001-store/bench
 
 # Pure-Go packages: run on the host.
 test:

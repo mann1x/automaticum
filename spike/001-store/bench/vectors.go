@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"flag"
 	"fmt"
@@ -30,6 +31,30 @@ type generator struct {
 	dim     int
 	centres [][]float32
 	noise   float64
+	// jitter is set when the centres are real embeddings: each vector is a
+	// real one moved by noise of this length, so the set keeps the real
+	// sample's overall shape and its distance to the nearest neighbour.
+	jitter bool
+}
+
+// loadGenerator reads real vectors written by the embed subcommand.
+func loadGenerator(path string, dim int, noise float64) (*generator, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	if len(b) == 0 || len(b)%(4*dim) != 0 {
+		return nil, fmt.Errorf("%s: %d bytes is not a whole number of %d-dimension vectors", path, len(b), dim)
+	}
+	g := &generator{dim: dim, noise: noise, jitter: true, centres: make([][]float32, len(b)/(4*dim))}
+	for i := range g.centres {
+		v := make([]float32, dim)
+		for j := range v {
+			v[j] = math.Float32frombits(binary.LittleEndian.Uint32(b[4*(i*dim+j):]))
+		}
+		g.centres[i] = v
+	}
+	return g, nil
 }
 
 func newGenerator(dim, clusters int, noise float64, seed int64) *generator {
@@ -75,6 +100,7 @@ func cmdVectors(args []string) error {
 	queries := fs.Int("queries", 100, "queries per setting")
 	truth := fs.Int("truth", 50, "queries with an exact answer, for recall")
 	k := fs.Int("k", 10, "neighbours")
+	base := fs.String("base", "", "file of real vectors (embed -vectors-out): draw each vector as a real one plus noise")
 	reuse := fs.Bool("reuse", false, "query an existing dataset instead of building one")
 	floor := fs.Float64("free-floor-gb", 60, "stop if the filesystem has less free space than this")
 	fs.Parse(args)
@@ -83,7 +109,13 @@ func cmdVectors(args []string) error {
 	}
 	ctx := context.Background()
 	gen := newGenerator(*dim, *clusters, *noise, 1)
-	out := map[string]any{"n": *n, "dim": *dim, "clusters": *clusters, "noise": *noise, "k": *k}
+	if *base != "" {
+		var err error
+		if gen, err = loadGenerator(*base, *dim, *noise); err != nil {
+			return err
+		}
+	}
+	out := map[string]any{"n": *n, "dim": *dim, "clusters": len(gen.centres), "noise": *noise, "k": *k, "from_real_vectors": gen.jitter}
 
 	if !*reuse {
 		if entries, _ := os.ReadDir(*dir); len(entries) > 0 {
@@ -174,7 +206,7 @@ func cmdVectors(args []string) error {
 		Latency        latency
 	}
 	var settings []setting
-	for _, p := range [][2]int{{10, 0}, {20, 0}, {20, 10}, {50, 10}, {100, 10}, {100, 30}} {
+	for _, p := range [][2]int{{10, 0}, {20, 0}, {20, 10}, {50, 10}, {20, 30}, {50, 30}, {50, 50}, {100, 100}} {
 		o := store.SearchOptions{Limit: *k, Probes: p[0], Refine: p[1]}
 		var ds []time.Duration
 		var found, total int

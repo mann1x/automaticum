@@ -220,3 +220,16 @@
 - T2 crash test written and passing (`internal/store/storetest/crash_test.go`): 20 SIGKILLs, 320 acknowledged runs all in DuckDB, Lance holds whole appends only.
 - Benchmark harness `spike/001-store/bench/` (build tag `lance`): subcommands `vectors` (T10/T11), `state` (T6/T7/T12), `range` (T13). Run in the link image, capped at 8 cores / 48 GB; results under the spike root `work/results/`.
 - Host load was about 10 on 12 cores when the chain started: numbers carry noise, say so in the report.
+
+## Session: 2026-10-13 06:09
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 06:09
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+- Importer delivered by an agent and verified by me: gofmt, vet, tests, real corpus. Real import: 474 runs, 0 failed, 202 s with 2 workers, 43.4 GB raw -> 0.85 GB stored; verdict counts exact; `store check` OK.
+- `cmd/automaticum/main.go` written (version, legacy import, store check). Built in the link image; the host compiler cannot link DuckDB.
+- Bench findings so far: FTS p95 under 10 ms at 389k and 3.9M chunks; regex over raw streams 526 s (Go regexp, alternation) but 17 s when the streaming deltas are skipped; the build image has no /usr/bin/time; archive mover only 2.5 MB/s on many small blobs; synthetic isotropic clusters give poor PQ recall, real embeddings do much better, so synthetic sets are now real vectors plus noise.

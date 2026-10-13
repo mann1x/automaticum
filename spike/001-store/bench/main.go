@@ -19,7 +19,7 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: bench <vectors|state|range> [flags]")
+		fmt.Fprintln(os.Stderr, "usage: bench <vectors|state|range|chunks|text|regex|archive-half|embed|dedup> [flags]")
 		os.Exit(2)
 	}
 	var err error
@@ -30,6 +30,18 @@ func main() {
 		err = cmdState(os.Args[2:])
 	case "range":
 		err = cmdRange(os.Args[2:])
+	case "chunks":
+		err = cmdChunks(os.Args[2:])
+	case "text":
+		err = cmdText(os.Args[2:])
+	case "regex":
+		err = cmdRegex(os.Args[2:])
+	case "archive-half":
+		err = cmdArchiveHalf(os.Args[2:])
+	case "embed":
+		err = cmdEmbed(os.Args[2:])
+	case "dedup":
+		err = cmdDedup(os.Args[2:])
 	default:
 		err = fmt.Errorf("unknown subcommand %q", os.Args[1])
 	}
