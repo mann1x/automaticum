@@ -107,37 +107,37 @@ type StartResponse struct {
 
 // RunView is a run as the API shows it.
 type RunView struct {
-	ID            string          `json:"id"`
-	State         string          `json:"state"` // queued, running, finished
-	Batch         string          `json:"batch,omitempty"`
-	Task          string          `json:"task"`
-	TaskVersion   int             `json:"task_version,omitempty"`
-	Arm           string          `json:"arm,omitempty"`
-	ArmID         string          `json:"arm_id,omitempty"`
-	Lane          string          `json:"lane"`
-	Host          string          `json:"host,omitempty"`
-	Verdict       string          `json:"verdict,omitempty"`
-	VerdictReason string          `json:"verdict_reason,omitempty"`
-	PriorVerdict  string          `json:"prior_verdict,omitempty"`
-	AgentEnd      string          `json:"agent_end,omitempty"`
-	Claimed       *bool           `json:"claimed_success,omitempty"`
-	StartedAt     time.Time       `json:"started_at,omitzero"`
-	EndedAt       time.Time       `json:"ended_at,omitzero"`
-	WallMS        int64           `json:"wall_ms,omitempty"`
-	Provider      string          `json:"provider,omitempty"`
-	Model         string          `json:"model,omitempty"`
-	Endpoint      string          `json:"endpoint,omitempty"`
-	Thinking      string          `json:"thinking,omitempty"`
-	SDKRelease    string          `json:"sdk_release,omitempty"`
-	Imported      bool            `json:"imported,omitempty"`
+	ID            string    `json:"id"`
+	State         string    `json:"state"` // queued, running, finished
+	Batch         string    `json:"batch,omitempty"`
+	Task          string    `json:"task"`
+	TaskVersion   int       `json:"task_version,omitempty"`
+	Arm           string    `json:"arm,omitempty"`
+	ArmID         string    `json:"arm_id,omitempty"`
+	Lane          string    `json:"lane"`
+	Host          string    `json:"host,omitempty"`
+	Verdict       string    `json:"verdict,omitempty"`
+	VerdictReason string    `json:"verdict_reason,omitempty"`
+	PriorVerdict  string    `json:"prior_verdict,omitempty"`
+	AgentEnd      string    `json:"agent_end,omitempty"`
+	Claimed       *bool     `json:"claimed_success,omitempty"`
+	StartedAt     time.Time `json:"started_at,omitzero"`
+	EndedAt       time.Time `json:"ended_at,omitzero"`
+	WallMS        int64     `json:"wall_ms,omitempty"`
+	Provider      string    `json:"provider,omitempty"`
+	Model         string    `json:"model,omitempty"`
+	Endpoint      string    `json:"endpoint,omitempty"`
+	Thinking      string    `json:"thinking,omitempty"`
+	SDKRelease    string    `json:"sdk_release,omitempty"`
+	Imported      bool      `json:"imported,omitempty"`
 	// Paused says that the run was held at least once; the time held is
 	// not in its wall time (050 §4).
-	Paused bool `json:"paused,omitempty"`
-	ResolvedArm   json.RawMessage `json:"resolved_arm,omitempty"`
-	Provenance    json.RawMessage `json:"provenance,omitempty"`
-	Blobs         []BlobView      `json:"blobs,omitempty"`
-	Metrics       []MetricView    `json:"metrics,omitempty"`
-	Findings      []FindingView   `json:"findings,omitempty"`
+	Paused      bool            `json:"paused,omitempty"`
+	ResolvedArm json.RawMessage `json:"resolved_arm,omitempty"`
+	Provenance  json.RawMessage `json:"provenance,omitempty"`
+	Blobs       []BlobView      `json:"blobs,omitempty"`
+	Metrics     []MetricView    `json:"metrics,omitempty"`
+	Findings    []FindingView   `json:"findings,omitempty"`
 	// Settings are the run's sampling and thinking parameters as they
 	// were in effect (070 §4.1).
 	Settings []ingest.Setting `json:"settings,omitempty"`
