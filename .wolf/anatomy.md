@@ -123,6 +123,22 @@
 ## internal/config/
 
 - `arm.go` — the arm format: every setting stated, `extends` with origins, `Validate`, identity hash, `Diff` (~5000 tok)
+- `local.go` — the untracked side: `Local` (daemon, lanes, endpoints), `LoadLocal`, token and API key files (~2500 tok)
+- `config_test.go` — arm inheritance, switching off an inherited feature, rejections, local config loading (~3500 tok)
+
+## internal/stubmodel/
+
+- `stubmodel.go` — model server that plays a script over the Ollama chat protocol (chat, show, ps, tags, version); for tests only (~2300 tok)
+- `stubmodel_test.go` — script order, retried request, non-streamed answer, probes, status turn (~1200 tok)
+
+## arms/
+
+- `base.toml` — every guard, compaction and limit stated; other arms extend it (~600 tok)
+- `stub.toml` — arm for the stub model server; measures nothing (~150 tok)
+
+## examples/config/
+
+- `automaticum.toml`, `lanes/lane-1.toml`, `endpoints/local-ollama.toml`, `endpoints/stub.toml` — neutral example of the untracked configuration directory (~400 tok)
 
 ## internal/docker/
 

@@ -374,3 +374,19 @@
 |------|--------|---------|---------|--------|
 - Importer 0.2.0 delivered by an agent and verified by me (real corpus, file counts unchanged): 8 more INVALID by the old records, 18 INVALID for the stale lane script, 6 re-mapped to ABORTED, 9 to TIMEOUT, two sibling lanes (52 and 5 runs) imported with a lane prefix. Run 0166's kill is labelled "reported", not "documented": nothing in the corpus records it.
 - `internal/config/arm.go` written: SDK guards are ON when omitted, so an arm states each one and the runner must send an explicit value.
+
+## Session: 2026-10-13 09:27
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 09:27
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 09:33
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:40 | config: local.go, dropInherited, arms/, examples/config; stub model server | internal/config, internal/stubmodel, arms, examples | tests pass | ~9000 |

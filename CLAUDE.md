@@ -6,9 +6,9 @@ Follow `.wolf/OPENWOLF.md` every session. Check `.wolf/anatomy.md` before readin
 
 ## Status
 
-- Milestone 1 (store spike and legacy importer) is approved and in progress; the application code so far is the store in `internal/store/`, the legacy importer in `internal/legacyimport/`, the configuration loader in `internal/config/`, the Docker Engine client in `internal/docker/`, the task loader in `internal/task/` and the command line in `cmd/automaticum/`. The source of truth is the spec set in `docs/specs/` (`000-overview.md` to `110-acceptance-and-roadmap.md`, plus `decisions.md`). The two input documents are in `docs/specs/archive/` and are not edited.
+- Milestone 1 (store spike and legacy importer) is approved and in progress; the application code so far is the store in `internal/store/`, the legacy importer in `internal/legacyimport/`, the configuration loader in `internal/config/`, the stub model server in `internal/stubmodel/`, the Docker Engine client in `internal/docker/`, the task loader in `internal/task/` and the command line in `cmd/automaticum/`. The source of truth is the spec set in `docs/specs/` (`000-overview.md` to `110-acceptance-and-roadmap.md`, plus `decisions.md`). The two input documents are in `docs/specs/archive/` and are not edited.
 - automaticum is a test harness that runs coding agents against tasks with a verdict, on lanes it orchestrates itself.
-- Executable code today: tooling in `.wolf/hooks/` (Node ESM) and `.claude/hooks/` (Shell), the build setup (`go.mod`, `go.sum`, `Makefile`, `build/`), the store spike in `spike/001-store/`, the store in `internal/store/`, the legacy importer in `internal/legacyimport/`, the configuration loader in `internal/config/`, the Docker Engine client in `internal/docker/`, the task loader in `internal/task/`, the tasks in `tasks/` and the command line in `cmd/automaticum/`.
+- Executable code today: tooling in `.wolf/hooks/` (Node ESM) and `.claude/hooks/` (Shell), the build setup (`go.mod`, `go.sum`, `Makefile`, `build/`), the store spike in `spike/001-store/`, the store in `internal/store/`, the legacy importer in `internal/legacyimport/`, the configuration loader in `internal/config/`, the stub model server in `internal/stubmodel/`, the Docker Engine client in `internal/docker/`, the task loader in `internal/task/`, the tasks in `tasks/`, the arms in `arms/`, the example configuration in `examples/config/` and the command line in `cmd/automaticum/`.
 - Do not invent Go packages or build commands outside a milestone plan the owner has approved: check `docs/specs/110-acceptance-and-roadmap.md` section 3 and `docs/specs/decisions.md` first.
 
 ## Owner decisions
@@ -69,10 +69,13 @@ make shell SPIKE_ROOT=<dir>
 - **Store spike** (`spike/001-store/`): `REPORT.md` · `results/` · `linkcheck/README.md` · `bench/` (`main.go` · `state.go` · `vectors.go` · `rangeread.go` · `fs_linux.go` · `corpus.go` · `dedup.go` · `embed.go`)
 - **Store** (`internal/store/`): `store.go` · `blob/` (`doc.go` · `blob.go` · `put.go` · `read.go` · `archive.go` · `check.go` · `format.go` · `FORMAT.md`) · `duck/duck.go` · `lance/lance.go` · `storetest/` (`doc.go` · `crash_test.go`)
 - **Legacy importer** (`internal/legacyimport/`): `doc.go` · `importer.go` · `scan.go` · `secondpass.go` · `parse.go` · `stream.go` · `mapping.go` · `sink.go` · `verify.go` · `types.go` · tests (`fixture_test.go` · `import_test.go` · `parse_test.go` · `secondpass_test.go` · `stream_test.go`)
-- **Configuration** (`internal/config/`): `arm.go`
+- **Configuration** (`internal/config/`): `arm.go` · `local.go` · `config_test.go`
+- **Stub model server** (`internal/stubmodel/`): `stubmodel.go` · `stubmodel_test.go`
 - **Docker client** (`internal/docker/`): `docker.go` · `docker_test.go`
 - **Task loader** (`internal/task/`): `task.go` · `exec.go` · `task_test.go`
 - **Tasks** (`tasks/`): `custom/manic_miner/` (`task.toml` · `README.md`) · `demo/answer/` (`task.toml`)
+- **Arms** (`arms/`): `base.toml` · `stub.toml`
+- **Example configuration** (`examples/config/`): `automaticum.toml` · `endpoints/local-ollama.toml` · `endpoints/stub.toml` · `lanes/lane-1.toml`
 - **Command line** (`cmd/automaticum/`): `main.go` (`automaticum version` · `automaticum legacy import` · `automaticum store check`)
 - **Local, untracked** (`docs/local/`): host mapping and private paths
 - **OpenWolf state** (`.wolf/`): `OPENWOLF.md` · `anatomy.md` · `cerebrum.md` · `memory.md` · `buglog.json` · `identity.md` · `config.json` · `token-ledger.json` · `cron-manifest.json` · `cron-state.json` · `suggestions.json` · `designqc-report.json` · `reframe-frameworks.md` · `daemon.log`

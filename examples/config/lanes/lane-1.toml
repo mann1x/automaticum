@@ -1,0 +1,6 @@
+host = "linux-gpu-1"
+endpoints = ["stub", "local-ollama"]
+user = "1000:1000"
+cpus = 4
+memory_gb = 8
+pids = 1024

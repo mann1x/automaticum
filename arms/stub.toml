@@ -1,0 +1,20 @@
+# An arm for the stub model server: used by the harness's own tests and for
+# a first run on an installation. It measures nothing.
+extends = "base"
+endpoint = "stub"
+
+[model]
+provider = "ollama"
+model = "stub:latest"
+context_window = 32768
+output_tokens = 0
+
+[thinking]
+owner = "tag"
+
+[sampler]
+owner = "tag"
+
+[limits]
+wall_s = 300
+idle_s = 120

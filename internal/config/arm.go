@@ -218,6 +218,7 @@ func LoadArm(dir, name string) (*Arm, error) {
 		return nil, fmt.Errorf("arm %s: unknown fields: %s", name, strings.Join(keys, ", "))
 	}
 	a.Name, a.Origins = name, origins
+	a.dropInherited(armChain(dir, name))
 	if problems := a.Validate(); len(problems) > 0 {
 		return nil, &ArmError{Arm: name, Problems: problems}
 	}
@@ -243,6 +244,92 @@ func LoadArms(dir string) (map[string]*Arm, error) {
 	return out, nil
 }
 
+// armChain lists an arm and its parents, the arm first. It is called after
+// loadArmTree succeeded, so every file exists and there is no cycle.
+func armChain(dir, name string) []string {
+	var chain []string
+	for name != "" {
+		chain = append(chain, name)
+		var m struct {
+			Extends string `toml:"extends"`
+		}
+		toml.DecodeFile(filepath.Join(dir, name+".toml"), &m)
+		name = m.Extends
+	}
+	return chain
+}
+
+// dropInherited clears the settings of a feature that a child switched off
+// when those settings come from a parent further up. A child cannot unset a
+// parent's value, so without this an arm could never switch off a guard its
+// parent configures. A setting stated in the same file as the switch, or
+// below it, is not cleared: Validate reports it, because there it is a
+// mistake.
+func (a *Arm) dropInherited(chain []string) {
+	rank := func(key string) int {
+		for i, f := range chain {
+			if f == a.Origins[key] {
+				return i
+			}
+		}
+		return -1
+	}
+	// inherited reports whether key was stated further up than the switch.
+	inherited := func(sw, key string) bool { return rank(key) > rank(sw) && rank(sw) >= 0 }
+	drop := func(sw, key string, clear func()) {
+		if inherited(sw, key) {
+			clear()
+			delete(a.Origins, key)
+		}
+	}
+	if a.Guards.LoopDetection.Enabled != nil && !*a.Guards.LoopDetection.Enabled {
+		drop("guards.loop_detection.enabled", "guards.loop_detection.soft", func() { a.Guards.LoopDetection.Soft = nil })
+		drop("guards.loop_detection.enabled", "guards.loop_detection.hard", func() { a.Guards.LoopDetection.Hard = nil })
+	}
+	if c := &a.Compaction; c.Enabled != nil && !*c.Enabled {
+		const sw = "compaction.enabled"
+		drop(sw, "compaction.strategy", func() { c.Strategy = "" })
+		drop(sw, "compaction.keep_recent_messages", func() { c.KeepRecentMessages = nil })
+		drop(sw, "compaction.council", func() { c.Council = nil })
+		drop(sw, "compaction.thinking_summary", func() { c.ThinkingSummary = nil })
+		drop(sw, "compaction.capped_thinking", func() { c.CappedThinking = nil })
+		drop(sw, "compaction.force_full_from", func() { c.ForceFullFrom = nil })
+	}
+	if a.Protocol.Mode == "off" {
+		drop("protocol.mode", "protocol.max_changes", func() { a.Protocol.MaxChanges = nil })
+		drop("protocol.mode", "protocol.max_transactions", func() { a.Protocol.MaxTransactions = nil })
+	}
+	if tp := &a.Agent.TaskProgress; tp.Enabled != nil && !*tp.Enabled {
+		drop("agent.task_progress.enabled", "agent.task_progress.interval", func() { tp.Interval = nil })
+	}
+	if th := &a.Thinking; th.Owner == "tag" || (th.Enabled != nil && !*th.Enabled) {
+		sw := "thinking.owner"
+		if th.Owner != "tag" {
+			sw = "thinking.enabled"
+		}
+		drop(sw, "thinking.effort", func() { th.Effort = "" })
+		drop(sw, "thinking.budget_tokens", func() { th.BudgetTokens = nil })
+		if th.Owner == "tag" {
+			drop(sw, "thinking.enabled", func() { th.Enabled = nil })
+		}
+	}
+	if sm := &a.Sampler; sm.Owner == "tag" {
+		const sw = "sampler.owner"
+		drop(sw, "sampler.name", func() { sm.Name = "" })
+		drop(sw, "sampler.temperature", func() { sm.Temperature = nil })
+		drop(sw, "sampler.top_p", func() { sm.TopP = nil })
+		drop(sw, "sampler.top_k", func() { sm.TopK = nil })
+		drop(sw, "sampler.min_p", func() { sm.MinP = nil })
+		drop(sw, "sampler.typical_p", func() { sm.TypicalP = nil })
+		drop(sw, "sampler.repeat_penalty", func() { sm.RepeatPenalty = nil })
+		drop(sw, "sampler.repeat_last_n", func() { sm.RepeatLastN = nil })
+		drop(sw, "sampler.presence_penalty", func() { sm.PresencePenalty = nil })
+		drop(sw, "sampler.frequency_penalty", func() { sm.FrequencyPenalty = nil })
+		drop(sw, "sampler.seed", func() { sm.Seed = nil })
+		drop(sw, "sampler.stop", func() { sm.Stop = nil })
+	}
+}
+
 // ArmError lists everything wrong with an arm.
 type ArmError struct {
 	Arm      string
@@ -255,6 +342,9 @@ func (e *ArmError) Error() string {
 
 // loadArmTree reads an arm file and its parents into one map, child over
 // parent, and records which file each leaf value came from.
+//
+// A switch in a child also switches off what hangs under it in a parent: see
+// dropInherited.
 func loadArmTree(dir, name string, seen []string) (map[string]any, map[string]string, error) {
 	if !armNameRE.MatchString(name) {
 		return nil, nil, fmt.Errorf("arm: %q is not a valid arm name", name)
@@ -406,6 +496,8 @@ func (a *Arm) Validate() []string {
 	need(g.TaskProgress.Enabled != nil, "agent.task_progress.enabled")
 	if on(g.TaskProgress.Enabled) {
 		need(g.TaskProgress.Interval != nil, "agent.task_progress.interval")
+	} else if g.TaskProgress.Interval != nil {
+		bad("agent.task_progress is off: interval must not be stated")
 	}
 	need(g.SubAgents.Spawn != nil, "agent.sub_agents.spawn")
 	need(g.SubAgents.Teams != nil, "agent.sub_agents.teams")

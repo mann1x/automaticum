@@ -1,0 +1,10 @@
+# The daemon's own file. Copy this directory, edit it, and start the daemon
+# with --config <the copy>. A real copy holds addresses and paths and is not
+# tracked in a repository.
+
+data_root = "/var/lib/automaticum"         # live tier, workspaces, artefacts
+archive_root = ""                           # archive tier; optional
+free_floor_gb = 50                          # start no run with less free space
+listen = "127.0.0.1:7411"                   # loopback; anything else needs the token
+token_file = "token"                        # mode 0600, 32 characters or more
+repo = "/opt/automaticum"                   # the checkout with arms/, tasks/, images/

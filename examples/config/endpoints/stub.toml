@@ -1,0 +1,5 @@
+# The stub model server the daemon can start for tests (automaticum stub).
+kind = "ollama"
+base_url = "http://172.17.0.1:7412"
+host = "linux-gpu-1"
+capacity = 1

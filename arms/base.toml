@@ -1,0 +1,68 @@
+# The settings every arm here shares. It is not runnable by itself: it names
+# no endpoint, no model, no sampler and no thinking owner.
+#
+# Every guard and every compaction setting is stated, because the SDK turns
+# most of them on when a field is left out (docs/specs/030 section 5.1). The
+# values marked "extension" are what the VS Code extension sets.
+
+[agent]
+mode = "act"
+host_ide = "VS Code"        # extension
+max_iterations = 0          # no cap
+mistake_limit = 6           # extension
+tool_result_cap = 64000     # extension
+approval = "auto"
+checkpoints = true          # extension
+config_extensions = []      # load nothing from the workspace
+bundled_skills = []         # the SDK's three media skills are off
+escalation = false
+
+[agent.task_progress]
+enabled = true              # extension
+interval = 2
+
+[agent.sub_agents]
+spawn = false
+teams = false
+
+[guards]
+edit_verification = "nudge" # extension
+
+[guards.loop_detection]
+enabled = true
+soft = 3
+hard = 5
+
+[guards.reasoning_loop]
+enabled = true
+
+[guards.reasoning_repetition]
+enabled = true
+
+[guards.strong_nudges]
+enabled = true
+
+[guards.tool_intent]
+enabled = true
+
+[guards.stale_read_rewrites]
+enabled = true
+
+[compaction]
+enabled = true
+strategy = "agentic"        # extension
+keep_recent_messages = true
+council = true
+thinking_summary = true
+capped_thinking = true
+force_full_from = 0
+
+[protocol]
+mode = "off"
+
+[limits]
+wall_s = 7200
+idle_s = 1800
+
+[harness]
+sdk_release = "4.100.250"

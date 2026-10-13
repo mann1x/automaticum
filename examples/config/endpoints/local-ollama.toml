@@ -1,0 +1,6 @@
+kind = "ollama"
+# The address as a lane's container reaches it: the Docker bridge's gateway,
+# not localhost, and never an address that listens on every interface.
+base_url = "http://172.17.0.1:11434"
+host = "linux-gpu-1"
+capacity = 1
