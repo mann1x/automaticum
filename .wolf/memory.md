@@ -786,3 +786,14 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 17:40 | compared the detectors with omnimergekit's reference code on 907 blocks; thresholds keyed to SDK release tags (mail 1266) | internal/detect/reference_test.go, internal/ingest/sample_test.go, guards.go, 070 | 0 differences the older way; 3 more firings the reference way | ~6000 |
+
+## Session: 2026-10-13 17:23
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 17:23
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:05 | D77 pause inside a run deferred to SDK support; mail 1271 to the SDK session; mails 1267-1269 read | decisions, 050, cerebrum | recorded | ~800 |

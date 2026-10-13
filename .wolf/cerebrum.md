@@ -120,6 +120,7 @@
 - 2026-10-13 D71: a tag without a stated identity runs and is marked unknown with a finding.
 - 2026-10-13 D72: GPU declared in the endpoint's configuration now, measured with agent mode later.
 - 2026-10-13 D73: model reloaded mid-run or partly off the GPU makes a run INVALID by default; an arm may accept either (`[accepts] model_reload`, `partial_gpu`) because the owner may want to test exactly that. Closes O21.
+- 2026-10-13 D77: pause inside a run waits for SDK support (asked by mail 1271); pause between runs only until then.
 - 2026-10-13 D76: looping detectors use every match (the older first-match-only code is a blind spot); published loop rates are not reworked; every finding records `matching` and the library version.
 - 2026-10-13 D75: detector thresholds are the SDK guards' own (measured on recorded sessions), never chosen here; runaway has no default size. Closes O19, O20.
 - 2026-10-13 D74: tag `qwen36-base-mtp_tb:27b-q4km-128k` is the base Qwen 3.6 27B model (variant `base`); GPU of `windows-2` is an RTX 3090, 24 GB; the ten real runs of that day got these facts added, marked as added later (`run identify`).

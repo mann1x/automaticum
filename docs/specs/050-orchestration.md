@@ -1,6 +1,6 @@
 # 050 — Orchestration: scheduling, gates, control
 
-**Status:** draft 0.9, 2026-10-13.
+**Status:** draft 0.10, 2026-10-13.
 
 ## 1. Scheduling
 
@@ -124,6 +124,8 @@ batch, campaign, lane and whole daemon.
   **Decided by the owner (2026-10-12):** paused intervals are recorded and
   subtracted from wall-time metrics, and the run carries a `paused` flag so
   reports can filter it or show it apart.
+  **Decided by the owner (2026-10-13), D77:** pause inside a run is added
+  when the SDK supports it; until then pause works between runs only.
 - **Infrastructure errors** (endpoint down, 429, network) wait and retry and
   are recorded as such. They are never the model's failure.
 - **Restart:** the daemon survives its own restart. Runs in flight are
