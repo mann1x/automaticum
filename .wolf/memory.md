@@ -711,3 +711,24 @@
 | 15:19 | Created ../../../../root/.claude/projects/-srv-dev-disk-by-label-opt-dev-automaticum/memory/durations-as-hours-minutes-seconds.md | — | ~280 |
 | 15:19 | Session end: 1 writes across 1 files (durations-as-hours-minutes-seconds.md) | 1 reads | ~3227 tok |
 | 15:28 | D70-D72: model catalogue (models/), endpoint [hardware], run.Inference in every run's record, weights-file metadata and engine kept by the probe, finding model_identity, sampler in effect (ingest.InEffect) and "where and what" in run show | internal/config/model.go, internal/run/*, internal/ingest/sampler.go, internal/daemon/*, cmd/automaticum/client_cmds.go, models/*, docs/specs/020,030,decisions | tests pass; daemon not yet restarted (a real run is in flight) | ~9000 |
+
+## Session: 2026-10-13 15:28
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 15:29
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 15:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 15:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:45 | five real runs on SDK 4.100.251 read and recorded against the five on 4.100.250 | docs/specs/110-acceptance-and-roadmap.md | 5/5 PASS on both; budget 48,000 served; ranges overlap | ~1500 |

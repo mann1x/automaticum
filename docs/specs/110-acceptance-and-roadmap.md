@@ -1,6 +1,6 @@
 # 110 — Acceptance and roadmap
 
-**Status:** draft 0.12, 2026-10-13. The milestone order in §3 was approved by the owner
+**Status:** draft 0.13, 2026-10-13. The milestone order in §3 was approved by the owner
 on 2026-10-12. Milestone 1 has been carried out: the store, the importer and
 the spike's measurements exist (080 §7.4, 100 §7), and the owner has decided
 the questions it raised (D46 to D51). Milestone 2 was planned and approved on
@@ -131,7 +131,34 @@ sends every effort level as `think: true` and drops the options its schema
 does not name (presence penalty among them). Release 4.100.251 of the same
 day corrects it (X8). An arm on 4.100.250 that states an effort level runs
 on the tag's budget, and says so in a finding. Both releases are provisioned
-side by side (040 §3.1); no real run has been made on 4.100.251 yet.
+side by side (040 §3.1).
+
+**Five runs of the same arm on 4.100.251** (arm
+`qwen36-mtp-27b-high-sdk-4.100.251`, a separate arm, the same day, the same
+lane, endpoint, model tag and task version): what the arm states is what was
+sent. `think: "high"` and `presence_penalty: 0` are in every agent request,
+the server answered a thinking budget of 48,000 tokens, and no "stated, not
+sent" finding remains. No reload, model whole on the GPU.
+
+| | 4.100.250 (budget 24,000) | 4.100.251 (budget 48,000) |
+|---|---|---|
+| `PASS` | 5 of 5 | 5 of 5 |
+| wall, median (least to most) | 12m 13s (6m 00s to 26m 22s) | 13m 26s (8m 14s to 18m 41s) |
+| requests | 18 to 31 | 18 to 51 |
+| tokens out, median (least to most) | 34,136 (13,886 to 73,050) | 28,822 (17,745 to 47,497) |
+| of which reasoning, median | 27,300 | 19,611 |
+| generation rate | 52.2 to 66.2 tok/s | 51.7 to 63.4 tok/s |
+| peak share of the window | 28% to 44% | 26% to 48% |
+| failed tool calls, per run | 0, 4, 2, 0, 0 | 1, 0, 2, 0, 9 |
+| reasoning block of 10,000 characters or more | 4 of 5 runs | 5 of 5 runs |
+
+The two are different arms and are not pooled. With five runs each, the
+ranges overlap on every row: nothing here shows that the larger budget
+changed the wall time, the token count or the verdict on this task. No run
+on either build used its budget in one block (the longest reasoning block is
+about 117,000 characters, on 4.100.251). The notes that remain on 4.100.251
+are the two of the paragraph below (`num_predict` and `placement`) and the
+long reasoning blocks.
 
 The detector library (070 §3.2) over the same five runs: no looping detector
 fired on any block; four of the five have at least one reasoning block of
@@ -159,9 +186,10 @@ was brought into the daemon's store the same day):
 
 | | task version | runs | `PASS` | other | median wall of `PASS` |
 |---|---|---|---|---|---|
-| old harness | 1 | 11 | 10 | 1 `ABORTED` | 555 s |
-| old harness | 2 | 67 | 66 | 1 `ABORTED` | 913 s (231 to 2,903) |
-| automaticum | 4 | 5 | 5 | none | 733 s (360 to 1,582) |
+| old harness | 1 | 11 | 10 | 1 `ABORTED` | 9m 15s |
+| old harness | 2 | 67 | 66 | 1 `ABORTED` | 15m 13s (3m 51s to 48m 23s) |
+| automaticum, SDK 4.100.250 | 4 | 5 | 5 | none | 12m 13s (6m 00s to 26m 22s) |
+| automaticum, SDK 4.100.251 | 4 | 5 | 5 | none | 13m 26s (8m 14s to 18m 41s) |
 
 This is not a like-for-like comparison and must not be pooled: the task
 version, the SDK build, the lane (a container against a host process), the
