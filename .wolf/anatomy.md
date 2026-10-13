@@ -145,6 +145,15 @@
 - `api.go` — the HTTP API and its types: status, runs (start, list, show, stream, blobs, stop, abort, invalidate), drain; token rule (~5200 tok)
 - `daemon_test.go` — in-memory state and fake runner: order, idempotency, stream, abort, stop, invalidate, drain, daemon stop, recovery (~5200 tok)
 
+## runner/
+
+- `PROTOCOL.md` — the contract with the harness, protocol 1; says the main program has not yet run against the SDK (~900 tok)
+- `runner.mjs` — one session for one run: SDK release check, clean home, wire, system prompt, read-back, events as lines, wall limit, last line (~2600 tok)
+- `session.mjs` — resolved arm to session configuration, and the comparison with what the SDK reports; no SDK import (~2300 tok)
+- `wire.mjs` — a fetch that records every request and response whole with timing; `describe` for errors (~1500 tok)
+- `package.json` — pins `@cerebriline/sdk` 4.100.250; no lockfile until that release exists (~100 tok)
+- `test/wire.test.mjs`, `test/session.test.mjs`, `test/arm-stub.json` — tests that need no SDK; the fixture is checked by `internal/config/runner_fixture_test.go` (~3500 tok)
+
 ## internal/run/
 
 - `protocol.go` — the contract with the runner: `Job`, `End`, outcomes, the stream reader, `SDKReleaseLabel` (~1400 tok)

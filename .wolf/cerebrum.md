@@ -36,6 +36,8 @@
 - `Run.Harness` holds the SDK release only once established (image label, then the runner's own finding). The release an arm names is in the resolved arm and in `provenance.sdk.named`. Never show a named release as the run's release.
 - The daemon runs on the host as `bin/automaticumd --config <dir>` (built by `make build` in the link image; glibc of manylinux 2.28 runs on the host). First SIGTERM drains, the second aborts. Find its pid with `pidof automaticumd`.
 - No test image may carry the `automaticum.sdk.release` label unless that SDK is really installed in it: the label is what a run's record trusts before the runner confirms.
+- Runner tests run in the pinned Node image, never with a host Node: `docker run --rm --network none -v $PWD/runner:/runner:ro -w /runner node@sha256:86f07bc9… node --test test/`. `runner/test/arm-stub.json` must be rewritten with `automaticum arm show stub --json` whenever `arms/stub.toml` or `arms/base.toml` changes (a Go test fails otherwise).
+- The SDK source keeps the `@cline/*` names; a pack script renames the five packages to `@cerebriline/*` at one version. `@cerebriline/sdk` re-exports core. The system prompt builder is exported from core only as `getClineDefaultSystemPrompt`. `ask_question` is absent unless the host supplies an executor. (From a sub-agent's read of the SDK main branch; unverified until the runner runs.)
 
 ## Do-Not-Repeat
 

@@ -1,6 +1,6 @@
 # 100 — Import of the old harness's corpus
 
-**Status:** draft 0.8, 2026-10-13. The importer exists
+**Status:** draft 0.9, 2026-10-13. The importer exists
 (`internal/legacyimport`) and has imported the run directories of the real
 corpus; §7 has the result. The figures in §1 are from a read-only survey on
 2026-10-12, corrected where the import showed otherwise. The old harness is
@@ -238,3 +238,13 @@ re-mapping changes the mapped verdict only.
   abandoned runs. Both sibling lanes have a verdict file.
 - The two `PASS` that became `INVALID` are runs of 2026-09-11 that the old
   change log says must not be read as an arm.
+
+### 8.1 The import as carried out
+
+Done on 2026-10-13 with importer 0.2.0 into the store that already held the
+first import. The old harness and both sibling lanes were mounted read-only;
+their file counts were the same before and after. All five verdict files
+(three of the main lane, one of each sibling lane) are reproduced exactly from
+the original words. The store now holds 531 runs (474, 52 and 5), 71,739 tool
+calls and 280 findings. `automaticum store check` verified 9,042 blobs across
+both tiers and found no reference without its blob.

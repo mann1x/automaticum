@@ -444,3 +444,14 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 10:25 | specs: 030 templates, 040 release state + 6.1.1 + runner contract 7.1, 050 control as built, 090 commands built, 110 status, X6/X7 | docs/specs | drafts bumped | ~5000 |
+
+## Session: 2026-10-13 10:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 10:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:15 | runner written (wire, session mapping + read-back, main program, PROTOCOL.md); real import 0.2.0 with lanes: 531 runs, store check OK | runner/, docs/specs/100 | 8 runner tests pass in the Node image; runner.mjs not run against the SDK (4.100.250 unreleased) | ~12000 |

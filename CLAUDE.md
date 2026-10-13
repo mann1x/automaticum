@@ -6,9 +6,9 @@ Follow `.wolf/OPENWOLF.md` every session. Check `.wolf/anatomy.md` before readin
 
 ## Status
 
-- Milestone 1 (store spike and legacy importer) is approved and in progress; the application code so far is the store in `internal/store/`, the legacy importer in `internal/legacyimport/`, the configuration loader in `internal/config/`, the stub model server in `internal/stubmodel/`, the Docker Engine client in `internal/docker/`, the task loader in `internal/task/`, the run executor in `internal/run/`, the daemon in `internal/daemon/` and `cmd/automaticumd/` and the command line in `cmd/automaticum/`. The source of truth is the spec set in `docs/specs/` (`000-overview.md` to `110-acceptance-and-roadmap.md`, plus `decisions.md`). The two input documents are in `docs/specs/archive/` and are not edited.
+- Milestone 1 (store spike and legacy importer) is approved and in progress; the application code so far is the store in `internal/store/`, the legacy importer in `internal/legacyimport/`, the configuration loader in `internal/config/`, the stub model server in `internal/stubmodel/`, the Docker Engine client in `internal/docker/`, the task loader in `internal/task/`, the run executor in `internal/run/`, the daemon in `internal/daemon/` and `cmd/automaticumd/`, the runner in `runner/` and the command line in `cmd/automaticum/`. The source of truth is the spec set in `docs/specs/` (`000-overview.md` to `110-acceptance-and-roadmap.md`, plus `decisions.md`). The two input documents are in `docs/specs/archive/` and are not edited.
 - automaticum is a test harness that runs coding agents against tasks with a verdict, on lanes it orchestrates itself.
-- Executable code today: tooling in `.wolf/hooks/` (Node ESM) and `.claude/hooks/` (Shell), the build setup (`go.mod`, `go.sum`, `Makefile`, `build/`), the store spike in `spike/001-store/`, the store in `internal/store/`, the legacy importer in `internal/legacyimport/`, the configuration loader in `internal/config/`, the stub model server in `internal/stubmodel/`, the Docker Engine client in `internal/docker/`, the task loader in `internal/task/`, the run executor in `internal/run/`, the daemon in `internal/daemon/` and `cmd/automaticumd/`, the tasks in `tasks/`, the arms in `arms/`, the example configuration in `examples/config/` and the command line in `cmd/automaticum/`.
+- Executable code today: tooling in `.wolf/hooks/` (Node ESM) and `.claude/hooks/` (Shell), the build setup (`go.mod`, `go.sum`, `Makefile`, `build/`), the store spike in `spike/001-store/`, the store in `internal/store/`, the legacy importer in `internal/legacyimport/`, the configuration loader in `internal/config/`, the stub model server in `internal/stubmodel/`, the Docker Engine client in `internal/docker/`, the task loader in `internal/task/`, the run executor in `internal/run/`, the daemon in `internal/daemon/` and `cmd/automaticumd/`, the runner in `runner/` (Node ESM), the tasks in `tasks/`, the arms in `arms/`, the example configuration in `examples/config/` and the command line in `cmd/automaticum/`.
 - Do not invent Go packages or build commands outside a milestone plan the owner has approved: check `docs/specs/110-acceptance-and-roadmap.md` section 3 and `docs/specs/decisions.md` first.
 
 ## Owner decisions
@@ -69,13 +69,14 @@ make shell SPIKE_ROOT=<dir>
 - **Store spike** (`spike/001-store/`): `REPORT.md` · `results/` · `linkcheck/README.md` · `bench/` (`main.go` · `state.go` · `vectors.go` · `rangeread.go` · `fs_linux.go` · `corpus.go` · `dedup.go` · `embed.go`)
 - **Store** (`internal/store/`): `store.go` · `blob/` (`doc.go` · `blob.go` · `put.go` · `read.go` · `archive.go` · `check.go` · `format.go` · `FORMAT.md`) · `duck/duck.go` · `lance/lance.go` · `storetest/` (`doc.go` · `crash_test.go`)
 - **Legacy importer** (`internal/legacyimport/`): `doc.go` · `importer.go` · `scan.go` · `secondpass.go` · `parse.go` · `stream.go` · `mapping.go` · `sink.go` · `verify.go` · `types.go` · tests (`fixture_test.go` · `import_test.go` · `parse_test.go` · `secondpass_test.go` · `stream_test.go`)
-- **Configuration** (`internal/config/`): `arm.go` · `local.go` · `config_test.go`
+- **Configuration** (`internal/config/`): `arm.go` · `local.go` · `config_test.go` · `runner_fixture_test.go`
 - **Stub model server** (`internal/stubmodel/`): `stubmodel.go` · `stubmodel_test.go`
 - **Docker client** (`internal/docker/`): `docker.go` · `docker_test.go`
 - **Task loader** (`internal/task/`): `task.go` · `exec.go` · `task_test.go`
 - **Run executor** (`internal/run/`): `run.go` · `protocol.go` · `probe.go` · `verdict.go` · `run_test.go`
 - **Daemon** (`internal/daemon/`): `daemon.go` · `api.go` · `daemon_test.go`
 - **Daemon command** (`cmd/automaticumd/`): `main.go`
+- **Runner** (`runner/`, Node ESM, runs only inside the lane container): `PROTOCOL.md` · `package.json` · `runner.mjs` · `session.mjs` · `wire.mjs` · `test/` (`arm-stub.json` · `session.test.mjs` · `wire.test.mjs`)
 - **Tasks** (`tasks/`): `custom/manic_miner/` (`task.toml` · `README.md`) · `demo/answer/` (`task.toml`)
 - **Arms** (`arms/`): `base.toml` · `stub.toml`
 - **Example configuration** (`examples/config/`): `automaticum.toml` · `endpoints/local-ollama.toml` · `endpoints/stub.toml` · `lanes/lane-1.toml`
