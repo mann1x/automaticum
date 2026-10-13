@@ -1,6 +1,6 @@
 # 040 — The runner
 
-**Status:** draft 0.9, 2026-10-13. Facts about the SDK in this file were read
+**Status:** draft 1.0, 2026-10-13. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
 running it. The parity table in §6 was checked row by row by the Cerebriline
 session on 2026-10-13 against its main branch (release 4.100.249 plus requests
@@ -76,6 +76,20 @@ Three layers, each recorded:
    run is compared to the arm (sampler, thinking, context, output budget, stop
    sequences); every later request is compared too, and a difference is a
    parameter-drift finding (070 §4).
+
+**Measured on 2026-10-13 (release 4.100.250, provider `xollama`):** layer 2
+is not proof of layer 3. The SDK reported a reasoning effort, the thinking
+budget it derives from that effort, and a sampler value of zero as resolved;
+none of the three was in the request. The request carried `think: true` and
+the server applied the model tag's own thinking budget (110 §3.1). An arm
+field that the provider does not send must therefore show in the run's
+record as "stated, not sent", and that comes from the wire alone. The
+comparison of the first request with the arm is not automatic yet; it is
+detector work (070 §4).
+
+A value the SDK derives from what the arm states (a thinking budget from an
+effort, an output cap from the context window) is not a deviation. The runner
+records it beside the resolved configuration.
 
 The SDK's environment-driven request capture is not used: it truncates bodies
 at 64 KB unless raised, and it is configured by environment.

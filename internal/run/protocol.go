@@ -76,6 +76,10 @@ type End struct {
 	// with the arm, or says why it was not.
 	ReadBack string `json:"read_back"`
 	Requests int    `json:"requests"`
+	// Iterations is how many turns the agent took; Questions how many of
+	// its questions the scripted user answered.
+	Iterations *int `json:"iterations"`
+	Questions  int  `json:"questions_answered"`
 }
 
 // Runner outcomes.

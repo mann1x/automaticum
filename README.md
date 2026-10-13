@@ -4,11 +4,13 @@ A test harness that runs coding agents against tasks with a verdict, on lanes it
 orchestrates itself, and answers the questions about those runs without a
 throwaway script.
 
-> **Status: milestone 1 of 7 carried out.** There is no harness yet. What
-> exists is the store (`internal/store`), the importer for the old harness's
-> corpus (`internal/legacyimport`), a command line with `legacy import` and
-> `store check`, and the store spike with its
-> [report](spike/001-store/REPORT.md). The design is the
+> **Status: milestone 2 of 7 carried out.** A walking skeleton exists: the
+> daemon `automaticumd` and the command line, one Docker lane, the runner on
+> a pinned SDK release with every request and response recorded, the
+> `manic_miner` task with a proven oracle, the six verdicts and the run
+> record. It has run against a scripted stub model server and against a real
+> model ([first runs](docs/specs/110-acceptance-and-roadmap.md)). There are no
+> gates, detectors, batches, statistics or dashboards yet. The design is the
 > spec set in [`docs/specs/`](docs/specs/000-overview.md). Items a
 > spec marks **Open** are questions, not decisions; they are listed in
 > [`docs/specs/decisions.md`](docs/specs/decisions.md).

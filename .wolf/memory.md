@@ -544,3 +544,14 @@
 | 10:54 | Session end: 1 writes across 1 files (arm-values-come-from-the-owner.md) | 0 reads | ~431 tok |
 | 11:33 | Session end: 1 writes across 1 files (arm-values-come-from-the-owner.md) | 0 reads | ~431 tok |
 | 12:10 | First five real runs (D55 arm, manic_miner v4): 5/5 PASS, walls 733 828 689 360 1582 s (median 733; owner's reference 720). Wire: sampler and num_ctx as the arm; thinking effort and presence penalty 0 not sent | docs/specs/110 | recorded; daemon stopped | ~6000 |
+
+## Session: 2026-10-13 12:03
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 12:03
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:45 | M2 wrap-up: README status, 040 read-back is not proof, runner end line fields (iterations, questions) | README.md, docs/specs/040, internal/run/protocol.go | tests pass | ~1500 |
