@@ -123,7 +123,18 @@ Before these, five runs of an earlier draft of the arm were recorded
 budget derived by the SDK was taken for a deviation). No request reached the
 model. They stay in the store.
 
-Not done: a comparison with the old harness's runs from the store. The
-daemon of this milestone writes to its own new store; the imported corpus is
-in another one. Bringing them together is a configuration step that has not
-been taken.
+**Against the old harness** (same model tag, from the imported corpus, which
+was brought into the daemon's store the same day):
+
+| | task version | runs | `PASS` | other | median wall of `PASS` |
+|---|---|---|---|---|---|
+| old harness | 1 | 11 | 10 | 1 `ABORTED` | 555 s |
+| old harness | 2 | 67 | 66 | 1 `ABORTED` | 913 s (231 to 2,903) |
+| automaticum | 4 | 5 | 5 | none | 733 s (360 to 1,582) |
+
+This is not a like-for-like comparison and must not be pooled: the task
+version, the SDK build, the lane (a container against a host process), the
+context window and the sampler all differ, and the old runs' thinking
+setting was not recorded. What it does show is that the new harness produces
+verdicts and times in the range the old one did for this tag, and close to
+the owner's reference in the editor.

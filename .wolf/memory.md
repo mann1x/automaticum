@@ -555,3 +555,19 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 12:45 | M2 wrap-up: README status, 040 read-back is not proof, runner end line fields (iterations, questions) | README.md, docs/specs/040, internal/run/protocol.go | tests pass | ~1500 |
+
+## Session: 2026-10-13 12:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 12:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 12:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:55 | Old corpus imported into the daemon's store (531 runs, counts unchanged); comparison with the old harness added to 110 §3.1 | docs/specs/110 | one store now | ~1500 |
