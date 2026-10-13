@@ -224,6 +224,11 @@
 - `run.go` — Interface: Engine (9 methods) (~6352 tok)
 - `verdict.go` — Facts (20 fields) (~588 tok)
 
+## internal/sdk/
+
+- `sdk.go` — Env (Def, List, Check, Add, Rebuild, Path), Def (sdk.toml), Record (bundle.json), HashTree: SDK builds as pinned bundles with archived packages (~4300 tok)
+- `sdk_test.go` — definitions; a real install, second install, offline rebuild and tampering in containers (needs AUTOMATICUM_TEST_DIR) (~1700 tok)
+
 ## internal/store/
 
 - `store.go` — defines the one interface through which automaticum reaches (~2712 tok)

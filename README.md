@@ -5,8 +5,9 @@ orchestrates itself, and answers the questions about those runs without a
 throwaway script.
 
 > **Status: milestone 3 of 7 built.** The daemon `automaticumd` and the
-> command line run an agent on a task in one Docker lane, on a pinned SDK
-> release, with every request and response recorded, and give one of six
+> command line run an agent on a task in one Docker lane, on the SDK build
+> its arm names (several builds side by side, each reproducible with no
+> registry), with every request and response recorded, and give one of six
 > verdicts from an oracle that is proven against fixtures. Before a run the
 > gates are asked (`automaticum doctor` asks them at any time); after it,
 > metrics, tool calls and findings are derived from the stored material: the

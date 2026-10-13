@@ -1,28 +1,13 @@
 {
   "name": "automaticum-runner",
   "private": true,
-  "version": "0.1.0",
-  "description": "Runs one agent session for automaticum inside a lane's container (protocol 1).",
+  "version": "0.2.0",
+  "description": "Runs one agent session for automaticum inside a lane's container (protocol 1). It holds no SDK: the build an arm names is mounted at node_modules (see sdk/).",
   "type": "module",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
     "test": "node --test"
-  },
-  "dependencies": {
-    "@cerebriline/sdk": "4.100.250"
-  },
-  "//overrides": "zod is pinned to the version the SDK's own lockfile resolves (4.4.3). The SDK's range ^4.3.6 lets a fresh install take a later zod whose JSON-schema internals its bundle does not match (TypeError in recordProcessor).",
-  "overrides": {
-    "@cerebriline/shared": {
-      "zod": "4.4.3"
-    },
-    "@cerebriline/core": {
-      "zod": "4.4.3"
-    },
-    "@cerebriline/llms": {
-      "zod": "4.4.3"
-    }
   }
 }

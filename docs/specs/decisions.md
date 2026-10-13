@@ -75,6 +75,9 @@ All dated 2026-10-12.
 | D63 | An arm value that the provider does not send (first seen: thinking effort on `xollama`) does **not** stop the run: the run starts, a finding "stated, not sent" is attached, and reports show the effective value. | 050 §3.1, 070 §4 |
 | D64 | When the endpoint is busy at the start of a run (another model loaded, or a request that is not ours), the run **waits** in the queue and the gate notifies once; nothing is unloaded or disturbed. | 050 §3.1 |
 | D65 | The old corpus gets the text detectors, through `reanalyse`; metrics that need the wire capture exist for new runs only. | 070 §3, 100 |
+| D66 | Several SDK builds are supported at the same time. Lane images are SDK-agnostic; the build an arm names is provisioned at run time; testing is reproducible on demand (2026-10-13). This replaces the image label as the way D54 is met; D54 itself stands, without its fixed release number. | 040 §3.1, 030 §3 |
+| D67 | A build is a prebuilt bundle, mounted read-only into the run's container; the harness keeps the tracked lockfile and an archive of every downloaded package, so a build is made again with no registry (2026-10-13). | 040 §3.1 |
+| D68 | Provisionable builds are published releases and local builds packed from a commit of the SDK's repository, named `<release>+<commit>` (2026-10-13). | 040 §3.1 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked
@@ -125,7 +128,7 @@ Requests to the Cerebriline SDK (040 §8). The owner approved the work on
 | X5 | A hook for the error-retry decision. | withdrawn (D34) | retries are observed and recorded, not decided |
 | X6 | Confirmation of the extension-parity inventory. | done 2026-10-13 for 040 §6: 11 rows confirmed, 2 corrected, 6 added. §6.1 checked the same day: 4 rows hold with details the emulation must copy, 2 behaviours added (040 §6.1.1) | §6.2 rests on a source read |
 | X7 | Release 4.100.250 of the SDK, which carries X1 to X3 and which every milestone 2 run must use (D54). | released and used: the lane images install it and every run records it | none |
-| X8 | An SDK release whose published packages carry the patched Ollama provider library, so that a thinking effort level and the sampler options the stock library does not name reach the wire (110 §3.1). | corrected in the SDK's repository on 2026-10-13, not released; the Cerebriline session releases on the owner's word | none for the missing values: the run goes on and records a `wire_arm` finding with the value in effect (D63) |
+| X8 | An SDK release whose published packages carry the patched Ollama provider library, so that a thinking effort level and the sampler options the stock library does not name reach the wire (110 §3.1). | released as 4.100.251 on 2026-10-13 and provisioned here beside 4.100.250; not yet run against a real model | the `wire_arm` findings of the first real run on it are the check (D63) |
 
 ## 5. Not adopted
 

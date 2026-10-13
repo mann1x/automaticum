@@ -62,7 +62,11 @@
 - 2026-10-13: gates are asked by the daemon (`Daemon.Gates`, set in `cmd/automaticumd`), not by `run.Executor`, which keeps its own checks; `internal/gate` imports `internal/run` (probe), never the other way.
 - 2026-10-13: decoding JSON into a struct that already holds values keeps the fields the new document omits; zero the struct first (a stale `waiting` in a daemon test).
 
+- 2026-10-13: lane images hold no SDK. A build is `runner/sdk/<build>/` (package.json, package-lock.json, sdk.toml with the pinned bundle hash); `automaticum sdk add <build>` installs it under the data root and archives the downloaded packages; the run mounts the bundle read-only at the runner's node_modules. `automaticum sdk verify <build>` reinstalls with no network and compares. Never put an SDK back into an image.
+- 2026-10-13: a new SDK release = a new directory under `runner/sdk/` with its lockfile made in the Node container (`npm install --package-lock-only --ignore-scripts`), then `sdk add`, then commit the pinned hash. An arm picks it with `[harness] sdk_release`.
+
 ## Do-Not-Repeat
+- [2026-10-13] Built the SDK into the lane image with a label, so one image carried one SDK and a new release meant rebuilding images. The owner: "we need to support multiple sdk versions at the same time. the images should be sdk agnostic and support provisioning of a specific sdk version at runtime. we need the testing to be reproducible on demand". Anything that is a variable of an arm must not be baked into an image.
 
 <!-- Mistakes made and corrected. Each entry prevents the same mistake recurring. -->
 <!-- Format: [YYYY-MM-DD] Description of what went wrong and what to do instead. -->
@@ -96,3 +100,6 @@
 - [2026-10-13] Owner (milestone 2 plan): manic_miner public and whole in the repo (D53, against my recommendation of a private directory); SDK release 4.100.250 and every run records the SDK release version (D54); first real runs on xollama, windows-2 (not linux-gpu-2: my mapping error), model qwen36-base-mtp_tb:27b-q4km-128k (D55); old corpus: re-map contradicted verdicts and import the two sibling lanes, no boundary for the defective build (D56); config directory by --config, lanes and endpoints untracked (D57); plan proposals approved (D58).
 - [2026-10-13] Owner: first real arm uses a 128k window, thinking effort high and sampler temperature 1, top-k 20, repeat last-n 0, repeat penalty 1, presence penalty 0 (D59); compaction and all guards are on by default unless an arm says otherwise (D60); real runs on windows-2 must be stoppable at once, gracefully or not, because the owner may need the host (D61).
 - [2026-10-13] Owner: milestone 3 plan approved (D62). A value the provider does not send does not stop the run: run and record a finding (D63, against my recommendation to refuse). A busy endpoint makes the run wait, with one notification (D64). The old corpus gets the text detectors only (D65).
+- 2026-10-13 D66: several SDK builds at once; images SDK-agnostic; the arm's build provisioned at run time; reproducible on demand.
+- 2026-10-13 D67: prebuilt bundle mounted read-only; tracked lockfile plus an archive of every downloaded package.
+- 2026-10-13 D68: releases and local builds (`<release>+<commit>`) are provisionable.

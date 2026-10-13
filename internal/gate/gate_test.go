@@ -13,7 +13,7 @@ import (
 
 	"github.com/mann1x/automaticum/internal/config"
 	"github.com/mann1x/automaticum/internal/docker"
-	"github.com/mann1x/automaticum/internal/run"
+	"github.com/mann1x/automaticum/internal/sdk"
 	"github.com/mann1x/automaticum/internal/task"
 )
 
@@ -45,19 +45,25 @@ func (s *server) start(t *testing.T) string {
 	return srv.URL
 }
 
-type engine struct{ label string }
+type engine struct{ missing bool }
 
 func (e engine) ImageInspect(context.Context, string) (docker.Image, error) {
-	if e.label == "missing" {
+	if e.missing {
 		return docker.Image{}, errors.New("no such image")
 	}
-	var im docker.Image
-	im.Config.Labels = map[string]string{}
-	if e.label != "" {
-		im.Config.Labels[run.SDKReleaseLabel] = e.label
-	}
-	return im, nil
+	return docker.Image{}, nil
 }
+
+// bundles is the provisioned SDK builds: one, unless err says otherwise.
+type bundles struct{ err error }
+
+func (b bundles) Check(name string, deep bool) (*sdk.Def, *sdk.Record, error) {
+	if b.err != nil {
+		return nil, nil, b.err
+	}
+	return &sdk.Def{Name: name, Version: name, Source: "registry"}, &sdk.Record{BundleSHA256: "0123456789abcdef"}, nil
+}
+func (b bundles) Path(name string) string { return "/bundles/" + name }
 
 // rig is one arm on one task on one lane, with everything in order.
 func rig(t *testing.T, s *server) *Input {
@@ -82,7 +88,7 @@ func rig(t *testing.T, s *server) *Input {
 		Endpoints: map[string]*config.Endpoint{arm.Endpoint: {Name: arm.Endpoint, Kind: "ollama", BaseURL: s.start(t)}},
 	}
 	return &Input{Local: local, Lane: "lane-1", Arm: arm, Task: tk, Image: "automaticum-lane:base",
-		Engine: engine{arm.Harness.SDKRelease}, Tasks: env, RunsDir: dir,
+		Engine: engine{}, SDK: bundles{}, Tasks: env, RunsDir: dir,
 		Free:  func(string) (uint64, error) { return 100 << 30, nil },
 		Tmpfs: func(string) (bool, error) { return false, nil },
 	}
@@ -149,9 +155,10 @@ func TestFaults(t *testing.T) {
 		{name: "model not on the endpoint", input: func(in *Input) { in.Arm.Model.Model = "absent:1" }, gate: "model_tag", status: Refuse, says: "does not have model"},
 		{name: "lane may not use the endpoint", input: func(in *Input) { in.Local.Lanes["lane-1"].Endpoints = nil }, gate: "lane", status: Refuse, says: "may not use"},
 		{name: "no such lane", input: func(in *Input) { in.Lane = "lane-9" }, gate: "lane", status: Refuse, says: "no lane"},
-		{name: "image without a label", input: func(in *Input) { in.Engine = engine{""} }, gate: "harness_build", status: Refuse, says: "cannot be established"},
-		{name: "image with another release", input: func(in *Input) { in.Engine = engine{"0.0.1"} }, gate: "harness_build", status: Refuse, says: "the arm names"},
-		{name: "image missing", input: func(in *Input) { in.Engine = engine{"missing"} }, gate: "harness_build", status: Refuse, says: "is not there"},
+		{name: "SDK build not provisioned", input: func(in *Input) { in.SDK = bundles{sdk.ErrNotProvisioned} }, gate: "harness_build", status: Refuse, says: "cannot be established"},
+		{name: "SDK bundle is not the pinned one", input: func(in *Input) { in.SDK = bundles{sdk.ErrChanged} }, gate: "harness_build", status: Refuse, says: "pinned hash"},
+		{name: "no SDK builds on this installation", input: func(in *Input) { in.SDK = nil }, gate: "harness_build", status: Refuse, says: "provisions no SDK builds"},
+		{name: "image missing", input: func(in *Input) { in.Engine = engine{missing: true} }, gate: "harness_build", status: Refuse, says: "is not there"},
 		{name: "disk under the floor", input: func(in *Input) { in.Free = func(string) (uint64, error) { return 5 << 30, nil } }, gate: "host", status: Refuse, says: "under the floor"},
 		{name: "oracle not proven", input: func(in *Input) { os.RemoveAll(filepath.Join(in.Tasks.Artefacts, "proven")) }, gate: "oracle", status: Refuse, says: "oracle verify"},
 		{name: "task changed since the proof", input: func(in *Input) { in.Task.Hash = "another" }, gate: "oracle", status: Refuse, says: "was not proven"},

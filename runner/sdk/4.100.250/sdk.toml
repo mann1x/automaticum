@@ -1,0 +1,6 @@
+# SDK release 4.100.250, from the registry. zod is held at the version the
+# SDK was built with (see package.json); the registry packages of this
+# release carry the stock Ollama provider library (110 §3.1).
+version = "4.100.250"
+source = "registry"
+bundle_sha256 = "cbcd7f7bc87f3149a25b88a9b17d1315416439a5f84cd8dc95fd43ce2c79ec92"

@@ -1,6 +1,6 @@
 # 110 — Acceptance and roadmap
 
-**Status:** draft 0.11, 2026-10-13. The milestone order in §3 was approved by the owner
+**Status:** draft 0.12, 2026-10-13. The milestone order in §3 was approved by the owner
 on 2026-10-12. Milestone 1 has been carried out: the store, the importer and
 the spike's measurements exist (080 §7.4, 100 §7), and the owner has decided
 the questions it raised (D46 to D51). Milestone 2 was planned and approved on
@@ -128,9 +128,10 @@ compares every agent request with the arm and records each difference as a
 the SDK packages published as 4.100.250 install the stock Ollama provider
 library, not the patched one the extension is built with. The stock library
 sends every effort level as `think: true` and drops the options its schema
-does not name (presence penalty among them). It is corrected in the SDK's
-repository and not released (X8). Until a release carries it, an arm that
-states an effort level runs on the tag's budget, and says so in a finding.
+does not name (presence penalty among them). Release 4.100.251 of the same
+day corrects it (X8). An arm on 4.100.250 that states an effort level runs
+on the tag's budget, and says so in a finding. Both releases are provisioned
+side by side (040 §3.1); no real run has been made on 4.100.251 yet.
 
 The detector library (070 §3.2) over the same five runs: no looping detector
 fired on any block; four of the five have at least one reasoning block of

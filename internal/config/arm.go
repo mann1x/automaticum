@@ -191,7 +191,9 @@ type Harness struct {
 
 var (
 	armNameRE = regexp.MustCompile(`^[a-z0-9][a-z0-9_.-]*$`)
-	releaseRE = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)
+	// A release number, or one followed by "+" and a commit for a build
+	// that was never released.
+	releaseRE = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+(\+[0-9A-Za-z][0-9A-Za-z.-]*)?$`)
 	efforts   = map[string]bool{"minimal": true, "low": true, "medium": true, "high": true, "xhigh": true, "max": true}
 	extKinds  = map[string]bool{"rules": true, "skills": true, "workflows": true, "plugins": true, "hooks": true}
 )
@@ -587,7 +589,7 @@ func (a *Arm) Validate() []string {
 		bad("limits.idle_s must not be negative")
 	}
 	if !releaseRE.MatchString(a.Harness.SDKRelease) {
-		bad("harness.sdk_release must be a release version such as 4.100.250")
+		bad("harness.sdk_release must name an SDK build: a release such as 4.100.250, or 4.100.250+<commit> for one that was never released")
 	}
 	return p
 }

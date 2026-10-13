@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.8, 2026-10-13.
+**Status:** draft 0.9, 2026-10-13.
 
 ## 1. Rules
 
@@ -31,6 +31,7 @@ and tasks are tracked. An arm names an endpoint and never an address.
 arms/*.toml               tracked
 tasks/<suite>/<task>/task.toml   tracked
 images/                   tracked: base and language layer definitions
+runner/sdk/<build>/       tracked: one SDK build's manifest, lockfile and pinned bundle hash
 campaigns/*.toml          tracked (milestone 4)
 suites/*.toml             tracked (milestone 5): source, pinned version, scorer
 ```
@@ -46,6 +47,9 @@ A lane has a state: `idle`, `running`, `paused`, `draining`, `offline`,
 
 ## 3. Images
 
+- **No SDK in any image** (D66): the SDK build an arm names is provisioned
+  apart and mounted when the run starts (040 §3.1), so one image serves
+  every build and switching builds rebuilds nothing.
 - **One slim base:** the runner, Node, git, the common shell tools the agent's
   tools call, and the sandbox prerequisites (user namespaces on Linux need a
   sysctl on some hosts).

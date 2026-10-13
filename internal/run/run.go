@@ -22,6 +22,7 @@ import (
 
 	"github.com/mann1x/automaticum/internal/config"
 	"github.com/mann1x/automaticum/internal/docker"
+	"github.com/mann1x/automaticum/internal/sdk"
 	"github.com/mann1x/automaticum/internal/store"
 	"github.com/mann1x/automaticum/internal/store/blob"
 	"github.com/mann1x/automaticum/internal/task"
@@ -45,13 +46,24 @@ type Blobs interface {
 	Put(ctx context.Context, r io.Reader) (blob.Hash, int64, error)
 }
 
+// Bundles gives the SDK build a run's arm names. *sdk.Env is one.
+type Bundles interface {
+	// Check says whether a build can be used: defined, installed, and the
+	// bundle its definition pins; with deep, the files are hashed again.
+	Check(name string, deep bool) (*sdk.Def, *sdk.Record, error)
+	// Path is the bundle's directory, mounted into the run's container.
+	Path(name string) string
+}
+
 // Executor runs runs. One Executor serves one daemon.
 type Executor struct {
 	Engine Engine
 	Blobs  Blobs
 	State  store.State
 	Tasks  *task.Env
-	Local  *config.Local
+	// SDK is where the builds of the SDK under test are provisioned.
+	SDK   Bundles
+	Local *config.Local
 	// RunsDir holds one directory per run while it is in flight.
 	RunsDir string
 	// Version is automaticum's own version, for the record.
@@ -117,8 +129,15 @@ type provenance struct {
 	SDK         struct {
 		Release       string `json:"release"`        // as the runner found it installed
 		PackageSHA256 string `json:"package_sha256"` //
-		Named         string `json:"named"`          // as the arm names it
-		ImageLabel    string `json:"image_label"`    // as the lane image declares it
+		Named         string `json:"named"`          // the build the arm names
+		// What was provisioned for the run (040 §2): the version the
+		// build's definition says, where it comes from, and the hash of
+		// the bundle that was mounted, checked against its files.
+		Version      string `json:"version"`
+		Source       string `json:"source"`
+		Commit       string `json:"commit,omitempty"`
+		BundleSHA256 string `json:"bundle_sha256"`
+		LockSHA256   string `json:"lock_sha256"`
 	} `json:"sdk"`
 	Image struct {
 		Ref     string   `json:"ref"`
@@ -254,7 +273,7 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		facts.Skipped = skip
 		return finish()
 	}
-	r.Harness = p.SDK.ImageLabel
+	r.Harness = a.Harness.SDKRelease
 	p.Container.User = lane.User
 	key, err := x.Local.APIKey(endpoint)
 	if err != nil {
@@ -294,7 +313,7 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		Protocol: Protocol, RunID: r.ID, SessionID: "run-" + r.ID, Arm: a.Resolved(),
 		Endpoint: JobEndpoint{Name: endpoint.Name, Kind: endpoint.Kind, BaseURL: endpoint.BaseURL, APIKey: key},
 		Prompt:   t.Prompt, DefaultAnswer: t.DefaultAnswer,
-		Workspace: containerWorkspace, Out: containerOut, WallS: wall.Seconds, SDKRelease: a.Harness.SDKRelease,
+		Workspace: containerWorkspace, Out: containerOut, WallS: wall.Seconds, SDKRelease: p.SDK.Version,
 	}
 	jb, _ := json.Marshal(job)
 	if err := os.WriteFile(filepath.Join(jobDir, jobFile), jb, 0o644); err != nil {
@@ -330,6 +349,8 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 			{Source: ws, Target: containerWorkspace},
 			{Source: jobDir, Target: containerJob, ReadOnly: true},
 			{Source: out, Target: containerOut},
+			// The SDK build the arm names; the image holds none.
+			{Source: x.SDK.Path(a.Harness.SDKRelease), Target: sdk.Mount, ReadOnly: true},
 		},
 		Tmpfs:       map[string]string{"/tmp": ""},
 		MemoryBytes: int64(lane.MemoryGB * (1 << 30)), NanoCPUs: int64(lane.CPUs * 1e9), PidsLimit: lane.Pids,
@@ -408,10 +429,10 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 	if facts.Skipped != "" {
 		return finish()
 	}
-	if end != nil && end.SDK.Release != a.Harness.SDKRelease {
+	if end != nil && end.SDK.Release != p.SDK.Version {
 		// The runner should have refused; a run on another release is
 		// not this arm.
-		facts.Invalid = append(facts.Invalid, fmt.Sprintf("the run used SDK release %q, the arm names %s", end.SDK.Release, a.Harness.SDKRelease))
+		facts.Invalid = append(facts.Invalid, fmt.Sprintf("the run used SDK release %q, build %s of the arm is %s", end.SDK.Release, a.Harness.SDKRelease, p.SDK.Version))
 	}
 	if facts.Aborted == "" && len(facts.Invalid) == 0 && events == 0 {
 		facts.Aborted = "the event stream is empty"
@@ -493,14 +514,18 @@ func (x *Executor) before(ctx context.Context, req Request, p *provenance) (*con
 		return nil, nil, fmt.Sprintf("the lane image %s is not there: %v", req.Image, err)
 	}
 	p.Image.ID, p.Image.Digests = im.ID, im.RepoDigests
-	p.SDK.ImageLabel = im.Config.Labels[SDKReleaseLabel]
-	// Decision D54: no run without an established SDK release.
-	switch {
-	case p.SDK.ImageLabel == "":
-		return nil, nil, "the SDK release of the lane image cannot be established: it carries no " + SDKReleaseLabel + " label"
-	case p.SDK.ImageLabel != a.Harness.SDKRelease:
-		return nil, nil, fmt.Sprintf("the lane image carries SDK release %s, the arm names %s", p.SDK.ImageLabel, a.Harness.SDKRelease)
+	// Decision D54: no run without an established SDK release. The build
+	// the arm names must be provisioned, and its files must hash to what
+	// its definition pins.
+	if x.SDK == nil {
+		return nil, nil, "the SDK release cannot be established: this installation provisions no SDK builds"
 	}
+	def, rec, err := x.SDK.Check(a.Harness.SDKRelease, true)
+	if err != nil {
+		return nil, nil, "the SDK release cannot be established: " + err.Error()
+	}
+	p.SDK.Version, p.SDK.Source, p.SDK.Commit = def.Version, def.Source, def.Commit
+	p.SDK.BundleSHA256, p.SDK.LockSHA256 = rec.BundleSHA256, rec.LockSHA256
 	if x.Free != nil && x.Local.Daemon.FreeFloorGB > 0 {
 		free, err := x.Free(x.RunsDir)
 		if err != nil {

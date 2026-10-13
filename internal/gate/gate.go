@@ -54,6 +54,7 @@ type Input struct {
 	}
 	HTTP    *http.Client
 	Tasks   *task.Env
+	SDK     run.Bundles
 	RunsDir string
 	// Free reports the free bytes of the disk a path is on, and Tmpfs
 	// whether a path is on a RAM-backed file system.
@@ -309,22 +310,31 @@ func residency(_ context.Context, in *Input) (Status, string) {
 	return Pass, fmt.Sprintf("the model is fully on the GPU (%d bytes, context %d)", l.Size, l.ContextLength)
 }
 
+// harness: the lane image is there, and the SDK build the arm names is
+// provisioned as its definition pins it (D54, 040 §2). The run hashes the
+// bundle's files again before it starts, and the runner reads the installed
+// package's own version.
 func harness(ctx context.Context, in *Input) (Status, string) {
 	if in.Engine == nil {
 		return Unchecked, "no container engine to ask"
 	}
-	im, err := in.Engine.ImageInspect(ctx, in.Image)
-	if err != nil {
+	if _, err := in.Engine.ImageInspect(ctx, in.Image); err != nil {
 		return Refuse, fmt.Sprintf("the lane image %s is not there: %v", in.Image, err)
 	}
-	label, named := im.Config.Labels[run.SDKReleaseLabel], in.Arm.Harness.SDKRelease
-	switch {
-	case label == "":
-		return Refuse, "the SDK release of the lane image cannot be established: it carries no " + run.SDKReleaseLabel + " label"
-	case label != named:
-		return Refuse, fmt.Sprintf("the lane image carries SDK release %s, the arm names %s", label, named)
+	if in.SDK == nil {
+		return Refuse, "the SDK release cannot be established: this installation provisions no SDK builds"
 	}
-	return Pass, fmt.Sprintf("lane image %s carries SDK release %s, as the arm names; the runner checks the installed package again", in.Image, label)
+	name := in.Arm.Harness.SDKRelease
+	def, rec, err := in.SDK.Check(name, false)
+	if err != nil {
+		return Refuse, "the SDK release cannot be established: " + err.Error()
+	}
+	from := "the registry"
+	if def.Source == "local" {
+		from = "commit " + def.Commit + " of the SDK's repository"
+	}
+	return Pass, fmt.Sprintf("SDK build %s (package version %s, from %s) is provisioned, bundle %.12s as pinned; lane image %s is there",
+		name, def.Version, from, rec.BundleSHA256, in.Image)
 }
 
 func host(_ context.Context, in *Input) (Status, string) {

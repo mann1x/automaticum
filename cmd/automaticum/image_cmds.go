@@ -13,10 +13,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/mann1x/automaticum/internal/config"
 	"github.com/mann1x/automaticum/internal/daemon"
 	"github.com/mann1x/automaticum/internal/docker"
-	"github.com/mann1x/automaticum/internal/run"
 )
 
 // buildContext writes what an image build reads: the runner and the image
@@ -79,7 +77,6 @@ func imageNames(root string) ([]string, error) {
 func imageBuild(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("image build", flag.ExitOnError)
 	p := addPlace(fs)
-	release := fs.String("sdk-release", "", "the SDK release the base image must carry; that of arms/base.toml when not given")
 	rest := parse(fs, args)
 	l, err := p.local()
 	if err != nil {
@@ -94,17 +91,10 @@ func imageBuild(ctx context.Context, args []string) error {
 	if len(names) == 0 {
 		names = all
 	}
-	if *release == "" {
-		base, err := config.LoadArm(p.arms(), "base")
-		if err != nil {
-			return err
-		}
-		*release = base.Harness.SDKRelease
-	}
 	engine := docker.New(l.Daemon.DockerSocket)
 	for _, name := range names {
 		file := "images/base/Dockerfile"
-		opts := docker.BuildOptions{Tag: daemon.LaneImage(nil), Args: map[string]string{"SDK_RELEASE": *release}}
+		opts := docker.BuildOptions{Tag: daemon.LaneImage(nil)}
 		if name != "base" {
 			file = "images/layers/" + name + "/Dockerfile"
 			opts = docker.BuildOptions{Tag: daemon.LaneImage([]string{name})}
@@ -125,7 +115,7 @@ func imageBuild(ctx context.Context, args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("%s  %s  SDK release %s\n", opts.Tag, im.ID, im.Config.Labels[run.SDKReleaseLabel])
+		fmt.Printf("%s  %s\n", opts.Tag, im.ID)
 	}
 	return nil
 }
@@ -144,7 +134,7 @@ func imageLs(ctx context.Context, args []string) error {
 	}
 	engine := docker.New(l.Daemon.DockerSocket)
 	w := table()
-	fmt.Fprintln(w, "IMAGE\tTAG\tSDK RELEASE\tID\tCREATED")
+	fmt.Fprintln(w, "IMAGE\tTAG\tID\tCREATED")
 	for _, name := range names {
 		tag := daemon.LaneImage(nil)
 		if name != "base" {
@@ -152,7 +142,7 @@ func imageLs(ctx context.Context, args []string) error {
 		}
 		im, err := engine.ImageInspect(ctx, tag)
 		if err != nil {
-			fmt.Fprintf(w, "%s\t%s\tnot built\t\t\n", name, tag)
+			fmt.Fprintf(w, "%s\t%s\tnot built\t\n", name, tag)
 			continue
 		}
 		id := strings.TrimPrefix(im.ID, "sha256:")
@@ -163,7 +153,7 @@ func imageLs(ctx context.Context, args []string) error {
 		if len(created) > 19 {
 			created = created[:19]
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", name, tag, im.Config.Labels[run.SDKReleaseLabel], id, created)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", name, tag, id, created)
 	}
 	return w.Flush()
 }

@@ -1,6 +1,6 @@
 # 040 — The runner
 
-**Status:** draft 1.0, 2026-10-13. Facts about the SDK in this file were read
+**Status:** draft 1.1, 2026-10-13. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
 running it. The parity table in §6 was checked row by row by the Cerebriline
 session on 2026-10-13 against its main branch (release 4.100.249 plus requests
@@ -45,18 +45,62 @@ The harness build is part of the arm and of the basis.
   start. A build from a commit therefore still names the release it carries.
   Milestone 2 runs on release 4.100.250, which contains requests 1 to 3
   (§8.2).
-  **State on 2026-10-13:** 4.100.250 is not released: there is no tag and
-  nothing on the registry, and the Cerebriline session releases only on the
-  owner's word. Until then no lane image can be built and no run starts; there
-  is no fallback to another build.
-- **How the release is established (as built):** the lane image carries the
-  label `automaticum.sdk.release`, checked before a run starts; the runner then
-  reads the version of the installed package from disk and refuses on a
-  difference. A run's record holds a release only once it is established, never
-  the one its arm merely names. The SDK's own build constant is not used: it
-  carries another number than the release.
+  The five first real runs used release 4.100.250 (§8.2, 110 §3.1).
+- **How the release is established:** see §3.1. A run's record holds a
+  release only once it is established, never the one its arm merely names.
+  The SDK's own build constant is not used: it carries another number than
+  the release.
 - **Refuse to run** when the installed package does not match what the arm
   names. This is a gate (050 §3).
+
+### 3.1 Several builds at once, each reproducible (as built)
+
+**Decided by the owner (2026-10-13):** the harness supports several SDK
+builds at the same time. Lane images hold no SDK; the build an arm names is
+provisioned at run time; and a build must be reproducible on demand (D66).
+How, also decided that day:
+
+- **A prebuilt bundle, mounted** (D67). Each build is installed once, in a
+  container, and its bundle is mounted read-only into the run's container
+  at the place the runner's imports are looked up. Nothing is downloaded
+  during a run.
+- **The lockfile and the packages are kept** (D67). Every build has a
+  definition directory in the repository, `runner/sdk/<build>/`:
+  `package.json`, `package-lock.json`, and `sdk.toml` with the package
+  version the build must install as, where it comes from, and
+  `bundle_sha256`, the hash of the bundle. Everything the install downloaded
+  is archived in the store's archive tier, so the build can be installed
+  again with no network.
+- **Releases and local builds** (D68). `source = "registry"` is a published
+  release, named by its number. `source = "local"` is packed from a commit
+  of the SDK's repository and never released; it is named
+  `<release number>+<commit>`, states the commit, and its packed packages
+  are given to the install and archived with the rest.
+
+The bundle's hash is over every file's path and content and every link's
+target; times and owners do not enter it. The first install of a definition
+writes the hash into `sdk.toml`, to be committed; every later install, on
+any machine, must give that hash or is refused.
+
+| command | what it does |
+|---|---|
+| `automaticum sdk add <build> [--packs D]` | installs the bundle (install scripts of dependencies are never run), checks the installed package's version, archives what was downloaded, pins or compares the hash |
+| `automaticum sdk ls [--deep]` | the defined builds and whether each can be used |
+| `automaticum sdk verify <build>` | installs the build again in a container **with no network** from the archived packages and compares the hash: the proof that it can be reproduced |
+
+What stands between an arm and the wrong SDK, in order: gate
+`harness_build` (the build is defined, installed and pinned); the run itself
+hashes every file of the bundle before it starts and is `SKIPPED` on a
+difference; the runner reads the installed package's own version and hashes
+the package; and a run whose runner reports another version than the
+build's is `INVALID`. The run record holds the build's name, the package
+version, the source and commit, the bundle's hash, the lockfile's hash and
+the package's hash as the runner found it.
+
+Proven on 2026-10-13: releases 4.100.250 and 4.100.251 installed side by
+side; each reproduced with no network from its archive; the same task run on
+both from one lane image; and the package of 4.100.250, as the runner hashes
+it, is the one the five first real runs used.
 
 ## 4. Proving what was sent
 

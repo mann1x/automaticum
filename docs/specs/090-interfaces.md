@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.9, 2026-10-13.
+**Status:** draft 0.10, 2026-10-13.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -12,6 +12,7 @@ codes.
 
 ```
 automaticum status                          # lanes, queue, what is running
+automaticum sdk add|ls|verify <build>        # SDK builds: install, list, reproduce with no network (040 §3.1)
 automaticum doctor [--lane L] [--arm A] [--task T] [--all]   # every gate, on every lane, now
 automaticum lane ls|show|pause|resume|drain|quarantine
 automaticum endpoint ls|probe|show|models

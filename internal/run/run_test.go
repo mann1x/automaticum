@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/mann1x/automaticum/internal/config"
 	"github.com/mann1x/automaticum/internal/docker"
+	"github.com/mann1x/automaticum/internal/sdk"
 	"github.com/mann1x/automaticum/internal/store"
 	"github.com/mann1x/automaticum/internal/store/blob"
 	"github.com/mann1x/automaticum/internal/stubmodel"
@@ -105,10 +107,28 @@ func (b *fakeBlobs) Put(_ context.Context, r io.Reader) (blob.Hash, int64, error
 	return h, int64(len(data)), nil
 }
 
+// fakeBundles stands in for the provisioned SDK builds: one build, named
+// like its version, unless err says it cannot be used.
+type fakeBundles struct {
+	version string
+	err     error
+}
+
+func (b *fakeBundles) Check(name string, deep bool) (*sdk.Def, *sdk.Record, error) {
+	if b.err != nil {
+		return nil, nil, b.err
+	}
+	if !deep {
+		return nil, nil, errors.New("a run must hash the bundle's files")
+	}
+	return &sdk.Def{Name: name, Version: b.version, Source: "registry"}, &sdk.Record{BundleSHA256: "bundle-hash", LockSHA256: "lock-hash"}, nil
+}
+
+func (b *fakeBundles) Path(name string) string { return "/bundles/" + name }
+
 // fakeEngine stands in for Docker. The runner is a function; the demo
 // task's oracle is done by hand.
 type fakeEngine struct {
-	label  string
 	runner func(ctx context.Context, s docker.Spec, stdout io.Writer) (docker.Result, error)
 	specs  []docker.Spec
 }
@@ -116,9 +136,6 @@ type fakeEngine struct {
 func (e *fakeEngine) ImageInspect(context.Context, string) (docker.Image, error) {
 	var im docker.Image
 	im.ID = "sha256:image"
-	if e.label != "" {
-		im.Config.Labels = map[string]string{SDKReleaseLabel: e.label}
-	}
 	return im, nil
 }
 
@@ -168,6 +185,7 @@ func fix(s docker.Spec) {
 type world struct {
 	x      *Executor
 	engine *fakeEngine
+	sdk    *fakeBundles
 	state  *fakeState
 	blobs  *fakeBlobs
 	req    Request
@@ -185,7 +203,7 @@ func newWorld(t *testing.T) *world {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w := &world{engine: &fakeEngine{label: release}, state: &fakeState{runs: map[string]store.Run{}}, blobs: &fakeBlobs{data: map[blob.Hash][]byte{}}}
+	w := &world{engine: &fakeEngine{}, sdk: &fakeBundles{version: release}, state: &fakeState{runs: map[string]store.Run{}}, blobs: &fakeBlobs{data: map[blob.Hash][]byte{}}}
 	// The endpoint: the stub, behind a switch that can change its identity.
 	servers := map[string]*stubmodel.Server{
 		"stub:latest": stubmodel.New(stubmodel.Script{}),
@@ -202,6 +220,7 @@ func newWorld(t *testing.T) *world {
 		Endpoints: map[string]*config.Endpoint{"stub": {Name: "stub", Kind: "ollama", BaseURL: srv.URL, Host: "linux-gpu-1", Capacity: 1}, "elsewhere": {Name: "elsewhere", Kind: "ollama", BaseURL: srv.URL}},
 	}
 	w.x = &Executor{
+		SDK:    w.sdk,
 		Engine: w.engine, Blobs: w.blobs, State: w.state, Local: local, RunsDir: filepath.Join(dir, "runs"), Version: "test",
 		Tasks:    &task.Env{Exec: w.engine, Artefacts: filepath.Join(dir, "artefacts"), Scratch: filepath.Join(dir, "scratch")},
 		IdleTick: 20 * time.Millisecond, Grace: time.Second,
@@ -307,8 +326,13 @@ func TestVerdicts(t *testing.T) {
 			io.WriteString(out, endLine(OutcomeRefused, `,"reason":"installed SDK is 4.100.249"`))
 			return docker.Result{ExitCode: 3}, nil
 		}, store.Skipped, "refused"},
-		{"skipped: image without a release label", func(w *world) { w.engine.label = "" }, nil, store.Skipped, "cannot be established"},
-		{"skipped: image with another release", func(w *world) { w.engine.label = "4.100.249" }, nil, store.Skipped, "carries SDK release 4.100.249"},
+		{"skipped: the SDK build is not provisioned", func(w *world) { w.sdk.err = sdk.ErrNotProvisioned }, nil, store.Skipped, "cannot be established"},
+		{"skipped: the bundle is not the pinned one", func(w *world) { w.sdk.err = sdk.ErrChanged }, nil, store.Skipped, "does not match its pinned hash"},
+		{"invalid: the build's package is another version than was run", func(w *world) { w.sdk.version = "4.100.249" }, func(_ context.Context, s docker.Spec, out io.Writer) (docker.Result, error) {
+			fix(s)
+			io.WriteString(out, event+endLine(OutcomeCompleted, ""))
+			return docker.Result{}, nil
+		}, store.Invalid, "build 4.100.250 of the arm is 4.100.249"},
 		{"skipped: lane may not use the endpoint", func(w *world) { w.req.Arm.Endpoint = "elsewhere" }, nil, store.Skipped, "may not use"},
 		{"skipped: endpoint lacks the model", func(w *world) { w.req.Arm.Model.Model = "absent:1" }, nil, store.Skipped, "does not have model"},
 	}
@@ -376,7 +400,7 @@ func TestRecord(t *testing.T) {
 	if started == nil || lines != 2 {
 		t.Errorf("OnStart %v, lines %d", started, lines)
 	}
-	if r.Harness != release || p.SDK.Release != release || p.SDK.ImageLabel != release || p.SDK.PackageSHA256 != "abc" {
+	if r.Harness != release || p.SDK.Release != release || p.SDK.Version != release || p.SDK.BundleSHA256 != "bundle-hash" || mountOf(w.engine.specs[0], sdk.Mount) != "/bundles/"+release || p.SDK.PackageSHA256 != "abc" {
 		t.Errorf("SDK release not recorded: %q %+v", r.Harness, p.SDK)
 	}
 	if r.Host != "linux-gpu-1" || r.Model != "stub:latest" || r.Provider != "ollama" || r.AgentEnd != "completed" || r.ClaimedSuccess == nil || !*r.ClaimedSuccess || r.ArmID == "" || r.TaskVersion != 1 {
@@ -397,7 +421,7 @@ func TestRecord(t *testing.T) {
 	}
 	// The lane's container: limits, no privilege asked for, three mounts.
 	s := w.engine.specs[0]
-	if s.MemoryBytes != 1<<30 || s.NanoCPUs != 2e9 || s.PidsLimit != 64 || len(s.Mounts) != 3 || s.Network != "" || s.User == "" {
+	if s.MemoryBytes != 1<<30 || s.NanoCPUs != 2e9 || s.PidsLimit != 64 || len(s.Mounts) != 4 || s.Network != "" || s.User == "" {
 		t.Errorf("spec: %+v", s)
 	}
 	// The oracle ran on a copy with no network.

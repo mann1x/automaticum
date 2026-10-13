@@ -24,7 +24,7 @@ also have tests that need no SDK (`node --test`). zod is pinned in
 | `prompt`, `default_answer` | the task's prompt; what the scripted user answers to a question |
 | `workspace`, `out` | paths in the container |
 | `wall_s` | the wall limit the runner enforces by stopping the agent |
-| `sdk_release` | the release the installed SDK must be |
+| `sdk_release` | the version the installed SDK package must be: that of the build the arm names, mounted at the runner's `node_modules` (the image holds no SDK) |
 
 ## Out: standard output
 

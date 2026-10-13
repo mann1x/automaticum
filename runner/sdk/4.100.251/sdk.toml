@@ -1,0 +1,5 @@
+# SDK release 4.100.251, from the registry: the patched Ollama provider
+# library is inside the packages and zod is pinned by them.
+version = "4.100.251"
+source = "registry"
+bundle_sha256 = "0a47cdbb78fb82a1c260948419474d079b19790d61fa85010cb693d25166abed"

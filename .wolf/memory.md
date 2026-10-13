@@ -651,3 +651,19 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 13:38 | finding model_reloaded from the server's load times; table of the old harness's invalid-run causes against gates, verdicts and findings (110 §3.2); O21 | internal/ingest/*, docs/specs/110,070,decisions | tests pass | ~3000 |
+
+## Session: 2026-10-13 13:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 13:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 13:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 14:04 | D66-D68: SDK out of the lane images; internal/sdk (definitions, bundles, archive, offline rebuild); `sdk add|ls|verify`; run mounts the arm's bundle; gate harness_build; 4.100.250 and 4.100.251 installed, both reproduced offline, same task PASS on both from one image | internal/sdk/*, internal/run/*, internal/gate/*, cmd/*, images/base/Dockerfile, runner/package.json, runner/sdk/*, arms/stub-sdk-4.100.251.toml, docs/specs/030,040,050,090,110,decisions | tests pass | ~12000 |

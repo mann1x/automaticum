@@ -22,6 +22,7 @@ import (
 	"github.com/mann1x/automaticum/internal/docker"
 	"github.com/mann1x/automaticum/internal/gate"
 	"github.com/mann1x/automaticum/internal/run"
+	"github.com/mann1x/automaticum/internal/sdk"
 	"github.com/mann1x/automaticum/internal/store/blob"
 	"github.com/mann1x/automaticum/internal/store/duck"
 	"github.com/mann1x/automaticum/internal/task"
@@ -97,14 +98,19 @@ func serve(cfgDir string, log *slog.Logger) error {
 		return fmt.Errorf("the container engine does not answer: %w", err)
 	}
 	tasks := &task.Env{Exec: engine, Artefacts: filepath.Join(d.DataRoot, "artefacts"), Scratch: filepath.Join(d.DataRoot, "scratch")}
+	archive := filepath.Join(d.DataRoot, "sdk-packages")
+	if d.ArchiveRoot != "" {
+		archive = filepath.Join(d.ArchiveRoot, "sdk-packages")
+	}
+	builds := &sdk.Env{Exec: engine, Defs: filepath.Join(d.Repo, "runner", "sdk"), Root: filepath.Join(d.DataRoot, "sdk"), Archive: archive}
 	dm := &daemon.Daemon{
 		Local: local, State: state, Blobs: blobs, Containers: engine,
-		Runner: &run.Executor{Engine: engine, Blobs: blobs, State: state, Tasks: tasks, Local: local, RunsDir: runs, Version: version, Free: free},
+		Runner: &run.Executor{Engine: engine, Blobs: blobs, State: state, Tasks: tasks, SDK: builds, Local: local, RunsDir: runs, Version: version, Free: free},
 		Repo:   d.Repo, RunsDir: runs, Version: version, Token: token, Log: log,
 	}
 	dm.Gates = func(ctx context.Context, lane string, arm *config.Arm, tk *task.Task, image string) []gate.Result {
 		return gate.Run(ctx, &gate.Input{Local: local, Lane: lane, Arm: arm, Task: tk, Image: image,
-			Engine: engine, Tasks: tasks, RunsDir: runs, Free: free, Tmpfs: ramBacked})
+			Engine: engine, Tasks: tasks, SDK: builds, RunsDir: runs, Free: free, Tmpfs: ramBacked})
 	}
 	if err := dm.Recover(ctx); err != nil {
 		return fmt.Errorf("recovering after the last stop: %w", err)

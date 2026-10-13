@@ -23,7 +23,10 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   task build <task>             build the task's artefacts and check their hashes
   oracle verify <task>          prove the primary oracle against the fixtures
   image build [<image>...]      build the lane images: base, then the language layers
-  image ls                      the lane images and the SDK release each carries
+  image ls                      the lane images
+  sdk add <build>               install one SDK build's bundle and keep what it downloaded [--packs D for a local build]
+  sdk ls                        the defined SDK builds and whether each can be used [--deep]
+  sdk verify <build>            install a build again with no network from what was kept, and compare
   lane ls                       the lanes of this installation
   endpoint ls                   the endpoints of this installation
   status                        lanes, queue, what is running
@@ -87,6 +90,9 @@ func main() {
 		"lane ls":        laneLs,
 		"image build":    imageBuild,
 		"image ls":       imageLs,
+		"sdk add":        sdkAdd,
+		"sdk ls":         sdkLs,
+		"sdk verify":     sdkVerify,
 		"stub serve":     stubServe,
 		"endpoint ls":    endpointLs,
 	}

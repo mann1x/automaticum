@@ -23,11 +23,6 @@ const (
 	jobFile            = "job.json"
 )
 
-// SDKReleaseLabel is the image label that names the SDK release the image
-// carries. It is checked before a run starts; the runner checks the
-// installed package itself as well.
-const SDKReleaseLabel = "automaticum.sdk.release"
-
 // RunnerCommand starts the runner in a lane image.
 var RunnerCommand = []string{"node", "/opt/automaticum/runner/runner.mjs", containerJob + "/" + jobFile}
 
@@ -45,7 +40,8 @@ type Job struct {
 	Out           string `json:"out"`
 	// WallS is the limit the runner enforces itself by stopping the agent.
 	WallS int `json:"wall_s"`
-	// SDKRelease is the release the installed SDK must be.
+	// SDKRelease is the version the installed SDK package must be: that of
+	// the build the arm names.
 	SDKRelease string `json:"sdk_release"`
 }
 

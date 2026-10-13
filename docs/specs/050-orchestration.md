@@ -1,6 +1,6 @@
 # 050 — Orchestration: scheduling, gates, control
 
-**Status:** draft 0.8, 2026-10-13.
+**Status:** draft 0.9, 2026-10-13.
 
 ## 1. Scheduling
 
@@ -73,7 +73,7 @@ text, loads a model or unloads one**.
 | `sampler` | the arm is complete; the tag's own sampler values are listed next to it | "written and read back" is the wire comparison after the run (070 §4.1) |
 | `thinking` | who owns thinking and the tag's budget; never refuses (D63) | |
 | `gpu_residency` | a loaded model is fully on the GPU; unchecked when it is not loaded. After the run the same look is a metric and, when partly off the GPU, a finding | named tensors parked on the CPU: needs the server log |
-| `harness_build` | the lane image carries the SDK release the arm names (D54); the runner checks the installed package again | |
+| `harness_build` | the lane image is there; the SDK build the arm names is defined, installed, and the bundle its definition pins (D54, D66; 040 §3.1). The run hashes the bundle's files again and the runner checks the installed package | |
 | `host` | free space against the floor, inotify watches | clock sync, the user-namespace setting |
 | `oracle` | the task's artefacts are built and `automaticum oracle verify` proved the oracle for the task **as it is now** (the proof is kept by the task's hash) | |
 | `workspace` | the runs directory is writable and not on a RAM-backed file system; the seed is there. The copy and its hash check are the run's | |

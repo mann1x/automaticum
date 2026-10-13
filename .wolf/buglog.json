@@ -209,6 +209,25 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-13T13:21:14+02:00"
+    },
+    {
+      "id": "bug-014",
+      "timestamp": "2026-10-13T14:04:41+02:00",
+      "error_message": "owner: the images should be sdk agnostic and support provisioning of a specific sdk version at runtime; multiple sdk versions at the same time; reproducible on demand",
+      "file": "images/base/Dockerfile",
+      "root_cause": "the SDK was installed into the lane image and identified by an image label, so an image carried exactly one SDK and nothing kept the downloaded packages",
+      "fix": "internal/sdk: one definition per build in runner/sdk/, bundle installed once and pinned by hash, packages archived, mounted read-only per run; images hold no SDK; sdk add/ls/verify",
+      "tags": [
+        "sdk",
+        "image",
+        "reproducibility",
+        "design"
+      ],
+      "related_bugs": [
+        "bug-009"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-13T14:04:41+02:00"
     }
   ]
 }

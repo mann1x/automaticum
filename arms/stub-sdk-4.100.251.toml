@@ -1,0 +1,6 @@
+# The stub arm on SDK release 4.100.251: the same settings, another build of
+# the SDK. It exists to show that one lane image serves several builds.
+extends = "stub"
+
+[harness]
+sdk_release = "4.100.251"
