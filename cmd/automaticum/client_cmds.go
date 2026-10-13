@@ -156,15 +156,18 @@ func runStart(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("run start", flag.ExitOnError)
 	_, dial := addClient(fs)
 	var req daemon.StartRequest
-	fs.StringVar(&req.Arm, "arm", "", "the arm")
+	var arms list
+	fs.Var(&arms, "arm", "the arm; given several times, a batch of several arms with -n runs of each")
+	fs.StringVar(&req.Order, "order", "", "with several arms: interleaved (the default, one run of each in turn) or blocks")
 	fs.StringVar(&req.Task, "task", "", "the task")
 	fs.StringVar(&req.Lane, "lane", "", "the lane; the first that may use the arm's endpoint when not given")
 	fs.IntVar(&req.Count, "n", 1, "how many runs")
 	fs.StringVar(&req.Key, "idempotency-key", "", "repeating the command with the same key starts nothing new")
 	fs.BoolVar(&req.DryRun, "dry-run", false, "say what would start, start nothing")
-	if rest := parse(fs, args); len(rest) > 0 || req.Arm == "" || req.Task == "" {
-		return errors.New("usage: automaticum run start --arm <arm> --task <task> [-n 5] [--lane <lane>]")
+	if rest := parse(fs, args); len(rest) > 0 || len(arms) == 0 || req.Task == "" {
+		return errors.New("usage: automaticum run start --arm <arm> [--arm <arm> ...] --task <task> [-n 5] [--order interleaved|blocks] [--lane <lane>]")
 	}
+	req.Arms = arms
 	c, err := dial()
 	if err != nil {
 		return err
@@ -183,8 +186,12 @@ func runStart(ctx context.Context, args []string) error {
 	case resp.Repeated:
 		what = "already made by this key; nothing new was started"
 	}
-	fmt.Printf("%d %s on %s: arm %s, task %s, image %s, batch %s\n", len(resp.RunIDs), what, resp.Lane, resp.ArmID[:12], resp.Task, resp.Image, resp.Batch)
-	for _, id := range resp.RunIDs {
+	fmt.Printf("%d %s on %s: arm %s, task %s, image %s, batch %s\n", len(resp.RunIDs), what, resp.Lane, strings.Join(arms, ", "), resp.Task, resp.Image, resp.Batch)
+	for i, id := range resp.RunIDs {
+		if i < len(resp.Order) {
+			fmt.Printf("%s  %s\n", id, resp.Order[i])
+			continue
+		}
 		fmt.Println(id)
 	}
 	return nil

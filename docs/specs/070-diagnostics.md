@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.11, 2026-10-13.
+**Status:** draft 0.12, 2026-10-13.
 
 ## 1. The rule: no custom script
 
@@ -332,6 +332,29 @@ values the SDK derived from the arm. The rest of §2 is not written yet.
   relocates rumination rather than removing it.
 
 ## 6. Across runs
+
+**Decided by the owner (2026-10-13), D78:** a report gives every statistic
+and draws no conclusion. No significance level is set: with small models
+the swing from run to run is very large, and the reader judges, with the
+history of earlier runs beside it. What reports are for: between
+quantizations of one model, and between versions of the SDK on the same tag
+and lane, is the pass rate the same, does it think longer, compact more,
+loop less, need more wall time.
+
+**As built (milestone 4, first part):** `automaticum compare <batch> ...`
+puts the arms of some batches side by side. Above the numbers it prints
+what differs between the arms besides the runs. Then, per arm: runs
+counted, runs left out with the reason (`SKIPPED` and `INVALID` say nothing
+of the arm), verdicts, the pass count with its Wilson interval, tokens per
+solved task, the runs with each finding, and for every metric the median,
+the least and the most and the swing (standard deviation over mean).
+Between two arms: Fisher's exact test of the pass counts, and for every
+metric the share of pairs of runs in which one arm's value is the larger,
+with the Mann-Whitney p (exact without ties, else the approximation,
+marked). Intervals are at 95%, stated in the output; that level is the
+usual convention and not a threshold for anything. A batch of several arms
+is started with `automaticum run start --arm A --arm B -n N`, queued one
+run of each arm in turn (`--order blocks` for all of one, then the next).
 
 - **Pass rate per arm** with a Wilson interval, streaks, and "how many more
   runs to tell these two arms apart".

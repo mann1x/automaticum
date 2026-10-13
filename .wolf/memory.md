@@ -797,3 +797,14 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 18:05 | D77 pause inside a run deferred to SDK support; mail 1271 to the SDK session; mails 1267-1269 read | decisions, 050, cerebrum | recorded | ~800 |
+
+## Session: 2026-10-13 17:59
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 17:59
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:50 | milestone 4 first part: internal/stats, interleaved several-arm batches, compare command (D78) | internal/stats, internal/daemon/compare.go, api.go, cmd/automaticum/compare_cmds.go, 070, 090, decisions | tests pass; tried on today's ten runs | ~15000 |

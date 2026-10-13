@@ -727,3 +727,78 @@ func TestGates(t *testing.T) {
 		t.Errorf("doctor: %d %+v", code, entries)
 	}
 }
+
+// Several arms in one batch are queued one run of each in turn, or in
+// blocks when asked; two arms that would run on different lanes are refused.
+func TestStartSeveralArms(t *testing.T) {
+	g := newRig(t, false)
+	var resp StartResponse
+	req := StartRequest{Arms: []string{"stub", "stub-sdk-4.100.251"}, Task: "answer", Count: 3, DryRun: true}
+	if code := g.call("POST", "/v1/runs", req, &resp); code != 200 {
+		t.Fatalf("dry run: %d", code)
+	}
+	if got := strings.Join(resp.Order, " "); got != "stub stub-sdk-4.100.251 stub stub-sdk-4.100.251 stub stub-sdk-4.100.251" || len(resp.RunIDs) != 6 || len(resp.ArmIDs) != 2 {
+		t.Errorf("interleaved: %q, %d runs, arms %v", got, len(resp.RunIDs), resp.ArmIDs)
+	}
+	req.Order = "blocks"
+	resp = StartResponse{}
+	g.call("POST", "/v1/runs", req, &resp)
+	if got := strings.Join(resp.Order, " "); got != "stub stub stub stub-sdk-4.100.251 stub-sdk-4.100.251 stub-sdk-4.100.251" {
+		t.Errorf("blocks: %q", got)
+	}
+	req.Order = "random"
+	if code := g.call("POST", "/v1/runs", req, nil); code != 400 {
+		t.Errorf("an unknown order: %d", code)
+	}
+	req.Order, req.Arms = "", []string{"stub", "stub"}
+	if code := g.call("POST", "/v1/runs", req, nil); code != 400 {
+		t.Errorf("an arm named twice: %d", code)
+	}
+}
+
+// The compare view groups the runs of a batch by arm, leaves out runs that
+// say nothing of the arm, and gives each number without a conclusion.
+func TestCompare(t *testing.T) {
+	g := newRig(t, false)
+	ctx := context.Background()
+	add := func(id, arm string, verdict store.Verdict, wall float64) {
+		g.state.UpsertRun(ctx, &store.Run{ID: id, Batch: "b1", Suite: "demo", TaskID: "answer", ArmID: "id-" + arm, Verdict: verdict,
+			Arm: json.RawMessage(`{"name":"` + arm + `","model":{"model":"m-` + arm + `"}}`)})
+		g.state.ReplaceMetrics(ctx, id, []store.Metric{{RunID: id, Name: "time.wall_ms", Value: wall}, {RunID: id, Name: "detector.char_run.available", Value: 1}})
+	}
+	add("r1", "a", store.Pass, 1000)
+	add("r2", "a", store.Pass, 2000)
+	add("r3", "a", store.Fail, 3000)
+	add("r4", "a", store.Invalid, 9000)
+	add("r5", "b", store.Pass, 4000)
+	add("r6", "b", store.Fail, 5000)
+	add("r7", "b", store.Fail, 6000)
+	g.state.ReplaceFindings(ctx, "r5", []store.Finding{{RunID: "r5", Detector: "reasoning_loop"}, {RunID: "r5", Detector: "reasoning_loop"}})
+	var v CompareView
+	if code := g.call("GET", "/v1/compare?batch=b1", nil, &v); code != 200 || len(v.Groups) != 2 || len(v.Pairs) != 1 {
+		t.Fatalf("%d: %+v", code, v)
+	}
+	a, b := v.Groups[v.Pairs[0].A], v.Groups[v.Pairs[0].B]
+	if a.Arm != "a" {
+		a, b = b, a
+	}
+	if len(a.Runs) != 3 || a.Pass != 2 || len(a.Excluded) != 1 || a.Verdicts["INVALID"] != 1 || a.Metrics["time.wall_ms"].Median != 2000 {
+		t.Errorf("a: %+v", a)
+	}
+	if b.Pass != 1 || b.Findings["reasoning_loop"] != 1 || b.Metrics["time.wall_ms"].Max != 6000 {
+		t.Errorf("b: %+v", b)
+	}
+	if _, has := a.Metrics["detector.char_run.available"]; has {
+		t.Error("a detector's availability is not a measurement of the runs")
+	}
+	p := v.Pairs[0]
+	if r := p.Metrics["time.wall_ms"]; !r.Exact || r.P != 0.1 || (r.Superiority != 0 && r.Superiority != 1) {
+		t.Errorf("wall time, apart: %+v", r)
+	}
+	if p.PassP <= 0 || p.PassP > 1 || len(p.Differs) == 0 {
+		t.Errorf("pair: %+v", p)
+	}
+	if code := g.call("GET", "/v1/compare?batch=none", nil, nil); code != 404 {
+		t.Errorf("an unknown batch: %d", code)
+	}
+}

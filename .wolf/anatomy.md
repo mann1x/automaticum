@@ -1,32 +1,28 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-13T13:19:49.044Z
-> Files: 203 tracked | Anatomy hits: 0 | Misses: 0
-
-## ../../../../root/.claude/projects/-srv-dev-disk-by-label-opt-dev-automaticum/memory/
-
-- `durations-as-hours-minutes-seconds.md` (~291 tok)
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-13T16:00:00.501Z
+> Files: 217 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~7698 tok)
-- `CLAUDE.md` — automaticum (~2927 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~7791 tok)
+- `CLAUDE.md` — automaticum (~3298 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
 - `LICENSE` — Project license (~3029 tok)
-- `Makefile` — Make build targets (~668 tok)
-- `README.md` — Project documentation (~2399 tok)
+- `Makefile` — Make build targets (~696 tok)
+- `README.md` — Project documentation (~2524 tok)
 - `spike.local.toml` — Untracked. Paths for the store spike on this installation. (~243 tok)
 
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~13085 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~25410 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~0 tok)
-- `score-history.jsonl` (~581 tok)
+- `score-history.jsonl` (~872 tok)
 
 ## .caliber/backups/2026-10-12T20-16-19-461Z/
 
@@ -38,14 +34,14 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~95907 tok)
+- `fingerprint.json` — Declares usage (~95764 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` (~5650 tok)
+- `current-session.jsonl` — Declares and (~14506 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~17403 tok)
-- `state.json` (~40 tok)
+- `roi-stats.json` (~24424 tok)
+- `state.json` (~41 tok)
 
 ## .claude/
 
@@ -94,23 +90,26 @@
 ## arms/
 
 - `base.toml` — The settings every arm here shares. It is not runnable by itself: it names (~422 tok)
+- `qwen36-mtp-27b-high-sdk-4.100.251.toml` — The owner's first real arm (D55, D59) on SDK release 4.100.251: the same (~124 tok)
 - `qwen36-mtp-27b-high.toml` — First real arm of milestone 2 (decisions D55 and D59). Every value here is (~220 tok)
+- `stub-sdk-4.100.251.toml` — The stub arm on SDK release 4.100.251: the same settings, another build of (~58 tok)
 - `stub.toml` — An arm for the stub model server: used by the harness's own tests and for (~99 tok)
 
 ## cmd/automaticum/
 
-- `client_cmds.go` — client (127 fields) (~3092 tok)
+- `client_cmds.go` — client (146 fields) (~7260 tok)
 - `config_cmds_test.go` — TestParseInterspersed (~116 tok)
-- `config_cmds.go` — place (117 fields) (~3007 tok)
-- `image_cmds.go` (~1247 tok)
-- `main.go` — Command automaticum is the command line of automaticum. (~1123 tok)
-- `store_cgo.go` — go:build cgo (~1815 tok)
+- `config_cmds.go` — place (119 fields) (~3088 tok)
+- `image_cmds.go` (~1096 tok)
+- `main.go` — Command automaticum is the command line of automaticum. (~1406 tok)
+- `sdk_cmds.go` — SDKEnv (~1197 tok)
+- `store_cgo.go` — go:build cgo (~1850 tok)
 - `store_nocgo.go` — go:build !cgo (~128 tok)
 - `stub_cmds.go` (~419 tok)
 
 ## cmd/automaticumd/
 
-- `main.go` — Command automaticumd is the daemon: it owns the store, works the queue on (~1142 tok)
+- `main.go` — Command automaticumd is the daemon: it owns the store, works the queue on (~1576 tok)
 
 ## docs/local/
 
@@ -120,22 +119,22 @@
 
 - `000-overview.md` — 000 — Overview, vocabulary and map of the spec set (~2073 tok)
 - `010-architecture.md` — 010 — Architecture (~1615 tok)
-- `020-run-record.md` — 020 — The run record, verdicts and the basis (~1855 tok)
-- `030-configuration.md` — 030 — Configuration (~1665 tok)
-- `040-runner.md` — 040 — The runner (~5276 tok)
-- `050-orchestration.md` — 050 — Orchestration: scheduling, gates, control (~1862 tok)
+- `020-run-record.md` — 020 — The run record, verdicts and the basis (~2405 tok)
+- `030-configuration.md` — 030 — Configuration (~2075 tok)
+- `040-runner.md` — 040 — The runner (~6120 tok)
+- `050-orchestration.md` — 050 — Orchestration: scheduling, gates, control (~2755 tok)
 - `060-tasks-and-suites.md` — 060 — Tasks, oracles and the suite interface (~1440 tok)
 - `061-suite-bfcl.md` — 061 — Suite: BFCL (Berkeley Function-Calling Leaderboard) (~551 tok)
 - `062-suite-swe-bench.md` — 062 — Suite: SWE-bench and SWE-bench-style sets (~610 tok)
 - `063-suite-multi-language.md` — 063 — Suite: our own multi-language agentic suite (~536 tok)
 - `064-engine-adapters.md` — 064 — Engine adapters: Cerebriline as the engine of an external harness (~962 tok)
 - `065-cell-contract.md` — 065 — The cell contract and exports (~1280 tok)
-- `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~2998 tok)
+- `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~5377 tok)
 - `080-store.md` — 080 — The store (~4404 tok)
-- `090-interfaces.md` — 090 — Interfaces (~1698 tok)
+- `090-interfaces.md` — 090 — Interfaces (~2073 tok)
 - `100-legacy-import.md` — 100 — Import of the old harness's corpus (~3426 tok)
-- `110-acceptance-and-roadmap.md` — 110 — Acceptance and roadmap (~1311 tok)
-- `decisions.md` — Decisions and open questions (~3118 tok)
+- `110-acceptance-and-roadmap.md` — 110 — Acceptance and roadmap (~4576 tok)
+- `decisions.md` — Decisions and open questions (~4272 tok)
 
 ## docs/specs/archive/
 
@@ -144,11 +143,11 @@
 
 ## examples/config/
 
-- `automaticum.toml` — The daemon's own file. Copy this directory, edit it, and start the daemon (~189 tok)
+- `automaticum.toml` — The daemon's own file. Copy this directory, edit it, and start the daemon (~228 tok)
 
 ## examples/config/endpoints/
 
-- `local-ollama.toml` (~68 tok)
+- `local-ollama.toml` (~114 tok)
 - `stub.toml` — The stub model server the daemon can start for tests (automaticum stub). (~46 tok)
 
 ## examples/config/lanes/
@@ -157,7 +156,7 @@
 
 ## images/base/
 
-- `Dockerfile` — Docker container definition (~316 tok)
+- `Dockerfile` — Docker container definition (~234 tok)
 
 ## images/layers/typescript/
 
@@ -165,24 +164,26 @@
 
 ## internal/config/
 
-- `arm.go` — loads automaticum's configuration: arms, lanes, endpoints (~7253 tok)
-- `config_test.go` — TestRepositoryArms, TestArmValidation, TestNothingIsDefaulted, TestExtendsAndIdentity + 2 more (~3435 tok)
-- `local.go` — Local (70 fields); methods: Token, APIKey (~2058 tok)
+- `arm.go` — loads automaticum's configuration: arms, lanes, endpoints (~7474 tok)
+- `config_test.go` — TestRepositoryArms, TestArmValidation, TestNothingIsDefaulted, TestExtendsAndIdentity + 3 more (~3694 tok)
+- `local.go` — Local (76 fields); methods: Token, APIKey (~2293 tok)
+- `model_test.go` — TestModels (~532 tok)
+- `model.go` — ModelIdentity (25 fields); methods: Missing (~700 tok)
 - `runner_fixture_test.go` — TestRunnerFixtureIsTheResolvedArm (~164 tok)
 
 ## internal/daemon/
 
-- `api.go` — HTTP handlers: reply, fail (~5175 tok)
-- `daemon_test.go` — memState (124 fields); methods: UpsertRun, GetRun, ListRuns, BlobRefs (~4790 tok)
-- `daemon.go` — is automaticumd without its main: the queue, one worker (~3354 tok)
+- `api.go` — HTTP handlers: reply, fail (~9219 tok)
+- `daemon_test.go` — memState (126 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~6703 tok)
+- `daemon.go` — is automaticumd without its main: the queue, one worker (~4862 tok)
 
 ## internal/detect/
 
-- `controls.go` — Controls, SelfTest, Available: positive and negative controls per domain (~1700 tok)
-- `detect_test.go` — edges of each definition; answers pinned to the reference pattern (~2600 tok)
-- `detect.go` — the detector library, version 2: Block (short_unit_repeat, char_run, sentence_repeat, reasoning_repetition, reasoning_loop, runaway only with a declared size), RepeatedCalls (2 and 5, the SDK's) (~2600 tok)
-- `guards.go` — the SDK's reasoning guards read after the run, with the SDK's thresholds (D75): reasoningRepetition, reasoningLoop (low-uniqueness, line-cycle, phrase-cycle) (~1900 tok)
-- `reference_test.go` — the reference detector's own fixtures as tests; TestAgainstReference runs the reference code (AUTOMATICUM_REFERENCE, AUTOMATICUM_BLOCKS) and compares block by block (~1700 tok)
+- `controls.go` — Control (39 fields) (~2450 tok)
+- `detect_test.go` — TestSelfTest, TestShortUnit, TestShortUnitAgainstPattern, TestCharRun + 5 more (~2754 tok)
+- `detect.go` — is the detector library (spec 070 §3): degeneration and (~2624 tok)
+- `guards.go` (~1753 tok)
+- `reference_test.go` — TestReferenceFixtures, TestAgainstReference (~1596 tok)
 
 ## internal/docker/
 
@@ -191,23 +192,24 @@
 
 ## internal/gate/
 
-- `gate_test.go` — every gate with the fault it must catch, against a fake model server (~2700 tok)
-- `gate.go` — Builtin gates (lane, free, model_tag, template, sampler, thinking, gpu_residency, harness_build, host, oracle, workspace, bind_address; three unchecked until agent mode), Run, Worst (~4200 tok)
+- `gate_test.go` — server (40 fields); methods: ImageInspect, Check, Path (~2872 tok)
+- `gate.go` — holds the gates: what must hold before a run starts (spec (~4457 tok)
 
 ## internal/human/
 
-- `human_test.go` — every format with its edges (~1000 tok)
-- `human.go` — Duration, Millis, Seconds, Since, Time, Count, Number, Bytes, Percent, Rate, Metric: the one formatter for everything a person reads (~1500 tok)
+- `human_test.go` — TestDuration, TestNumbers, TestMetric (~831 tok)
+- `human.go` — writes values the way a person reads them: a duration in (~1413 tok)
 
 ## internal/ingest/
 
-- `analyse.go` — Run (reads blobs, writes metrics, tool calls, findings; keeps other detectors' findings), Analyse, distribution (~2700 tok)
-- `detectors.go` — detectorFindings: the detector library over blocks and calls, one finding per detector and channel (Firing) (~1100 tok)
-- `events.go` — ReadEvents: one pass over a run's event stream (tool calls, blocks, notices, split); chunk lines skipped unparsed (~1900 tok)
-- `ingest_test.go` — synthetic stream and wire lines in the real shapes; memory store (~3800 tok)
-- `sample_test.go` — prints the analysis of a real run when AUTOMATICUM_SAMPLE names a directory (~900 tok)
-- `wire.go` — ReadWire: the wire capture as Requests; agent request = chat with tools; server counts from the last answer line (~1300 tok)
-- `wirearm.go` — CompareWire: detector `wire_arm` (stated_not_sent, sent_not_stated, differs, drift), Deviation evidence (~3300 tok)
+- `analyse.go` — Interface: Blobs (47 methods) (~3994 tok)
+- `detectors.go` — Firing (23 fields) (~1014 tok)
+- `events.go` — turns a run's stored raw material into what is queried: (~2544 tok)
+- `ingest_test.go` — TestReadEvents, TestReadWire, TestCompareWireClean, TestCompareWire + 2 more (~8030 tok)
+- `sample_test.go` — TestSample, TestDumpBlocks (~1010 tok)
+- `sampler.go` — Setting (43 fields) (~1398 tok)
+- `wire.go` — Request (63 fields) (~1317 tok)
+- `wirearm.go` — Deviation (99 fields) (~3578 tok)
 
 ## internal/legacyimport/
 
@@ -229,20 +231,20 @@
 
 ## internal/run/
 
-- `probe.go` — Identity (65 fields); methods: Changed (~1526 tok)
-- `protocol.go` — executes one run: an arm on a task, once, on a lane. It (~1295 tok)
-- `run_test.go` — fakeState (75 fields); methods: UpsertRun, AddBlobRefs, Put, ImageInspect (~5637 tok)
-- `run.go` — Interface: Engine (9 methods) (~6352 tok)
+- `probe.go` — Identity (78 fields); methods: Changed (~1960 tok)
+- `protocol.go` — executes one run: an arm on a task, once, on a lane. It (~1298 tok)
+- `run_test.go` — fakeState (75 fields); methods: UpsertRun, AddBlobRefs, Put, Check (~5958 tok)
+- `run.go` — Interface: Engine (7 methods) (~7620 tok)
 - `verdict.go` — Facts (20 fields) (~588 tok)
 
 ## internal/sdk/
 
-- `sdk_test.go` — definitions; a real install, second install, offline rebuild and tampering in containers (needs AUTOMATICUM_TEST_DIR) (~1700 tok)
-- `sdk.go` — Env (Def, List, Check, Add, Rebuild, Path), Def (sdk.toml), Record (bundle.json), HashTree: SDK builds as pinned bundles with archived packages (~4300 tok)
+- `sdk_test.go` — TestDefinitions, TestInstallRebuild (~1726 tok)
+- `sdk.go` — provisions the SDK under test. A lane image holds no SDK: each (~5126 tok)
 
 ## internal/store/
 
-- `store.go` — defines the one interface through which automaticum reaches (~2712 tok)
+- `store.go` — defines the one interface through which automaticum reaches (~2867 tok)
 
 ## internal/store/blob/
 
@@ -261,8 +263,8 @@
 
 ## internal/store/duck/
 
-- `duck_test.go` — TestRunRoundTrip, TestFiltersAndDerivedTables, TestLaneState, TestQueue (~2284 tok)
-- `duck.go` — implements store.State on DuckDB. (~4834 tok)
+- `duck_test.go` — TestRunRoundTrip, TestFiltersAndDerivedTables, TestLaneState, TestQueue, TestMetricsAndReads (~2747 tok)
+- `duck.go` — implements store.State on DuckDB. (~5601 tok)
 
 ## internal/store/lance/
 
@@ -281,18 +283,34 @@
 
 ## internal/task/
 
-- `exec.go` — Interface: Executor (4 methods) (~3500 tok)
+- `exec.go` — Interface: Executor (4 methods) (~3851 tok)
 - `task_test.go` — TestLoadAll, TestLoadRejects, TestHashChangesWithAnyFile, TestVerifyDemo + 2 more (~2726 tok)
 - `task.go` — loads tasks from the tasks directory, builds what they need, (~3571 tok)
 
+## models/
+
+- `qwen36-base-mtp_tb-27b-q4km-128k.toml` — What this tag is, in the owner's words (030 §4.1), as named on 2026-10-13: (~67 tok)
+- `stub.toml` — The scripted stub model server of the harness's own tests. Not a model. (~44 tok)
+
 ## runner/
 
-- `package-lock.json` — npm lock file (~53902 tok)
-- `package.json` — Node.js package manifest (~219 tok)
-- `PROTOCOL.md` — The runner: protocol 1 (~797 tok)
+- `package.json` — Node.js package manifest (~103 tok)
+- `PROTOCOL.md` — The runner: protocol 1 (~824 tok)
 - `runner.mjs` — The runner: one agent session for one run, inside the lane's container. (~2472 tok)
 - `session.mjs` — unsupported lists what an arm asks for that this runner cannot do. (~2455 tok)
 - `wire.mjs` — createWire returns a fetch that appends one JSON line per request to (~1492 tok)
+
+## runner/sdk/4.100.250/
+
+- `package-lock.json` — npm lock file (~53902 tok)
+- `package.json` — Node.js package manifest (~186 tok)
+- `sdk.toml` — SDK release 4.100.250, from the registry. zod is held at the version the (~96 tok)
+
+## runner/sdk/4.100.251/
+
+- `package-lock.json` — npm lock file (~52402 tok)
+- `package.json` — Node.js package manifest (~64 tok)
+- `sdk.toml` — SDK release 4.100.251, from the registry: the patched Ollama provider (~74 tok)
 
 ## runner/test/
 
@@ -388,7 +406,12 @@
 
 - `answer.txt` (~5 tok)
 
-## models/
+## internal/stats/
 
-- `qwen36-base-mtp_tb-27b-q4km-128k.toml` — the owner's first real tag: Qwen 3.6, 27B, variant not stated yet (~60 tok)
-- `stub.toml` — the scripted stub model (~30 tok)
+- `stats.go` — Wilson interval, Summarise (median, quartiles, swing), Fisher exact, MannWhitney (exact without ties, else approximation); decides nothing (D78) (~1900 tok)
+- `stats_test.go` — known values (~600 tok)
+
+## compare (milestone 4, first part)
+
+- `internal/daemon/compare.go` — GET /v1/compare: runs of batches grouped by arm, summaries, findings, pairwise tests, arm diff (~1700 tok)
+- `cmd/automaticum/compare_cmds.go` — `automaticum compare <batch> ...`, main metrics by default, --all (~1700 tok)

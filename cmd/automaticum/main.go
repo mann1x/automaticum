@@ -40,6 +40,7 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   run identify <run>            add where and on what a run ran to its record, marked as added later
   logs <run>                    a run's raw material [--events|--wire|--runner|--oracle]
   doctor                        every gate, on every lane, now [--lane L] [--arm A] [--task T] [--all]
+  compare <batch> [<batch> ...] the arms of some batches side by side: every statistic, no conclusion [--all]
   reanalyse                     derive metrics and findings again from what is stored [--run R | --batch B] [--imported]
   detect <file|run>             the detector library on a text file or on a stored run; --self-test runs its controls
   stub serve --script F         a scripted model server, for trying the harness without a GPU
@@ -62,7 +63,7 @@ func main() {
 		return
 	}
 	// Some commands are one word.
-	one := map[string]func(context.Context, []string) error{"status": status, "logs": logs, "reanalyse": reanalyse, "detect": detectCmd, "doctor": doctor}
+	one := map[string]func(context.Context, []string) error{"status": status, "logs": logs, "reanalyse": reanalyse, "detect": detectCmd, "doctor": doctor, "compare": compare}
 	if len(args) >= 1 && one[args[0]] != nil {
 		fail(one[args[0]](ctx, args[1:]))
 		return
