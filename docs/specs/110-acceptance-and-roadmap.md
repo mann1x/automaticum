@@ -1,6 +1,6 @@
 # 110 — Acceptance and roadmap
 
-**Status:** draft 0.9, 2026-10-13. The milestone order in §3 was approved by the owner
+**Status:** draft 0.10, 2026-10-13. The milestone order in §3 was approved by the owner
 on 2026-10-12. Milestone 1 has been carried out: the store, the importer and
 the spike's measurements exist (080 §7.4, 100 §7), and the owner has decided
 the questions it raised (D46 to D51). Milestone 2 was planned and approved on
@@ -117,8 +117,24 @@ SDK reported them as resolved:
   so the effective value is the same.
 
 So the read-back (040 §4, layer 2) is not proof of what was sent; only the
-wire (layer 3) is, and comparing the first request with the arm is not yet
-automatic.
+wire (layer 3) is. Since milestone 3 the comparison is automatic: ingest
+compares every agent request with the arm and records each difference as a
+`wire_arm` finding (070 §4.1), which `run show` prints.
+
+**The thinking setting of these five runs is the tag's own (`medium`), not
+`high`.** The cause, as the Cerebriline session reported it on 2026-10-13:
+the SDK packages published as 4.100.250 install the stock Ollama provider
+library, not the patched one the extension is built with. The stock library
+sends every effort level as `think: true` and drops the options its schema
+does not name (presence penalty among them). It is corrected in the SDK's
+repository and not released (X8). Until a release carries it, an arm that
+states an effort level runs on the tag's budget, and says so in a finding.
+
+Two more things the comparison shows on all five runs, both as notes: the
+output budget sent (`num_predict`) shrinks as the context fills, by the SDK's
+own rule, since the arm leaves it to the SDK; and the first agent request
+alone carries a `placement` field that asks for a window of 111,277 tokens,
+smaller than the 131,072 of `num_ctx` in the same request.
 
 Before these, five runs of an earlier draft of the arm were recorded
 `INVALID` within seconds by a fault in the runner's read-back (a thinking

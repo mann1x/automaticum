@@ -159,6 +159,23 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-13T10:47:00+02:00"
+    },
+    {
+      "id": "bug-011",
+      "timestamp": "2026-10-13T12:56:46+02:00",
+      "error_message": "panic: nil pointer dereference in daemon.(*memState).Findings during go test ./internal/daemon",
+      "file": "internal/daemon/daemon_test.go",
+      "root_cause": "the daemon now calls ingest after each run; the test store embeds store.State and did not implement Findings, ReplaceMetrics, ReplaceToolCalls, ReplaceFindings, Metrics",
+      "fix": "implemented the methods on memState and added a test that a finished run is analysed and that reanalyse works",
+      "tags": [
+        "test",
+        "fake",
+        "store.State",
+        "ingest"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-13T12:56:46+02:00"
     }
   ]
 }

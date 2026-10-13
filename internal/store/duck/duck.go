@@ -22,7 +22,7 @@ import (
 )
 
 // SchemaVersion is the version of the tables this package creates.
-const SchemaVersion = 2
+const SchemaVersion = 3
 
 const schema = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -59,6 +59,11 @@ CREATE TABLE IF NOT EXISTS tool_calls (
 CREATE TABLE IF NOT EXISTS findings (
 	run_id VARCHAR NOT NULL, detector VARCHAR, detector_version VARCHAR,
 	severity VARCHAR, turn INTEGER, count INTEGER, evidence VARCHAR
+);
+
+-- Version 3. Derived, replaced per run.
+CREATE TABLE IF NOT EXISTS run_metrics (
+	run_id VARCHAR NOT NULL, name VARCHAR NOT NULL, value DOUBLE
 );
 
 -- Version 2. seq orders items enqueued in the same instant.
@@ -413,6 +418,77 @@ func (s *State) ReplaceFindings(ctx context.Context, runID string, findings []st
 		f := findings[i]
 		return []driver.Value{runID, f.Detector, f.DetectorVersion, f.Severity, int32(f.Turn), int32(f.Count), string(f.Evidence)}
 	})
+}
+
+// ReplaceMetrics replaces the metrics derived for a run.
+func (s *State) ReplaceMetrics(ctx context.Context, runID string, metrics []store.Metric) error {
+	return s.replace(ctx, "run_metrics", runID, len(metrics), func(i int) []driver.Value {
+		return []driver.Value{runID, metrics[i].Name, metrics[i].Value}
+	})
+}
+
+// Metrics returns a run's metrics, by name.
+func (s *State) Metrics(ctx context.Context, runID string) ([]store.Metric, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT name, value FROM run_metrics WHERE run_id = ? ORDER BY name`, runID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []store.Metric
+	for rows.Next() {
+		m := store.Metric{RunID: runID}
+		if err := rows.Scan(&m.Name, &m.Value); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
+// ToolCalls returns a run's tool calls in order.
+func (s *State) ToolCalls(ctx context.Context, runID string) ([]store.ToolCall, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT turn, seq, tool, ok, error_class, parse_path, duration_ms FROM tool_calls WHERE run_id = ? ORDER BY seq`, runID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []store.ToolCall
+	for rows.Next() {
+		c := store.ToolCall{RunID: runID}
+		var tool, class, path sql.NullString
+		var ok sql.NullBool
+		var turn, seq, dur sql.NullInt64
+		if err := rows.Scan(&turn, &seq, &tool, &ok, &class, &path, &dur); err != nil {
+			return nil, err
+		}
+		c.Turn, c.Seq, c.Tool, c.OK, c.ErrorClass, c.ParsePath, c.DurationMS = int(turn.Int64), int(seq.Int64), tool.String, ok.Bool, class.String, path.String, dur.Int64
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// Findings returns a run's findings.
+func (s *State) Findings(ctx context.Context, runID string) ([]store.Finding, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT detector, detector_version, severity, turn, count, evidence FROM findings WHERE run_id = ? ORDER BY detector, turn`, runID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []store.Finding
+	for rows.Next() {
+		f := store.Finding{RunID: runID}
+		var det, ver, sev, ev sql.NullString
+		var turn, count sql.NullInt64
+		if err := rows.Scan(&det, &ver, &sev, &turn, &count, &ev); err != nil {
+			return nil, err
+		}
+		f.Detector, f.DetectorVersion, f.Severity, f.Turn, f.Count = det.String, ver.String, sev.String, int(turn.Int64), int(count.Int64)
+		if ev.String != "" {
+			f.Evidence = json.RawMessage(ev.String)
+		}
+		out = append(out, f)
+	}
+	return out, rows.Err()
 }
 
 // SetLaneState records the current state of a lane.

@@ -16,6 +16,9 @@ import (
 	"time"
 
 	"github.com/mann1x/automaticum/internal/daemon"
+	"github.com/mann1x/automaticum/internal/ingest"
+	"math"
+	"strconv"
 )
 
 // client talks to the daemon of this installation.
@@ -288,6 +291,20 @@ func runShow(ctx context.Context, args []string) error {
 		}
 		w.Flush()
 	}
+	if len(r.Metrics) > 0 {
+		fmt.Println("\nmetrics:")
+		w := table()
+		for _, m := range r.Metrics {
+			fmt.Fprintf(w, "  %s\t%s\n", m.Name, strconv.FormatFloat(math.Round(m.Value*1000)/1000, 'f', -1, 64))
+		}
+		w.Flush()
+	}
+	if len(r.Findings) > 0 {
+		fmt.Println("\nfindings:")
+		for _, f := range r.Findings {
+			fmt.Printf("  %s\n", findingLine(f))
+		}
+	}
 	if len(r.Provenance) > 0 {
 		var buf bytes.Buffer
 		json.Indent(&buf, r.Provenance, "", "  ")
@@ -395,4 +412,68 @@ func logs(ctx context.Context, args []string) error {
 	defer resp.Body.Close()
 	_, err = io.Copy(os.Stdout, resp.Body)
 	return err
+}
+
+// findingLine says one finding in one line.
+func findingLine(f daemon.FindingView) string {
+	head := fmt.Sprintf("%-8s %s", f.Severity, f.Detector)
+	if f.Detector != ingest.WireArm {
+		return fmt.Sprintf("%s  turn %d, %d times  %s", head, f.Turn, f.Count, f.Evidence)
+	}
+	var d ingest.Deviation
+	if json.Unmarshal(f.Evidence, &d) != nil {
+		return fmt.Sprintf("%s  %s", head, f.Evidence)
+	}
+	where := fmt.Sprintf("%d of %d requests, first #%d", d.Requests, d.Of, d.FirstSeq)
+	effective := ""
+	if d.Effective != "" {
+		effective = fmt.Sprintf("; in effect: %s (%s)", d.Effective, d.Source)
+	}
+	switch d.Kind {
+	case ingest.StatedNotSent:
+		sent := "nothing"
+		if len(d.Sent) > 0 {
+			sent = string(d.Sent)
+		}
+		return fmt.Sprintf("%s  stated, not sent: %s = %s, sent %s as %s%s (%s)", head, d.Arm, d.Stated, d.Field, sent, effective, where)
+	case ingest.SentNotStated:
+		return fmt.Sprintf("%s  sent, not stated: %s = %s (%s)", head, d.Field, d.Sent, where)
+	case ingest.Differs:
+		return fmt.Sprintf("%s  differs: %s = %s, sent %s = %s (%s)", head, d.Arm, d.Stated, d.Field, d.Sent, where)
+	case ingest.Drift:
+		return fmt.Sprintf("%s  changed during the run: %s took %s (%s)", head, d.Field, strings.Join(d.Values, ", "), where)
+	}
+	return fmt.Sprintf("%s  %s", head, f.Evidence)
+}
+
+// reanalyse derives metrics, tool calls and findings again from what is
+// stored.
+func reanalyse(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("reanalyse", flag.ExitOnError)
+	_, dial := addClient(fs)
+	var req daemon.ReanalyseRequest
+	fs.StringVar(&req.Run, "run", "", "one run")
+	fs.StringVar(&req.Batch, "batch", "", "the runs of one batch")
+	if rest := parse(fs, args); len(rest) != 0 {
+		return errors.New("usage: automaticum reanalyse [--run <run> | --batch <batch>]")
+	}
+	c, err := dial()
+	if err != nil {
+		return err
+	}
+	var resp daemon.ReanalyseResponse
+	if err := c.do(ctx, "POST", "/v1/reanalyse", req, &resp); err != nil {
+		return err
+	}
+	if c.json {
+		return printJSON(resp)
+	}
+	fmt.Printf("%d runs analysed again\n", resp.Runs)
+	for id, why := range resp.Failed {
+		fmt.Printf("  %s: %s\n", id, why)
+	}
+	if len(resp.Failed) > 0 {
+		return fmt.Errorf("%d runs could not be analysed", len(resp.Failed))
+	}
+	return nil
 }

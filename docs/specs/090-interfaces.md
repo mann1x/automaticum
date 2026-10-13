@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.8, 2026-10-13.
+**Status:** draft 0.9, 2026-10-13.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -30,7 +30,7 @@ automaticum logs <run> [--server|--runtime|--events|--wire] [--grep ...] [--turn
 automaticum replay <run> --turn N [--endpoint E]
 automaticum detect <file|run>               # the detector library, standalone
 automaticum embed start|status|stop [--where ...]   # by hand only (080 §5.2)
-automaticum reanalyse [--detector D] [--where ...]
+automaticum reanalyse [--run R | --batch B] [--detector D] [--where ...]
 automaticum rescore <cell>
 automaticum export run|cell|cohort|campaign ...
 automaticum wait run|batch|cell <id> [--until "<condition>"]

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/mann1x/automaticum/internal/config"
+	"github.com/mann1x/automaticum/internal/ingest"
 	"github.com/mann1x/automaticum/internal/run"
 	"github.com/mann1x/automaticum/internal/store"
 	"github.com/mann1x/automaticum/internal/store/blob"
@@ -389,6 +390,15 @@ func (d *Daemon) fly(ctx context.Context, f *flight) {
 		return
 	}
 	log.Info("run ended", "verdict", r.Verdict, "reason", r.VerdictReason)
+	if r.Verdict != store.Skipped {
+		// A run that failed to be analysed is still a run: its material is
+		// stored and `reanalyse` can be run again.
+		if res, err := ingest.Run(context.WithoutCancel(ctx), d.State, d.Blobs, r.ID); err != nil {
+			log.Error("the run could not be analysed", "error", err)
+		} else {
+			log.Info("run analysed", "metrics", len(res.Metrics), "tool_calls", len(res.ToolCalls), "findings", len(res.Findings))
+		}
+	}
 	done()
 }
 

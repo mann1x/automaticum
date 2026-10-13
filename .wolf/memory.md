@@ -582,3 +582,19 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 13:05 | Owner decisions D62-D65 recorded; milestone 3 approved | docs/specs | - | ~1200 |
+
+## Session: 2026-10-13 12:43
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 12:43
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 12:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:56 | M3 step 1+2: store metrics table (schema 3), internal/ingest (events, wire, metrics, wire_arm detector), daemon runs ingest after each run, `reanalyse`, `run show` prints metrics and findings | internal/ingest/*, internal/store/*, internal/daemon/*, cmd/automaticum/* | tests pass; 19 stored runs analysed again; 5 real runs each show effort and presence penalty stated, not sent | ~9000 |

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/mann1x/automaticum/internal/config"
+	"github.com/mann1x/automaticum/internal/ingest"
 	"github.com/mann1x/automaticum/internal/run"
 	"github.com/mann1x/automaticum/internal/store"
 	"github.com/mann1x/automaticum/internal/task"
@@ -106,6 +107,37 @@ type RunView struct {
 	ResolvedArm   json.RawMessage `json:"resolved_arm,omitempty"`
 	Provenance    json.RawMessage `json:"provenance,omitempty"`
 	Blobs         []BlobView      `json:"blobs,omitempty"`
+	Metrics       []MetricView    `json:"metrics,omitempty"`
+	Findings      []FindingView   `json:"findings,omitempty"`
+}
+
+// MetricView is one number measured on a run.
+type MetricView struct {
+	Name  string  `json:"name"`
+	Value float64 `json:"value"`
+}
+
+// FindingView is something a detector found in a run.
+type FindingView struct {
+	Detector string          `json:"detector"`
+	Version  string          `json:"detector_version,omitempty"`
+	Severity string          `json:"severity,omitempty"`
+	Turn     int             `json:"turn"`
+	Count    int             `json:"count"`
+	Evidence json.RawMessage `json:"evidence,omitempty"`
+}
+
+// ReanalyseRequest names the runs to derive again: one run, one batch, or
+// with neither every run this harness made.
+type ReanalyseRequest struct {
+	Run   string `json:"run,omitempty"`
+	Batch string `json:"batch,omitempty"`
+}
+
+// ReanalyseResponse says what was done.
+type ReanalyseResponse struct {
+	Runs   int               `json:"runs"`
+	Failed map[string]string `json:"failed,omitempty"` // by run, why
 }
 
 // BlobView is one piece of a run's raw material.
@@ -159,6 +191,7 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/runs/{id}/stop", d.handleStop)
 	mux.HandleFunc("POST /v1/runs/{id}/abort", d.handleAbort)
 	mux.HandleFunc("POST /v1/runs/{id}/invalidate", d.handleInvalidate)
+	mux.HandleFunc("POST /v1/reanalyse", d.handleReanalyse)
 	mux.HandleFunc("POST /v1/drain", func(w http.ResponseWriter, r *http.Request) {
 		d.Drain()
 		reply(w, http.StatusOK, map[string]bool{"draining": true})
@@ -432,7 +465,67 @@ func (d *Daemon) handleRun(w http.ResponseWriter, r *http.Request) {
 	for _, ref := range refs {
 		v.Blobs = append(v.Blobs, BlobView{Kind: ref.Kind, Name: ref.Name, Hash: string(ref.Hash), Size: ref.Size})
 	}
+	metrics, err := d.State.Metrics(ctx, id)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, "%v", err)
+		return
+	}
+	for _, m := range metrics {
+		v.Metrics = append(v.Metrics, MetricView{Name: m.Name, Value: m.Value})
+	}
+	findings, err := d.State.Findings(ctx, id)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, "%v", err)
+		return
+	}
+	for _, f := range findings {
+		v.Findings = append(v.Findings, FindingView{Detector: f.Detector, Version: f.DetectorVersion, Severity: f.Severity,
+			Turn: f.Turn, Count: f.Count, Evidence: f.Evidence})
+	}
 	reply(w, http.StatusOK, v)
+}
+
+// handleReanalyse derives metrics, tool calls and findings again from what
+// is stored. Verdicts and raw material are not touched.
+func (d *Daemon) handleReanalyse(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var req ReanalyseRequest
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&req); err != nil && err != io.EOF {
+		fail(w, http.StatusBadRequest, "the request is not readable: %v", err)
+		return
+	}
+	var ids []string
+	if req.Run != "" {
+		if _, err := d.State.GetRun(ctx, req.Run); errors.Is(err, store.ErrNotFound) {
+			fail(w, http.StatusNotFound, "there is no finished run %s", req.Run)
+			return
+		}
+		ids = []string{req.Run}
+	} else {
+		own := false
+		runs, err := d.State.ListRuns(ctx, store.RunFilter{Batch: req.Batch, Imported: &own})
+		if err != nil {
+			fail(w, http.StatusInternalServerError, "%v", err)
+			return
+		}
+		for _, rec := range runs {
+			if rec.Verdict != store.Skipped {
+				ids = append(ids, rec.ID)
+			}
+		}
+	}
+	resp := ReanalyseResponse{}
+	for _, id := range ids {
+		if _, err := ingest.Run(ctx, d.State, d.Blobs, id); err != nil {
+			if resp.Failed == nil {
+				resp.Failed = map[string]string{}
+			}
+			resp.Failed[id] = err.Error()
+			continue
+		}
+		resp.Runs++
+	}
+	reply(w, http.StatusOK, resp)
 }
 
 // handleStream sends what a run in flight prints, as server-sent events:

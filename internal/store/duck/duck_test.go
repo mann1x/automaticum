@@ -246,3 +246,36 @@ func TestQueue(t *testing.T) {
 		t.Fatalf("batch b1 has %d runs (err %v)", n, err)
 	}
 }
+
+func TestMetricsAndReads(t *testing.T) {
+	ctx := context.Background()
+	s := open(t, filepath.Join(t.TempDir(), "state.duckdb"))
+	defer s.Close()
+	if err := s.ReplaceMetrics(ctx, "r1", []store.Metric{{Name: "tokens.completion", Value: 10}, {Name: "requests", Value: 3}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ReplaceMetrics(ctx, "r1", []store.Metric{{Name: "tokens.completion", Value: 12.5}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ReplaceMetrics(ctx, "r2", []store.Metric{{Name: "requests", Value: 1}}); err != nil {
+		t.Fatal(err)
+	}
+	m, err := s.Metrics(ctx, "r1")
+	if err != nil || len(m) != 1 || m[0].Name != "tokens.completion" || m[0].Value != 12.5 {
+		t.Fatalf("metrics = %+v (err %v)", m, err)
+	}
+	if err := s.ReplaceToolCalls(ctx, "r1", []store.ToolCall{{Turn: 2, Seq: 1, Tool: "editor", OK: false, ErrorClass: "refused", DurationMS: 7}, {Turn: 1, Seq: 0, Tool: "read_files", OK: true}}); err != nil {
+		t.Fatal(err)
+	}
+	calls, err := s.ToolCalls(ctx, "r1")
+	if err != nil || len(calls) != 2 || calls[0].Tool != "read_files" || calls[1].ErrorClass != "refused" || calls[1].DurationMS != 7 {
+		t.Fatalf("tool calls = %+v (err %v)", calls, err)
+	}
+	if err := s.ReplaceFindings(ctx, "r1", []store.Finding{{Detector: "wire_arm", DetectorVersion: "1", Severity: "warning", Count: 18, Evidence: json.RawMessage(`{"field":"thinking.effort"}`)}}); err != nil {
+		t.Fatal(err)
+	}
+	f, err := s.Findings(ctx, "r1")
+	if err != nil || len(f) != 1 || f[0].Detector != "wire_arm" || f[0].Count != 18 || string(f[0].Evidence) != `{"field":"thinking.effort"}` {
+		t.Fatalf("findings = %+v (err %v)", f, err)
+	}
+}

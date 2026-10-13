@@ -49,6 +49,11 @@
 - The read-back is not proof of what was sent. On 4.100.250 with xollama, `reasoningEffort` (and the budget the SDK derives from it) is reported as resolved but the request carries only `think: true`, and the server applies the tag's own think budget; a sampler value of 0 (`presencePenalty`) is reported but not sent. Always check the wire of the first request.
 - Since 2026-10-13 the daemon's store also holds the imported old corpus (531 runs); the spike's separate corpus store still exists and is no longer the one to query.
 
+- 2026-10-13: SDK 4.100.250 from the registry installs the stock Ollama provider library (the extension uses a patched one): every effort level goes out as `think: true` and options the stock schema does not name (presence_penalty, think_budget) are dropped. Fixed upstream, unreleased (X8). The five first real runs ran on the tag's budget (medium), not high.
+- 2026-10-13: half of a run's event stream is `chunk` events that repeat agent events as text; ingest skips them unparsed. Agent requests on the wire are the `/api/chat` requests that carry `tools`.
+- 2026-10-13: `ReplaceFindings` replaces all findings of a run; ingest keeps findings of detectors it does not own (`internal/ingest` `owned`). A new detector written by ingest must be added there.
+- 2026-10-13: adding a method to `store.State` compiles in test fakes that embed the interface but panics at run time when called; extend the fakes (`internal/daemon/daemon_test.go`, `internal/run/run_test.go`).
+
 ## Do-Not-Repeat
 
 <!-- Mistakes made and corrected. Each entry prevents the same mistake recurring. -->

@@ -132,6 +132,14 @@ type Finding struct {
 	Evidence        json.RawMessage
 }
 
+// Metric is one number measured on a run at ingest (spec 070 §2). Metrics
+// are derived: they are replaced per run and can be recomputed from blobs.
+type Metric struct {
+	RunID string
+	Name  string // dotted, e.g. "tokens.completion", "tool_calls.editor"
+	Value float64
+}
+
 // LaneState is the current state of one lane. It changes often.
 type LaneState struct {
 	Lane      string
@@ -183,6 +191,10 @@ type State interface {
 	BlobRefs(ctx context.Context, runID string) ([]BlobRef, error)
 	ReplaceToolCalls(ctx context.Context, runID string, calls []ToolCall) error
 	ReplaceFindings(ctx context.Context, runID string, findings []Finding) error
+	ReplaceMetrics(ctx context.Context, runID string, metrics []Metric) error
+	Metrics(ctx context.Context, runID string) ([]Metric, error)
+	ToolCalls(ctx context.Context, runID string) ([]ToolCall, error)
+	Findings(ctx context.Context, runID string) ([]Finding, error)
 
 	SetLaneState(ctx context.Context, s LaneState) error
 	LaneStates(ctx context.Context) ([]LaneState, error)

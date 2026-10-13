@@ -29,10 +29,48 @@ type memState struct {
 	queue []store.QueueItem
 	lanes map[string]store.LaneState
 	refs  []store.BlobRef
+	// What ingest derived, by run.
+	metrics  map[string][]store.Metric
+	calls    map[string][]store.ToolCall
+	findings map[string][]store.Finding
+}
+
+func (s *memState) Metrics(_ context.Context, id string) ([]store.Metric, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.metrics[id], nil
+}
+
+func (s *memState) Findings(_ context.Context, id string) ([]store.Finding, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.findings[id], nil
+}
+
+func (s *memState) ReplaceMetrics(_ context.Context, id string, v []store.Metric) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.metrics[id] = v
+	return nil
+}
+
+func (s *memState) ReplaceToolCalls(_ context.Context, id string, v []store.ToolCall) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.calls[id] = v
+	return nil
+}
+
+func (s *memState) ReplaceFindings(_ context.Context, id string, v []store.Finding) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.findings[id] = v
+	return nil
 }
 
 func newMemState() *memState {
-	return &memState{runs: map[string]store.Run{}, lanes: map[string]store.LaneState{}}
+	return &memState{runs: map[string]store.Run{}, lanes: map[string]store.LaneState{},
+		metrics: map[string][]store.Metric{}, calls: map[string][]store.ToolCall{}, findings: map[string][]store.Finding{}}
 }
 
 func (s *memState) UpsertRun(_ context.Context, r *store.Run) error {
@@ -297,6 +335,32 @@ func TestStartRunsInOrder(t *testing.T) {
 		if v := g.waitFinished(id); v.Verdict != "PASS" || v.Batch != "k-once" || v.SDKRelease != "4.100.250" {
 			t.Fatalf("run: %+v", v)
 		}
+	}
+	// A finished run is analysed before its lane is freed, and the record
+	// shows what was derived.
+	var shown RunView
+	g.call("GET", "/v1/runs/"+resp.RunIDs[0], nil, &shown)
+	turns := -1.0
+	for _, m := range shown.Metrics {
+		if m.Name == "turns" {
+			turns = m.Value
+		}
+	}
+	if turns != 0 {
+		t.Errorf("the run was not analysed: metrics %+v", shown.Metrics)
+	}
+	g.state.mu.Lock()
+	g.state.metrics[resp.RunIDs[0]] = nil
+	g.state.mu.Unlock()
+	var again2 ReanalyseResponse
+	if code := g.call("POST", "/v1/reanalyse", ReanalyseRequest{Batch: "k-once"}, &again2); code != 200 || again2.Runs != 3 || len(again2.Failed) != 0 {
+		t.Errorf("reanalyse: %d %+v", code, again2)
+	}
+	if g.call("GET", "/v1/runs/"+resp.RunIDs[0], nil, &shown); len(shown.Metrics) == 0 {
+		t.Error("reanalyse derived nothing")
+	}
+	if code := g.call("POST", "/v1/reanalyse", ReanalyseRequest{Run: "nothing"}, nil); code != 404 {
+		t.Errorf("reanalyse of a run that does not exist: %d", code)
 	}
 	g.runner.mu.Lock()
 	seen := strings.Join(g.runner.seen, ",")

@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.6, 2026-10-13.
+**Status:** draft 0.7, 2026-10-13.
 
 ## 1. The rule: no custom script
 
@@ -160,6 +160,35 @@ Each has a severity, evidence (event ids, quoted text) and a count.
 - **Outcome mismatches:** claimed success against the oracle; fixed then broken
   again; correct at some point but not at the end (needs oracle sampling,
   060 §3.1).
+
+### 4.1 Wire against arm, as built
+
+The detector `wire_arm` runs at ingest on every run this harness made. It
+reads the wire capture and compares each agent request (a chat request that
+offers tools; the SDK's own probes are left out) with the run's resolved
+arm. One finding per field and kind:
+
+| kind | meaning |
+|---|---|
+| `stated_not_sent` | the arm states a value and the request does not carry it; the finding names the value in effect and where it was read (the model tag's parameters recorded before the run, or the server's own answer) |
+| `sent_not_stated` | the request carries a sampler or thinking value the arm does not state, or one the arm leaves to the tag |
+| `differs` | both have the field, with different values |
+| `drift` | the field did not have the same value in every request of the run |
+
+Each finding counts the requests that show it, out of how many, and names
+the first. It never changes a verdict (D63). A drift is a warning for a
+field the arm governs and a note otherwise; an output budget the arm leaves
+to the SDK is a note. `think: true` with thinking left to the tag is not a
+finding: it says "on, budget from the tag".
+
+Metrics written at ingest so far: time (wall, agent, first token, in tools,
+in the model), turns, requests, tool calls and failures by tool, tokens as
+the server counted them (prompt, cached, fresh, completion) with the SDK's
+split of the completion, rates, completion length per request (n, sum, p10,
+p50, p90, max), finish reasons, empty completions, thinking and text block
+lengths, turns without thinking, context (first, last, peak, share of the
+window, cached share, compactions), the SDK's notices by reason, and the
+values the SDK derived from the arm. The rest of §2 is not written yet.
 
 ## 5. Generation-cap audit
 
