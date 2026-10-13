@@ -3,8 +3,10 @@ module github.com/mann1x/automaticum
 go 1.25.0
 
 require (
+	github.com/BurntSushi/toml v1.6.0
 	github.com/apache/arrow-go/v18 v18.8.0
 	github.com/duckdb/duckdb-go/v2 v2.10506.0
+	github.com/klauspost/compress v1.20.3
 )
 
 require (
@@ -18,7 +20,6 @@ require (
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/google/flatbuffers v25.12.19+incompatible // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/klauspost/compress v1.20.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.29 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect

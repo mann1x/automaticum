@@ -1,0 +1,76 @@
+# manic_miner: repair a broken browser game.
+#
+# Ported from the old harness (docs/specs/100-legacy-import.md). Versions 1 to
+# 3 are that harness's; version 4 is the first in automaticum: same seed file
+# and oracle logic as version 3, in a container lane, with a rebuilt oracle
+# binary. Version 4 is a comparability boundary (docs/specs/060 section 5.1).
+
+id = "manic_miner"
+suite = "custom"
+version = 4
+layers = ["typescript"]
+default_answer = "Use your own judgement and continue."
+
+prompt = """
+check manic_miner.html, it's not working. Run `./run_game manic_miner.html` to see whether it actually works -- it loads the page, starts the game, pumps animation frames and tests the game's rules, and prints what went wrong. Use `check_file` after each edit to see straight away whether what you wrote parses, and run the command again before you tell me you are done -- do not declare it fixed on a reading of the source."""
+
+[labels]
+language = "javascript"
+family = "repair"
+tier = "hard"
+
+[limits]
+wall_s = 7200
+oracle_s = 120
+
+# The files the agent starts from, copied into an empty workspace.
+[workspace]
+seed = "seed"
+
+# Something built from the task's files before it can run. The build runs in
+# a container with no network; the result is stored by hash, and the hash is
+# pinned here. A rebuild that gives another hash is refused.
+[[artefact]]
+name = "run_game"
+image = "node@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567"
+inputs = ["oracle/build.mjs", "oracle/run_game.logic.js"]
+command = ["node", "/task/oracle/build.mjs", "/task/oracle/run_game.logic.js", "/out/run_game"]
+output = "run_game"
+sha256 = "13cdd05ae54974f640f934e3a8c8e9500c4c87f4023bfab1000ec9c5c30c1659"
+
+# The agent's copy of the oracle: it may run it, and cannot read its source.
+[[workspace.install]]
+artefact = "run_game"
+path = "run_game"
+mode = "0555"
+
+# The verdict. The harness runs its own copy of the artefact after the agent
+# has stopped, on the workspace's files, in a container with no network. The
+# program exits 0 either way, so it is judged by the pattern.
+[[oracle]]
+name = "game"
+primary = true
+artefact = "run_game"
+image = "node@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567"
+command = ["./run_game", "manic_miner.html"]
+expect_pattern = '"ok":\s*true.*"frames_run":\s*[1-9][0-9]*.*"reached_playing":\s*true.*"game_logic":\s*\{"ok":\s*true'
+timeout_s = 120
+
+# The oracle must pass the first and fail the others, or the task cannot run.
+[[fixture]]
+name = "known-good"
+expect = "pass"
+[fixture.files]
+"manic_miner.html" = "fixtures/known-good.html"
+
+[[fixture]]
+name = "seed"
+expect = "fail"
+[fixture.files]
+"manic_miner.html" = "seed/manic_miner.html"
+
+[[fixture]]
+name = "weak-jump"
+expect = "fail"
+[fixture.files]
+"manic_miner.html" = "fixtures/known-bad-weak-jump.html"

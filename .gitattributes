@@ -1,0 +1,2 @@
+# Task files are hashed: git must never change their bytes.
+tasks/** -text

@@ -1,7 +1,11 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-13T05:29:04.145Z
-> Files: 104 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-13T07:18:25.684Z
+> Files: 106 tracked | Anatomy hits: 0 | Misses: 0
+
+## ../../../../root/.claude/plans/
+
+- `functional-mapping-elephant.md` — Milestone 2: walking skeleton (~3114 tok)
 
 ## ./
 
@@ -116,6 +120,30 @@
 - `automaticum-draft-spec-0.4.md` — automaticum — draft specification (~10389 tok)
 - `omnimergekit-evaluation-requirements-0.1.md` — automaticum — requirements from the omnimergekit evaluation protocol (~8226 tok)
 
+## internal/docker/
+
+- `docker.go` — small Docker Engine API client over the local socket: images (inspect, pull, build), containers (create, start, kill, remove, inspect, wait, logs), `Run` (~3900 tok)
+- `docker_test.go` — stream demux; runs, timeout and cancellation against the local engine (skipped with -short) (~1100 tok)
+
+## internal/task/
+
+- `task.go` — `Task` and its parts, strict `Load`, `LoadAll`, `Find`, validation, hash of every task file (~3200 tok)
+- `exec.go` — `Env`: `Build` (artefact, pinned hash), `PrepareWorkspace`, `RunOracle` (on a copy, no network), `Verify` (fixtures) (~3600 tok)
+- `task_test.go` — loader rejections, demo task, oracle timeout, manic_miner build, fixtures and tamper detection (~2900 tok)
+
+## tasks/custom/manic_miner/
+
+- `task.toml` — task version 4: prompt, limits, the `run_game` artefact with its pinned hash, the oracle and three fixtures (~900 tok)
+- `README.md` — what the task and its files are (~450 tok)
+- `seed/manic_miner.html` — the broken page (CRLF, does not parse) (~4000 tok)
+- `oracle/run_game.logic.js` — the oracle's source, never placed in a workspace (~8000 tok)
+- `oracle/build.mjs` — reproducible build of the oracle as a masked single executable (~900 tok)
+- `fixtures/known-good.html`, `fixtures/known-bad-weak-jump.html` — a working page, and the same with a jump too weak (~5000 tok each)
+
+## tasks/demo/answer/
+
+- `task.toml`, `seed/answer.txt`, `fixtures/good.txt` — made-up task for the harness's own tests (~250 tok)
+
 ## internal/legacyimport/
 
 - `doc.go` — reads the run corpus of the old test harness and maps (~197 tok)
@@ -126,6 +154,7 @@
 - `parse_test.go` — TestParseExit, TestParseBuild, TestParseVerdictFile, TestParseTransactionsAndSummaries, TestParseOra (~3560 tok)
 - `parse.go` — KV (135 fields); methods: Get, Map, Get, Counts (~3727 tok)
 - `scan.go` — RunSource (133 fields) (~3791 tok)
+- `secondpass.go` — Struct: Lane (~2852 tok)
 - `sink.go` — Interface: Sink (7 methods) (~1158 tok)
 - `stream_test.go` — TestStreamScanner, TestStreamScannerCutStream, TestStreamScannerSeveralStreams, TestStreamScannerOve (~2156 tok)
 - `stream.go` — StreamStats (112 fields); methods: Write, EndStream, Stats, ToolCalls (~4302 tok)
