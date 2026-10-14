@@ -1,6 +1,6 @@
 # 110 — Acceptance and roadmap
 
-**Status:** draft 0.14, 2026-10-13. The milestone order in §3 was approved by the owner
+**Status:** draft 0.15, 2026-10-14. The milestone order in §3 was approved by the owner
 on 2026-10-12. Milestone 1 has been carried out: the store, the importer and
 the spike's measurements exist (080 §7.4, 100 §7), and the owner has decided
 the questions it raised (D46 to D51). Milestone 2 was planned and approved on
@@ -266,3 +266,49 @@ Not done in milestone 3, and carried forward:
 flags on every block: 907 blocks of fixtures, controls and runs of both
 harnesses, and the reference owners' two real cohorts of 9,611 blocks with
 their expected output for both versions. No difference (070 §3.2).
+
+### 3.3 Batch D81: base Qwen 3.6 27B against OmniMerge v4 (2026-10-13 and 14)
+
+Both arms: `manic_miner` version 4, SDK 4.100.251, thinking `high`, the
+same sampler (temperature 1, top-k 20, repeat last-n 0, repeat penalty 1),
+128k window, on `windows-2` (NVIDIA GeForce RTX 3090, 24 GB, xOllama) from
+lane `lane-1` on `linux-gpu-1`, interleaved. Ten runs per arm in two
+batches: `k-d81-base-vs-omnimerge-v4` (five each, server 0.40.3-xollama.3;
+its other ten runs were stopped before they started, for a release of the
+server) and `k-d81-base-vs-omnimerge-v4-part2` (five each, server
+0.40.3-xollama.4). Every number below is from `automaticum compare` over
+both batches; no conclusion is drawn (D78).
+
+| | base Qwen 3.6 27B | OmniMerge v4 |
+|---|---|---|
+| runs counted | 10 | 9 (run 8 `INVALID`, below) |
+| `PASS` (95% interval) | 10 (72.2% to 100%) | 9 (70.1% to 100%) |
+| wall time, median (least to most) | 11m 45s (5m 27s to 24m 49s) | 15m 27s (8m 10s to 41m 23s) |
+| output tokens, median | 31,152 | 40,349 |
+| reasoning tokens, median | 24,604 | 31,363 |
+| tokens per solved task | 32,869 | 45,338 |
+| requests, median (least to most) | 30 (16 to 42) | 35 (25 to 115) |
+| first token | 13s | 9.3s |
+| generation rate, median | 58.2 tok/s | 56.5 tok/s |
+| compactions, reloads | 0, 0 | 0, 0 |
+| window peak, median (most) | 35.4% (50.2%) | 33.9% (70.4%) |
+| runs with 2 or more identical calls in a row | 0 of 10 | 1 of 9 |
+
+Mann-Whitney, two-sided: first token p < 0.001, tool time p ≈ 0.014,
+visible text tokens p = 0.010; every other metric p ≥ 0.095. Every run has
+one failed request: the SDK's tokenizer probe (`/api/engine?...endpoint=
+tokenize`) answers 404 on xOllama; it is not a request of the agent's loop.
+
+**Pause, first real test.** Run 8 (OmniMerge v4) was paused at 14:59:17
+because another project needed the GPU: held two seconds later between two
+requests, the model dropped, the device empty. It was resumed at 15:25:39;
+the next request loaded the model again in 26.5 s, fully on the GPU, and
+the run went on to `PASS` by the oracle with 17m 56s of wall time (26m 23s
+held, not counted). The endpoint rule (D73) then made it `INVALID`
+("the model was loaded again during the run"): it cannot tell a reload the
+pause caused from one nobody asked for. The previous verdict, `PASS`, is
+kept in the record.
+
+**Found on the way (bug-016):** the two server releases list a tag's
+parameters in another order; `compare` called that a change. Fixed: the
+parameters are compared as values.
