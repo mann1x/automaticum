@@ -124,7 +124,7 @@ func Probe(ctx context.Context, hc *http.Client, e *config.Endpoint, apiKey, mod
 		}
 		return json.NewDecoder(io.LimitReader(resp.Body, 64<<20)).Decode(out)
 	}
-	if e.Kind == "openai-compatible" {
+	if !Ollama(e) {
 		var models struct {
 			Data []struct {
 				ID string `json:"id"`

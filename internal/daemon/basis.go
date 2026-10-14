@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
 
+	"github.com/mann1x/automaticum/internal/config"
 	"github.com/mann1x/automaticum/internal/ingest"
 	"github.com/mann1x/automaticum/internal/run"
 	"github.com/mann1x/automaticum/internal/store"
@@ -98,6 +100,7 @@ func basisOfRun(rec *store.Run, metrics map[string]float64) map[string]string {
 			Oracle  string `json:"Oracle"`
 			ImageID string `json:"ImageID"`
 		} `json:"oracle"`
+		Cell *CellRecord `json:"cell"`
 	}
 	json.Unmarshal(rec.Provenance, &p)
 	var arm map[string]json.RawMessage
@@ -239,6 +242,9 @@ func basisOfRun(rec *store.Run, metrics map[string]float64) map[string]string {
 	default:
 		set("detectors", fmt.Sprintf("analysis %g", v), "")
 	}
+	if p.Cell != nil {
+		cellBasis(p.Cell, set)
+	}
 	var sampler struct {
 		Seed *int64 `json:"seed"`
 	}
@@ -312,4 +318,114 @@ func (d *Daemon) handleBasis(w http.ResponseWriter, r *http.Request) {
 		out = append(out, BasisGroup{Arm: g.Arm, ArmID: g.ArmID, Task: g.Task, Runs: g.Runs, Basis: g.Basis})
 	}
 	reply(w, http.StatusOK, out)
+}
+
+// cellBasis puts a mode C cell's facts in the basis (065 §3.1): what the
+// server's /props confirmed says so, everything else is the caller's word.
+// The server's own words replace what an arm's endpoint would have said.
+func cellBasis(c *CellRecord, set func(name, value, why string)) {
+	f := c.BasisFacts
+	if f == nil {
+		f = &config.BasisFacts{}
+	}
+	p := c.Props
+	checked := func(v string) string { return v + " (checked against /props)" }
+	said := func(v string) string { return v + " (caller)" }
+	join := func(parts ...string) string {
+		var out []string
+		for _, s := range parts {
+			if s != "" {
+				out = append(out, s)
+			}
+		}
+		return strings.Join(out, ", ")
+	}
+	opt := func(format, v string) string {
+		if v == "" {
+			return ""
+		}
+		return fmt.Sprintf(format, v)
+	}
+	weights := opt("sha256 %s", f.WeightsSHA256)
+	if weights != "" {
+		weights = said(weights)
+	}
+	if p != nil && p.ModelPath != "" {
+		// The name of the file only: the path is the caller's machine's.
+		weights = join(weights, "file "+filepath.Base(p.ModelPath)+" (from /props)")
+	}
+	set("weights", join(said("served as "+c.ServedModel), weights), "")
+	if f.Quantization != "" {
+		set("quantization", said(f.Quantization), "")
+	} else {
+		set("quantization", "", "the caller did not say")
+	}
+	if f.ImatrixSHA256 != "" {
+		set("imatrix", said("sha256 "+f.ImatrixSHA256), "")
+	} else {
+		set("imatrix", "", "the caller did not say")
+	}
+	switch {
+	case p != nil && p.ChatTemplateBytes > 0:
+		set("template", checked(fmt.Sprintf("sha256 %s, %d bytes", p.ChatTemplateSHA256, p.ChatTemplateBytes)), "")
+	case f.ChatTemplateSHA256 != "":
+		set("template", said("sha256 "+f.ChatTemplateSHA256), "")
+	default:
+		set("template", "", "the server did not say and the caller did not either")
+	}
+	server := c.Kind
+	if f.LlamaCppCommit != "" {
+		commit := "llama.cpp " + f.LlamaCppCommit
+		if p != nil && p.BuildInfo != "" {
+			commit = checked(commit)
+		} else {
+			commit = said(commit)
+		}
+		server = join(server, commit)
+	} else if p != nil && p.BuildInfo != "" {
+		server = join(server, "build "+p.BuildInfo+" (from /props)")
+	}
+	if f.LibllamaBuildTime != "" {
+		server = join(server, said("libllama built "+f.LibllamaBuildTime))
+	}
+	set("server", server, "")
+	slots := ""
+	switch {
+	case p != nil && p.TotalSlots > 0:
+		slots = checked(plural(p.TotalSlots, "slot"))
+	case f.NParallel > 0:
+		slots = said(plural(f.NParallel, "slot"))
+	}
+	set("concurrency", join(plural(c.Lanes, "lane")+", chosen by the caller", slots), "")
+	ctx := ""
+	switch {
+	case p != nil && p.NCtx > 0:
+		ctx = checked(fmt.Sprintf("%d tokens per slot", p.NCtx))
+	case f.CtxPerSlot > 0:
+		ctx = said(fmt.Sprintf("%d tokens per slot", f.CtxPerSlot))
+	}
+	if f.CtxTotal > 0 {
+		ctx = join(ctx, said(fmt.Sprintf("%d in all", f.CtxTotal)))
+	}
+	if f.KVCacheType != "" {
+		ctx = join(ctx, said("KV cache "+f.KVCacheType))
+	}
+	set("context", ctx, "the server did not say and the caller did not either")
+	if f.GPU != "" {
+		set("GPU", said(f.GPU), "")
+	} else {
+		set("GPU", "", "the caller did not say")
+	}
+	if f.Driver != "" {
+		set("GPU driver and power", said("driver "+f.Driver), "")
+	} else {
+		set("GPU driver and power", "", "the caller did not say")
+	}
+}
+
+func plural(n int, noun string) string {
+	if n == 1 {
+		return "1 " + noun
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
 }

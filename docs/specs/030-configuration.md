@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.13, 2026-10-14.
+**Status:** draft 0.14, 2026-10-14.
 
 ## 1. Rules
 
@@ -72,6 +72,10 @@ Configured separately from lanes: kind (Ollama, xOllama, opencoti, llama.cpp,
 any OpenAI-compatible, cloud), base URL, credentials by reference, log source
 (local journal, agent mode on the endpoint's host, or an API), how to probe it,
 how to ask it to load or unload a model, capacity (sessions served at once).
+As built, an endpoint file's `kind` is `ollama`, `xollama`,
+`openai-compatible` or `llamacpp` (an OpenAI-compatible llama-server, the
+SDK's provider of that name); a mode C cell's endpoint is not a file but
+passed on the command line (065 §3.1).
 
 - A **capability probe** per kind, and a **real generation probe**: a
   successful pull of a cloud tag proves nothing; one token does.

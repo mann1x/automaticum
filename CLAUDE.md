@@ -69,18 +69,18 @@ make shell SPIKE_ROOT=<dir>
 - **Store spike** (`spike/001-store/`): `REPORT.md` · `results/` · `linkcheck/README.md` · `bench/` (`main.go` · `state.go` · `vectors.go` · `rangeread.go` · `fs_linux.go` · `corpus.go` · `dedup.go` · `embed.go`)
 - **Store** (`internal/store/`): `store.go` · `blob/` (`doc.go` · `blob.go` · `put.go` · `read.go` · `archive.go` · `check.go` · `format.go` · `FORMAT.md`) · `duck/duck.go` · `lance/lance.go` · `storetest/` (`doc.go` · `crash_test.go`)
 - **Legacy importer** (`internal/legacyimport/`): `doc.go` · `importer.go` · `scan.go` · `secondpass.go` · `parse.go` · `stream.go` · `mapping.go` · `sink.go` · `verify.go` · `types.go` · tests (`fixture_test.go` · `import_test.go` · `parse_test.go` · `secondpass_test.go` · `stream_test.go`)
-- **Configuration** (`internal/config/`): `arm.go` · `campaign.go` · `local.go` · `model.go` · `config_test.go` · `campaign_test.go` · `model_test.go` · `runner_fixture_test.go`
+- **Configuration** (`internal/config/`): `arm.go` · `campaign.go` · `cell.go` · `local.go` · `model.go` · `config_test.go` · `campaign_test.go` · `cell_test.go` · `model_test.go` · `runner_fixture_test.go`
 - **Stub model server** (`internal/stubmodel/`): `stubmodel.go` · `stubmodel_test.go`
 - **Docker client** (`internal/docker/`): `docker.go` · `docker_test.go`
 - **Task loader** (`internal/task/`): `task.go` · `exec.go` · `task_test.go`
-- **Run executor** (`internal/run/`): `run.go` · `protocol.go` · `probe.go` · `verdict.go` · `run_test.go` · `identity_test.go`
+- **Run executor** (`internal/run/`): `run.go` · `protocol.go` · `probe.go` · `props.go` · `verdict.go` · `run_test.go` · `identity_test.go` · `props_test.go`
 - **SDK builds** (`internal/sdk/`): `sdk.go` · `sdk_test.go`
 - **Human formatter** (`internal/human/`): `human.go` · `human_test.go`
 - **Statistics** (`internal/stats/`): `stats.go` · `stats_test.go`
 - **Detector library** (`internal/detect/`): `detect.go` · `guards.go` · `controls.go` · `detect_test.go` · `reference_test.go`
 - **Gates** (`internal/gate/`): `gate.go` · `gate_test.go`
 - **Ingest** (`internal/ingest/`): `analyse.go` · `canary.go` · `cap.go` · `detectors.go` · `events.go` · `sampler.go` · `wire.go` · `wirearm.go` · tests (`ingest_test.go` · `sample_test.go` · `canary_test.go` · `cap_test.go` · `openai_test.go`)
-- **Daemon** (`internal/daemon/`): `daemon.go` · `api.go` · `compare.go` · `basis.go` · `campaign.go` · `cell.go` · `control.go` · `canary.go` · `daemon_test.go`
+- **Daemon** (`internal/daemon/`): `daemon.go` · `api.go` · `compare.go` · `basis.go` · `campaign.go` · `cell.go` · `control.go` · `canary.go` · `modec.go` · `daemon_test.go` · `modec_test.go`
 - **Daemon command** (`cmd/automaticumd/`): `main.go`
 - **Runner** (`runner/`, Node ESM, runs only inside the lane container): `PROTOCOL.md` · `package.json` · `runner.mjs` · `session.mjs` · `wire.mjs` · `sdk/` (`4.100.250/` and `4.100.251/`, each with `package.json` · `package-lock.json` · `sdk.toml`) · `test/` (`arm-stub.json` · `session.test.mjs` · `wire.test.mjs`)
 - **Lane images** (`images/`): `base/Dockerfile` · `layers/typescript/Dockerfile`

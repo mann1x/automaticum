@@ -1,6 +1,6 @@
 # 065 — The cell contract and exports
 
-**Status:** draft 0.7, 2026-10-14.
+**Status:** draft 0.8, 2026-10-14.
 
 ## 1. Purpose
 
@@ -151,8 +151,61 @@ stopped after 40 seconds (exit 30), then run again with the same key
 in flight (exit 30, that run `ABORTED`), then run again (exactly that run
 retried, exit 0).
 
-**Not built yet:** mode C: the cell runs on the arm's own endpoint, and the
-command refuses `--endpoint-url` and `--served-model`.
+**Mode C, as built (2026-10-14):**
+
+```
+automaticum cell run --suite <suite[:subset]> --arm <arm> --out <dir> --idempotency-key <key> \
+  --endpoint-url http://<host>:<port>/v1 --served-model <alias> \
+  [--endpoint-kind openai-compatible|llamacpp|ollama|xollama] \
+  [--caller-values <file.json|file.toml>] [--basis-facts <json|file>] [--lanes 1] [--lane L]
+```
+
+- The cell's endpoint is registered under the name `cell-<key>`, kept with
+  the daemon's control state (a restart keeps it), and usable from the
+  cell's lanes only. It is never asked to load or unload anything: a pause
+  holds the run and leaves the caller's model in memory.
+- The arm is the arm file with the cell's endpoint, the served model as
+  `model.model`, the endpoint kind as `model.provider` (the SDK's provider
+  ids), any pinned digest dropped, and each caller value in place of the
+  arm's, its origin `caller`. It is validated like any arm and has its own
+  id. A mode C flag without `--endpoint-url` is an error.
+- `--caller-values`, the arm's own tables: `[sampler]` and `[thinking]`
+  (each replaces the arm's table whole), `output_tokens`, `context_window`.
+  Unknown fields are errors. On an OpenAI-compatible endpoint thinking must
+  be stated (owner `arm`): with the tag as owner the SDK sends a budget of
+  its own and the run is `INVALID`, as on the stub on 2026-10-14.
+- `--basis-facts`, JSON: `weights_sha256`, `quantization`,
+  `chat_template_sha256`, `imatrix_sha256`, `llamacpp_commit`,
+  `libllama_build_time`, `n_parallel`, `ctx_total`, `ctx_per_slot`,
+  `kv_cache_type`, `gpu`, `driver`. Unknown fields are errors. The key
+  names are automaticum's proposal, sent to omnimergekit to confirm.
+- Before every run of the cell, on an OpenAI-compatible endpoint,
+  automaticum reads `GET /props` at the server's root. The run is refused
+  as `SKIPPED` with the reason `gate basis_facts: …` when `total_slots`
+  differs from `n_parallel`, the slot's `n_ctx` from `ctx_per_slot`, the
+  sha256 of the template it serves from `chat_template_sha256`, the commit
+  in `build_info` from `llamacpp_commit` (either may be short), or when the
+  arm's context window is more than a slot holds. A cell whose every run
+  was refused exits 20. A server without `/props` (vLLM) leaves the facts
+  as the caller's word; so does an Ollama or xOllama endpoint.
+- `ctx_total` is recorded, not compared: with a unified KV cache a slot
+  may hold more than `-c` divided by `-np`, and the slot's context is also
+  capped by the model's training context (llama.cpp `n_ctx_slot`).
+- `--lanes N` takes N lanes, the one named by `--lane` first and then the
+  others by name, and queues the runs on them in turn. Fewer lanes than
+  asked is a refusal. The same key with another endpoint, model, values,
+  facts or lane count is refused (409); with the same, it resumes.
+- Each run records `cell` in its provenance: kind, served model, lanes,
+  the caller's values and facts, what `/props` said, and whether the facts
+  were checked against it or are the caller's word. The basis (020 §5)
+  marks each fact `(checked against /props)`, `(from /props)` or
+  `(caller)`; `concurrency` holds the lane count and the slots. The result
+  file has `mode_c`: the cell's endpoint, values, facts and lanes.
+
+Proved on the stub model server speaking llama-server's protocol: a cell
+of two runs with the caller's sampler and facts that agree with `/props`
+(2 PASS, cap audit CLEAN over 8 requests, exit 0); daemon tests cover the
+refusal on a contradicted fact, two lanes, a reused key and a restart.
 
 **Agreed with omnimergekit for mode C (2026-10-14, mail):**
 `--endpoint-kind openai-compatible|llamacpp|ollama|xollama` (default

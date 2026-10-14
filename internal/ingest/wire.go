@@ -20,6 +20,8 @@ type Request struct {
 	// Chat is true for a chat request, of either protocol: Ollama's
 	// /api/chat or an OpenAI-compatible .../chat/completions.
 	Chat bool
+	// OpenAI is true for an OpenAI-compatible chat request.
+	OpenAI bool
 	// Agent is true for a request the agent's loop made: a chat request
 	// that offers tools. The SDK's own probes and lookups are not.
 	Agent bool
@@ -94,7 +96,7 @@ func request(l *wireLine) Request {
 	}
 	q.Failed = l.Status == 0 || l.Status >= 400 || (len(l.Error) > 0 && !bytes.Equal(l.Error, []byte("null")))
 	if strings.HasSuffix(q.Path, "/chat/completions") && l.RequestBody != nil {
-		q.Chat = true
+		q.Chat, q.OpenAI = true, true
 		openAIRequest(&q, l)
 		return q
 	}

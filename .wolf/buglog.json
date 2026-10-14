@@ -295,6 +295,27 @@
       "related_bugs": [],
       "occurrences": 2,
       "last_seen": "2026-10-14T17:40:00+02:00"
+    },
+    {
+      "id": "bug-019",
+      "timestamp": "2026-10-14T18:55:00+02:00",
+      "error_message": "warning wire_arm stated, not sent: model.context_window = 32768, sent options.num_ctx as nothing (4 of 4 requests) on a mode C cell against an OpenAI-compatible endpoint",
+      "file": "internal/ingest/wirearm.go",
+      "root_cause": "CompareWire expected the arm's context window as options.num_ctx on every agent request; the OpenAI chat protocol has no per-request context field (llama-server holds it per slot)",
+      "fix": "Request.OpenAI flag set for .../chat/completions; when every agent request is OpenAI-compatible the context window is not expected on the wire (mode C checks it against /props). wire_arm version 2, AnalysisVersion 2",
+      "tags": [
+        "ingest",
+        "wire_arm",
+        "openai-compatible",
+        "mode-c",
+        "llama-server",
+        "detector-version"
+      ],
+      "related_bugs": [
+        "bug-017"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-14T18:55:00+02:00"
     }
   ]
 }

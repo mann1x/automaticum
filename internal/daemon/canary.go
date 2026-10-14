@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mann1x/automaticum/internal/config"
 	"github.com/mann1x/automaticum/internal/ingest"
 	"github.com/mann1x/automaticum/internal/run"
 	"github.com/mann1x/automaticum/internal/store"
@@ -79,7 +78,7 @@ func (d *Daemon) canaryTick(ctx context.Context, watches map[string]*canaryWatch
 		}
 		if !w.asked {
 			w.asked = true
-			controls, err := d.controlTokens(ctx, f.item.Arm)
+			controls, err := d.controlTokens(ctx, batch, f.item.Arm)
 			if err != nil {
 				d.Log.Info("canary: the control tokens are not checked", "batch", batch, "reason", err)
 			}
@@ -122,15 +121,15 @@ func (d *Daemon) canaryTick(ctx context.Context, watches map[string]*canaryWatch
 
 // controlTokens are the control tokens of the model an arm names, read
 // from its endpoint; an endpoint that cannot say is an error.
-func (d *Daemon) controlTokens(ctx context.Context, armName string) ([]string, error) {
+func (d *Daemon) controlTokens(ctx context.Context, batch, armName string) ([]string, error) {
 	if d.ControlTokens != nil {
 		return d.ControlTokens(ctx, armName)
 	}
-	arm, err := config.LoadArm(filepath.Join(d.Repo, "arms"), armName)
+	arm, _, err := d.armFor(batch, armName)
 	if err != nil {
 		return nil, err
 	}
-	ep := d.Local.Endpoints[arm.Endpoint]
+	ep := d.Local.Endpoint(arm.Endpoint)
 	if !run.Ollama(ep) {
 		return nil, errors.New("this kind of endpoint does not list a model's tokens")
 	}

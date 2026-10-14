@@ -108,7 +108,7 @@ func Builtin() []Gate {
 // endpoint for its identity; it never loads or unloads a model.
 func Run(ctx context.Context, in *Input) []Result {
 	in.lane = in.Local.Lanes[in.Lane]
-	in.endpoint = in.Local.Endpoints[in.Arm.Endpoint]
+	in.endpoint = in.Local.Endpoint(in.Arm.Endpoint)
 	if in.endpoint != nil {
 		key, err := in.Local.APIKey(in.endpoint)
 		if err != nil {
@@ -149,7 +149,7 @@ func lane(_ context.Context, in *Input) (Status, string) {
 		return Refuse, fmt.Sprintf("this installation has no lane %q", in.Lane)
 	case in.endpoint == nil:
 		return Refuse, fmt.Sprintf("this installation has no endpoint %q", in.Arm.Endpoint)
-	case !slices.Contains(in.lane.Endpoints, in.Arm.Endpoint):
+	case !in.Local.MayUse(in.Lane, in.Arm.Endpoint):
 		return Refuse, fmt.Sprintf("lane %s may not use endpoint %s", in.Lane, in.Arm.Endpoint)
 	case in.Arm.Template || in.Arm.ID == "":
 		return Refuse, in.Arm.Name + " is a template, not an arm"

@@ -1137,3 +1137,19 @@
 | 18:15 | Edited internal/stubmodel/stubmodel.go | 2→6 lines | ~47 |
 | 18:15 | Edited internal/stubmodel/stubmodel.go | modified struct() | ~843 |
 | 18:16 | mode C step 2: stub server speaks OpenAI-compatible /v1/chat/completions (SSE), /v1/models, /props; ingest test parses the stub's answer | internal/stubmodel/stubmodel.go, stubmodel_test.go, internal/ingest/openai_test.go | tests pass | ~6k |
+
+## Session: 2026-10-14 18:16
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 18:16
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:20 | Created internal/config/cell.go | — | ~1323 |
+| 18:20 | Created internal/run/props.go | — | ~1083 |
+| 18:21 | Created internal/daemon/modec.go | — | ~1872 |
+| 18:30 | mode C step 3: cell endpoint overlay in config.Local, Arm.ForCell, CallerValues/BasisFacts, /props check per run (SKIPPED gate basis_facts → exit 20), --lanes N round-robin, cell provenance + basis labels, mode_c in result, CLI flags | internal/config/cell.go, local.go, internal/run/props.go, internal/daemon/modec.go, api.go, daemon.go, control.go, canary.go, basis.go, cell.go, cmd/automaticum/cell_cmds.go | tests pass; e2e on stub: exit 0 clean, exit 20 contradicted | ~60k |
+| 18:30 | bug-019: wire_arm v2 skips num_ctx on OpenAI-compatible requests; AnalysisVersion 2 | internal/ingest/wirearm.go, wire.go, analyse.go | e2e clean | ~5k |
+| 18:30 | specs 065 0.8 (mode C as built), 020 0.10, 070 0.15, 030 0.14 | docs/specs | done | ~4k |

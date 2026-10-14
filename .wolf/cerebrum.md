@@ -79,6 +79,9 @@
 
 - [2026-10-14] The daemon's client `do()` turns any status >= 400 into an error from the body's `error` field and drops the rest of the body: a handler that wants the CLI to show why must use `fail()` with the reasons in the message, not `reply(409, struct)`.
 - [2026-10-14] Runs that never started (SKIPPED by stop, gate or bad arm) had no arm in their record; since control (050 §4) they carry `provenance.asked` {arm, task, lane}. Older SKIPPED records cannot be retried.
+- Mode C (2026-10-14): a cell's endpoint is `cell-<key>`, registered in `config.Local`'s overlay (read endpoints only through `Local.Endpoint(name)` and lane permission through `Local.MayUse(lane, name)`, never `Local.Endpoints[...]` directly) and kept in control.json `cells`. Anything that reloads an arm for a queued run must use `d.armFor(batch, name)`, or a cell's run talks to the arm file's endpoint.
+- llama-server `/props` (llama.cpp `get_res_props`): `default_generation_settings.n_ctx` is the PER-SLOT context (`n_ctx_slot`, capped by training ctx and `--kv-unified-per-slot`), `total_slots` = `-np`, `build_info` = `b<number>-<commit>`; it is at the server root, not under `/v1`. Per-slot ctx is not always `-c`/`-np` (unified KV), so never derive one from the other.
+- On an OpenAI-compatible provider, thinking owner "tag" makes the SDK send its own `thinking.budgetTokens = 1024` and the run is INVALID; mode C caller values must state thinking (owner "arm").
 
 ## Do-Not-Repeat
 
@@ -96,6 +99,7 @@
 - [2026-10-13] A host with two addresses: write the address that answers on the service port (`curl -w %{remote_ip}`), not the first one the resolver returns.
 
 - 2026-10-13: do not slice-and-splice a Go file between two text markers without checking their order in the file; it duplicated two type declarations in `internal/daemon/api.go`.
+- 2026-10-14: a detector that expects an Ollama `options.*` field must check the request's protocol (`Request.OpenAI`); OpenAI chat has no `num_ctx`. Bump the detector's version and `AnalysisVersion` when its output changes (bug-019).
 
 ## Decision Log
 

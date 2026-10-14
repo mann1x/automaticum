@@ -16,7 +16,7 @@ import (
 // WireArm is the detector that compares what was sent with the arm.
 const (
 	WireArm        = "wire_arm"
-	WireArmVersion = "1"
+	WireArmVersion = "2"
 )
 
 // The kinds of difference between the arm and the wire.
@@ -135,7 +135,13 @@ func CompareWire(arm *config.Arm, tag string, reqs []Request) []Deviation {
 	}
 
 	expect("model.model", "model", arm.Model.Model, top("model"))
-	if arm.Model.ContextWindow != nil {
+	// An OpenAI-compatible request has no context field: the server holds
+	// the context, and a mode C cell checks it against /props (065 §3.1).
+	openAI := true
+	for i := range agent {
+		openAI = openAI && agent[i].OpenAI
+	}
+	if arm.Model.ContextWindow != nil && !openAI {
 		expect("model.context_window", "options.num_ctx", *arm.Model.ContextWindow, option("num_ctx"))
 	}
 	if arm.Model.OutputTokens != nil && *arm.Model.OutputTokens > 0 {

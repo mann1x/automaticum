@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-14T16:15:32.753Z
-> Files: 239 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-14T16:21:24.986Z
+> Files: 242 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -176,8 +176,10 @@
 - `arm.go` — loads automaticum's configuration: arms, lanes, endpoints (~7474 tok)
 - `campaign_test.go` — TestLoadCampaign (~413 tok)
 - `campaign.go` — Campaign (38 fields); methods: Validate (~1275 tok)
+- `cell.go` — mode C: CallerValues (sampler/thinking/output_tokens/context_window), BasisFacts, ParseCallerValues, ParseBasisFacts, Arm.ForCell (origin "caller", rehash) (~1323 tok)
+- `cell_test.go` — TestArmForCell, TestCellEndpoint (~800 tok)
 - `config_test.go` — TestRepositoryArms, TestArmValidation, TestNothingIsDefaulted, TestExtendsAndIdentity + 3 more (~3694 tok)
-- `local.go` — Local (77 fields); methods: Token, APIKey (~2391 tok)
+- `local.go` — Local (dir, lanes, endpoints, cell-endpoint overlay: Endpoint, MayUse, AddCellEndpoint); Endpoint.Cell; kinds ollama/xollama/openai-compatible/llamacpp; Token, APIKey (~2900 tok)
 - `model_test.go` — TestModels (~532 tok)
 - `model.go` — ModelIdentity (25 fields); methods: Missing (~755 tok)
 - `runner_fixture_test.go` — TestRunnerFixtureIsTheResolvedArm (~164 tok)
@@ -193,6 +195,8 @@
 - `control.go` — control (98 fields) (~4876 tok)
 - `daemon_test.go` — memState (127 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~14584 tok)
 - `daemon.go` — is automaticumd without its main: the queue, one worker (~5534 tok)
+- `modec.go` — mode C: CellSpec, CellRecord, normalise/same, cellLanes, armFor (applies the cell to an arm), checkCell (/props vs facts), startCell (~2100 tok)
+- `modec_test.go` — TestModeCCell (stub llama-server, 2 lanes, 409, refusal, restart), TestModeCBasis (~1500 tok)
 
 ## internal/detect/
 
@@ -254,6 +258,8 @@
 
 - `identity_test.go` — m (37 fields) (~1878 tok)
 - `probe.go` — Identity (129 fields); methods: Changed (~3772 tok)
+- `props.go` — Props, ReadProps (llama-server GET /props at the root; 404 = vLLM, nil), Contradictions (slots, ctx per slot, template sha, commit, context window) (~1150 tok)
+- `props_test.go` — TestProps (~600 tok)
 - `protocol.go` — executes one run: an arm on a task, once, on a lane. It (~1671 tok)
 - `run_test.go` — fakeState (75 fields); methods: UpsertRun, AddBlobRefs, Put, Check (~5958 tok)
 - `run.go` — Interface: Engine (7 methods) (~8266 tok)

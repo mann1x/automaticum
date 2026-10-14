@@ -23,17 +23,20 @@ const CellSchema = "automaticum.cell/1"
 // CellResult is automaticum_result.json: the only file a caller reads for
 // the score (065 §3). Fields may be added within a schema version.
 type CellResult struct {
-	Schema           string `json:"schema"`
-	Suite            string `json:"suite"`
-	Subset           string `json:"subset"`
-	SuiteVersion     string `json:"suite_version"`
-	TaskSetSHA256    string `json:"task_set_sha256"`
-	NExpected        int    `json:"n_expected"`
-	ArmID            string `json:"arm_id"`
-	Arm              string `json:"arm"`
-	Batch            string `json:"batch"`
-	Cohort           string `json:"cohort"`
-	DeclaredVariable string `json:"declared_variable"`
+	Schema        string `json:"schema"`
+	Suite         string `json:"suite"`
+	Subset        string `json:"subset"`
+	SuiteVersion  string `json:"suite_version"`
+	TaskSetSHA256 string `json:"task_set_sha256"`
+	NExpected     int    `json:"n_expected"`
+	ArmID         string `json:"arm_id"`
+	Arm           string `json:"arm"`
+	Batch         string `json:"batch"`
+	// ModeC is the caller's endpoint, values, facts and lanes, when the
+	// cell ran in mode C (065 §3.1).
+	ModeC            *CellSpec `json:"mode_c,omitempty"`
+	Cohort           string    `json:"cohort"`
+	DeclaredVariable string    `json:"declared_variable"`
 	Headline         struct {
 		Metric         string  `json:"metric"`
 		Value          float64 `json:"value"`
@@ -137,6 +140,9 @@ func (d *Daemon) handleCell(w http.ResponseWriter, r *http.Request) {
 	v := CellView{Rows: []CellRow{}, Unfinished: []string{}}
 	res := &v.Result
 	res.Schema, res.Batch, res.Runs = CellSchema, batch, "runs.jsonl"
+	d.mu.Lock()
+	res.ModeC = d.ctl.Cells[batch]
+	d.mu.Unlock()
 	res.Counts = map[string]int{"pass": 0, "fail": 0, "timeout": 0, "aborted": 0, "invalid": 0, "skipped": 0, "unfinished": 0}
 	res.Scores, res.Degeneration, res.Warnings = map[string]float64{}, map[string]int{}, []string{}
 	leave := map[string]bool{}

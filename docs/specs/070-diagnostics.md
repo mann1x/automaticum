@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.14, 2026-10-14.
+**Status:** draft 0.15, 2026-10-14.
 
 ## 1. The rule: no custom script
 
@@ -292,6 +292,12 @@ the first. It never changes a verdict (D63). A drift is a warning for a
 field the arm governs and a note otherwise; an output budget the arm leaves
 to the SDK is a note. `think: true` with thinking left to the tag is not a
 finding: it says "on, budget from the tag".
+
+Version 2 (2026-10-14, analysis version 2): when every agent request is
+OpenAI-compatible, the arm's context window is not expected on the wire.
+That protocol has no such field; the server holds the context, and a mode
+C cell checks it against `/props` (065 §3.1). Version 1 reported it as
+`stated_not_sent` on every such request.
 
 Two more findings are written at ingest from what the endpoint itself said:
 `model_reloaded`, when the server reports a load of a second or more on any

@@ -32,12 +32,14 @@ type control struct {
 	Canary map[string]*CanaryRecord `json:"canary,omitempty"`
 	// Campaigns are the campaigns started, by name.
 	Campaigns map[string]*CampaignState `json:"campaigns,omitempty"`
+	// Cells are the mode C cells' endpoints, by batch (065 §3.1).
+	Cells map[string]*CellSpec `json:"cells,omitempty"`
 }
 
 // loadControl reads the control file once. A missing file is an empty one.
 // It is called with d.mu held.
 func (d *Daemon) loadControl() {
-	d.ctl = control{Drained: map[string]time.Time{}, Held: map[string]time.Time{}, Retries: map[string]string{}, Canary: map[string]*CanaryRecord{}, Campaigns: map[string]*CampaignState{}}
+	d.ctl = control{Drained: map[string]time.Time{}, Held: map[string]time.Time{}, Retries: map[string]string{}, Canary: map[string]*CanaryRecord{}, Campaigns: map[string]*CampaignState{}, Cells: map[string]*CellSpec{}}
 	if d.ControlFile == "" {
 		return
 	}
@@ -68,6 +70,14 @@ func (d *Daemon) loadControl() {
 	}
 	if d.ctl.Campaigns == nil {
 		d.ctl.Campaigns = map[string]*CampaignState{}
+	}
+	if d.ctl.Cells == nil {
+		d.ctl.Cells = map[string]*CellSpec{}
+	}
+	for batch, c := range d.ctl.Cells {
+		if err := d.addCell(batch, c); err != nil {
+			d.Log.Error("a cell's endpoint cannot be registered; its runs will be skipped", "batch", batch, "error", err)
+		}
 	}
 }
 

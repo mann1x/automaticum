@@ -97,6 +97,10 @@ type StartRequest struct {
 	// same key starts nothing and answers with what the first one made.
 	Key    string `json:"idempotency_key,omitempty"`
 	DryRun bool   `json:"dry_run,omitempty"`
+	// Cell runs the batch as a mode C cell (065 §3.1): on the caller's
+	// endpoint, with the caller's values, on Cell.NLanes lanes. It needs a
+	// key and one arm.
+	Cell *CellSpec `json:"cell,omitempty"`
 }
 
 // StartResponse says what was, or would be, queued.
@@ -104,7 +108,9 @@ type StartResponse struct {
 	Batch  string   `json:"batch"`
 	RunIDs []string `json:"run_ids"`
 	Lane   string   `json:"lane"`
-	ArmID  string   `json:"arm_id"`
+	// Lanes are a mode C cell's lanes, its runs spread across them in turn.
+	Lanes []string `json:"lanes,omitempty"`
+	ArmID string   `json:"arm_id"`
 	// ArmIDs holds every arm of the batch by name, when there are several.
 	ArmIDs map[string]string `json:"arm_ids,omitempty"`
 	// Order is the arm of each run, in the order they are queued; Tasks
@@ -448,6 +454,14 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 		tks = append(tks, t)
 	}
 	tk := tks[0]
+	var cellLanes []string
+	if req.Cell != nil {
+		var code int
+		var err error
+		if cellLanes, code, err = d.startCell(ctx, &req, names); err != nil {
+			return resp, code, err
+		}
+	}
 	var arm *config.Arm
 	lane, ids := "", map[string]string{}
 	for _, name := range names {
@@ -458,12 +472,20 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 		if a.Template {
 			return resp, http.StatusUnprocessableEntity, fmt.Errorf("%s is a template, not an arm", name)
 		}
-		if d.Local.Endpoints[a.Endpoint] == nil {
-			return resp, http.StatusUnprocessableEntity, fmt.Errorf("arm %s names endpoint %q, which this installation does not have", name, a.Endpoint)
-		}
-		l, err := d.laneFor(a, req.Lane)
-		if err != nil {
-			return resp, http.StatusUnprocessableEntity, err
+		var l string
+		if req.Cell != nil {
+			c := req.Cell
+			if err := a.ForCell(cellEndpointName("k-"+req.Key), c.Kind, c.ServedModel, c.CallerValues); err != nil {
+				return resp, http.StatusUnprocessableEntity, err
+			}
+			l = cellLanes[0]
+		} else {
+			if d.Local.Endpoint(a.Endpoint) == nil {
+				return resp, http.StatusUnprocessableEntity, fmt.Errorf("arm %s names endpoint %q, which this installation does not have", name, a.Endpoint)
+			}
+			if l, err = d.laneFor(a, req.Lane); err != nil {
+				return resp, http.StatusUnprocessableEntity, err
+			}
 		}
 		// The arms of one batch alternate on one lane: on two lanes the
 		// difference between the lanes would land on the arms.
@@ -478,7 +500,7 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 		}
 		lane, ids[name] = l, a.ID
 	}
-	resp = StartResponse{Lane: lane, ArmID: arm.ID, Task: tk.Name(), Image: LaneImage(tk.Layers), DryRun: req.DryRun}
+	resp = StartResponse{Lane: lane, Lanes: cellLanes, ArmID: arm.ID, Task: tk.Name(), Image: LaneImage(tk.Layers), DryRun: req.DryRun}
 	if len(names) > 1 {
 		resp.ArmIDs = ids
 	}
@@ -567,11 +589,30 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 		if len(items) > 1 {
 			id = fmt.Sprintf("%s-%03d", stem, i+1)
 		}
-		items[i] = store.QueueItem{RunID: id, Batch: resp.Batch, Arm: slots[i].arm, Task: slots[i].task, Lane: lane, EnqueuedAt: now}
+		l := lane
+		if len(cellLanes) > 0 {
+			// A cell's runs go to its lanes in turn.
+			l = cellLanes[i%len(cellLanes)]
+		}
+		items[i] = store.QueueItem{RunID: id, Batch: resp.Batch, Arm: slots[i].arm, Task: slots[i].task, Lane: l, EnqueuedAt: now}
 		resp.RunIDs = append(resp.RunIDs, id)
 	}
 	if req.DryRun {
 		return resp, http.StatusOK, nil
+	}
+	if req.Cell != nil {
+		// The cell's endpoint is kept with the control state, so a
+		// restarted daemon still knows where its runs go.
+		d.mu.Lock()
+		err := d.addCell(resp.Batch, req.Cell)
+		if err == nil {
+			d.ctl.Cells[resp.Batch] = req.Cell
+			err = d.saveControl()
+		}
+		d.mu.Unlock()
+		if err != nil {
+			return resp, http.StatusInternalServerError, err
+		}
 	}
 	if err := d.State.Enqueue(ctx, items); err != nil {
 		return resp, http.StatusInternalServerError, err
@@ -1089,12 +1130,17 @@ func (d *Daemon) afterHeld(f *flight, unload bool) {
 	if !unload {
 		return
 	}
-	arm, err := config.LoadArm(filepath.Join(d.Repo, "arms"), f.item.Arm)
+	arm, _, err := d.armFor(f.item.Batch, f.item.Arm)
 	if err != nil {
 		log.Warn("the run is held, its model stays loaded", "error", err)
 		return
 	}
-	ep := d.Local.Endpoints[arm.Endpoint]
+	ep := d.Local.Endpoint(arm.Endpoint)
+	if ep != nil && ep.Cell {
+		// The caller owns a cell's server (065 §2).
+		log.Info("the run is held; a cell's endpoint is the caller's and is not asked to drop its model")
+		return
+	}
 	if !run.Ollama(ep) {
 		log.Info("the run is held; this kind of endpoint cannot be asked to drop a model")
 		return

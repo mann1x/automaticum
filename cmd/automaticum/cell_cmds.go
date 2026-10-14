@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mann1x/automaticum/internal/config"
 	"github.com/mann1x/automaticum/internal/daemon"
 	"github.com/mann1x/automaticum/internal/store"
 	"github.com/mann1x/automaticum/internal/task"
@@ -47,10 +48,15 @@ func cellRun(ctx context.Context, args []string) (err error) {
 	out := fs.String("out", "", "the directory for automaticum_result.json, runs.jsonl, basis.txt and refusal.json")
 	key := fs.String("idempotency-key", "", "names the cell: running the command again with it resumes the cell")
 	every := fs.Duration("poll", 5*time.Second, "how often the cell's state is read")
-	endpointURL := fs.String("endpoint-url", "", "mode C: the endpoint the caller serves; not built yet")
-	served := fs.String("served-model", "", "mode C: the model the caller serves; not built yet")
+	endpointURL := fs.String("endpoint-url", "", "mode C: the endpoint the caller serves, e.g. http://host:port/v1")
+	served := fs.String("served-model", "", "mode C: the model the endpoint serves (llama-server --alias, vLLM --served-model-name); replaces the arm's")
+	kind := fs.String("endpoint-kind", "openai-compatible", "mode C: openai-compatible (llama-server or vLLM), llamacpp, ollama or xollama")
+	callerValues := fs.String("caller-values", "", "mode C: a JSON or TOML file with sampler, thinking, output_tokens and context_window, which replace the arm's")
+	basisFacts := fs.String("basis-facts", "", "mode C: the caller's facts of the server, as JSON or a JSON file")
+	lanes := fs.Int("lanes", 1, "mode C: how many lanes run the cell at once; part of the basis")
 	if rest := parse(fs, args); len(rest) > 0 || *suite == "" || *arm == "" || *out == "" || *key == "" {
-		return errors.New("usage: automaticum cell run --suite <suite[:subset]> --arm <arm> --out <dir> --idempotency-key <key> [-n 1] [--lane L] [--json]")
+		return errors.New("usage: automaticum cell run --suite <suite[:subset]> --arm <arm> --out <dir> --idempotency-key <key> [-n 1] [--lane L] [--json]\n" +
+			"  mode C: --endpoint-url <url> --served-model <name> [--endpoint-kind openai-compatible] [--caller-values <file>] [--basis-facts <json|file>] [--lanes 1]")
 	}
 	defer func() {
 		// Anything that is not one of the contract's codes is internal.
@@ -60,8 +66,9 @@ func cellRun(ctx context.Context, args []string) (err error) {
 			err = exitCode(cellInternal)
 		}
 	}()
-	if *endpointURL != "" || *served != "" {
-		return errors.New("mode C (--endpoint-url, --served-model) is not built yet: the cell runs on the arm's own endpoint")
+	cell, err := modeC(fs, *endpointURL, *served, *kind, *callerValues, *basisFacts, *lanes)
+	if err != nil {
+		return err
 	}
 	suiteName, subset, _ := strings.Cut(*suite, ":")
 	all, err := task.LoadAll(p.tasks())
@@ -100,7 +107,7 @@ func cellRun(ctx context.Context, args []string) (err error) {
 		return err
 	}
 	var start daemon.StartResponse
-	req := daemon.StartRequest{Arm: *arm, Tasks: tasks, Count: *n, Lane: *lane, Key: *key}
+	req := daemon.StartRequest{Arm: *arm, Tasks: tasks, Count: *n, Lane: *lane, Key: *key, Cell: cell}
 	if err := c.do(ctx, "POST", "/v1/runs", req, &start); err != nil {
 		return err
 	}
@@ -115,6 +122,9 @@ func cellRun(ctx context.Context, args []string) (err error) {
 		fmt.Printf("resumed %s: %d runs, %d run again\n", start.Batch, len(start.RunIDs), len(rv.Retries))
 	} else {
 		fmt.Printf("started %s: %d runs, %d tasks, arm %s\n", start.Batch, len(start.RunIDs), len(tasks), *arm)
+		if cell != nil {
+			fmt.Printf("mode C: %s %s on lanes %s\n", cell.Kind, cell.ServedModel, strings.Join(start.Lanes, ", "))
+		}
 	}
 
 	var view daemon.CellView
@@ -195,6 +205,52 @@ func cellRun(ctx context.Context, args []string) (err error) {
 		return exitCode(code)
 	}
 	return nil
+}
+
+// modeC reads the mode C flags (065 §3.1); nil when the cell runs on the
+// arm's own endpoint. A mode C flag without --endpoint-url is an error, not
+// ignored.
+func modeC(fs *flag.FlagSet, endpointURL, served, kind, callerValues, basisFacts string, lanes int) (*daemon.CellSpec, error) {
+	if endpointURL == "" {
+		var given []string
+		fs.Visit(func(f *flag.Flag) {
+			switch f.Name {
+			case "served-model", "endpoint-kind", "caller-values", "basis-facts", "lanes":
+				given = append(given, "--"+f.Name)
+			}
+		})
+		if len(given) > 0 {
+			return nil, fmt.Errorf("%s needs --endpoint-url: they describe the caller's endpoint", strings.Join(given, ", "))
+		}
+		return nil, nil
+	}
+	if served == "" {
+		return nil, errors.New("mode C needs --served-model: the model the endpoint serves")
+	}
+	c := &daemon.CellSpec{EndpointURL: endpointURL, Kind: kind, ServedModel: served, NLanes: lanes}
+	if callerValues != "" {
+		b, err := os.ReadFile(callerValues)
+		if err != nil {
+			return nil, err
+		}
+		if c.CallerValues, err = config.ParseCallerValues(callerValues, b); err != nil {
+			return nil, err
+		}
+	}
+	if basisFacts != "" {
+		b := []byte(basisFacts)
+		if !strings.HasPrefix(strings.TrimSpace(basisFacts), "{") {
+			var err error
+			if b, err = os.ReadFile(basisFacts); err != nil {
+				return nil, err
+			}
+		}
+		var err error
+		if c.BasisFacts, err = config.ParseBasisFacts(b); err != nil {
+			return nil, err
+		}
+	}
+	return c, nil
 }
 
 // writeCell writes the cell's files, each whole or not at all.

@@ -1,6 +1,6 @@
 # 020 — The run record, verdicts and the basis
 
-**Status:** draft 0.9, 2026-10-14.
+**Status:** draft 0.10, 2026-10-14.
 
 Nothing in this file is optional. Each item is here because its absence
 invalidated or blinded a real campaign. A value is recorded **as probed or as
@@ -200,6 +200,12 @@ where they come from:
 | scorer | the oracle and its image |
 | detectors | the analysis version a run was analysed with (metric `analysis.version`), and the detector versions it means, whether they found anything or not |
 | seed | the sampler's seed, or none set |
+
+In a mode C cell (065 §3.1) the caller's facts fill weights, quantization,
+imatrix, template, server, context, GPU and driver, each marked
+`(checked against /props)`, `(from /props)` or `(caller)`, and
+`concurrency` holds the cell's lane count and the server's slots: cells at
+different lane counts never share a basis.
 
 `automaticum basis show <batch> ... [--arm A]` prints each basis;
 `automaticum basis diff <batch[/arm]> <batch[/arm]>` prints exactly the facts

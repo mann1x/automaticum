@@ -6,7 +6,9 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
+	"sync"
 
 	"github.com/BurntSushi/toml"
 )
@@ -19,6 +21,60 @@ type Local struct {
 	Daemon    Daemon
 	Lanes     map[string]*Lane
 	Endpoints map[string]*Endpoint
+
+	// cells are the endpoints mode C cells were given (065 §3.1), each
+	// with the lanes that may use it. They are not in the directory: the
+	// daemon adds them while it runs, so they are read through Endpoint
+	// and MayUse, under the lock.
+	mu    sync.RWMutex
+	cells map[string]cellEndpoint
+}
+
+type cellEndpoint struct {
+	endpoint *Endpoint
+	lanes    []string
+}
+
+// Endpoint returns the endpoint called name, a configured one or a cell's;
+// nil when there is none.
+func (l *Local) Endpoint(name string) *Endpoint {
+	if e := l.Endpoints[name]; e != nil {
+		return e
+	}
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.cells[name].endpoint
+}
+
+// MayUse says whether lane may use the endpoint called name.
+func (l *Local) MayUse(lane, name string) bool {
+	if ln := l.Lanes[lane]; ln != nil && slices.Contains(ln.Endpoints, name) {
+		return true
+	}
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	c, ok := l.cells[name]
+	return ok && slices.Contains(c.lanes, lane)
+}
+
+// AddCellEndpoint makes a cell's endpoint usable from lanes. Its name must
+// not be one of the configured endpoints'; a cell's endpoint of the same
+// name is replaced.
+func (l *Local) AddCellEndpoint(e *Endpoint, lanes []string) error {
+	if l.Endpoints[e.Name] != nil {
+		return fmt.Errorf("config: endpoint %s is configured; a cell cannot replace it", e.Name)
+	}
+	if !endpointKinds[e.Kind] {
+		return fmt.Errorf("config: endpoint %s: kind must be %s", e.Name, kindList)
+	}
+	e.Cell = true
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.cells == nil {
+		l.cells = map[string]cellEndpoint{}
+	}
+	l.cells[e.Name] = cellEndpoint{endpoint: e, lanes: slices.Clone(lanes)}
+	return nil
 }
 
 // Daemon is automaticum.toml.
@@ -71,7 +127,8 @@ type Lane struct {
 // Endpoint is endpoints/<name>.toml: a model server.
 type Endpoint struct {
 	Name string `toml:"-"`
-	// Kind is ollama, xollama or openai-compatible.
+	// Kind is ollama, xollama, openai-compatible or llamacpp (an
+	// OpenAI-compatible llama-server).
 	Kind string `toml:"kind"`
 	// BaseURL is the server's address as the lane's containers reach it.
 	BaseURL string `toml:"base_url"`
@@ -90,6 +147,10 @@ type Endpoint struct {
 	// Hardware is what the server runs on, as the installation's owner
 	// declares it. It is recorded in every run as declared, not measured.
 	Hardware Hardware `toml:"hardware"`
+	// Cell marks the endpoint of a mode C cell: the caller serves the
+	// model there and automaticum never loads or unloads anything on it
+	// (065 §2).
+	Cell bool `toml:"-"`
 }
 
 // Hardware is the [hardware] table of an endpoint.
@@ -102,7 +163,9 @@ type Hardware struct {
 	Notes string `toml:"notes"`
 }
 
-var endpointKinds = map[string]bool{"ollama": true, "xollama": true, "openai-compatible": true}
+var endpointKinds = map[string]bool{"ollama": true, "xollama": true, "openai-compatible": true, "llamacpp": true}
+
+const kindList = "ollama, xollama, openai-compatible or llamacpp"
 
 func decodeStrict(path string, v any) error {
 	md, err := toml.DecodeFile(path, v)
@@ -160,7 +223,7 @@ func LoadLocal(dir string) (*Local, error) {
 			bad("endpoint %q: not a valid name", e.Name)
 		}
 		if !endpointKinds[e.Kind] {
-			bad("endpoint %s: kind must be ollama, xollama or openai-compatible", e.Name)
+			bad("endpoint %s: kind must be %s", e.Name, kindList)
 		}
 		if u, err := url.Parse(e.BaseURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 			bad("endpoint %s: base_url must be an http or https address", e.Name)

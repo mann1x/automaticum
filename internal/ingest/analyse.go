@@ -44,7 +44,7 @@ const ModelReloaded = "model_reloaded"
 // analysis records it as the metric analysis.version: the basis (020 §5)
 // says from it which detectors a run was analysed with, whether or not
 // they found anything.
-const AnalysisVersion = 1
+const AnalysisVersion = 2
 
 // Versions are the versions of the detectors this analysis applies:
 // ingest's own and the detector library's.

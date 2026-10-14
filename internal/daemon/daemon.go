@@ -459,7 +459,7 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 	campaign := d.campaignOf(it.Batch)
 	d.mu.Unlock()
 	// The arm and the task are read now and fixed from here on.
-	arm, err := config.LoadArm(filepath.Join(d.Repo, "arms"), it.Arm)
+	arm, cell, err := d.armFor(it.Batch, it.Arm)
 	if err != nil {
 		skip("the arm cannot be used: " + err.Error())
 		return false
@@ -469,11 +469,24 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 		skip("the task cannot be used: " + err.Error())
 		return false
 	}
+	// A mode C cell's server is asked what it is before every run, and a
+	// contradiction of the caller's facts refuses the run as a gate does
+	// (065 §3.1).
+	var cellRec *CellRecord
+	if cell != nil {
+		var why string
+		if cellRec, why = d.checkCell(ctx, it.Batch, cell, arm); why != "" && ctx.Err() == nil {
+			d.notify(bg, Notification{Kind: "gate", Status: "refuse", Gate: "basis_facts", Detail: why,
+				Lane: it.Lane, Run: it.RunID, Arm: it.Arm, Task: it.Task})
+			skip("gate basis_facts: " + why)
+			return false
+		}
+	}
 	// An endpoint that allows it is asked to drop any other model before
 	// the gates look (D79): arms on different models can then follow each
 	// other on one device. When it fails the gate "free" waits, as before.
 	var unloaded []string
-	if ep := d.Local.Endpoints[arm.Endpoint]; run.Ollama(ep) && ep.UnloadOthers {
+	if ep := d.Local.Endpoint(arm.Endpoint); run.Ollama(ep) && ep.UnloadOthers && !ep.Cell {
 		key, err := d.Local.APIKey(ep)
 		if err == nil {
 			hc := d.HTTP
@@ -524,7 +537,7 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 	setLane("running", det)
 	log.Info("run starts", "arm", it.Arm, "task", it.Task)
 	r, err := d.Runner.Execute(ctx, run.Request{
-		ID: it.RunID, Arm: arm, Task: tk, Lane: it.Lane, Image: LaneImage(tk.Layers), Batch: it.Batch, Campaign: campaign, Gates: answers, Identity: models[arm.Model.Model], Unloaded: unloaded,
+		ID: it.RunID, Arm: arm, Task: tk, Lane: it.Lane, Image: LaneImage(tk.Layers), Batch: it.Batch, Campaign: campaign, Gates: answers, Identity: models[arm.Model.Model], Unloaded: unloaded, Cell: cellOrNil(cellRec),
 		OnStart: func(partial *store.Run, containerID string) {
 			copy := *partial
 			det.ContainerID, det.Run = containerID, &copy
@@ -556,6 +569,14 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 	return false
 }
 
+// cellOrNil keeps a run that is not a cell's from recording a typed nil.
+func cellOrNil(c *CellRecord) any {
+	if c == nil {
+		return nil
+	}
+	return c
+}
+
 // Abort ends a run in flight; the cause is recorded as its reason.
 func (d *Daemon) Abort(runID string) bool {
 	d.mu.Lock()
@@ -583,27 +604,20 @@ func (d *Daemon) flight(runID string) *flight {
 // laneFor picks a lane for an arm: the one asked for, or the first, by
 // name, that may use the arm's endpoint.
 func (d *Daemon) laneFor(arm *config.Arm, asked string) (string, error) {
-	may := func(l *config.Lane) bool {
-		for _, e := range l.Endpoints {
-			if e == arm.Endpoint {
-				return true
-			}
-		}
-		return false
-	}
+	may := func(lane string) bool { return d.Local.MayUse(lane, arm.Endpoint) }
 	if asked != "" {
 		l := d.Local.Lanes[asked]
 		switch {
 		case l == nil:
 			return "", fmt.Errorf("this installation has no lane %q", asked)
-		case !may(l):
+		case !may(asked):
 			return "", fmt.Errorf("lane %s may not use endpoint %s", asked, arm.Endpoint)
 		}
 		return asked, nil
 	}
 	var names []string
-	for n, l := range d.Local.Lanes {
-		if may(l) {
+	for n := range d.Local.Lanes {
+		if may(n) {
 			names = append(names, n)
 		}
 	}

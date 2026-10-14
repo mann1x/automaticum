@@ -192,11 +192,14 @@ type fakeRunner struct {
 	// before the run is held.
 	wire string
 	dir  string
+	// reqs is every request it was given.
+	reqs []run.Request
 }
 
 func (f *fakeRunner) Execute(ctx context.Context, req run.Request) (*store.Run, error) {
 	f.mu.Lock()
 	f.seen = append(f.seen, req.ID)
+	f.reqs = append(f.reqs, req)
 	hold := f.hold
 	f.mu.Unlock()
 	r := &store.Run{ID: req.ID, Batch: req.Batch, Campaign: req.Campaign, Suite: req.Task.Suite, TaskID: req.Task.ID, Lane: req.Lane, ArmID: req.Arm.ID,

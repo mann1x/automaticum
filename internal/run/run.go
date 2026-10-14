@@ -150,6 +150,10 @@ type Request struct {
 	// Unloaded lists the models the endpoint was asked to drop before the
 	// run, when its configuration allows that (D79).
 	Unloaded []string
+	// Cell is what a mode C cell says of its endpoint (065 §3.1): the
+	// caller's values and basis facts and what the server said of itself.
+	// It is recorded as is.
+	Cell any
 }
 
 // NewID returns a run id that sorts by time.
@@ -213,6 +217,8 @@ type provenance struct {
 	// Unloaded lists the models dropped from the endpoint's memory before
 	// the run (D79).
 	Unloaded []string `json:"unloaded_before_run,omitempty"`
+	// Cell is a mode C cell's endpoint, values and facts (065 §3.1).
+	Cell any `json:"cell,omitempty"`
 	// Gates is every gate's answer before the run (050 §3).
 	Gates          any       `json:"gates,omitempty"`
 	EndpointBefore *Identity `json:"endpoint_before"`
@@ -278,6 +284,7 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 	p.Image.Ref = req.Image
 	p.Gates = req.Gates
 	p.Unloaded = req.Unloaded
+	p.Cell = req.Cell
 	p.Task.Hash, p.Task.Files, p.Task.Prompt = t.Hash, t.Files, t.Prompt
 	p.NotRecorded = map[string]string{
 		"server_log":     "needs agent mode on the endpoint's host",
@@ -585,15 +592,11 @@ func (x *Executor) before(ctx context.Context, req Request, p *provenance) (*con
 	if lane == nil {
 		return nil, nil, fmt.Sprintf("this installation has no lane %q", req.Lane)
 	}
-	endpoint := x.Local.Endpoints[a.Endpoint]
+	endpoint := x.Local.Endpoint(a.Endpoint)
 	if endpoint == nil {
 		return nil, nil, fmt.Sprintf("this installation has no endpoint %q", a.Endpoint)
 	}
-	allowed := false
-	for _, e := range lane.Endpoints {
-		allowed = allowed || e == a.Endpoint
-	}
-	if !allowed {
+	if !x.Local.MayUse(req.Lane, a.Endpoint) {
 		return nil, nil, fmt.Sprintf("lane %s may not use endpoint %s", req.Lane, a.Endpoint)
 	}
 	if a.Template || a.ID == "" {

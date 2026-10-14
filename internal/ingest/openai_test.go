@@ -75,8 +75,15 @@ func TestOpenAIWireFromStub(t *testing.T) {
 	if err != nil || len(reqs) != 1 {
 		t.Fatalf("%v %+v", err, reqs)
 	}
-	q := reqs[0]
-	if !q.Chat || q.DoneReason != "tool_calls" || q.Visible != "done now" || q.EvalTokens == 0 || q.PromptTokens == 0 || q.Options["num_predict"] != float64(512) || q.Empty {
+	q := &reqs[0]
+	// The server holds the context of an OpenAI-compatible request: an arm's
+	// context window is not expected on the wire, its output limit is.
+	q.Agent = true
+	a := arm(t, `{"model":{"model":"stub:latest","context_window":32768,"output_tokens":512},"sampler":{"owner":"tag"}}`)
+	if devs := CompareWire(a, "", reqs); len(devs) != 0 {
+		t.Errorf("deviations: %+v", devs)
+	}
+	if !q.OpenAI || !q.Chat || q.DoneReason != "tool_calls" || q.Visible != "done now" || q.EvalTokens == 0 || q.PromptTokens == 0 || q.Options["num_predict"] != float64(512) || q.Empty {
 		t.Errorf("answer: %+v", q)
 	}
 }
