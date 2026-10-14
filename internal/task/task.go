@@ -60,6 +60,10 @@ type Workspace struct {
 	Seed string `toml:"seed"`
 	// Install places built artefacts in the workspace.
 	Install []Install `toml:"install"`
+	// Git makes the workspace a git repository, the seed its first commit,
+	// before the agent starts. The SDK's checkpoints are commits in it: a
+	// workspace that is not a repository has none.
+	Git bool `toml:"git"`
 }
 
 // Install places one artefact at a path in the workspace.
@@ -218,7 +222,13 @@ func (t *Task) validate() error {
 		return errors.New("limits must not be negative")
 	}
 	if t.User != nil {
-		if problems := t.User.validate(); len(problems) > 0 {
+		problems := t.User.validate()
+		for i, r := range t.User.Rules {
+			if r.Do == "restore" && !t.Workspace.Git {
+				problems = append(problems, fmt.Sprintf("user.rule %d: a restore needs [workspace] git = true: the SDK's checkpoints are commits in a git repository", i+1))
+			}
+		}
+		if len(problems) > 0 {
 			return errors.New(strings.Join(problems, "; "))
 		}
 	}

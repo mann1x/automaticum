@@ -6,8 +6,14 @@
 // Turn and elapsed rules act before the next model request: the tools of
 // the turn before have run, and nothing is changed under a running tool.
 
-// The sentence the extension and the SDK send for a denial.
+// The sentences the extension sends for a denial (Cline 4.100.251,
+// tool-approval-denial.ts, as the Cerebriline session read it): one for an
+// edit tool, one for any other; feedback, trimmed, follows on its own line.
 export const DENIED = "This tool call was rejected by the user and not executed.";
+export const EDIT_DENIED = "The user denied this edit. The file was NOT modified and still contains its original content.";
+// What the extension sends when the user switches to act mode without a
+// message of their own (sdk-user-message-mapping.ts).
+export const APPROVED_ACT = "The user approved switching to act mode. Continue with the approved plan now.";
 
 // createUser plays job.user, or, when the task has none, the default user
 // of protocol 1: every tool approved, every question given the task's
@@ -18,7 +24,12 @@ export function createUser(job, { out, act }) {
 	const answer = script ? script.default.answer : job.default_answer;
 	const counts = { approvals: 0, denials: 0, questions: 0, actions: 0 };
 	let turn = 0;
-	let resumeWith = null;
+	// pending is what the user says once the run of the session it stopped
+	// has ended: a resume, a mode switch or a fork.
+	let pending = null;
+	// switchAsked says the agent called switch_to_act_mode in this run of
+	// the session: it asks to leave plan mode.
+	let switchAsked = false;
 
 	const free = (r) => r.times === 0 || r.used < r.times;
 	const fire = (r, event, fields = {}) => {
@@ -26,29 +37,41 @@ export function createUser(job, { out, act }) {
 		counts.actions++;
 		out("user", { on: event, rule: r.index, do: r.do, ...fields });
 	};
-	const denial = (feedback) => (feedback ? `${DENIED} The user provided the following feedback:\n<feedback>\n${feedback}\n</feedback>` : DENIED);
+	const categories = script?.categories ?? {};
+	const categoryOf = (tool) => Object.keys(categories).find((c) => categories[c].includes(tool)) ?? "";
+	const denial = (tool, feedback) => {
+		const base = categoryOf(tool) === "edit" ? EDIT_DENIED : DENIED;
+		const text = (feedback ?? "").trim();
+		return text ? `${base} The user provided the following feedback:\n<feedback>\n${text}\n</feedback>` : base;
+	};
 
 	return {
 		// scripted says whether approvals go to the user: only a script asks
 		// for them; without one, every tool runs without asking, as before.
 		scripted: script !== null,
+		// asking are the tools that ask for approval, as in the extension:
+		// those of a category; any other runs without asking.
+		asking: Object.values(categories).flat(),
 		// continues says whether the user may speak after a run of the
 		// session ends (a resume after a cancel, a message after a
 		// completion): the session must then stay open, which only an
 		// interactive one does.
-		continues: rules.some((r) => r.do === "cancel" || r.on === "completion"),
+		continues: rules.some((r) => ["cancel", "mode"].includes(r.do) || ["completion", "plan"].includes(r.on) || (r.do === "restore" && r.restore !== "workspace")),
 		counts,
 
 		approval(request) {
 			const input = JSON.stringify(request.input ?? null);
-			const r = rules.find((r) => r.on === "approval" && free(r) && (!r.tool || r.tool === request.toolName) && (!r.re || r.re.test(input)));
+			const category = categoryOf(request.toolName);
+			const r = rules.find(
+				(r) => r.on === "approval" && free(r) && (!r.tool || r.tool === request.toolName) && (!r.category || r.category === category) && (!r.re || r.re.test(input)),
+			);
 			const approved = r ? r.do === "approve" : script.default.approval === "approve";
 			const feedback = r ? r.text : script.default.feedback;
-			const fields = { tool: request.toolName, tool_call_id: request.toolCallId, iteration: request.iteration, approved };
+			const fields = { tool: request.toolName, category, tool_call_id: request.toolCallId, iteration: request.iteration, approved };
 			if (r) fire(r, "approval", { ...fields, feedback: approved ? undefined : feedback });
 			else out("user", { on: "approval", rule: 0, do: approved ? "approve" : "deny", ...fields });
 			approved ? counts.approvals++ : counts.denials++;
-			return approved ? { approved: true } : { approved: false, reason: denial(feedback) };
+			return approved ? { approved: true } : { approved: false, reason: denial(request.toolName, feedback) };
 		},
 
 		question(question, options) {
@@ -76,6 +99,11 @@ export function createUser(job, { out, act }) {
 			turn++;
 		},
 
+		// tool is called with the name of each tool the lead agent calls.
+		tool(name) {
+			if (name === "switch_to_act_mode") switchAsked = true;
+		},
+
 		// beforeModel acts on the turn and elapsed rules that are due, in
 		// their order; activeMs is the run's time so far, time held left out.
 		async beforeModel(activeMs) {
@@ -86,30 +114,45 @@ export function createUser(job, { out, act }) {
 				// A turn rule acts once on its turn, whatever its times.
 				if (r.on === "turn" && r.last === turn) continue;
 				r.last = turn;
-				fire(r, r.on, { turn, active_ms: activeMs, text: r.text, checkpoint: r.checkpoint, restore: r.restore });
-				if (r.do === "cancel") resumeWith = { text: r.text, rule: r.index };
+				fire(r, r.on, { turn, active_ms: activeMs, text: r.text, checkpoint: r.checkpoint, restore: r.restore, mode: r.mode });
+				// A resume, a switch and a fork stop the running work first,
+				// and are said when it has stopped.
+				const fork = r.do === "restore" && r.restore !== "workspace";
+				if (r.do === "cancel" || r.do === "mode" || fork) pending = { rule: r, after: "cancel" };
 				await act(r);
 			}
 		},
 
-		// next is what the user says when a run of the session has ended:
-		// the resume after a cancel, or the message a completion rule queues.
+		// next is what the user says when a run of the session has ended, in
+		// mode: { prompt } to send, with { mode } to switch to first or
+		// { fork: { checkpoint, workspace } } to restore the messages first
+		// (D86). It is the second half of a cancel, a switch or a fork a
+		// turn or time rule began, or what a plan or a completion rule says.
 		// Null when the user has nothing more to say.
-		next(result) {
-			if (resumeWith) {
-				const r = resumeWith;
-				resumeWith = null;
-				out("user", { on: "resume", rule: r.rule, do: "send", text: r.text, after: result?.finishReason ?? "" });
-				return r.text;
+		next(result, mode) {
+			const asked = switchAsked;
+			switchAsked = false;
+			const say = (r) => {
+				if (r.do === "mode") return { prompt: r.text || (r.mode === "act" ? APPROVED_ACT : r.text), mode: r.mode };
+				if (r.do === "restore") return { prompt: r.text, fork: { checkpoint: r.checkpoint, workspace: r.restore === "both" } };
+				return { prompt: r.text };
+			};
+			if (pending) {
+				const r = pending.rule;
+				pending = null;
+				const s = say(r);
+				out("user", { on: "resume", rule: r.index, do: r.do === "cancel" ? "send" : r.do, text: s.prompt, mode: s.mode, after: result?.finishReason ?? "" });
+				return s;
 			}
-			if (result?.finishReason === "completed") {
-				const r = rules.find((r) => r.on === "completion" && free(r));
-				if (r) {
-					fire(r, "completion", { text: r.text });
-					return r.text;
-				}
-			}
-			return null;
+			if (result?.finishReason !== "completed") return null;
+			// In plan mode an end the agent chose is its plan (the extension's
+			// "plan_completion_result"), or its request to switch.
+			const on = mode === "plan" ? "plan" : "completion";
+			const r = rules.find((r) => r.on === on && free(r));
+			if (!r) return null;
+			const s = say(r);
+			fire(r, on, { text: s.prompt, mode: s.mode, switch_asked: on === "plan" ? asked : undefined });
+			return s;
 		},
 
 	};

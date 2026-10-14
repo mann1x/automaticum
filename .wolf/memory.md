@@ -1202,3 +1202,19 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 20:11 | reanalyse all own runs under analysis 3 (69; 14 SKIPPED have nothing): no verdict change; D81 numbers/cap/findings unchanged; modec2 wire_arm warnings gone; 3 steer runs finish.none->failed; read Cerebriline answers 1385/1386 (stage 2 inputs) | docs/specs/110 | done | ~8k |
+
+## Session: 2026-10-14 20:11
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 20:11
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 20:42
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:50 | scripted user stage 2: plan/mode/fork e2e on the stub (4 demos PASS), ingest session_fork + user.forks/mode_switches (analysis 4), protocol 3, specs 040 1.3, 060 0.8, 070 0.16 | runner/, internal/task, internal/ingest, internal/run, docs/specs, tasks/demo | pass | ~60k |

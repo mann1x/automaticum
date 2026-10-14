@@ -88,6 +88,9 @@
 - Runner tests: `docker run --rm --network none -v $PWD/runner:/runner:ro -w /runner node@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e339527e7472301c9c78a017978392 sh -c 'node --test test/*.test.mjs'` (Node 22 takes `node --test test/` as a module name). A new runner file must also be added to the COPY line of `images/base/Dockerfile`, then `automaticum image build`.
 - A new task must pass `automaticum oracle verify <task>` before any run, or the gate `oracle` skips it (cell exit 20).
 
+- (2026-10-14) Stub scripts for an arm with the no-tool-call nudge must answer it: every text-only reply gets one "[SYSTEM] Your last message contained no tool calls…" message before the run ends, so a run ends on the second text-only reply. And the read-before-edit guard needs a read_files of the file in the same session (a switch or fork starts a new one) before any editor call.
+- (2026-10-14) SDK 4.100.250 plan mode offers no editor and no switch_to_act_mode (it keeps run_commands and sed); a plan is presented as text. Runner protocol 3 = scripted user stage 2 (categories, mode, plan, fork, workspace_git).
+
 ## Do-Not-Repeat
 
 - 2026-10-13: Do not invent a threshold or a default number for a detector, guard or limit and then carry it as an Open item with "keep" as the recommendation. The owner: the SDK's guards are tuned on more than 600 recorded runs; use the thresholds those analyses identified. If one is missing, ask the SDK's session or read the SDK's source (packages/agents and packages/core/src/runtime/safety). Wrong: `repeated_tool_call` at 3 in a row, `runaway` at 10,000 for every run.

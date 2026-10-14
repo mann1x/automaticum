@@ -31,7 +31,7 @@ answer = "Go on."
 
 [[user.rule]]
 on = "approval"
-tool = "run_commands"
+category = "commands"
 match = "rm -rf"
 do = "deny"
 text = "Do not delete anything."
@@ -60,6 +60,19 @@ checkpoint = 1
 on = "completion"
 do = "queue"
 text = "Now also add a test."
+
+[[user.rule]]
+on = "plan"
+do = "mode"
+mode = "act"
+
+[[user.rule]]
+on = "turn"
+turn = 9
+do = "restore"
+restore = "both"
+checkpoint = 2
+text = "Try another way."
 `
 	if p := parse(good); len(p) != 0 {
 		t.Fatalf("a good script: %q", p)
@@ -87,7 +100,7 @@ answer = "x"
 [[user.rule]]
 on = "turn"
 turn = 2
-do = "mode"`, "mode switch is not built yet"},
+do = "mode"`, `needs mode = "act" or "plan"`},
 		{`[user.default]
 approval = "approve"
 answer = "x"
@@ -96,7 +109,21 @@ on = "turn"
 turn = 2
 do = "restore"
 restore = "messages"
-checkpoint = 1`, "restore of the messages is not built yet"},
+checkpoint = 1`, `do = "restore" needs text`},
+		{`[user.default]
+approval = "approve"
+answer = "x"
+[[user.rule]]
+on = "plan"
+do = "mode"
+mode = "plan"`, `do = "mode" needs text`},
+		{`[user.default]
+approval = "approve"
+answer = "x"
+[[user.rule]]
+on = "plan"
+do = "steer"
+text = "x"`, "do must be queue, mode"},
 		{`[user.default]
 approval = "approve"
 answer = "x"
@@ -126,6 +153,20 @@ answer = "x"
 on = "completion"
 do = "steer"
 text = "x"`, "do must be queue"},
+		{`[user.default]
+approval = "approve"
+answer = "x"
+[[user.rule]]
+on = "approval"
+tool = "check_file"
+do = "deny"`, "check_file never asks for approval"},
+		{`[user.default]
+approval = "approve"
+answer = "x"
+[[user.rule]]
+on = "approval"
+category = "everything"
+do = "deny"`, "category must be read, edit"},
 		{`[user.default]
 approval = "approve"
 answer = "x"

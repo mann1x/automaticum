@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createUser, DENIED } from "../user.mjs";
+import { APPROVED_ACT, createUser, DENIED, EDIT_DENIED } from "../user.mjs";
+
+const categories = { read: ["read_files", "grep"], edit: ["editor"], commands: ["run_commands"] };
 
 const play = (user) => {
 	const lines = [];
@@ -20,12 +22,15 @@ test("without a script every question gets the task's default answer and no appr
 test("approvals follow the rules in order, then the default", () => {
 	const { u, lines } = play({
 		default: { approval: "approve", answer: "Go on." },
+		categories,
 		rules: [
-			{ on: "approval", tool: "run_commands", match: "rm -rf", do: "deny", text: "Do not delete anything.", times: 0 },
+			{ on: "approval", category: "commands", match: "rm -rf", do: "deny", text: "  Do not delete anything. ", times: 0 },
 			{ on: "approval", tool: "editor", do: "deny", times: 1 },
 		],
 	});
 	assert.equal(u.scripted, true);
+	// Only the tools of a category ask, as in the extension.
+	assert.deepEqual(u.asking.sort(), ["editor", "grep", "read_files", "run_commands"]);
 	const rm = { toolName: "run_commands", toolCallId: "c1", iteration: 2, input: { commands: ["rm -rf /workspace"] } };
 	const denied = u.approval(rm);
 	assert.equal(denied.approved, false);
@@ -33,18 +38,19 @@ test("approvals follow the rules in order, then the default", () => {
 	// times = 0: every time.
 	assert.equal(u.approval(rm).approved, false);
 	assert.deepEqual(u.approval({ toolName: "run_commands", input: { commands: ["ls"] } }), { approved: true });
-	// times = 1: once, then the default.
-	assert.deepEqual(u.approval({ toolName: "editor", input: {} }), { approved: false, reason: DENIED });
+	// times = 1: once, then the default. An edit tool's denial is the
+	// extension's sentence for an edit.
+	assert.deepEqual(u.approval({ toolName: "editor", input: {} }), { approved: false, reason: EDIT_DENIED });
 	assert.deepEqual(u.approval({ toolName: "editor", input: {} }), { approved: true });
 	assert.deepEqual(u.counts, { approvals: 2, denials: 3, questions: 0, actions: 3 });
 	assert.equal(lines[0].on, "approval");
 	assert.equal(lines[0].rule, 1);
-	assert.equal(lines[0].feedback, "Do not delete anything.");
+	assert.equal(lines[0].category, "commands");
 	assert.equal(lines.at(-1).rule, 0);
 });
 
 test("a default denial carries its feedback", () => {
-	const { u } = play({ default: { approval: "deny", feedback: "Ask first.", answer: "x" }, rules: [] });
+	const { u } = play({ default: { approval: "deny", feedback: "Ask first.", answer: "x" }, categories, rules: [] });
 	assert.match(u.approval({ toolName: "grep", input: {} }).reason, /<feedback>\nAsk first.\n<\/feedback>$/);
 });
 
@@ -104,9 +110,9 @@ test("a cancel is followed by its resume message, a completion by the queued one
 	u.iteration();
 	await u.beforeModel(0);
 	assert.deepEqual(acted, ["cancel"]);
-	assert.equal(u.next({ finishReason: "aborted" }), "Start again from the failing test.");
-	assert.equal(u.next({ finishReason: "completed" }), "Now add a test.");
-	assert.equal(u.next({ finishReason: "completed" }), null);
+	assert.deepEqual(u.next({ finishReason: "aborted" }, "act"), { prompt: "Start again from the failing test." });
+	assert.deepEqual(u.next({ finishReason: "completed" }, "act"), { prompt: "Now add a test." });
+	assert.equal(u.next({ finishReason: "completed" }, "act"), null);
 	assert.deepEqual(lines.map((l) => l.on), ["turn", "resume", "completion"]);
 	// Only rules count as actions; the resume is the cancel's second half.
 	assert.equal(u.counts.actions, 2);
@@ -122,11 +128,51 @@ test("turns are counted over the whole run, across a resume", async () => {
 	});
 	for (let i = 0; i < 2; i++) u.iteration();
 	await u.beforeModel(0);
-	u.next({ finishReason: "aborted" });
+	u.next({ finishReason: "aborted" }, "act");
 	// The SDK numbers the turns of the resumed run from 1 again.
 	for (let i = 0; i < 2; i++) {
 		u.iteration();
 		await u.beforeModel(0);
 	}
 	assert.deepEqual(acted, ["cancel", "restore"]);
+});
+
+test("in plan mode an end is a plan: a switch to act with the extension's sentence", () => {
+	const { u, lines } = play({
+		default: { approval: "approve", answer: "x" },
+		rules: [
+			{ on: "plan", do: "mode", mode: "act", times: 1 },
+			{ on: "completion", do: "queue", text: "Check it once more.", times: 1 },
+		],
+	});
+	assert.equal(u.continues, true);
+	u.tool("switch_to_act_mode");
+	assert.deepEqual(u.next({ finishReason: "completed" }, "plan"), { prompt: APPROVED_ACT, mode: "act" });
+	assert.equal(lines.at(-1).on, "plan");
+	assert.equal(lines.at(-1).switch_asked, true);
+	// Back in act mode, an end is a completion.
+	assert.deepEqual(u.next({ finishReason: "completed" }, "act"), { prompt: "Check it once more." });
+	assert.equal(u.next({ finishReason: "completed" }, "act"), null);
+});
+
+test("a switch and a fork at a turn stop the work, then are said when it has stopped", async () => {
+	const { u, acted, lines } = play({
+		default: { approval: "approve", answer: "x" },
+		rules: [
+			{ on: "turn", turn: 1, do: "mode", mode: "plan", text: "Plan it first.", times: 1 },
+			{ on: "turn", turn: 2, do: "restore", restore: "both", checkpoint: 1, text: "Start over.", times: 1 },
+		],
+	});
+	u.iteration();
+	await u.beforeModel(0);
+	assert.deepEqual(acted, ["mode"]);
+	assert.deepEqual(u.next({ finishReason: "aborted" }, "act"), { prompt: "Plan it first.", mode: "plan" });
+	u.iteration();
+	await u.beforeModel(0);
+	assert.deepEqual(acted, ["mode", "restore"]);
+	assert.deepEqual(u.next({ finishReason: "aborted" }, "plan"), { prompt: "Start over.", fork: { checkpoint: 1, workspace: true } });
+	assert.deepEqual(
+		lines.map((l) => [l.on, l.do]),
+		[["turn", "mode"], ["resume", "mode"], ["turn", "restore"], ["resume", "restore"]],
+	);
 });

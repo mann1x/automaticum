@@ -1,4 +1,4 @@
-# The runner: protocol 2
+# The runner: protocol 3
 
 The runner is a Node program that runs **one** agent session for one run,
 inside the lane's container, and exits. The harness (`internal/run`) writes
@@ -16,6 +16,14 @@ actions (040 §6.2). A job of protocol 1 is refused by a protocol 2 runner
 and the other way round, so an old image never plays a script by
 ignoring it.
 
+**Protocol 3 (2026-10-14):** stage 2 of the scripted user. Approval goes by
+the extension's categories (the job's `user.categories`, filled by the
+harness), with the extension's sentences for a denial; a script may switch
+the mode, answer a plan, and restore a checkpoint's messages, which forks
+the session (D86). The job may ask for the workspace to be a git
+repository (`workspace_git`). A stage-1 runner would play such a script
+wrongly, so the number went up.
+
 ## In
 
 `node runner.mjs /job/job.json`, with three mounts: `/job` (read-only),
@@ -23,12 +31,13 @@ ignoring it.
 
 | field | meaning |
 |---|---|
-| `protocol` | 2 |
+| `protocol` | 3 |
 | `run_id`, `session_id` | the run, and the session id made beforehand |
 | `arm` | the resolved arm (`automaticum arm show <arm> --json`) |
 | `endpoint` | `name`, `kind`, `base_url` as the container reaches it, `api_key` if any |
 | `prompt`, `default_answer` | the task's prompt; what the default user answers to a question |
-| `user` | the task's scripted user (`[user]` of `task.toml`, 040 §6.2), with each rule's `times` stated; absent, every tool runs without asking and every question gets `default_answer` |
+| `user` | the task's scripted user (`[user]` of `task.toml`, 040 §6.2), with each rule's `times` stated and `categories`, the extension's approval categories and their tools; absent, every tool runs without asking and every question gets `default_answer` |
+| `workspace_git` | make the workspace a git repository before the session starts, its seed one commit (the task's `[workspace] git`): the SDK's checkpoints are commits |
 | `workspace`, `out` | paths in the container |
 | `wall_s` | the wall limit the runner enforces by stopping the agent |
 | `sdk_release` | the version the installed SDK package must be: that of the build the arm names, mounted at the runner's `node_modules` (the image holds no SDK) |
@@ -52,8 +61,8 @@ One JSON object per line, each with a time `t` and a kind `k`.
 | `k` | content |
 |---|---|
 | `event` | `event`: one SDK session event, unchanged, errors described by hand |
-| `runner` | `note` and its fields: `prepared`, `config_resolved` (the SDK's own report), `wall_limit`, `interactive`, `restored`, `user_action_failed`, ... |
-| `user` | the scripted user: `on` (approval, question, turn, elapsed, completion, resume), `rule` (from 1; 0 for the default), `do`, and what it answered or sent |
+| `runner` | `note` and its fields: `prepared`, `config_resolved` (the SDK's own report), `wall_limit`, `interactive`, `restored`, `user_action_failed`, `workspace_git` (`head`), `mode_switched` (`from`, `to`, `messages`, `compaction_carried`), `fork` (`from`, `to`, `checkpoint`, `checkpoint_ref`, `workspace`, `messages`, `restarted`), ... |
+| `user` | the scripted user: `on` (approval, question, turn, elapsed, completion, plan, resume), `rule` (from 1; 0 for the default), `do`, and what it answered or sent |
 | `end` | the last line, see below |
 
 ## Out: the output directory
@@ -85,11 +94,22 @@ One JSON object per line, each with a time `t` and a kind `k`.
 | `completed` | the oracle decides | 0 |
 | no last line at all | `ABORTED` | any |
 
-## What protocol 2 does not do
+## Mode switches and forks
 
-Approval by category, mode switches, a restore of the messages,
-escalation, sub-agents and teams, the
-emulation of editor behaviour (diagnostics after edits, mentions, the visible
-terminal: 040 §6.1), and looking up the model's family on the server to
-choose a prompt template. An arm that asks for one of the first three is
-refused; the others are recorded differences.
+A switch is done as the extension does it: the runner reads the session's
+live messages and compaction state, stops the session, and starts it again
+with the same id in the other mode with those messages, then sends the
+script's text (for a switch to act without one, the extension's sentence
+"The user approved switching to act mode. Continue with the approved plan
+now."). A fork restores the checkpoint's messages (and, with `both`, the
+files) into a new session `<session_id>-fork<n>`, stops the old one and
+follows the new one; its `fork` note lists what the SDK started again from
+nothing (`restarted`). Turns are counted by the runner over the whole run.
+
+## What protocol 3 does not do
+
+Escalation, sub-agents and teams, MCP approvals (no arm starts an MCP
+server), the emulation of editor behaviour (diagnostics after edits,
+mentions, the visible terminal: 040 §6.1), and looking up the model's
+family on the server to choose a prompt template. An arm that asks for one
+of the first is refused; the others are recorded differences.

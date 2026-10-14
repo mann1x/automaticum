@@ -84,8 +84,8 @@ make shell SPIKE_ROOT=<dir>
 - **Daemon command** (`cmd/automaticumd/`): `main.go`
 - **Runner** (`runner/`, Node ESM, runs only inside the lane container): `PROTOCOL.md` · `package.json` · `runner.mjs` · `session.mjs` · `user.mjs` · `wire.mjs` · `sdk/` (`4.100.250/` and `4.100.251/`, each with `package.json` · `package-lock.json` · `sdk.toml`) · `test/` (`arm-stub.json` · `session.test.mjs` · `user.test.mjs` · `wire.test.mjs`)
 - **Lane images** (`images/`): `base/Dockerfile` · `layers/typescript/Dockerfile`
-- **Tasks** (`tasks/`): `custom/manic_miner/` (`task.toml` · `README.md`) · `demo/answer/` (`task.toml`) · `demo/scripted/` (`task.toml`, a scripted user) · `demo/cancel/` (`task.toml`, cancel and restore)
-- **Arms** (`arms/`): `base.toml` · `stub.toml` · `stub-sdk-4.100.251.toml` · `qwen36-mtp-27b-high.toml` · `qwen36-mtp-27b-high-sdk-4.100.251.toml` · `omnimerge-v4-mtp-27b-high-sdk-4.100.251.toml`
+- **Tasks** (`tasks/`): `custom/manic_miner/` (`task.toml` · `README.md`) · `demo/answer/` (`task.toml`) · `demo/scripted/` (`task.toml`, a scripted user) · `demo/cancel/` (`task.toml`, cancel and restore) · `demo/plan/` (`task.toml`, plan then a switch to act) · `demo/fork/` (`task.toml`, a fork of the session, D86)
+- **Arms** (`arms/`): `base.toml` · `stub.toml` · `stub-plan.toml` · `stub-sdk-4.100.251.toml` · `qwen36-mtp-27b-high.toml` · `qwen36-mtp-27b-high-sdk-4.100.251.toml` · `omnimerge-v4-mtp-27b-high-sdk-4.100.251.toml`
 - **Campaigns** (`campaigns/`): `stub-demo.toml`
 - **Model catalogue** (`models/`): `stub.toml` · `qwen36-base-mtp_tb-27b-q4km-128k.toml` · `omnimerge-v4-mtp_tb-27b-q4km-128k.toml`
 - **Example configuration** (`examples/config/`): `automaticum.toml` · `endpoints/local-ollama.toml` · `endpoints/stub.toml` · `lanes/lane-1.toml`

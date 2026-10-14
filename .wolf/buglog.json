@@ -369,6 +369,43 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-14T19:40:00+02:00"
+    },
+    {
+      "id": "bug-023",
+      "timestamp": "2026-10-14T20:50:00+02:00",
+      "error_message": "demo/plan on the stub ended FAIL twice after a working plan->act switch: editor 'unavailable tool' in plan mode, then 'Read before editing: answer.txt has not been read in this session'",
+      "file": "(untracked) work/stub/fix-plan.json",
+      "root_cause": "the stub script ignored the arm's no-tool-call nudge (each text-only reply is answered once before a run ends), so its turns went out of step; and the read-before-edit guard forgets reads made in plan mode once the session is restarted in act mode",
+      "fix": "stub script answers the nudge in both halves and reads again in act mode; the guard behaviour recorded in 040 \u00a76.2 and asked of Cerebriline",
+      "tags": [
+        "stub",
+        "scripted-user",
+        "plan-mode",
+        "read-before-edit",
+        "fixture"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-14T20:50:00+02:00"
+    },
+    {
+      "id": "bug-024",
+      "timestamp": "2026-10-14T20:50:00+02:00",
+      "error_message": "demo/scripted verdict FAIL after the stage-2 denial moved to read_files",
+      "file": "tasks/demo/scripted/task.toml",
+      "root_cause": "with the only read denied, the arm's read-before-edit guard refuses the edit; the stub script never read again",
+      "fix": "own stub script fix-scripted.json reads again after the denial (rule times = 1, so the second read is approved); verdict PASS",
+      "tags": [
+        "stub",
+        "scripted-user",
+        "read-before-edit",
+        "fixture"
+      ],
+      "related_bugs": [
+        "bug-023"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-14T20:50:00+02:00"
     }
   ]
 }

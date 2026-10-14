@@ -1,5 +1,5 @@
 # The demo task with a scripted user (040 §6.2), for the harness's own
-# tests: it denies one tool call with feedback, steers at turn 2, and asks
+# tests: it denies the read with feedback, steers at turn 2, and asks
 # for once more after the agent says it is done. The file must say 42.
 
 id = "scripted"
@@ -41,9 +41,9 @@ answer = "Continue."
 
 [[user.rule]]
 on = "approval"
-tool = "check_file"
+tool = "read_files"
 do = "deny"
-text = "No need to check, the edit is enough."
+text = "No need to read it: it says 41."
 
 [[user.rule]]
 on = "turn"

@@ -15,7 +15,7 @@ import (
 
 // Protocol is the version of the contract between the harness and the
 // runner: the job file in, JSON lines out. See runner/PROTOCOL.md.
-const Protocol = 2
+const Protocol = 3
 
 // Paths inside the lane's container.
 const (
@@ -40,9 +40,12 @@ type Job struct {
 	DefaultAnswer string `json:"default_answer"`
 	// User is the task's scripted user (040 §6.2, protocol 2); absent, the
 	// runner approves every tool and answers DefaultAnswer.
-	User      *task.User `json:"user,omitempty"`
-	Workspace string     `json:"workspace"`
-	Out       string     `json:"out"`
+	User *task.User `json:"user,omitempty"`
+	// WorkspaceGit asks the runner to make the workspace a git repository,
+	// the seed its first commit, before the session starts.
+	WorkspaceGit bool   `json:"workspace_git,omitempty"`
+	Workspace    string `json:"workspace"`
+	Out          string `json:"out"`
 	// WallS is the limit the runner enforces itself by stopping the agent.
 	WallS int `json:"wall_s"`
 	// SDKRelease is the version the installed SDK package must be: that of

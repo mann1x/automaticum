@@ -248,6 +248,9 @@ type provenance struct {
 		Added   []string `json:"added"`
 		Removed []string `json:"removed"`
 		Changed []string `json:"changed"`
+		// GitLeftOut says the workspace's .git directory is left out of
+		// the lists above (and is in workspace_after).
+		GitLeftOut bool `json:"git_left_out,omitempty"`
 	} `json:"workspace"`
 	Oracle *task.OracleResult `json:"oracle"`
 	// NotRecorded says what a full record holds that this one does not,
@@ -399,7 +402,7 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 	job := Job{
 		Protocol: Protocol, RunID: r.ID, SessionID: "run-" + r.ID, Arm: a.Resolved(),
 		Endpoint: JobEndpoint{Name: endpoint.Name, Kind: endpoint.Kind, BaseURL: endpoint.BaseURL, APIKey: key},
-		Prompt:   t.Prompt, DefaultAnswer: t.DefaultAnswer, User: t.User,
+		Prompt:   t.Prompt, DefaultAnswer: t.DefaultAnswer, User: t.User, WorkspaceGit: t.Workspace.Git,
 		Workspace: containerWorkspace, Out: containerOut, WallS: wall.Seconds, SDKRelease: p.SDK.Version,
 	}
 	jb, _ := json.Marshal(job)
@@ -487,6 +490,12 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		note("reading the workspace: %v", err)
 	} else {
 		p.Workspace.After = after.Hash()
+		if t.Workspace.Git {
+			// The repository the runner made is not the agent's work; it
+			// is in workspace_after whole.
+			after = withoutGit(after)
+			p.Workspace.GitLeftOut = true
+		}
 		p.Workspace.Added, p.Workspace.Removed, p.Workspace.Changed = manifestDiff(manifest, after)
 	}
 	putTree("workspace_after", ws)
@@ -747,6 +756,17 @@ func thinkingWord(a *config.Arm) string {
 		return a.Thinking.Effort
 	}
 	return a.Thinking.Owner
+}
+
+// withoutGit is a manifest without the files under .git/.
+func withoutGit(m task.Manifest) task.Manifest {
+	out := task.Manifest{}
+	for name, sum := range m {
+		if name != ".git" && !strings.HasPrefix(name, ".git/") {
+			out[name] = sum
+		}
+	}
+	return out
 }
 
 func manifestDiff(before, after task.Manifest) (added, removed, changed []string) {

@@ -14,6 +14,7 @@ oracle_s = 30
 
 [workspace]
 seed = "seed"
+git = true
 
 [[oracle]]
 name = "check"
@@ -47,7 +48,7 @@ text = "Start again: read answer.txt, then change the number."
 
 [[user.rule]]
 on = "turn"
-turn = 4
+turn = 3
 do = "restore"
 restore = "workspace"
 checkpoint = 1

@@ -1,6 +1,6 @@
 # 040 — The runner
 
-**Status:** draft 1.2, 2026-10-14. Facts about the SDK in this file were read
+**Status:** draft 1.3, 2026-10-14. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
 running it. The parity table in §6 was checked row by row by the Cerebriline
 session on 2026-10-13 against its main branch (release 4.100.249 plus requests
@@ -300,8 +300,9 @@ feedback = "…"            # optional, with a default denial
 answer = "…"              # a question no rule answers
 
 [[user.rule]]             # in order; the first that matches acts
-on = "approval"           # approval | question | turn | elapsed | completion
-tool = "run_commands"     # approval: one tool, by name
+on = "approval"           # approval | question | turn | elapsed | completion | plan
+tool = "run_commands"     # approval: one tool, by name (one that asks)
+category = "commands"     # approval: or one of the extension's categories
 match = "rm -rf"          # approval: on the tool's input as JSON; question: on its text
 turn = 3                  # on = "turn": the lead agent's turn, counted over the whole run
 after_s = 600             # on = "elapsed": time of the run, time held left out
@@ -309,7 +310,8 @@ times = 1                 # how often it may act; 1 when not stated, 0 every tim
 do = "deny"               # see below
 text = "…"                # feedback, answer or message
 option = 2                # do = "option": the question's suggested option, from 1
-restore = "workspace"     # do = "restore"
+mode = "act"              # do = "mode": act | plan
+restore = "workspace"     # do = "restore": workspace | messages | both
 checkpoint = 1            # do = "restore": the SDK's checkpoint run count
 ```
 
@@ -317,19 +319,18 @@ checkpoint = 1            # do = "restore": the SDK's checkpoint run count
 |---|---|
 | `approval` | `approve`, `deny` (with `text` as feedback) |
 | `question` | `answer` (`text`), `option` (an option not offered is the default answer, and the line says so) |
-| `turn`, `elapsed` | `steer` (now, into the running turn), `queue` (when the turn ends), `cancel` (abort the running work, then resume with `text`), `restore` (`workspace`) |
-| `completion` | `queue`: one more message after the agent ends the task |
+| `turn`, `elapsed` | `steer` (now, into the running turn), `queue` (when the turn ends), `cancel` (abort the running work, then resume with `text`), `restore` (`workspace`; `messages` or `both` fork the session, D86, and need `text`), `mode` (abort, switch, then send `text`) |
+| `completion` | `queue`: one more message after the agent ends the task; `mode` |
+| `plan` | the agent ended a run in plan mode: `queue`, or `mode` (to act, `text` optional) |
 
 - Unknown fields, a rule whose fields do not go with its event or
   response, and patterns that would mean something else in JavaScript
-  (inline flags) are refused when the task is loaded. A mode switch and a
-  restore of the messages (D86) are refused by name: they are stage 2,
-  waiting for the SDK's answers (mail to the Cerebriline session,
-  2026-10-14). So are approval by category, the plan-presented event and
-  the extension's sentence for a denied edit.
-- With a script every tool asks for approval (the SDK's `"*"` policy,
-  under each tool's own), and the script decides. Without one, nothing
-  changes from protocol 1.
+  (inline flags) are refused when the task is loaded. (Stage 1 refused
+  the mode switch, the restore of the messages, approval by category and
+  the plan event by name; stage 2 below builds them.)
+- With a script the tools of the extension's approval categories ask for
+  approval, and the script decides; the others run without asking, as in
+  the extension (stage 2). Without one, nothing changes from protocol 1.
 - A denial's reason is the SDK's sentence, "This tool call was rejected by
   the user and not executed.", followed with feedback by " The user provided
   the following feedback:" and the feedback on its own line inside
@@ -354,6 +355,55 @@ checkpoint = 1            # do = "restore": the SDK's checkpoint run count
 - Demo tasks `demo/scripted` (a denial with feedback, a steer, a message
   after completion) and `demo/cancel` (a cancel and resume, a restore) pass
   on the stub.
+
+**As built, stage 2 (2026-10-14, runner protocol 3)**, from the Cerebriline
+session's answers of 2026-10-14 (SDK and extension 4.100.251 source):
+
+- **Categories.** Approval goes by the extension's categories
+  (`sdk-tool-policies.ts`): `read` (read_files, read_file, list_files,
+  list_code_definition_names, search_codebase, search_files, grep, awk),
+  `edit` (editor, replace_in_file, write_to_file, apply_patch, delete_file,
+  sed), `commands` (run_commands, execute_command), `web`
+  (fetch_web_content, web_fetch, web_search), `browser` (browser,
+  browser_action, render_image). A tool in none of them never asks, so a
+  rule naming it is refused; `mcp` is refused (no arm starts an MCP
+  server); there is no safe-command test. The table is in
+  `internal/task/user.go` and goes to the runner with the script.
+- **Denials** use the extension's sentences: "The user denied this edit.
+  The file was NOT modified and still contains its original content." for
+  an `edit` tool, the stage-1 sentence for the others; feedback is trimmed.
+- **Mode switch** as the extension does it: abort, read the live messages
+  and the compaction state, stop, start the same session id in the other
+  mode with both, send the text. `send` with a mode does not switch.
+  A `runner` line `mode_switched`.
+- **Plan.** A run of the session in plan mode that the agent ended by
+  itself is a plan; the `plan` line says whether it also called
+  `switch_to_act_mode`.
+- **Fork (D86).** `restore = "messages"` or `"both"` restores the
+  checkpoint into a new session `<session>-fork<n>`; the old session is
+  stopped. The `fork` line lists what started again from nothing:
+  iterations, consecutive mistakes, loop guards, compaction state. Ingest
+  records each fork in the finding `session_fork` and counts `user.forks`
+  and `user.mode_switches` (070 §4.2).
+- **Checkpoints need a git repository.** The SDK's checkpoints are commits;
+  it keeps no shadow repository. A task whose script restores says
+  `[workspace] git = true` (060 §2); the runner makes the workspace a
+  repository with the seed as one commit, and the workspace diff leaves
+  `.git` out. Until now no lane workspace was a repository, so an arm with
+  checkpoints on never had one; whether every workspace should be is asked
+  of the owner.
+- Observed on the stub, SDK 4.100.250, arm `stub-plan`: plan mode offers
+  no `editor` and no `switch_to_act_mode` (it keeps `run_commands` and
+  `sed`), so on this release a plan is presented as text. The arm's
+  no-tool-call nudge answers the first text-only reply of each run, so the
+  run ends on the second.
+- Observed on the stub: after a switch, the read-before-edit guard has
+  forgotten the files read in plan mode (the session was started again),
+  and refuses an edit until the file is read again. Asked of the
+  Cerebriline session whether the extension behaves the same.
+- Demo tasks `demo/plan` (plan, then a switch to act) and `demo/fork` (a
+  fork at turn 3 to checkpoint 1) pass on the stub; `demo/cancel` now
+  restores the workspace for real.
 
 ## 7. What the runner returns
 

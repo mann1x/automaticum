@@ -53,6 +53,22 @@ type Events struct {
 	// UserFailed is how many of the scripted user's actions the SDK
 	// refused: the run did not play the script it was meant to.
 	UserFailed int
+	// Forks are the session forks a restore of messages started (D86), in
+	// order; ModeSwitches how often the scripted user switched the mode.
+	Forks        []Fork
+	ModeSwitches int
+}
+
+// Fork is one session fork of a run (D86): when it started, the
+// checkpoint it went back to, and what the SDK started again from nothing
+// in the new session, as the runner noted it.
+type Fork struct {
+	T          time.Time `json:"t"`
+	From       string    `json:"from"`
+	To         string    `json:"to"`
+	Checkpoint int       `json:"checkpoint"`
+	Workspace  bool      `json:"workspace"`
+	Restarted  []string  `json:"restarted"`
 }
 
 // eventLine is one line of a stream. The runner writes
@@ -76,6 +92,12 @@ type eventLine struct {
 	On       string `json:"on"`
 	Rule     int    `json:"rule"`
 	Approved *bool  `json:"approved"`
+	// A runner's fork note (D86).
+	From       string   `json:"from"`
+	To         string   `json:"to"`
+	Checkpoint int      `json:"checkpoint"`
+	Workspace  bool     `json:"workspace"`
+	Restarted  []string `json:"restarted"`
 }
 
 type agentEvent struct {
@@ -169,6 +191,10 @@ func (ev *Events) line(line []byte, sc *scan) {
 			ev.Questions++
 		case "user_action_failed":
 			ev.UserFailed++
+		case "fork":
+			ev.Forks = append(ev.Forks, Fork{T: l.T, From: l.From, To: l.To, Checkpoint: l.Checkpoint, Workspace: l.Workspace, Restarted: l.Restarted})
+		case "mode_switched":
+			ev.ModeSwitches++
 		}
 		return
 	case l.K == "user":

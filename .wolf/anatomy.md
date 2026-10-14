@@ -93,6 +93,7 @@
 - `omnimerge-v4-mtp-27b-high-sdk-4.100.251.toml` — OmniMerge v4 against the base model (owner, 2026-10-13): the same (~118 tok)
 - `qwen36-mtp-27b-high-sdk-4.100.251.toml` — The owner's first real arm (D55, D59) on SDK release 4.100.251: the same (~124 tok)
 - `qwen36-mtp-27b-high.toml` — First real arm of milestone 2 (decisions D55 and D59). Every value here is (~220 tok)
+- `stub-plan.toml` — The stub arm in plan mode, for the scripted user's plan and mode-switch demo (demo/plan) (~60 tok)
 - `stub-sdk-4.100.251.toml` — The stub arm on SDK release 4.100.251: the same settings, another build of (~58 tok)
 - `stub.toml` — An arm for the stub model server: used by the harness's own tests and for (~99 tok)
 
@@ -316,7 +317,7 @@
 
 ## internal/task/
 
-- `user.go` — scripted user (040 §6.2): User, UserDefault, UserRule; validate (events approval/question/turn/elapsed/completion, allowed responses, stage-2 refusals by name, no inline regex flags, times default 1) (~1900 tok)
+- `user.go` — scripted user (040 §6.2): User (Categories sent to the runner), ApprovalCategories (the extension's read/edit/commands/web/browser tools), UserDefault, UserRule (tool or category, mode, restore workspace|messages|both); validate (events approval/question/turn/elapsed/completion/plan, allowed responses, a tool that never asks refused, mcp refused, fork needs text, no inline regex flags, times default 1) (~2600 tok)
 - `user_test.go` — TestUserScript (~1100 tok)
 - `exec.go` — Interface: Executor (4 methods) (~3851 tok)
 - `task_test.go` — TestLoadAll, TestLoadRejects, TestHashChangesWithAnyFile, TestVerifyDemo + 2 more (~2726 tok)
@@ -330,7 +331,7 @@
 
 ## runner/
 
-- `user.mjs` — createUser: the scripted user (approval, question, iteration counting over the whole run, beforeModel turn/elapsed actions, next() resume/completion), DENIED sentence (~1300 tok)
+- `user.mjs` — createUser: the scripted user (approval by category with the extension's DENIED/EDIT_DENIED sentences, question, turns counted over the whole run, beforeModel turn/elapsed actions, next(result, mode) → {prompt} | {prompt, mode} | {prompt, fork}; plan event, APPROVED_ACT) (~1900 tok)
 - `package.json` — Node.js package manifest (~103 tok)
 - `PROTOCOL.md` — The runner: protocol 1 (~985 tok)
 - `runner.mjs` — The runner: one agent session for one run, inside the lane's container. (~2805 tok)
@@ -351,7 +352,7 @@
 
 ## runner/test/
 
-- `user.test.mjs` — scripted user engine tests (default user, approvals, questions, turn/elapsed, cancel+resume, completion, turns across resume) (~1500 tok)
+- `user.test.mjs` — scripted user engine tests (default user, approvals by category, questions, turn/elapsed, cancel+resume, completion, turns across resume, plan→act, switch and fork at a turn) (~2100 tok)
 - `arm-stub.json` (~287 tok)
 - `session.test.mjs` — stub: reportOf (~1906 tok)
 - `wire.test.mjs` — Declares serve (~1056 tok)
@@ -441,5 +442,37 @@
 - `good.txt` (~5 tok)
 
 ## tasks/demo/answer/seed/
+
+- `answer.txt` (~5 tok)
+
+## tasks/demo/scripted/
+
+- `task.toml` — demo task with a scripted user: a read_files denial with feedback (times 1), a steer at turn 2, a queued message after completion (~350 tok)
+
+## tasks/demo/cancel/
+
+- `task.toml` — demo task with a scripted user: cancel and resume, then a workspace restore of checkpoint 1; `[workspace] git = true` (~330 tok)
+
+## tasks/demo/plan/
+
+- `task.toml` — demo task for an arm in plan mode: rule on = plan, do = mode, mode = act (the extension's sentence) (~300 tok)
+
+## tasks/demo/plan/fixtures/
+
+- `good.txt` (~5 tok)
+
+## tasks/demo/plan/seed/
+
+- `answer.txt` (~5 tok)
+
+## tasks/demo/fork/
+
+- `task.toml` — demo task for D86: at turn 3, restore the messages of checkpoint 1 into a new session (a fork) with a new message; `[workspace] git = true` (~320 tok)
+
+## tasks/demo/fork/fixtures/
+
+- `good.txt` (~5 tok)
+
+## tasks/demo/fork/seed/
 
 - `answer.txt` (~5 tok)

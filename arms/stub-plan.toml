@@ -1,0 +1,6 @@
+# The stub arm in plan mode, for the harness's own tests of the scripted
+# user's plan event and mode switch (040 §6.2). It measures nothing.
+extends = "stub"
+
+[agent]
+mode = "plan"

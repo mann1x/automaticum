@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.15, 2026-10-14.
+**Status:** draft 0.16, 2026-10-14.
 
 ## 1. The rule: no custom script
 
@@ -51,6 +51,9 @@ method is recorded.
 - **Sub-agents:** spawned, per-agent verdict and spend, wait for placement,
   retries, agents that reported nothing.
 - **Cost** in tokens and, for priced endpoints, money.
+- **Scripted user** (040 §6.2): `user.actions`, `user.denials`,
+  `user.failed`, and since analysis version 4 `user.forks` and
+  `user.mode_switches`.
 
 ### 2.1 Per cell
 
@@ -269,6 +272,14 @@ Each has a severity, evidence (event ids, quoted text) and a count.
   environment to get past an obstacle (editing PATH, chmod, deleting a guard).
 - **Struggle signals:** the triggers of the escalation study, evaluated on
   every run, with recall and false-alarm rate per trigger across a set.
+- **Session forks (D86, as built 2026-10-14, analysis version 4):** the
+  finding `session_fork` (severity note, version 1) lists each fork a
+  restore of messages started: its time, the session it left and the one it
+  started, the checkpoint, whether the files were restored too, and what
+  the SDK started again from nothing (iterations, consecutive mistakes,
+  loop guards, compaction state). Every counter and guard metric of such a
+  run spans more than one session; a report filters on the finding. It
+  judges nothing.
 - **Outcome mismatches:** claimed success against the oracle; fixed then broken
   again; correct at some point but not at the end (needs oracle sampling,
   060 §3.1).

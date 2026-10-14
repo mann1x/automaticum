@@ -39,17 +39,23 @@ const GPUResidency = "gpu_residency"
 // after the run's first request.
 const ModelReloaded = "model_reloaded"
 
+// SessionFork is the finding that a restore of messages started a new
+// session inside the run (D86): every counter and guard of the SDK started
+// again from nothing at that time, so the run's guard and counter metrics
+// are not those of one session. It records each fork; it judges nothing.
+const SessionFork = "session_fork"
+
 // AnalysisVersion numbers the set of detector versions an analysis
 // applies. It goes up whenever a version in Versions changes, and every
 // analysis records it as the metric analysis.version: the basis (020 §5)
 // says from it which detectors a run was analysed with, whether or not
 // they found anything.
-const AnalysisVersion = 3
+const AnalysisVersion = 4
 
 // Versions are the versions of the detectors this analysis applies:
 // ingest's own and the detector library's.
 var Versions = map[string]string{
-	"library": detect.Version, WireArm: WireArmVersion, CapHit: "2", GPUResidency: "1", ModelIdentity: "1", ModelReloaded: "2",
+	"library": detect.Version, WireArm: WireArmVersion, CapHit: "2", GPUResidency: "1", ModelIdentity: "1", ModelReloaded: "2", SessionFork: "1",
 }
 
 // VersionsText is Versions as one line, in order.
@@ -216,6 +222,8 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 	m("user.actions", float64(ev.UserActions))
 	m("user.denials", float64(ev.UserDenials))
 	m("user.failed", float64(ev.UserFailed))
+	m("user.forks", float64(len(ev.Forks)))
+	m("user.mode_switches", float64(ev.ModeSwitches))
 	m("events.lines", float64(ev.Lines))
 	if ev.BadLines > 0 {
 		m("events.unreadable_lines", float64(ev.BadLines))
@@ -410,6 +418,13 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 		raw, _ := json.Marshal(map[string]any{"tag": i.Model.Tag, "not_stated": i.Model.NotStated})
 		res.Findings = append(res.Findings, store.Finding{RunID: r.ID, Detector: ModelIdentity, DetectorVersion: Versions[ModelIdentity],
 			Severity: "warning", Count: len(i.Model.NotStated), Evidence: raw})
+	}
+
+	// Each fork of the session (D86), with its time and what restarted.
+	if len(ev.Forks) > 0 {
+		raw, _ := json.Marshal(map[string]any{"forks": ev.Forks})
+		res.Findings = append(res.Findings, store.Finding{RunID: r.ID, Detector: SessionFork, DetectorVersion: Versions[SessionFork],
+			Severity: "note", Count: len(ev.Forks), Evidence: raw})
 	}
 
 	// A model that had to be loaded again in the middle of a run was pushed
