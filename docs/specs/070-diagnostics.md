@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.12, 2026-10-13.
+**Status:** draft 0.13, 2026-10-14.
 
 ## 1. The rule: no custom script
 
@@ -216,6 +216,11 @@ detector always reads with the release's defaults, so that runs compare.
   old corpus): the older way of matching gives the reference's three flags
   on every block, with no difference; the reference way finds 3 firings
   more (2 on texts made for it, 1 on a real block) and loses none.
+  On 2026-10-14 the reference code became version 2 (omnimergekit
+  `01f5ed3`): it matches every repeat too, and says so in its output. The
+  test now compares in the way the reference reports: over the same 907
+  blocks, this library and the reference agree on every block, with no
+  difference (11 short-unit, 4 letter-run and 19 sentence firings).
 - Not ported yet from the same source: the count of failed identical calls
   (6, and 4 for a call the tool refused in advance) and the repeated pair
   of call and result (3, and 6 for writing tools). Both need each call's

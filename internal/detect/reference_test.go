@@ -82,9 +82,10 @@ func TestReferenceFixtures(t *testing.T) {
 // TestAgainstReference runs the reference code itself and compares, block
 // by block. It needs AUTOMATICUM_REFERENCE (the path of loop_detect.py) and
 // python3; AUTOMATICUM_BLOCKS may name a JSON file holding a list of texts
-// to add to the fixtures. The older way of matching must give the
-// reference's three flags on every block; the reference way may only add
-// firings to them, never lose one.
+// to add to the fixtures. The reference code says which way it matches
+// (its version 2 matches every repeat, as this library does; version 1,
+// with no such field, the first only): this library, matching the same
+// way, must give the reference's three flags on every block.
 func TestAgainstReference(t *testing.T) {
 	ref := os.Getenv("AUTOMATICUM_REFERENCE")
 	if ref == "" {
@@ -117,7 +118,7 @@ spec = importlib.util.spec_from_file_location("ref", sys.argv[1]); ref = importl
 out = []
 for t in json.load(sys.stdin):
     d = ref.detect(t, runaway_chars=10**12)
-    out.append({"rep": d["rep"], "runchar": d["runchar"], "sentence": d["sentence"]})
+    out.append({"rep": d["rep"], "runchar": d["runchar"], "sentence": d["sentence"], "every": d.get("matching") == "every_match"})
 json.dump(out, sys.stdout)`, ref)
 	cmd.Stdin = strings.NewReader(string(in))
 	cmd.Stderr = os.Stderr
@@ -129,24 +130,19 @@ json.dump(out, sys.stdout)`, ref)
 	if err := json.Unmarshal(raw, &want); err != nil {
 		t.Fatal(err)
 	}
-	differ, added, fired := 0, 0, map[string]int{}
+	differ, fired := 0, map[string]int{}
+	o := Options{FirstMatch: len(want) > 0 && !want[0]["every"]}
 	for i, text := range texts {
-		old, now := flags(text, Options{FirstMatch: true}), flags(text, Options{})
+		got := flags(text, o)
 		for _, f := range []string{"rep", "runchar", "sentence"} {
 			if want[i][f] {
 				fired[f]++
 			}
-			if old[f] != want[i][f] {
+			if got[f] != want[i][f] {
 				differ++
-				t.Errorf("block %d (%d characters, %.40q): %s is %v the older way, %v by the reference code", i, len([]rune(text)), text, f, old[f], want[i][f])
-			}
-			if want[i][f] && !now[f] {
-				t.Errorf("block %d: the reference way lost a firing of %s", i, f)
-			}
-			if now[f] && !want[i][f] {
-				added++
+				t.Errorf("block %d (%d characters, %.40q): %s is %v here (%s), %v by the reference code", i, len([]rune(text)), text, f, got[f], o.Matching(), want[i][f])
 			}
 		}
 	}
-	t.Logf("%d blocks; the reference code fired %v; %d differences the older way; %d firings only the reference way finds", len(texts), fired, differ, added)
+	t.Logf("%d blocks, matching %s on both sides; the reference code fired %v; %d differences", len(texts), o.Matching(), fired, differ)
 }

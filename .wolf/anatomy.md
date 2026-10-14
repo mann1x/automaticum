@@ -1,28 +1,28 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-13T16:00:00.501Z
-> Files: 217 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-14T10:00:00.270Z
+> Files: 224 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~7791 tok)
-- `CLAUDE.md` — automaticum (~3298 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~7228 tok)
+- `CLAUDE.md` — automaticum (~3399 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
 - `LICENSE` — Project license (~3029 tok)
-- `Makefile` — Make build targets (~696 tok)
+- `Makefile` — Make build targets (~701 tok)
 - `README.md` — Project documentation (~2524 tok)
 - `spike.local.toml` — Untracked. Paths for the store spike on this installation. (~243 tok)
 
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~25410 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~28655 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~0 tok)
-- `score-history.jsonl` (~872 tok)
+- `score-history.jsonl` (~959 tok)
 
 ## .caliber/backups/2026-10-12T20-16-19-461Z/
 
@@ -34,13 +34,13 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~95764 tok)
+- `fingerprint.json` — Declares usage (~95828 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` — Declares and (~14506 tok)
+- `current-session.jsonl` (~12293 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~24424 tok)
+- `roi-stats.json` (~27022 tok)
 - `state.json` (~41 tok)
 
 ## .claude/
@@ -90,6 +90,7 @@
 ## arms/
 
 - `base.toml` — The settings every arm here shares. It is not runnable by itself: it names (~422 tok)
+- `omnimerge-v4-mtp-27b-high-sdk-4.100.251.toml` — OmniMerge v4 against the base model (owner, 2026-10-13): the same (~118 tok)
 - `qwen36-mtp-27b-high-sdk-4.100.251.toml` — The owner's first real arm (D55, D59) on SDK release 4.100.251: the same (~124 tok)
 - `qwen36-mtp-27b-high.toml` — First real arm of milestone 2 (decisions D55 and D59). Every value here is (~220 tok)
 - `stub-sdk-4.100.251.toml` — The stub arm on SDK release 4.100.251: the same settings, another build of (~58 tok)
@@ -97,11 +98,12 @@
 
 ## cmd/automaticum/
 
-- `client_cmds.go` — client (146 fields) (~7260 tok)
+- `client_cmds.go` — client (143 fields) (~7562 tok)
+- `compare_cmds.go` — Declares list (~2036 tok)
 - `config_cmds_test.go` — TestParseInterspersed (~116 tok)
 - `config_cmds.go` — place (119 fields) (~3088 tok)
 - `image_cmds.go` (~1096 tok)
-- `main.go` — Command automaticum is the command line of automaticum. (~1406 tok)
+- `main.go` — Command automaticum is the command line of automaticum. (~1553 tok)
 - `sdk_cmds.go` — SDKEnv (~1197 tok)
 - `store_cgo.go` — go:build cgo (~1850 tok)
 - `store_nocgo.go` — go:build !cgo (~128 tok)
@@ -119,22 +121,22 @@
 
 - `000-overview.md` — 000 — Overview, vocabulary and map of the spec set (~2073 tok)
 - `010-architecture.md` — 010 — Architecture (~1615 tok)
-- `020-run-record.md` — 020 — The run record, verdicts and the basis (~2405 tok)
-- `030-configuration.md` — 030 — Configuration (~2075 tok)
+- `020-run-record.md` — 020 — The run record, verdicts and the basis (~2483 tok)
+- `030-configuration.md` — 030 — Configuration (~2326 tok)
 - `040-runner.md` — 040 — The runner (~6120 tok)
-- `050-orchestration.md` — 050 — Orchestration: scheduling, gates, control (~2755 tok)
+- `050-orchestration.md` — 050 — Orchestration: scheduling, gates, control (~2997 tok)
 - `060-tasks-and-suites.md` — 060 — Tasks, oracles and the suite interface (~1440 tok)
 - `061-suite-bfcl.md` — 061 — Suite: BFCL (Berkeley Function-Calling Leaderboard) (~551 tok)
 - `062-suite-swe-bench.md` — 062 — Suite: SWE-bench and SWE-bench-style sets (~610 tok)
 - `063-suite-multi-language.md` — 063 — Suite: our own multi-language agentic suite (~536 tok)
 - `064-engine-adapters.md` — 064 — Engine adapters: Cerebriline as the engine of an external harness (~962 tok)
 - `065-cell-contract.md` — 065 — The cell contract and exports (~1280 tok)
-- `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~5377 tok)
+- `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~5748 tok)
 - `080-store.md` — 080 — The store (~4404 tok)
-- `090-interfaces.md` — 090 — Interfaces (~2073 tok)
+- `090-interfaces.md` — 090 — Interfaces (~2087 tok)
 - `100-legacy-import.md` — 100 — Import of the old harness's corpus (~3426 tok)
 - `110-acceptance-and-roadmap.md` — 110 — Acceptance and roadmap (~4576 tok)
-- `decisions.md` — Decisions and open questions (~4272 tok)
+- `decisions.md` — Decisions and open questions (~4906 tok)
 
 ## docs/specs/archive/
 
@@ -166,16 +168,17 @@
 
 - `arm.go` — loads automaticum's configuration: arms, lanes, endpoints (~7474 tok)
 - `config_test.go` — TestRepositoryArms, TestArmValidation, TestNothingIsDefaulted, TestExtendsAndIdentity + 3 more (~3694 tok)
-- `local.go` — Local (76 fields); methods: Token, APIKey (~2293 tok)
+- `local.go` — Local (77 fields); methods: Token, APIKey (~2391 tok)
 - `model_test.go` — TestModels (~532 tok)
-- `model.go` — ModelIdentity (25 fields); methods: Missing (~700 tok)
+- `model.go` — ModelIdentity (25 fields); methods: Missing (~755 tok)
 - `runner_fixture_test.go` — TestRunnerFixtureIsTheResolvedArm (~164 tok)
 
 ## internal/daemon/
 
-- `api.go` — HTTP handlers: reply, fail (~9219 tok)
-- `daemon_test.go` — memState (126 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~6703 tok)
-- `daemon.go` — is automaticumd without its main: the queue, one worker (~4862 tok)
+- `api.go` — HTTP handlers: reply, fail (~10748 tok)
+- `compare.go` — CompareView (75 fields) (~2458 tok)
+- `daemon_test.go` — memState (126 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~8060 tok)
+- `daemon.go` — is automaticumd without its main: the queue, one worker (~5222 tok)
 
 ## internal/detect/
 
@@ -188,12 +191,12 @@
 ## internal/docker/
 
 - `docker_test.go` — TestDemux, TestRun, TestRunTimeoutAndCancel (~1085 tok)
-- `docker.go` — is a small client for the Docker Engine API over the local (~4151 tok)
+- `docker.go` — is a small client for the Docker Engine API over the local (~4290 tok)
 
 ## internal/gate/
 
 - `gate_test.go` — server (40 fields); methods: ImageInspect, Check, Path (~2872 tok)
-- `gate.go` — holds the gates: what must hold before a run starts (spec (~4457 tok)
+- `gate.go` — holds the gates: what must hold before a run starts (spec (~4466 tok)
 
 ## internal/human/
 
@@ -231,16 +234,22 @@
 
 ## internal/run/
 
-- `probe.go` — Identity (78 fields); methods: Changed (~1960 tok)
-- `protocol.go` — executes one run: an arm on a task, once, on a lane. It (~1298 tok)
+- `identity_test.go` — m (29 fields) (~1462 tok)
+- `probe.go` — Identity (122 fields); methods: Changed (~3110 tok)
+- `protocol.go` — executes one run: an arm on a task, once, on a lane. It (~1671 tok)
 - `run_test.go` — fakeState (75 fields); methods: UpsertRun, AddBlobRefs, Put, Check (~5958 tok)
-- `run.go` — Interface: Engine (7 methods) (~7620 tok)
+- `run.go` — Interface: Engine (7 methods) (~8237 tok)
 - `verdict.go` — Facts (20 fields) (~588 tok)
 
 ## internal/sdk/
 
 - `sdk_test.go` — TestDefinitions, TestInstallRebuild (~1726 tok)
 - `sdk.go` — provisions the SDK under test. A lane image holds no SDK: each (~5126 tok)
+
+## internal/stats/
+
+- `stats_test.go` — TestWilson, TestFisher, TestMannWhitney, TestSummarise (~581 tok)
+- `stats.go` — holds the statistics reports print about runs (spec 070 (~1626 tok)
 
 ## internal/store/
 
@@ -289,14 +298,15 @@
 
 ## models/
 
+- `omnimerge-v4-mtp_tb-27b-q4km-128k.toml` — What this tag is, in the owner's words (030 §4.1), as named on 2026-10-13. (~83 tok)
 - `qwen36-base-mtp_tb-27b-q4km-128k.toml` — What this tag is, in the owner's words (030 §4.1), as named on 2026-10-13: (~67 tok)
 - `stub.toml` — The scripted stub model server of the harness's own tests. Not a model. (~44 tok)
 
 ## runner/
 
 - `package.json` — Node.js package manifest (~103 tok)
-- `PROTOCOL.md` — The runner: protocol 1 (~824 tok)
-- `runner.mjs` — The runner: one agent session for one run, inside the lane's container. (~2472 tok)
+- `PROTOCOL.md` — The runner: protocol 1 (~985 tok)
+- `runner.mjs` — The runner: one agent session for one run, inside the lane's container. (~2805 tok)
 - `session.mjs` — unsupported lists what an arm asks for that this runner cannot do. (~2455 tok)
 - `wire.mjs` — createWire returns a fetch that appends one JSON line per request to (~1492 tok)
 
@@ -405,19 +415,3 @@
 ## tasks/demo/answer/seed/
 
 - `answer.txt` (~5 tok)
-
-## internal/stats/
-
-- `stats.go` — Wilson interval, Summarise (median, quartiles, swing), Fisher exact, MannWhitney (exact without ties, else approximation); decides nothing (D78) (~1900 tok)
-- `stats_test.go` — known values (~600 tok)
-
-## compare (milestone 4, first part)
-
-- `internal/daemon/compare.go` — GET /v1/compare: runs of batches grouped by arm, summaries, findings, pairwise tests, arm diff (~1700 tok)
-- `cmd/automaticum/compare_cmds.go` — `automaticum compare <batch> ...`, main metrics by default, --all (~1700 tok)
-
-## arms and models added 2026-10-13
-
-- `arms/omnimerge-v4-mtp-27b-high-sdk-4.100.251.toml` — OmniMerge v4, same settings as the base arm on SDK 4.100.251 (~120 tok)
-- `models/omnimerge-v4-mtp_tb-27b-q4km-128k.toml` — variant "OmniMerge v4"; family and size read from the weights (~80 tok)
-- `internal/run/identity_test.go` — FillIdentity and Unload against a fake server (~900 tok)

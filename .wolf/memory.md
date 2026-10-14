@@ -873,3 +873,14 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 21:20
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-13 21:20
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:58 | reference detector v2 (omnimergekit 01f5ed3): 907 blocks, 0 differences in every-match mode; test now follows the reference's own matching field | internal/detect/reference_test.go, 070 | pass | ~2000 |
