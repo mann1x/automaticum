@@ -115,3 +115,108 @@ func TestProbesAndErrors(t *testing.T) {
 		t.Errorf("calls: %v", s.Calls())
 	}
 }
+
+// On /v1/chat/completions the stub answers as llama-server does: SSE chunks
+// when asked to stream, one completion when not, tool-call arguments as JSON
+// text; /props and /v1/models say what it serves.
+func TestOpenAICompatible(t *testing.T) {
+	s := New(Script{Model: "m.gguf", ContextWindow: 8192, Slots: 2, Turns: []Turn{
+		{Thinking: "let me look", ToolCalls: []ToolCall{{Name: "read_files", Arguments: map[string]any{"path": "a.txt"}}}},
+		{Content: "all done here"},
+	}})
+	srv := httptest.NewServer(s)
+	defer srv.Close()
+	get := func(path string, v any) {
+		resp, err := http.Get(srv.URL + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		json.NewDecoder(resp.Body).Decode(v)
+	}
+	var props struct {
+		Settings struct {
+			NCtx int `json:"n_ctx"`
+		} `json:"default_generation_settings"`
+		Slots     int    `json:"total_slots"`
+		ModelPath string `json:"model_path"`
+		Template  string `json:"chat_template"`
+	}
+	get("/props", &props)
+	if props.Settings.NCtx != 8192 || props.Slots != 2 || props.ModelPath == "" || props.Template == "" {
+		t.Errorf("props: %+v", props)
+	}
+	var models struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	get("/v1/models", &models)
+	if len(models.Data) != 1 || models.Data[0].ID != "m.gguf" {
+		t.Errorf("models: %+v", models)
+	}
+
+	resp, err := http.Post(srv.URL+"/v1/chat/completions", "application/json",
+		strings.NewReader(`{"model":"m.gguf","stream":true,"messages":[{"role":"user","content":"hi"}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var chunks []map[string]any
+	done := false
+	sc := bufio.NewScanner(resp.Body)
+	for sc.Scan() {
+		data, ok := strings.CutPrefix(sc.Text(), "data: ")
+		switch {
+		case !ok:
+		case data == "[DONE]":
+			done = true
+		default:
+			var m map[string]any
+			if err := json.Unmarshal([]byte(data), &m); err != nil {
+				t.Fatalf("chunk is not JSON: %s", data)
+			}
+			chunks = append(chunks, m)
+		}
+	}
+	resp.Body.Close()
+	if !done || resp.Header.Get("Content-Type") != "text/event-stream" {
+		t.Fatalf("stream: done %v, type %q", done, resp.Header.Get("Content-Type"))
+	}
+	last := chunks[len(chunks)-1]
+	choice := last["choices"].([]any)[0].(map[string]any)
+	if choice["finish_reason"] != "tool_calls" || last["usage"] == nil || last["timings"] == nil {
+		t.Errorf("closing chunk: %v", last)
+	}
+	var args string
+	for _, c := range chunks {
+		delta := c["choices"].([]any)[0].(map[string]any)["delta"].(map[string]any)
+		if calls, ok := delta["tool_calls"].([]any); ok {
+			args = calls[0].(map[string]any)["function"].(map[string]any)["arguments"].(string)
+		}
+	}
+	if args != `{"path":"a.txt"}` {
+		t.Errorf("tool call arguments: %q", args)
+	}
+
+	resp, err = http.Post(srv.URL+"/v1/chat/completions", "application/json",
+		strings.NewReader(`{"model":"m.gguf","messages":[{"role":"user","content":"hi"},{"role":"assistant","content":"x"}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var one struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+			FinishReason string `json:"finish_reason"`
+		} `json:"choices"`
+	}
+	json.NewDecoder(resp.Body).Decode(&one)
+	resp.Body.Close()
+	if len(one.Choices) != 1 || one.Choices[0].Message.Content != "all done here" || one.Choices[0].FinishReason != "stop" {
+		t.Errorf("completion: %+v", one)
+	}
+	if got := s.Calls()["/v1/chat/completions"]; got != 2 || len(s.Chats()) != 2 {
+		t.Errorf("recorded %d calls, %d chats", got, len(s.Chats()))
+	}
+}

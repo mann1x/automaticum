@@ -1086,3 +1086,54 @@
 | 17:30 | Created internal/config/campaign.go | — | ~1165 |
 | 17:32 | Created internal/daemon/campaign.go | — | ~3432 |
 | 17:45 | Campaigns: config.LoadCampaign, daemon campaign driver (control.json, batches in order by key, stop conditions, pause/resume/stop, notify), d.start refactor, run.Request.Campaign, CLI campaign *, campaigns/stub-demo.toml; proved on stub; mail 1371 to omnimergekit on mode C | internal/config/campaign.go, daemon/campaign.go api.go daemon.go, cmd campaign_cmds.go, 030 050 090 | deployed next | ~30000 |
+
+## Session: 2026-10-14 17:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 17:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 17:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 17:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 17:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 17:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 18:12
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 18:12
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 18:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:15 | Edited internal/stubmodel/stubmodel.go | modified answers() | ~197 |
+| 18:15 | Edited internal/stubmodel/stubmodel.go | 2→5 lines | ~53 |
+| 18:15 | Edited internal/stubmodel/stubmodel.go | 1→5 lines | ~26 |
+| 18:15 | Edited internal/stubmodel/stubmodel.go | 2→6 lines | ~47 |
+| 18:15 | Edited internal/stubmodel/stubmodel.go | modified struct() | ~843 |
+| 18:16 | mode C step 2: stub server speaks OpenAI-compatible /v1/chat/completions (SSE), /v1/models, /props; ingest test parses the stub's answer | internal/stubmodel/stubmodel.go, stubmodel_test.go, internal/ingest/openai_test.go | tests pass | ~6k |

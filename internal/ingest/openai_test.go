@@ -2,8 +2,13 @@ package ingest
 
 import (
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/mann1x/automaticum/internal/stubmodel"
 )
 
 // An OpenAI-compatible request, as llama-server and vLLM take it, reads
@@ -48,5 +53,30 @@ func TestOpenAIWire(t *testing.T) {
 	}
 	if reqs[2].Chat || reqs[2].Agent {
 		t.Errorf("models list: %+v", reqs[2])
+	}
+}
+
+// What the stub model server streams on /v1/chat/completions reads as the
+// same answer through ingest, so tests of mode C on the stub test ingest.
+func TestOpenAIWireFromStub(t *testing.T) {
+	srv := httptest.NewServer(stubmodel.New(stubmodel.Script{Turns: []stubmodel.Turn{
+		{Thinking: "let me look", Content: "done now", ToolCalls: []stubmodel.ToolCall{{Name: "read_files"}}},
+	}}))
+	defer srv.Close()
+	req := `{"model":"stub:latest","stream":true,"max_tokens":512,"messages":[{"role":"user","content":"hi"}]}`
+	resp, err := http.Post(srv.URL+"/v1/chat/completions", "application/json", strings.NewReader(req))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	b, _ := json.Marshal(map[string]any{"seq": 1, "url": srv.URL + "/v1/chat/completions", "status": 200, "request_body": req, "response_body": string(body)})
+	reqs, err := ReadWire(strings.NewReader(string(b) + "\n"))
+	if err != nil || len(reqs) != 1 {
+		t.Fatalf("%v %+v", err, reqs)
+	}
+	q := reqs[0]
+	if !q.Chat || q.DoneReason != "tool_calls" || q.Visible != "done now" || q.EvalTokens == 0 || q.PromptTokens == 0 || q.Options["num_predict"] != float64(512) || q.Empty {
+		t.Errorf("answer: %+v", q)
 	}
 }
