@@ -1012,3 +1012,24 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 16:58 | Cap audit, first part: ingest CapHits per request every turn (length or ≥ num_predict−16), cap.hits/cap.declared_tokens, cap_hit finding; compare CapAudit per arm CLEAN/CAPPED/UNVERIFIED; reanalysed 49 runs; D81 both CLEAN; asked omnimergekit (mail 1363) for code of pile-up/asymmetry/allowance | internal/ingest/cap.go, analyse.go, daemon/compare.go, cmd compare_cmds.go, 070 §5 | deployed | ~15000 |
+
+## Session: 2026-10-14 16:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 16:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 16:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 16:58
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:08 | Cap audit: omnimergekit mail 1364 checked; cap asymmetry ported (capAsymmetry, TestCapAsymmetry, compare pairs); UNVERIFIED and declared-limit-on-agent labelled automaticum's own; pile-up and allowance deferred to milestone 5 with test_cap_report.py fixtures | daemon/compare.go, compare_cmds.go, 070 §5 | tests green | ~6000 |

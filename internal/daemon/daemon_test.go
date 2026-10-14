@@ -1125,3 +1125,20 @@ func TestCompareCap(t *testing.T) {
 		t.Errorf("d: %+v", d)
 	}
 }
+
+// The cap asymmetry as omnimergekit's agent summary computes it: material
+// from max(5, 1% of the shared tasks), confounded when lopsided.
+func TestCapAsymmetry(t *testing.T) {
+	for _, tc := range []struct {
+		a, b, shared         int
+		material, confounded bool
+	}{
+		{1, 0, 1, false, false}, {4, 0, 1, false, false}, {5, 0, 1, true, true},
+		{6, 4, 1, true, true}, {6, 5, 1, true, false}, {10, 7, 900, true, false}, {8, 0, 900, false, false},
+	} {
+		c := capAsymmetry(tc.a, tc.b, tc.shared)
+		if c.Material != tc.material || c.Confounded != tc.confounded {
+			t.Errorf("%d against %d over %d: %+v", tc.a, tc.b, tc.shared, c)
+		}
+	}
+}

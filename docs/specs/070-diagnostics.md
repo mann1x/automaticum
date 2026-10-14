@@ -367,12 +367,25 @@ is and the server gave a finish reason for every request; `UNVERIFIED` when
 it did not, or when a run was analysed before the audit existed. It also
 shows the declared limits and the thinking budgets the server applied (the
 reasoning-budget regime). The 16-token tolerance is omnimergekit's.
-**Not built yet:** the derived answer allowance band, the pile-up test (for
-servers that give no honest finish reason; ingest does not yet keep every
-completion's length per arm) and the asymmetry between two arms: their
-definitions are being confirmed against omnimergekit's code (what a row
-is, and whether the counts are of requests or of runs) before they are
-ported.
+**Whose rules, as checked against omnimergekit's code (2026-10-14,
+`eval/omk_eval.py` `cap_report`, `eval/test_cap_report.py`,
+`eval/agentic/summarize_arms.py`, commit `01f5ed3`):** for agent cells
+their code trusts the reported stop reason only and gives `CAPPED` or
+`CLEAN`. Two parts above are automaticum's own and are labelled so: the
+declared-limit check on the agent's requests (the length there is the
+server's `eval_count`, thinking included), and `UNVERIFIED` (no finish
+reason, or a run analysed before the audit). The **cap asymmetry** between
+two arms is theirs as written: the capped requests of each arm summed over
+the shared tasks, material when the larger ≥ max(5, 1% of the shared
+*tasks*), confounded when material and the smaller is 0 or the ratio
+≥ 1.5. `compare` shows it per pair. The **derived answer allowance** and
+the **pile-up test** belong to their single-turn audit, where a row is one
+sample per task (deduplicated by task id), the length is the raw answer
+text re-tokenized with the model's tokenizer, the allowance applies only
+when 0 < thinking budget < output limit and the thinking is not inline in
+the text, and a pile-up on fewer than 10 rows is only logged. They are
+ported with the single-turn suites (milestone 5), with `test_cap_report.py`
+as the fixture set.
 
 ## 6. Across runs
 

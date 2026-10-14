@@ -151,6 +151,30 @@ type ComparePair struct {
 	// PassP is Fisher's exact test of the two pass counts, two-sided.
 	PassP   float64               `json:"pass_p"`
 	Metrics map[string]stats.Rank `json:"metrics"`
+	// Cap is the cap asymmetry between the two arms (070 §5).
+	Cap CapAsymmetry `json:"cap"`
+}
+
+// CapAsymmetry compares the capped requests of two arms over the tasks
+// they share, as omnimergekit's agent summary does (summarize_arms, CAP
+// GUARD, commit 01f5ed3): Hi and Lo are sums of capped requests, the floor
+// is in tasks. When it is Material and Lo is 0 or Hi over Lo is 1.5 or
+// more, the difference in scores is Confounded: the bench has measured
+// length.
+type CapAsymmetry struct {
+	Hi, Lo     int  `json:"-"`
+	A          int  `json:"a_capped_requests"`
+	B          int  `json:"b_capped_requests"`
+	Shared     int  `json:"shared_tasks"`
+	Material   bool `json:"material"`
+	Confounded bool `json:"confounded"`
+}
+
+func capAsymmetry(a, b, shared int) CapAsymmetry {
+	c := CapAsymmetry{A: a, B: b, Hi: max(a, b), Lo: min(a, b), Shared: shared}
+	c.Material = float64(c.Hi) >= max(5, 0.01*float64(shared))
+	c.Confounded = c.Material && (c.Lo == 0 || float64(c.Hi)/float64(max(c.Lo, 1)) >= 1.5)
+	return c
 }
 
 // served reads, from a run's record, what the server said of the model
@@ -329,7 +353,9 @@ func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			p := ComparePair{A: i, B: j, Differs: []string{}, Metrics: map[string]stats.Rank{},
-				PassP: stats.Fisher(a.Pass, len(a.Runs)-a.Pass, b.Pass, len(b.Runs)-b.Pass)}
+				PassP: stats.Fisher(a.Pass, len(a.Runs)-a.Pass, b.Pass, len(b.Runs)-b.Pass),
+				// One task per group: the two share it.
+				Cap: capAsymmetry(a.Cap.CappedRequests, b.Cap.CappedRequests, 1)}
 			if arms[i] != nil && arms[j] != nil {
 				p.Differs = config.Diff(arms[i], arms[j])
 			}

@@ -150,6 +150,15 @@ func compare(ctx context.Context, args []string) error {
 			c.CappedRuns, len(g.Runs), c.CappedPassed, tokens(c.Declared), tokens(c.ThinkBudget), c.Why)
 	}
 	w.Flush()
+	for _, p := range v.Pairs {
+		c := p.Cap
+		switch {
+		case c.Confounded:
+			fmt.Printf("  %s against %s: CONFOUNDED by the cap, %d against %d capped requests; the difference in scores is not clean: the bench has measured length.\n", letter(p.A), letter(p.B), c.A, c.B)
+		case c.Material:
+			fmt.Printf("  %s against %s: %d against %d capped requests, a material number but not lopsided.\n", letter(p.A), letter(p.B), c.A, c.B)
+		}
+	}
 	for i := range v.Groups {
 		if v.Groups[i].Cap.Verdict == "CAPPED" {
 			fmt.Println("  A CAPPED arm is not comparable with an arm at another output budget.")
