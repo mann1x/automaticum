@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"net/url"
+	"slices"
 	"sort"
 	"strings"
 
@@ -73,6 +74,15 @@ func compare(ctx context.Context, args []string) error {
 		}
 		for _, d := range p.Differs {
 			fmt.Println("  " + d)
+		}
+		fmt.Printf("\nthe basis (020 §5), every fact in which %s and %s differ:\n", letter(p.A), letter(p.B))
+		printBasisDiff(p.Basis, "  ")
+	}
+	for i, g := range v.Groups {
+		for _, f := range g.Basis.Fields {
+			if f.Mixed {
+				fmt.Printf("\n%s's runs differ among themselves in %s: %s\n", letter(i), f.Name, strings.Join(f.Values, " | "))
+			}
 		}
 	}
 	fmt.Println("\nthe model, as the server said at the start of every run:")
@@ -267,4 +277,112 @@ func sorted(m map[string]bool) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// printBasisDiff prints each fact in which two bases differ.
+func printBasisDiff(diff []daemon.BasisDiff, indent string) {
+	if len(diff) == 0 {
+		fmt.Println(indent + "none: the same basis")
+		return
+	}
+	w := table()
+	for _, d := range diff {
+		fmt.Fprintf(w, "%s%s\t%s\t->\t%s\n", indent, d.Name, strings.Join(d.A, " | "), strings.Join(d.B, " | "))
+	}
+	w.Flush()
+}
+
+// basisGroups asks the daemon for the bases of some batches.
+func basisGroups(ctx context.Context, c *client, batches []string) ([]daemon.BasisGroup, error) {
+	q := url.Values{"batch": batches}
+	var out []daemon.BasisGroup
+	err := c.do(ctx, "GET", "/v1/basis?"+q.Encode(), nil, &out)
+	return out, err
+}
+
+// basisShow prints the basis of every arm on every task of some batches.
+func basisShow(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("basis show", flag.ExitOnError)
+	_, dial := addClient(fs)
+	arm := fs.String("arm", "", "only this arm")
+	rest := parse(fs, args)
+	if len(rest) == 0 {
+		return errors.New("usage: automaticum basis show <batch> [<batch> ...] [--arm A]")
+	}
+	c, err := dial()
+	if err != nil {
+		return err
+	}
+	groups, err := basisGroups(ctx, c, rest)
+	if err != nil {
+		return err
+	}
+	if *arm != "" {
+		groups = slices.DeleteFunc(groups, func(g daemon.BasisGroup) bool { return g.Arm != *arm })
+	}
+	if c.json {
+		return printJSON(groups)
+	}
+	for i, g := range groups {
+		if i > 0 {
+			fmt.Println()
+		}
+		fmt.Printf("arm %s (%s), task %s, %d runs\nbasis sha256 %s\n", g.Arm, short(g.ArmID), g.Task, len(g.Runs), g.Basis.SHA256)
+		w := table()
+		for _, f := range g.Basis.Fields {
+			mark := ""
+			if f.Mixed {
+				mark = "MIXED: "
+			}
+			fmt.Fprintf(w, "  %s\t%s%s\n", f.Name, mark, strings.Join(f.Values, " | "))
+		}
+		w.Flush()
+	}
+	return nil
+}
+
+// basisDiff prints exactly the facts in which two bases differ. Each side
+// is a batch, or batch/arm when the batch has several arms.
+func basisDiff(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("basis diff", flag.ExitOnError)
+	_, dial := addClient(fs)
+	rest := parse(fs, args)
+	if len(rest) != 2 {
+		return errors.New("usage: automaticum basis diff <batch[/arm]> <batch[/arm]>")
+	}
+	c, err := dial()
+	if err != nil {
+		return err
+	}
+	var sides [2]daemon.BasisGroup
+	for i, sel := range rest {
+		batch, arm, _ := strings.Cut(sel, "/")
+		groups, err := basisGroups(ctx, c, []string{batch})
+		if err != nil {
+			return err
+		}
+		if arm != "" {
+			groups = slices.DeleteFunc(groups, func(g daemon.BasisGroup) bool { return g.Arm != arm })
+		}
+		switch len(groups) {
+		case 0:
+			return fmt.Errorf("%s: no arm of that name in the batch", sel)
+		case 1:
+			sides[i] = groups[0]
+		default:
+			var names []string
+			for _, g := range groups {
+				names = append(names, batch+"/"+g.Arm)
+			}
+			return fmt.Errorf("%s has several arms; name one: %s", sel, strings.Join(names, ", "))
+		}
+	}
+	diff := daemon.DiffBasis(sides[0].Basis, sides[1].Basis)
+	if c.json {
+		return printJSON(diff)
+	}
+	fmt.Printf("A  %s, arm %s, %d runs, basis %s\n", rest[0], sides[0].Arm, len(sides[0].Runs), short(sides[0].Basis.SHA256))
+	fmt.Printf("B  %s, arm %s, %d runs, basis %s\n\n", rest[1], sides[1].Arm, len(sides[1].Runs), short(sides[1].Basis.SHA256))
+	printBasisDiff(diff, "")
+	return nil
 }

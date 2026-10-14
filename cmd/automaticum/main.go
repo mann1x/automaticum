@@ -51,6 +51,8 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   logs <run>                    a run's raw material [--events|--wire|--runner|--oracle]
   doctor                        every gate, on every lane, now [--lane L] [--arm A] [--task T] [--all]
   compare <batch> [<batch> ...] the arms of some batches side by side: every statistic, no conclusion [--all]
+  basis show <batch> ...        every fact that must be equal for two arms to be compared, per arm [--arm A]
+  basis diff <b[/arm]> <b[/arm]>  exactly the facts in which two bases differ
   reanalyse                     derive metrics and findings again from what is stored [--run R | --batch B] [--imported]
   detect <file|run>             the detector library on a text file or on a stored run; --self-test runs its controls
   stub serve --script F         a scripted model server, for trying the harness without a GPU
@@ -96,6 +98,8 @@ func main() {
 		"lane drain":     laneControl(true),
 		"lane resume":    laneControl(false),
 		"batch show":     batchShow,
+		"basis show":     basisShow,
+		"basis diff":     basisDiff,
 		"batch pause":    batchControl("pause"),
 		"batch resume":   batchControl("resume"),
 		"batch stop":     batchControl("stop"),

@@ -1033,3 +1033,15 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 17:08 | Cap audit: omnimergekit mail 1364 checked; cap asymmetry ported (capAsymmetry, TestCapAsymmetry, compare pairs); UNVERIFIED and declared-limit-on-agent labelled automaticum's own; pile-up and allowance deferred to milestone 5 with test_cap_report.py fixtures | daemon/compare.go, compare_cmds.go, 070 §5 | tests green | ~6000 |
+
+## Session: 2026-10-14 17:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 17:03
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:05 | Created internal/daemon/basis.go | — | ~2851 |
+| 17:15 | Basis (020 §5): basis.go, compareView refactor, /v1/basis, basis show|diff, basis diff above every compare pair, mixed facts per arm; analysis.version metric + ingest.Versions; deployed, reanalysed 49; D81: arms differ only in weights; halves differ in server and lane image | internal/daemon/basis.go compare.go api.go, ingest/analyse.go, cmd compare_cmds.go main.go, 020 090 | deployed | ~20000 |

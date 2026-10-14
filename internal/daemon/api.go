@@ -264,6 +264,7 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/runs/{id}/pause", d.handlePause)
 	mux.HandleFunc("POST /v1/runs/{id}/resume", d.handleResume)
 	mux.HandleFunc("GET /v1/compare", d.handleCompare)
+	mux.HandleFunc("GET /v1/basis", d.handleBasis)
 	mux.HandleFunc("POST /v1/runs/{id}/invalidate", d.handleInvalidate)
 	mux.HandleFunc("POST /v1/runs/{id}/identify", d.handleIdentify)
 	mux.HandleFunc("GET /v1/runs/{id}/detect", d.handleDetect)

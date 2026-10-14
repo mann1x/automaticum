@@ -263,6 +263,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-14T15:54:00+02:00"
+    },
+    {
+      "id": "bug-017",
+      "timestamp": "2026-10-14T17:12:00+02:00",
+      "error_message": "basis diff: detectors differ between the two D81 arms (model_reloaded 2 only in one run), though both were analysed with the same detectors",
+      "file": "internal/daemon/basis.go",
+      "root_cause": "the detectors fact was built from the versions on the findings a run had, so it said what fired, not what was applied",
+      "fix": "ingest records metric analysis.version (ingest.AnalysisVersion) and keeps ingest.Versions; the basis names the analysis version and its detector versions",
+      "tags": [
+        "basis",
+        "detectors",
+        "versions"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-14T17:12:00+02:00"
     }
   ]
 }

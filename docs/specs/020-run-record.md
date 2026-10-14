@@ -1,6 +1,6 @@
 # 020 — The run record, verdicts and the basis
 
-**Status:** draft 0.8, 2026-10-13.
+**Status:** draft 0.9, 2026-10-14.
 
 Nothing in this file is optional. Each item is here because its absence
 invalidated or blinded a real campaign. A value is recorded **as probed or as
@@ -170,3 +170,41 @@ Requirements:
   separately named sampler cohort; a report never mixes the two.
 - A plain-text rendering of the basis is exported with every cell (065 §5), so
   the diff of two arms' files is the audit of a cohort.
+
+**As built (milestone 4, 2026-10-14):** until cells exist, a basis belongs to
+one arm on one task over some batches, over the runs `compare` counts. Each
+run's facts are read from its record; a fact whose value differs between
+the runs of the group keeps every value and is marked mixed. The canonical
+form is one `name=value` line per fact in the order of the table (mixed
+values sorted and joined), and its sha256 is the basis hash. The facts and
+where they come from:
+
+| fact | from |
+|---|---|
+| weights | the model's digest as served, and the weights' `general.finetune` |
+| quantization | the server's quantization level and the weights' file type |
+| imatrix | not recorded: the weights' quantization metadata is not read through the server |
+| template, parser | the template's hash and size, renderer and parser, as served |
+| sampler | the arm's sampler section, with its name (the wire check, 070 §4.1, says whether it was sent) |
+| tag parameters | the tag's own values, compared as sorted lines (stop sequences are among them) |
+| thinking | the arm's thinking section and the budget the server applied |
+| output limit | the limit the requests declared |
+| context | the context as the server loaded the model |
+| server | kind, version and engine |
+| concurrency | one run on the lane, no other model on the endpoint (the free gate) |
+| GPU | the GPU declared in the configuration, and the share of the model on it |
+| GPU driver and power | not recorded: needs agent mode on the endpoint's host |
+| harness build | SDK release and package hash, runner protocol, lane image, automaticum version |
+| agent settings | the hash of the arm's agent, guards, compaction, limits and protocol |
+| task | suite, task, version and the hash of its files |
+| scorer | the oracle and its image |
+| detectors | the analysis version a run was analysed with (metric `analysis.version`), and the detector versions it means, whether they found anything or not |
+| seed | the sampler's seed, or none set |
+
+`automaticum basis show <batch> ... [--arm A]` prints each basis;
+`automaticum basis diff <batch[/arm]> <batch[/arm]>` prints exactly the facts
+in which two differ; `automaticum compare` prints, above every number, the
+basis diff of each pair and every fact in which an arm's own runs differ.
+Not built yet: the cohort's declared variable and the **confounded** label,
+the refusal to put different bases in one table, and the export (065 §5):
+they come with cells and cohorts.

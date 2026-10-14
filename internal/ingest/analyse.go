@@ -39,6 +39,32 @@ const GPUResidency = "gpu_residency"
 // after the run's first request.
 const ModelReloaded = "model_reloaded"
 
+// AnalysisVersion numbers the set of detector versions an analysis
+// applies. It goes up whenever a version in Versions changes, and every
+// analysis records it as the metric analysis.version: the basis (020 §5)
+// says from it which detectors a run was analysed with, whether or not
+// they found anything.
+const AnalysisVersion = 1
+
+// Versions are the versions of the detectors this analysis applies:
+// ingest's own and the detector library's.
+var Versions = map[string]string{
+	"library": detect.Version, WireArm: WireArmVersion, CapHit: "1", GPUResidency: "1", ModelIdentity: "1", ModelReloaded: "2",
+}
+
+// VersionsText is Versions as one line, in order.
+func VersionsText() string {
+	names := make([]string, 0, len(Versions))
+	for n := range Versions {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	for i, n := range names {
+		names[i] = n + " " + Versions[n]
+	}
+	return strings.Join(names, ", ")
+}
+
 // reloadSeconds is the load time from which a request counts as a reload. A
 // model in memory answers "load" in milliseconds; a load takes seconds.
 const reloadSeconds = 1.0
@@ -154,6 +180,7 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 	}
 
 	// Time.
+	m("analysis.version", AnalysisVersion)
 	m("time.wall_ms", float64(r.WallMS))
 	if !ev.First.IsZero() {
 		m("time.agent_ms", float64(ev.Last.Sub(ev.First).Milliseconds()))
@@ -269,7 +296,7 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 		}
 		if len(hits) > 0 {
 			raw, _ := json.Marshal(map[string]any{"capped": hits, "tolerance": CapTolerance})
-			res.Findings = append(res.Findings, store.Finding{RunID: r.ID, Detector: CapHit, DetectorVersion: "1",
+			res.Findings = append(res.Findings, store.Finding{RunID: r.ID, Detector: CapHit, DetectorVersion: Versions[CapHit],
 				Severity: "warning", Turn: hits[0].Seq, Count: len(hits), Evidence: raw})
 		}
 	}
@@ -350,7 +377,7 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 		m("endpoint.gpu_share", share)
 		if e.Loaded.SizeVRAM < e.Loaded.Size {
 			raw, _ := json.Marshal(map[string]any{"size": e.Loaded.Size, "size_vram": e.Loaded.SizeVRAM, "share": share})
-			res.Findings = append(res.Findings, store.Finding{RunID: r.ID, Detector: GPUResidency, DetectorVersion: "1",
+			res.Findings = append(res.Findings, store.Finding{RunID: r.ID, Detector: GPUResidency, DetectorVersion: Versions[GPUResidency],
 				Severity: severity(accepts.PartialGPU), Count: 1, Evidence: raw})
 			if !accepts.PartialGPU {
 				res.Invalid = append(res.Invalid, fmt.Sprintf("the model was only partly on the GPU (%.0f%%)", 100*share))
@@ -371,7 +398,7 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 	json.Unmarshal(r.Provenance, &who)
 	if i := who.Inference; i != nil && len(i.Model.NotStated) > 0 {
 		raw, _ := json.Marshal(map[string]any{"tag": i.Model.Tag, "not_stated": i.Model.NotStated})
-		res.Findings = append(res.Findings, store.Finding{RunID: r.ID, Detector: ModelIdentity, DetectorVersion: "1",
+		res.Findings = append(res.Findings, store.Finding{RunID: r.ID, Detector: ModelIdentity, DetectorVersion: Versions[ModelIdentity],
 			Severity: "warning", Count: len(i.Model.NotStated), Evidence: raw})
 	}
 
@@ -437,7 +464,7 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 		} else {
 			first = loads[0].Seq
 		}
-		res.Findings = append(res.Findings, store.Finding{RunID: r.ID, Detector: ModelReloaded, DetectorVersion: "2",
+		res.Findings = append(res.Findings, store.Finding{RunID: r.ID, Detector: ModelReloaded, DetectorVersion: Versions[ModelReloaded],
 			Severity: sev, Turn: first, Count: len(loads) + len(afterPause), Evidence: raw})
 		if len(loads) > 0 && !accepts.ModelReload {
 			res.Invalid = append(res.Invalid, fmt.Sprintf("the model was loaded again during the run (%d times)", len(loads)))

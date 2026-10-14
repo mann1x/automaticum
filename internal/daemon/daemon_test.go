@@ -1142,3 +1142,59 @@ func TestCapAsymmetry(t *testing.T) {
 		}
 	}
 }
+
+// The basis of each arm, and exactly the facts in which two differ: two
+// arms that differ by model differ in the weights and nothing that is the
+// same; runs of one arm on two server versions are mixed.
+func TestBasis(t *testing.T) {
+	g := newRig(t, false)
+	ctx := context.Background()
+	prov := func(digest, version string) json.RawMessage {
+		return json.RawMessage(`{"sdk":{"release":"4.100.251","package_sha256":"fec057f5a65f"},"runner_protocol":1,"image":{"id":"sha256:da21ad577cb9"},
+			"task":{"hash":"3316176843b5"},"oracle":{"Oracle":"game","ImageID":"sha256:12e24ca21b39"},
+			"inference":{"kind":"xollama","server_version":"` + version + `","engine":"llamacpp","gpu":{"declared":"RTX 3090","vram_gb":24},
+			"model":{"digest":"` + digest + `","server":{"quantization_level":"Q4_K_M"},"weights":{"general.file_type":15}}},
+			"endpoint_before":{"template_sha256":"b507b9c2f6ca","template_bytes":13,"parameters":"temperature 1\ntop_k 20"},
+			"endpoint_after":{"loaded":{"context_length":131072}}}`)
+	}
+	add := func(id, arm, digest, version string) {
+		g.state.UpsertRun(ctx, &store.Run{ID: id, Batch: "b1", Suite: "custom", TaskID: "manic_miner", TaskVersion: 4, ArmID: "id-" + arm,
+			Verdict: store.Pass, Provenance: prov(digest, version),
+			Arm: json.RawMessage(`{"name":"` + arm + `","model":{"model":"m-` + arm + `"},"sampler":{"name":"s","temperature":1},"thinking":{"effort":"high"},"agent":{"mode":"act"}}`)})
+		g.state.ReplaceMetrics(ctx, id, []store.Metric{{RunID: id, Name: "cap.declared_tokens", Value: 96000}, {RunID: id, Name: "cap.hits", Value: 0},
+			{RunID: id, Name: "analysis.version", Value: 1}})
+	}
+	add("a1", "a", "aaaa11112222", "x.3")
+	add("a2", "a", "aaaa11112222", "x.4")
+	add("b1", "b", "bbbb33334444", "x.3")
+	add("b2", "b", "bbbb33334444", "x.4")
+	var v CompareView
+	if code := g.call("GET", "/v1/compare?batch=b1", nil, &v); code != 200 || len(v.Pairs) != 1 {
+		t.Fatalf("%d %+v", code, v)
+	}
+	diff := v.Pairs[0].Basis
+	if len(diff) != 1 || diff[0].Name != "weights" {
+		t.Errorf("basis diff: %+v", diff)
+	}
+	for _, gr := range v.Groups {
+		var mixed []string
+		for _, f := range gr.Basis.Fields {
+			if f.Mixed {
+				mixed = append(mixed, f.Name)
+			}
+			if strings.HasPrefix(f.Values[0], notRecorded) && f.Name != "imatrix" && f.Name != "GPU driver and power" {
+				t.Errorf("%s: %s", f.Name, f.Values[0])
+			}
+		}
+		if strings.Join(mixed, ",") != "server" {
+			t.Errorf("%s mixed: %v", gr.Arm, mixed)
+		}
+		if len(gr.Basis.SHA256) != 64 {
+			t.Errorf("sha256: %q", gr.Basis.SHA256)
+		}
+	}
+	var groups []BasisGroup
+	if code := g.call("GET", "/v1/basis?batch=b1", nil, &groups); code != 200 || len(groups) != 2 || groups[0].Basis.SHA256 == groups[1].Basis.SHA256 {
+		t.Errorf("basis: %d %+v", code, groups)
+	}
+}

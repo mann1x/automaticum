@@ -1,9 +1,11 @@
 package daemon
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -60,8 +62,12 @@ type CompareGroup struct {
 	TokensPerSolved float64 `json:"tokens_per_solved,omitempty"`
 	// Cap is the generation-cap audit of the group (070 §5).
 	Cap CapAudit `json:"cap"`
+	// Basis is every fact that must be equal for two groups to be
+	// compared (020 §5).
+	Basis Basis `json:"basis"`
 
 	values map[string][]float64
+	bases  []map[string]string
 }
 
 // CapAudit is the generation-cap audit of one arm on one task (070 §5): a
@@ -153,6 +159,8 @@ type ComparePair struct {
 	Metrics map[string]stats.Rank `json:"metrics"`
 	// Cap is the cap asymmetry between the two arms (070 §5).
 	Cap CapAsymmetry `json:"cap"`
+	// Basis lists exactly the facts of the basis in which the two differ.
+	Basis []BasisDiff `json:"basis"`
 }
 
 // CapAsymmetry compares the capped requests of two arms over the tasks
@@ -234,11 +242,20 @@ func counter(name string) bool {
 }
 
 func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	batches := r.URL.Query()["batch"]
-	if len(batches) == 0 {
-		fail(w, http.StatusBadRequest, "name at least one batch")
+	v, code, err := d.compareView(r.Context(), r.URL.Query()["batch"])
+	if err != nil {
+		fail(w, code, "%v", err)
 		return
+	}
+	reply(w, http.StatusOK, v)
+}
+
+// compareView groups the counted runs of some batches by arm and task, with
+// every number of each group and of each pair, and each group's basis. An
+// error comes with the HTTP status it means.
+func (d *Daemon) compareView(ctx context.Context, batches []string) (CompareView, int, error) {
+	if len(batches) == 0 {
+		return CompareView{}, http.StatusBadRequest, errors.New("name at least one batch")
 	}
 	v := CompareView{Batches: batches, Level: 0.95, Groups: []CompareGroup{}, Pairs: []ComparePair{}}
 	index := map[string]int{}
@@ -246,12 +263,10 @@ func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
 	for _, b := range batches {
 		runs, err := d.State.ListRuns(ctx, store.RunFilter{Batch: b})
 		if err != nil {
-			fail(w, http.StatusInternalServerError, "%v", err)
-			return
+			return v, http.StatusInternalServerError, err
 		}
 		if len(runs) == 0 {
-			fail(w, http.StatusNotFound, "batch %s has no finished run", b)
-			return
+			return v, http.StatusNotFound, fmt.Errorf("batch %s has no finished run", b)
 		}
 		for _, run := range runs {
 			if run.Verdict == store.Skipped {
@@ -295,8 +310,7 @@ func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
 			}
 			metrics, err := d.State.Metrics(ctx, run.ID)
 			if err != nil {
-				fail(w, http.StatusInternalServerError, "%v", err)
-				return
+				return v, http.StatusInternalServerError, err
 			}
 			byName := map[string]float64{}
 			for _, m := range metrics {
@@ -308,8 +322,7 @@ func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
 			g.Cap.audit(run.ID, run.Verdict == store.Pass, byName)
 			findings, err := d.State.Findings(ctx, run.ID)
 			if err != nil {
-				fail(w, http.StatusInternalServerError, "%v", err)
-				return
+				return v, http.StatusInternalServerError, err
 			}
 			seen := map[string]bool{}
 			for _, f := range findings {
@@ -318,6 +331,7 @@ func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
 					g.Findings[f.Detector]++
 				}
 			}
+			g.bases = append(g.bases, basisOfRun(&run, byName))
 		}
 	}
 	for i := range v.Groups {
@@ -333,6 +347,7 @@ func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		g.Cap.decide()
+		g.Basis = basisOf(g.bases)
 		g.PassLow, g.PassHigh = stats.Wilson(g.Pass, len(g.Runs), stats.Z95)
 		for name, vals := range g.values {
 			g.Metrics[name] = stats.Summarise(vals)
@@ -355,7 +370,8 @@ func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
 			p := ComparePair{A: i, B: j, Differs: []string{}, Metrics: map[string]stats.Rank{},
 				PassP: stats.Fisher(a.Pass, len(a.Runs)-a.Pass, b.Pass, len(b.Runs)-b.Pass),
 				// One task per group: the two share it.
-				Cap: capAsymmetry(a.Cap.CappedRequests, b.Cap.CappedRequests, 1)}
+				Cap:   capAsymmetry(a.Cap.CappedRequests, b.Cap.CappedRequests, 1),
+				Basis: DiffBasis(a.Basis, b.Basis)}
 			if arms[i] != nil && arms[j] != nil {
 				p.Differs = config.Diff(arms[i], arms[j])
 			}
@@ -372,5 +388,5 @@ func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
 			v.Pairs = append(v.Pairs, p)
 		}
 	}
-	reply(w, http.StatusOK, v)
+	return v, 0, nil
 }

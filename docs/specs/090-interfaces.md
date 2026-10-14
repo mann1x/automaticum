@@ -51,9 +51,9 @@ and checks their pinned hashes. Of these, `--dry-run` and
 
 **Built in milestone 4 so far:** `compare` (070 §6); `run start` with
 several `--arm` and `--order`; `run pause|resume|retry`; `lane
-drain|resume`; `batch show|pause|resume|stop|retry` (050 §3.3, §4). `run retry` and
+drain|resume`; `batch show|pause|resume|stop|retry` (050 §3.3, §4); `basis show|diff` (020 §5). `run retry` and
 `batch retry` have `--dry-run`. The API routes are `POST
-/v1/runs/{id}/retry`, `POST /v1/lanes/{lane}/drain|resume` and `GET /v1/batches/{batch}`, `POST
+/v1/runs/{id}/retry`, `POST /v1/lanes/{lane}/drain|resume` and `GET /v1/basis?batch=...`, `GET /v1/batches/{batch}`, `POST
 /v1/batches/{batch}/pause|resume|stop|retry`.
 
 The API is HTTP and JSON on a loopback address. Everything that changes

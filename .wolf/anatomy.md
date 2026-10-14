@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-14T13:49:43.947Z
-> Files: 228 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-14T15:05:27.467Z
+> Files: 233 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -177,8 +177,10 @@
 ## internal/daemon/
 
 - `api.go` — HTTP handlers: reply, fail (~10748 tok)
-- `compare.go` — CompareView (75 fields) (~2458 tok)
+- `basis.go` — Struct: Basis (~2851 tok)
+- `basis.go` — Basis/BasisField (020 §5), basisFields order, basisOfRun from record+metrics (analysis.version → detectors), basisOf (mixed, sha256), DiffBasis, BasisGroup, handleBasis (~2900 tok)
 - `canary.go` — first-generations canary (D84): CanaryRecord, canaryLoop/canaryTick reading RunsDir/<run>/out/wire.jsonl, canaryStop, controlTokens; BatchView + handleBatch (~1900 tok)
+- `compare.go` — CompareView (75 fields) (~2458 tok)
 - `control.go` — control (drained lanes, held batches, retries; control.json), handleLane, handleBatchPause/Resume/Stop, handleRetry, askedOf, askedProvenance (~4300 tok)
 - `control.go` — Struct: control (~4075 tok)
 - `daemon_test.go` — memState (126 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~8060 tok)
@@ -210,10 +212,10 @@
 ## internal/ingest/
 
 - `analyse.go` — Interface: Blobs (47 methods) (~3994 tok)
-- `cap.go` — CapHit finding, CapTolerance 16 (omnimergekit), Capped, CapHits (~450 tok)
-- `cap_test.go` — TestCapHits (~350 tok)
-- `canary.go` — CanaryRequests = 5 (D84), CanaryVerdict, Finished, Canary (~700 tok)
 - `canary_test.go` — TestCanary (~800 tok)
+- `canary.go` — CanaryRequests = 5 (D84), CanaryVerdict, Finished, Canary (~700 tok)
+- `cap_test.go` — TestCapHits (~350 tok)
+- `cap.go` — CapHit finding, CapTolerance 16 (omnimergekit), Capped, CapHits (~450 tok)
 - `detectors.go` — Firing (23 fields) (~1014 tok)
 - `events.go` — turns a run's stored raw material into what is queried: (~2544 tok)
 - `ingest_test.go` — TestReadEvents, TestReadWire, TestCompareWireClean, TestCompareWire + 2 more (~8030 tok)
