@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -252,7 +253,11 @@ type rig struct {
 	srv    *httptest.Server
 	stop   context.CancelFunc
 	served chan struct{}
+	life   context.Context
 }
+
+// ctx is the context Serve runs with; the test's end cancels it.
+func (g *rig) ctx() context.Context { return g.life }
 
 func newRig(t *testing.T, serve bool) *rig {
 	t.Helper()
@@ -269,7 +274,7 @@ func newRig(t *testing.T, serve bool) *rig {
 	g.srv = httptest.NewServer(g.d.Handler())
 	t.Cleanup(g.srv.Close)
 	ctx, cancel := context.WithCancel(context.Background())
-	g.stop = cancel
+	g.stop, g.life = cancel, ctx
 	t.Cleanup(cancel)
 	if serve {
 		go func() { g.d.Serve(ctx); close(g.served) }()
@@ -827,5 +832,167 @@ func TestCompareServed(t *testing.T) {
 	}
 	if len(s["model digest"]) != 1 || len(s["server version"]) != 1 {
 		t.Errorf("unchanged facts: %v", s)
+	}
+}
+
+// status reads the daemon's status.
+func (g *rig) status() Status {
+	g.t.Helper()
+	var st Status
+	if code := g.call("GET", "/v1/status", nil, &st); code != 200 {
+		g.t.Fatalf("status: %d", code)
+	}
+	return st
+}
+
+// stays checks for a while that a queued run does not start, and gives why
+// the queue says it does not.
+func (g *rig) stays(id string) string {
+	g.t.Helper()
+	time.Sleep(150 * time.Millisecond)
+	if g.d.flight(id) != nil {
+		g.t.Fatalf("run %s started", id)
+	}
+	for _, e := range g.status().Queue {
+		if e.RunID == id {
+			return e.Stopped
+		}
+	}
+	g.t.Fatalf("run %s is not queued", id)
+	return ""
+}
+
+// A drained lane finishes its run in flight and starts nothing else until
+// it is resumed, and a restarted daemon still knows it is drained.
+func TestLaneDrain(t *testing.T) {
+	g := newRig(t, false)
+	g.d.ControlFile = filepath.Join(t.TempDir(), "control.json")
+	hold := make(chan struct{})
+	g.runner.hold, g.runner.started = hold, make(chan string, 4)
+	go func() { g.d.Serve(g.ctx()); close(g.served) }()
+	var resp StartResponse
+	if code := g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Count: 2}, &resp); code != 202 {
+		t.Fatalf("start: %d", code)
+	}
+	first, second := resp.RunIDs[0], resp.RunIDs[1]
+	<-g.runner.started
+	var lc LaneControl
+	if code := g.call("POST", "/v1/lanes/lane-1/drain", nil, &lc); code != 200 || !lc.Drained || lc.InFlight != first {
+		t.Fatalf("drain: %d %+v", code, lc)
+	}
+	if code := g.call("POST", "/v1/lanes/lane-9/drain", nil, nil); code != 404 {
+		t.Errorf("an unknown lane: %d", code)
+	}
+	close(hold)
+	g.waitFinished(first)
+	if why := g.stays(second); why != "lane drained" {
+		t.Errorf("the queue says %q", why)
+	}
+	if ls := g.status().Lanes[0]; ls.State != "drained" || !ls.Drained {
+		t.Errorf("lane: %+v", ls)
+	}
+	// What a new daemon reads from the same file.
+	again := &Daemon{Local: g.d.Local, ControlFile: g.d.ControlFile}
+	again.init()
+	if _, ok := again.ctl.Drained["lane-1"]; !ok {
+		t.Error("a restarted daemon forgot the drained lane")
+	}
+	if code := g.call("POST", "/v1/lanes/lane-1/resume", nil, &lc); code != 200 || lc.Drained {
+		t.Fatalf("resume: %d %+v", code, lc)
+	}
+	if v := g.waitFinished(second); v.Verdict != "PASS" {
+		t.Errorf("after the resume: %+v", v)
+	}
+}
+
+// A paused batch starts none of its queued runs; a stopped one records them
+// SKIPPED with what they were asked to be; a retry runs them again in the
+// same batch, once, and never runs a counted verdict again.
+func TestBatchPauseStopRetry(t *testing.T) {
+	g := newRig(t, false)
+	g.d.ControlFile = filepath.Join(t.TempDir(), "control.json")
+	hold := make(chan struct{})
+	g.runner.hold, g.runner.started = hold, make(chan string, 8)
+	go func() { g.d.Serve(g.ctx()); close(g.served) }()
+	var resp StartResponse
+	if code := g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Count: 3}, &resp); code != 202 {
+		t.Fatalf("start: %d", code)
+	}
+	b := resp.Batch
+	<-g.runner.started
+	var bc BatchControl
+	if code := g.call("POST", "/v1/batches/"+b+"/pause", nil, &bc); code != 202 || bc.InFlight != resp.RunIDs[0] || len(bc.Queued) != 2 {
+		t.Fatalf("pause: %d %+v", code, bc)
+	}
+	if bc.Action == "" {
+		t.Error("the pause does not say what it did to the run in flight")
+	}
+	close(hold)
+	g.waitFinished(resp.RunIDs[0])
+	if why := g.stays(resp.RunIDs[1]); why != "batch paused" {
+		t.Errorf("the queue says %q", why)
+	}
+	if code := g.call("POST", "/v1/batches/no-such/pause", nil, nil); code != 404 {
+		t.Errorf("an unknown batch: %d", code)
+	}
+	bc = BatchControl{}
+	if code := g.call("POST", "/v1/batches/"+b+"/stop", nil, &bc); code != 200 || len(bc.Stopped) != 2 || bc.InFlight != "" {
+		t.Fatalf("stop: %d %+v", code, bc)
+	}
+	for _, id := range bc.Stopped {
+		v := g.waitFinished(id)
+		if v.Verdict != "SKIPPED" || !strings.Contains(v.VerdictReason, "batch stopped") {
+			t.Errorf("%s: %+v", id, v)
+		}
+	}
+	if code := g.call("POST", "/v1/batches/"+b+"/resume", nil, nil); code != 404 {
+		t.Errorf("a stopped batch is not paused: %d", code)
+	}
+
+	var e apiError
+	if code := g.call("POST", "/v1/runs/"+resp.RunIDs[0]+"/retry", nil, &e); code != 409 || !strings.Contains(e.Error, "PASS is a result") {
+		t.Errorf("a PASS was retried: %d %+v", code, e)
+	}
+	var rv RetryView
+	if code := g.call("POST", "/v1/batches/"+b+"/retry", map[string]bool{"dry_run": true}, &rv); code != 200 || len(rv.Retries) != 2 {
+		t.Fatalf("dry run: %d %+v", code, rv)
+	}
+	if len(g.status().Queue) != 0 {
+		t.Error("a dry run queued runs")
+	}
+	rv = RetryView{}
+	if code := g.call("POST", "/v1/batches/"+b+"/retry", nil, &rv); code != 202 || len(rv.Retries) != 2 {
+		t.Fatalf("retry: %d %+v", code, rv)
+	}
+	for nu, old := range rv.Retries {
+		v := g.waitFinished(nu)
+		if v.Verdict != "PASS" || v.Batch != b || v.RetryOf != old {
+			t.Errorf("%s: %+v", nu, v)
+		}
+		var was RunView
+		g.call("GET", "/v1/runs/"+old, nil, &was)
+		if was.RetriedBy != nu || was.Verdict != "SKIPPED" {
+			t.Errorf("the retried run: %+v", was)
+		}
+	}
+	if code := g.call("POST", "/v1/batches/"+b+"/retry", nil, &e); code != 409 || !strings.Contains(e.Error, "already retried by") {
+		t.Errorf("retried twice: %d %+v", code, e)
+	}
+}
+
+// A run that never started and whose record does not say what it was asked
+// to be cannot be retried; one that does can.
+func TestAskedOf(t *testing.T) {
+	if _, err := askedOf(&store.Run{ID: "r", Lane: "lane-1", Suite: "demo", TaskID: "answer"}); err == nil {
+		t.Error("a record without its arm was retried")
+	}
+	it := store.QueueItem{RunID: "r", Arm: "stub", Task: "demo/answer", Lane: "lane-1"}
+	got, err := askedOf(&store.Run{ID: "r", Provenance: askedProvenance(it)})
+	if err != nil || got.Arm != "stub" || got.Task != "demo/answer" || got.Lane != "lane-1" {
+		t.Errorf("%+v %v", got, err)
+	}
+	got, err = askedOf(&store.Run{ID: "r", Lane: "lane-1", Suite: "demo", TaskID: "answer", Arm: json.RawMessage(`{"name":"stub"}`)})
+	if err != nil || got.Arm != "stub" {
+		t.Errorf("%+v %v", got, err)
 	}
 }

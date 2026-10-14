@@ -66,6 +66,9 @@ type Daemon struct {
 	GateRetry time.Duration
 	// HTTP sends notifications; nil means a client with a short timeout.
 	HTTP *http.Client
+	// ControlFile keeps what the operator asked of lanes and batches across
+	// a restart; empty keeps it in memory only.
+	ControlFile string
 
 	mu       sync.Mutex
 	flights  map[string]*flight // by lane
@@ -78,6 +81,7 @@ type Daemon struct {
 	// notified which waiting runs were already told about.
 	holds    map[string]time.Time
 	notified map[string]bool
+	ctl      control
 }
 
 // flight is a run in flight on a lane.
@@ -183,15 +187,16 @@ type laneDetail struct {
 func (d *Daemon) init() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	if d.Log == nil {
+		d.Log = slog.New(slog.NewTextHandler(io.Discard, nil))
+	}
 	if d.flights == nil {
 		d.flights = map[string]*flight{}
 		d.holds = map[string]time.Time{}
 		d.notified = map[string]bool{}
 		d.wake = make(chan struct{}, 1)
 		d.started = time.Now()
-	}
-	if d.Log == nil {
-		d.Log = slog.New(slog.NewTextHandler(io.Discard, nil))
+		d.loadControl()
 	}
 }
 
@@ -354,6 +359,11 @@ func (d *Daemon) startReady(ctx context.Context, wg *sync.WaitGroup) {
 		if until, held := d.holds[it.Lane]; held && time.Now().Before(until) {
 			busy = true
 		}
+		// A drained lane or a paused batch starts nothing; the next run of
+		// another batch on the lane may.
+		if d.stopped(it) != "" {
+			busy = true
+		}
 		var f *flight
 		var fctx context.Context
 		if !busy {
@@ -420,7 +430,7 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 	}
 	skip := func(reason string) {
 		r := &store.Run{ID: it.RunID, Batch: it.Batch, Lane: it.Lane, Verdict: store.Skipped, VerdictReason: reason,
-			StartedAt: time.Now().UTC(), EndedAt: time.Now().UTC()}
+			StartedAt: time.Now().UTC(), EndedAt: time.Now().UTC(), Provenance: askedProvenance(it)}
 		if suite, id, ok := strings.Cut(it.Task, "/"); ok {
 			r.Suite, r.TaskID = suite, id
 		}

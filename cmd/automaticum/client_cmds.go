@@ -131,6 +131,9 @@ func status(ctx context.Context, args []string) error {
 		if l.Waiting != "" {
 			fmt.Printf("\n%s waits: %s\n", l.Lane, l.Waiting)
 		}
+		if l.Drained && l.RunID != "" {
+			fmt.Printf("\n%s is drained: %s finishes, then nothing else starts\n", l.Lane, l.RunID)
+		}
 	}
 	waiting := 0
 	for _, q := range st.Queue {
@@ -141,10 +144,17 @@ func status(ctx context.Context, args []string) error {
 	fmt.Printf("\n%d queued\n", waiting)
 	if waiting > 0 {
 		w = table()
-		fmt.Fprintln(w, "RUN\tARM\tTASK\tLANE\tWAITING")
+		fmt.Fprintln(w, "RUN\tARM\tTASK\tLANE\tWAITING\tNOTE")
 		for _, q := range st.Queue {
 			if !q.Running {
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", q.RunID, q.Arm, q.Task, q.Lane, ago(q.EnqueuedAt))
+				var note []string
+				if q.Stopped != "" {
+					note = append(note, q.Stopped)
+				}
+				if q.RetryOf != "" {
+					note = append(note, "retries "+q.RetryOf)
+				}
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", q.RunID, q.Arm, q.Task, q.Lane, ago(q.EnqueuedAt), strings.Join(note, "; "))
 			}
 		}
 		w.Flush()
@@ -278,6 +288,8 @@ func runShow(ctx context.Context, args []string) error {
 	line("task", fmt.Sprintf("%s, version %d", r.Task, r.TaskVersion))
 	line("arm", strings.TrimSpace(r.Arm+" "+r.ArmID))
 	line("batch", r.Batch)
+	line("retries", r.RetryOf)
+	line("retried by", r.RetriedBy)
 	if r.Host != "" {
 		line("lane", r.Lane+" on "+r.Host)
 	} else {

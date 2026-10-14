@@ -905,3 +905,20 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 13:15 | criterion 8: TestCohorts on the omnimergekit cohorts (9,611 real blocks, v1 and v2 expected), 0 differences | internal/detect/reference_test.go, 070, 110 | pass | ~3000 |
+
+## Session: 2026-10-14 13:10
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 13:10
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 14:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:18 | Created internal/daemon/control.go | — | ~4075 |
+| 15:40 | Control at lane and batch level: lane drain/resume, batch pause/resume/stop/retry, run retry; control.json; tests TestLaneDrain, TestBatchPauseStopRetry, TestAskedOf; 050 §4 as built, 090 §1, O22 canary numbers | internal/daemon/control.go, daemon.go, api.go, daemon_test.go, cmd/automaticum/control_cmds.go, main.go, client_cmds.go, cmd/automaticumd/main.go, specs 050 090 decisions | make test green; not deployed (run 8 paused in flight) | ~30000 |

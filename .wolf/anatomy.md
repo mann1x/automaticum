@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-14T10:00:00.270Z
-> Files: 224 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-14T13:18:40.433Z
+> Files: 225 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -100,6 +100,7 @@
 
 - `client_cmds.go` — client (143 fields) (~7562 tok)
 - `compare_cmds.go` — Declares list (~2036 tok)
+- `control_cmds.go` — lane drain|resume, batch pause|resume|stop|retry, run retry (~1300 tok)
 - `config_cmds_test.go` — TestParseInterspersed (~116 tok)
 - `config_cmds.go` — place (119 fields) (~3088 tok)
 - `image_cmds.go` (~1096 tok)
@@ -177,6 +178,8 @@
 
 - `api.go` — HTTP handlers: reply, fail (~10748 tok)
 - `compare.go` — CompareView (75 fields) (~2458 tok)
+- `control.go` — control (drained lanes, held batches, retries; control.json), handleLane, handleBatchPause/Resume/Stop, handleRetry, askedOf, askedProvenance (~4300 tok)
+- `control.go` — Struct: control (~4075 tok)
 - `daemon_test.go` — memState (126 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~8060 tok)
 - `daemon.go` — is automaticumd without its main: the queue, one worker (~5222 tok)
 

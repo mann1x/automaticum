@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-10-13 (revision 8).
+**Status:** current as of 2026-10-14 (revision 9).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -121,6 +121,7 @@ Each of these waits for a measurement or for the planning of its milestone.
 | O1 | How the native agent on Windows and macOS meets "a host runs only the Go application", given the runner needs Node. | 010 §4 | milestone 7 (D35) |
 | O5 | Which published C/C++ SWE-bench-style set, at which version; the order of languages after it. | 062 §6 | milestone 5 |
 | O6 | Which external harnesses need the offline event path. | 064 §3.2 | milestone 5, per harness |
+| O22 | The first-generations canary: after how many finished requests of a batch it judges (the spec says "three to five"), and the median-length band for a task that declares none (`manic_miner` declares none). Recommendation: judge after 5; with no declared band, the length check is reported unchecked rather than given a number nobody chose; empty answers, answers ended by length and control tokens in visible text stop the batch as 050 §3.3 says. | 050 §3.3 | the owner (2026-10-14) |
 
 Closed since the first revision: O2 (D32), O4 (D30), O7 (S4, then D34), O9
 (D31), O10 (D42), O11 (D33), O12 (D28), O13 (D29), O14 (D46), O8 (D47), O15

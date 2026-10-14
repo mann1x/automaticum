@@ -38,6 +38,13 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   run abort <run>               end a run in flight
   run pause <run>               hold a run in flight between two model requests and free the endpoint of its model
   run resume <run>              let a held run go on
+  run retry <run>               queue a run again that ended SKIPPED, ABORTED or INVALID [--dry-run]
+  lane drain <lane>             the run in flight finishes, then the lane starts nothing until resumed
+  lane resume <lane>            the lane starts queued runs again
+  batch pause <batch>           start none of the batch's queued runs; hold its run in flight and free the endpoint [--keep-model]
+  batch resume <batch>          let a paused batch go on
+  batch stop <batch>            take the batch's queued runs off the queue; the run in flight finishes [--abort]
+  batch retry <batch>           queue again every run of the batch that ended SKIPPED, ABORTED or INVALID [--dry-run]
   run invalidate <run>          mark a finished run INVALID, --reason "..."
   run identify <run>            add where and on what a run ran to its record, marked as added later
   logs <run>                    a run's raw material [--events|--wire|--runner|--oracle]
@@ -84,6 +91,13 @@ func main() {
 		"run pause":      runPost("pause", "will be held before its next model request, and the endpoint then freed of its model"),
 		"run resume":     runPost("resume", "released; its next request loads the model again"),
 		"run invalidate": runPost("invalidate", "marked INVALID"),
+		"run retry":      retry("run"),
+		"lane drain":     laneControl(true),
+		"lane resume":    laneControl(false),
+		"batch pause":    batchControl("pause"),
+		"batch resume":   batchControl("resume"),
+		"batch stop":     batchControl("stop"),
+		"batch retry":    retry("batch"),
 		"run identify":   runPost("identify", "where and on what it ran is now in the record, marked as added later"),
 		"legacy import":  legacyImport,
 		"store check":    storeCheck,

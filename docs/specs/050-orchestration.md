@@ -1,6 +1,6 @@
 # 050 — Orchestration: scheduling, gates, control
 
-**Status:** draft 0.11, 2026-10-13.
+**Status:** draft 0.12, 2026-10-14.
 
 ## 1. Scheduling
 
@@ -108,6 +108,9 @@ ended by length, no control tokens in visible text, median length within the
 band the suite declares. Failure stops the batch. Twice, two hours ran at the
 wrong sampler before anyone looked.
 
+**Open (O22):** how many finished requests the canary waits for, and the
+length band of a task that declares none. Not built until the owner says.
+
 ## 4. Control
 
 `pause`, `resume`, `abort`, `drain`, `requeue`, `retry`, at the level of run,
@@ -172,6 +175,41 @@ later):
 - The idempotency key names the batch: a repeated `run start` with the same
   key starts nothing and answers with the runs the first one made.
 - The arm and the task are read when a run starts, not when it is queued.
+
+**As built in milestone 4 (control, 2026-10-14):**
+
+- `automaticum lane drain <lane>`: the run in flight finishes and is
+  analysed, then the lane starts nothing until `automaticum lane resume
+  <lane>`. `status` shows the lane `drained` and each queued run on it
+  `lane drained`.
+- `automaticum batch pause <batch>`: none of the batch's queued runs starts,
+  and its run in flight is paused as `run pause` does (held before its next
+  model request, then the endpoint freed of every model, unless
+  `--keep-model`). Runs of other batches on the same lane are not held.
+  `automaticum batch resume <batch>` releases the run in flight and lets the
+  queued runs start.
+- `automaticum batch stop <batch>`: every queued run of the batch leaves the
+  queue and is recorded `SKIPPED` ("batch stopped by the operator before it
+  started"). Graceful: the run in flight finishes, unless `--abort`. A run
+  in flight that is held says so and is left to `run resume` or `run abort`.
+- `automaticum run retry <run>` and `automaticum batch retry <batch>` queue
+  a new run with the same arm, task and lane, in the same batch, for each
+  run that ended `SKIPPED`, `ABORTED` or `INVALID`. A counted verdict
+  (`PASS`, `FAIL`, `TIMEOUT`) is never run again, since a retry would replace
+  a result; nor is an imported run, nor a run already retried. The old
+  record is not changed; `run show` says `retries` on the new run and
+  `retried by` on the old one, and both stay in the batch for `compare`.
+  `--dry-run` says what would be queued.
+- A run that never started now keeps in its record what it was asked to be
+  (`provenance.asked`: arm, task, lane), so that it can be retried. Records
+  written before this have no such field, and a retry refuses them with that
+  reason.
+- Drained lanes, paused batches and retry links are kept in `control.json`
+  next to the database and survive a restart. A control file that cannot be
+  read drains every lane, so nothing the operator stopped starts by
+  accident.
+- `requeue` is not built: with retry and the queue's order it had no use of
+  its own yet. Pause at campaign level comes with campaigns.
 
 ## 5. Watchdogs
 

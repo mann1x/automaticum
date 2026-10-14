@@ -77,6 +77,9 @@
 
 - 2026-10-13: a model tag's identity is `models/<file>.toml` (tag, family, size, variant, lineage); the endpoint's GPU is `[hardware]` in its untracked file; the run's record has `inference` (run.Inference). The server's family word is not the model's family (`qwen35` for Qwen 3.6): keep stated, server and weights-file facts apart. A new tag needs a catalogue entry or its runs carry `model_identity`.
 
+- [2026-10-14] The daemon's client `do()` turns any status >= 400 into an error from the body's `error` field and drops the rest of the body: a handler that wants the CLI to show why must use `fail()` with the reasons in the message, not `reply(409, struct)`.
+- [2026-10-14] Runs that never started (SKIPPED by stop, gate or bad arm) had no arm in their record; since control (050 §4) they carry `provenance.asked` {arm, task, lane}. Older SKIPPED records cannot be retried.
+
 ## Do-Not-Repeat
 
 - 2026-10-13: Do not invent a threshold or a default number for a detector, guard or limit and then carry it as an Open item with "keep" as the recommendation. The owner: the SDK's guards are tuned on more than 600 recorded runs; use the thresholds those analyses identified. If one is missing, ask the SDK's session or read the SDK's source (packages/agents and packages/core/src/runtime/safety). Wrong: `repeated_tool_call` at 3 in a row, `runaway` at 10,000 for every run.

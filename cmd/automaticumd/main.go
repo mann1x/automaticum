@@ -106,7 +106,7 @@ func serve(cfgDir string, log *slog.Logger) error {
 	dm := &daemon.Daemon{
 		Local: local, State: state, Blobs: blobs, Containers: engine,
 		Runner: &run.Executor{Engine: engine, Blobs: blobs, State: state, Tasks: tasks, SDK: builds, Local: local, RunsDir: runs, Version: version, Free: free},
-		Repo:   d.Repo, RunsDir: runs, Version: version, Token: token, Log: log,
+		Repo:   d.Repo, RunsDir: runs, Version: version, Token: token, Log: log, ControlFile: daemon.ControlFile(d.DataRoot),
 	}
 	dm.Gates = func(ctx context.Context, lane string, arm *config.Arm, tk *task.Task, image string) []gate.Result {
 		return gate.Run(ctx, &gate.Input{Local: local, Lane: lane, Arm: arm, Task: tk, Image: image,

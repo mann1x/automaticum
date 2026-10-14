@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.14, 2026-10-13.
+**Status:** draft 0.15, 2026-10-14.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -48,6 +48,13 @@ unless asked); `run start|ls|show|tail|stop|abort|invalidate|identify` (`run ide
 `store check`. `task build` is new in this list: it builds a task's artefacts
 and checks their pinned hashes. Of these, `--dry-run` and
 `--idempotency-key` exist on `run start` so far.
+
+**Built in milestone 4 so far:** `compare` (070 §6); `run start` with
+several `--arm` and `--order`; `run pause|resume|retry`; `lane
+drain|resume`; `batch pause|resume|stop|retry` (050 §4). `run retry` and
+`batch retry` have `--dry-run`. The API routes are `POST
+/v1/runs/{id}/retry`, `POST /v1/lanes/{lane}/drain|resume` and `POST
+/v1/batches/{batch}/pause|resume|stop|retry`.
 
 The API is HTTP and JSON on a loopback address. Everything that changes
 something needs the token; reading from the same host does not. A run in

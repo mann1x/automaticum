@@ -50,6 +50,8 @@ type LaneStatus struct {
 	Endpoints []string  `json:"endpoints"`
 	// Waiting is why the lane's next run has not started.
 	Waiting string `json:"waiting,omitempty"`
+	// Drained says the lane starts no run after the one in flight.
+	Drained bool `json:"drained,omitempty"`
 }
 
 // DoctorEntry is every gate's answer for one arm on one task on one lane.
@@ -69,6 +71,11 @@ type QueueEntry struct {
 	Lane       string    `json:"lane"`
 	EnqueuedAt time.Time `json:"enqueued_at"`
 	Running    bool      `json:"running"`
+	// Stopped is why it does not start now: its lane is drained or its
+	// batch paused.
+	Stopped string `json:"stopped,omitempty"`
+	// RetryOf is the run it retries.
+	RetryOf string `json:"retry_of,omitempty"`
 }
 
 // StartRequest is the body of POST /v1/runs.
@@ -132,7 +139,11 @@ type RunView struct {
 	Imported      bool      `json:"imported,omitempty"`
 	// Paused says that the run was held at least once; the time held is
 	// not in its wall time (050 §4).
-	Paused      bool            `json:"paused,omitempty"`
+	Paused bool `json:"paused,omitempty"`
+	// RetryOf is the run this one retries; RetriedBy the run that retries
+	// this one.
+	RetryOf     string          `json:"retry_of,omitempty"`
+	RetriedBy   string          `json:"retried_by,omitempty"`
 	ResolvedArm json.RawMessage `json:"resolved_arm,omitempty"`
 	Provenance  json.RawMessage `json:"provenance,omitempty"`
 	Blobs       []BlobView      `json:"blobs,omitempty"`
@@ -259,6 +270,13 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/doctor", d.handleDoctor)
 	mux.HandleFunc("POST /v1/reanalyse", d.handleReanalyse)
 	mux.HandleFunc("GET /v1/reanalyse", func(w http.ResponseWriter, r *http.Request) { reply(w, http.StatusOK, d.reanalyseStatus()) })
+	mux.HandleFunc("POST /v1/runs/{id}/retry", d.handleRetry)
+	mux.HandleFunc("POST /v1/lanes/{lane}/drain", d.handleLane(true))
+	mux.HandleFunc("POST /v1/lanes/{lane}/resume", d.handleLane(false))
+	mux.HandleFunc("POST /v1/batches/{batch}/pause", d.handleBatchPause)
+	mux.HandleFunc("POST /v1/batches/{batch}/resume", d.handleBatchResume)
+	mux.HandleFunc("POST /v1/batches/{batch}/stop", d.handleBatchStop)
+	mux.HandleFunc("POST /v1/batches/{batch}/retry", d.handleRetry)
 	mux.HandleFunc("POST /v1/drain", func(w http.ResponseWriter, r *http.Request) {
 		d.Drain()
 		reply(w, http.StatusOK, map[string]bool{"draining": true})
@@ -327,6 +345,12 @@ func (d *Daemon) handleStatus(w http.ResponseWriter, r *http.Request) {
 				ls.State = "paused"
 			}
 		}
+		d.mu.Lock()
+		_, ls.Drained = d.ctl.Drained[n]
+		d.mu.Unlock()
+		if ls.Drained && flying[n] == nil {
+			ls.State, ls.RunID, ls.Arm, ls.Task, ls.Waiting = "drained", "", "", "", ""
+		}
 		st.Lanes = append(st.Lanes, ls)
 	}
 	queue, err := d.State.Queue(ctx)
@@ -337,8 +361,15 @@ func (d *Daemon) handleStatus(w http.ResponseWriter, r *http.Request) {
 	st.Queue = []QueueEntry{}
 	for _, it := range queue {
 		f := flying[it.Lane]
-		st.Queue = append(st.Queue, QueueEntry{RunID: it.RunID, Batch: it.Batch, Arm: it.Arm, Task: it.Task, Lane: it.Lane,
-			EnqueuedAt: it.EnqueuedAt, Running: f != nil && f.runID == it.RunID})
+		e := QueueEntry{RunID: it.RunID, Batch: it.Batch, Arm: it.Arm, Task: it.Task, Lane: it.Lane,
+			EnqueuedAt: it.EnqueuedAt, Running: f != nil && f.runID == it.RunID}
+		d.mu.Lock()
+		if !e.Running {
+			e.Stopped = d.stopped(it)
+		}
+		e.RetryOf = d.ctl.Retries[it.RunID]
+		d.mu.Unlock()
+		st.Queue = append(st.Queue, e)
 	}
 	reply(w, http.StatusOK, st)
 }
@@ -567,7 +598,9 @@ func (d *Daemon) handleRun(w http.ResponseWriter, r *http.Request) {
 		}
 		for _, it := range queue {
 			if it.RunID == id {
-				reply(w, http.StatusOK, d.queuedView(it))
+				v := d.queuedView(it)
+				d.retryLinks(&v)
+				reply(w, http.StatusOK, v)
 				return
 			}
 		}
@@ -579,6 +612,7 @@ func (d *Daemon) handleRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := view(rec, true)
+	d.retryLinks(&v)
 	refs, err := d.State.BlobRefs(ctx, id)
 	if err != nil {
 		fail(w, http.StatusInternalServerError, "%v", err)
@@ -910,7 +944,7 @@ func (d *Daemon) handleStop(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		rec := &store.Run{ID: id, Batch: it.Batch, Lane: it.Lane, Verdict: store.Skipped, VerdictReason: "stopped by the operator before it started",
-			StartedAt: time.Now().UTC(), EndedAt: time.Now().UTC()}
+			StartedAt: time.Now().UTC(), EndedAt: time.Now().UTC(), Provenance: askedProvenance(it)}
 		if suite, tid, ok := strings.Cut(it.Task, "/"); ok {
 			rec.Suite, rec.TaskID = suite, tid
 		}
