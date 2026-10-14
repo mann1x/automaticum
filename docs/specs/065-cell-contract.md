@@ -151,9 +151,27 @@ stopped after 40 seconds (exit 30), then run again with the same key
 in flight (exit 30, that run `ABORTED`), then run again (exactly that run
 retried, exit 0).
 
-**Not built yet:** mode C (`--endpoint-url`, `--served-model` and the
-caller's resolved values): the cell runs on the arm's own endpoint, and the
-command refuses the two flags. The cohort and its declared variable, and
+**Not built yet:** mode C: the cell runs on the arm's own endpoint, and the
+command refuses `--endpoint-url` and `--served-model`.
+
+**Agreed with omnimergekit for mode C (2026-10-14, mail):**
+`--endpoint-kind openai-compatible|llamacpp|ollama|xollama` (default
+`openai-compatible`: llama-server or vLLM at `http://host:port/v1`;
+`ollama`/`xollama` for a published tag). `--served-model` is the server's
+alias and replaces the arm's model. `--caller-values <file>` holds
+sampler, thinking, output_tokens and context_window, each recorded with
+source "caller" and checked on the wire like an arm value. `--basis-facts
+<json>` holds what only the caller knows: weights sha256, quantization,
+chat-template sha256, imatrix sha256, llama.cpp commit and libllama build
+time, n_parallel, total and per-slot context, KV cache type, GPU and
+driver. On llama-server automaticum reads `GET /props` (n_ctx, total_slots,
+model_path, the chat template it serves) and refuses with code 20 when it
+contradicts the caller's facts; on vLLM (only `/v1/models`) the facts are
+recorded as caller-asserted. `--lanes N` (default 1) is chosen by the
+caller, never derived from the server's slots, and is part of the basis:
+cells at different lane counts are not the same basis. Headline:
+`pass_rate` for local tasks, the suite's declared headline for BFCL and
+SWE-bench. The cohort and its declared variable, and
 the layout of omnimergekit's result tree (§5).
 
 ## 4. Re-scoring
