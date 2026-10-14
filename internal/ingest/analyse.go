@@ -7,6 +7,7 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/mann1x/automaticum/internal/config"
 	"github.com/mann1x/automaticum/internal/detect"
@@ -366,11 +367,30 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 	// A model that had to be loaded again in the middle of a run was pushed
 	// out of memory by something else: the run's times are not the arm's.
 	// The server says how long it spent loading for every chat request.
+	// The one exception is the first request after a pause the operator
+	// asked for: the pause dropped the model on purpose, and that reload
+	// keeps the verdict (D85). It is recorded apart.
 	type load struct {
 		Seq     int     `json:"seq"`
 		Seconds float64 `json:"seconds"`
 	}
-	var loads []load
+	var held struct {
+		Holds []struct {
+			To time.Time `json:"to"`
+		} `json:"holds"`
+	}
+	json.Unmarshal(r.Provenance, &held)
+	// The first chat request to start after each release.
+	afterRelease := map[int]bool{}
+	for _, h := range held.Holds {
+		for _, q := range reqs {
+			if q.Path == "/api/chat" && !q.Failed && !h.To.IsZero() && !q.Start.Before(h.To) {
+				afterRelease[q.Seq] = true
+				break
+			}
+		}
+	}
+	var loads, afterPause []load
 	chats := 0
 	for _, q := range reqs {
 		if q.Path != "/api/chat" || q.Failed {
@@ -379,18 +399,36 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 		chats++
 		if sec := float64(q.LoadNS) / 1e9; chats == 1 {
 			m("endpoint.first_load_s", sec)
+		} else if sec >= reloadSeconds && afterRelease[q.Seq] {
+			afterPause = append(afterPause, load{q.Seq, sec})
 		} else if sec >= reloadSeconds {
 			loads = append(loads, load{q.Seq, sec})
 		}
 	}
 	if chats > 0 {
 		m("endpoint.reloads", float64(len(loads)))
+		if len(held.Holds) > 0 {
+			m("endpoint.reloads_after_pause", float64(len(afterPause)))
+		}
 	}
-	if len(loads) > 0 {
-		raw, _ := json.Marshal(map[string]any{"reloads": loads, "threshold_s": reloadSeconds})
-		res.Findings = append(res.Findings, store.Finding{RunID: r.ID, Detector: ModelReloaded, DetectorVersion: "1",
-			Severity: severity(accepts.ModelReload), Turn: loads[0].Seq, Count: len(loads), Evidence: raw})
-		if !accepts.ModelReload {
+	if len(loads)+len(afterPause) > 0 {
+		ev := map[string]any{"reloads": loads, "threshold_s": reloadSeconds}
+		if len(afterPause) > 0 {
+			ev["after_pause"] = afterPause
+		}
+		if loads == nil {
+			ev["reloads"] = []load{}
+		}
+		raw, _ := json.Marshal(ev)
+		sev, first := severity(accepts.ModelReload), 0
+		if len(loads) == 0 {
+			sev, first = "note", afterPause[0].Seq
+		} else {
+			first = loads[0].Seq
+		}
+		res.Findings = append(res.Findings, store.Finding{RunID: r.ID, Detector: ModelReloaded, DetectorVersion: "2",
+			Severity: sev, Turn: first, Count: len(loads) + len(afterPause), Evidence: raw})
+		if len(loads) > 0 && !accepts.ModelReload {
 			res.Invalid = append(res.Invalid, fmt.Sprintf("the model was loaded again during the run (%d times)", len(loads)))
 		}
 	}

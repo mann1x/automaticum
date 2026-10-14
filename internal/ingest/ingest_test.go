@@ -585,3 +585,56 @@ func TestEndpointConductInvalidates(t *testing.T) {
 		t.Errorf("an operator's verdict was changed to %s", m.run.Verdict)
 	}
 }
+
+// A reload on the first request after a pause's release keeps the verdict
+// (D85): the pause dropped the model on purpose. A reload anywhere else
+// still makes the run INVALID.
+func TestReloadAfterPause(t *testing.T) {
+	line := func(seq int, start string, loadS float64) string {
+		resp, _ := json.Marshal(map[string]any{"message": map[string]any{"content": "x"}, "done": true, "done_reason": "stop",
+			"load_duration": int64(loadS * 1e9)})
+		l, _ := json.Marshal(map[string]any{"seq": seq, "url": "http://h/api/chat", "status": 200, "t_start": start,
+			"request_body": `{"tools":[{"type":"function"}],"messages":[]}`, "response_body": string(resp) + "\n"})
+		return string(l)
+	}
+	hw := blob.Hash("w")
+	wire := strings.Join([]string{
+		line(1, "2026-10-14T12:00:00Z", 20),
+		line(2, "2026-10-14T12:01:00Z", 0.01),
+		line(3, "2026-10-14T12:30:00Z", 26.5), // the first after the release
+		line(4, "2026-10-14T12:31:00Z", 0.01),
+	}, "\n")
+	held := `{"holds":[{"from":"2026-10-14T12:02:00Z","to":"2026-10-14T12:29:00Z"}],"held_ms":1620000}`
+	m := &memory{run: store.Run{ID: "r", Verdict: store.Invalid, PriorVerdict: store.Pass,
+		VerdictReason: "endpoint: the model was loaded again during the run (1 times)", Paused: true,
+		Arm: json.RawMessage(`{"model":{"model":"m:1"}}`), Provenance: json.RawMessage(held)},
+		refs:  []store.BlobRef{{RunID: "r", Kind: "wire", Name: "wire.jsonl", Hash: hw}},
+		blobs: map[blob.Hash]string{hw: wire}}
+	ctx := context.Background()
+	if _, err := Run(ctx, m, m, "r"); err != nil {
+		t.Fatal(err)
+	}
+	if m.run.Verdict != store.Pass || m.run.PriorVerdict != "" {
+		t.Errorf("after a pause: %s (was %s), %q", m.run.Verdict, m.run.PriorVerdict, m.run.VerdictReason)
+	}
+	var f *store.Finding
+	for i := range m.findings {
+		if m.findings[i].Detector == ModelReloaded {
+			f = &m.findings[i]
+		}
+	}
+	if f == nil || f.Severity != "note" || f.Turn != 3 || !strings.Contains(string(f.Evidence), `"after_pause":[{"seq":3`) {
+		t.Errorf("finding: %+v", f)
+	}
+	// The same reload one request later is not the pause's.
+	m.blobs[hw] = strings.Join([]string{
+		line(1, "2026-10-14T12:00:00Z", 20),
+		line(2, "2026-10-14T12:01:00Z", 0.01),
+		line(3, "2026-10-14T12:30:00Z", 0.01),
+		line(4, "2026-10-14T12:31:00Z", 26.5),
+	}, "\n")
+	Run(ctx, m, m, "r")
+	if m.run.Verdict != store.Invalid || !strings.Contains(m.run.VerdictReason, "loaded again") {
+		t.Errorf("a reload not after the release: %s, %q", m.run.Verdict, m.run.VerdictReason)
+	}
+}

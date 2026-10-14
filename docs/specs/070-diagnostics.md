@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.13, 2026-10-14.
+**Status:** draft 0.14, 2026-10-14.
 
 ## 1. The rule: no custom script
 
@@ -307,6 +307,16 @@ verdict and the finding is a note. The rule is applied at ingest, so
 `reanalyse` applies it to earlier runs, and takes back an `INVALID` it set
 itself when the cause is no longer found. It never touches an operator's
 `INVALID`.
+
+**Decided by the owner (2026-10-14), D85:** a reload after a pause keeps the
+verdict. A pause (050 §4, D83) drops the model on purpose, so the first chat
+request to start after each release loads it again. That reload is listed
+apart in the finding's evidence (`after_pause`, with the request and the
+seconds), in the metric `endpoint.reloads_after_pause`, and with severity
+`note`; it is not counted in `endpoint.reloads` and does not make the run
+`INVALID`. A reload on any other request still does. The run keeps its
+`paused` flag, so reports can still leave paused runs out. `model_reloaded`
+is detector version 2 from here on.
 
 Metrics written at ingest so far: time (wall, agent, first token, in tools,
 in the model), turns, requests, tool calls and failures by tool, tokens as

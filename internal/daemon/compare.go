@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/mann1x/automaticum/internal/config"
-	"github.com/mann1x/automaticum/internal/stats"
 	"github.com/mann1x/automaticum/internal/run"
+	"github.com/mann1x/automaticum/internal/stats"
 	"github.com/mann1x/automaticum/internal/store"
 )
 

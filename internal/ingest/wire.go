@@ -6,12 +6,14 @@ import (
 	"encoding/json"
 	"io"
 	"strings"
+	"time"
 )
 
 // Request is one HTTP request of a run, as the wire capture holds it.
 type Request struct {
 	Seq    int
 	Path   string
+	Start  time.Time // when the request was sent
 	Status int
 	Failed bool // no response, or an error status
 	MS     float64
@@ -42,6 +44,7 @@ type wireLine struct {
 	URL          string          `json:"url"`
 	Status       int             `json:"status"`
 	MSTotal      float64         `json:"ms_total"`
+	TStart       time.Time       `json:"t_start"`
 	RequestBody  *string         `json:"request_body"`
 	ResponseBody *string         `json:"response_body"`
 	Error        json.RawMessage `json:"error"`
@@ -76,7 +79,7 @@ func ReadWire(r io.Reader) ([]Request, error) {
 }
 
 func request(l *wireLine) Request {
-	q := Request{Seq: l.Seq, Status: l.Status, MS: l.MSTotal}
+	q := Request{Seq: l.Seq, Status: l.Status, MS: l.MSTotal, Start: l.TStart}
 	q.Path = l.URL
 	if i := strings.Index(l.URL, "://"); i >= 0 {
 		if j := strings.IndexByte(l.URL[i+3:], '/'); j >= 0 {

@@ -975,3 +975,14 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 15:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 15:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 16:50 | D85: reload after a pause keeps the verdict (ingest analyse model_reloaded v2, after_pause, endpoint.reloads_after_pause, TestReloadAfterPause); deployed; run 8 reanalysed → PASS; 110 §3.3 now 10 vs 10 | internal/ingest/analyse.go, wire.go, ingest_test.go, specs 070 110 decisions | done | ~9000 |

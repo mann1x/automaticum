@@ -281,23 +281,25 @@ both batches; no conclusion is drawn (D78).
 
 | | base Qwen 3.6 27B | OmniMerge v4 |
 |---|---|---|
-| runs counted | 10 | 9 (run 8 `INVALID`, below) |
-| `PASS` (95% interval) | 10 (72.2% to 100%) | 9 (70.1% to 100%) |
-| wall time, median (least to most) | 11m 45s (5m 27s to 24m 49s) | 15m 27s (8m 10s to 41m 23s) |
-| output tokens, median | 31,152 | 40,349 |
-| reasoning tokens, median | 24,604 | 31,363 |
-| tokens per solved task | 32,869 | 45,338 |
-| requests, median (least to most) | 30 (16 to 42) | 35 (25 to 115) |
+| runs counted | 10 | 10 (run 8 counted again under D85, below) |
+| `PASS` (95% interval) | 10 (72.2% to 100%) | 10 (72.2% to 100%) |
+| wall time, median (least to most) | 11m 45s (5m 27s to 24m 49s) | 16m 41s (8m 10s to 41m 23s) |
+| output tokens, median | 31,152 | 42,660 |
+| reasoning tokens, median | 24,604 | 33,933 |
+| tokens per solved task | 32,869 | 45,302 |
+| requests, median (least to most) | 30 (16 to 42) | 36.5 (25 to 115) |
 | first token | 13s | 9.3s |
-| generation rate, median | 58.2 tok/s | 56.5 tok/s |
+| generation rate, median | 58.2 tok/s | 56.4 tok/s |
 | compactions, reloads | 0, 0 | 0, 0 |
-| window peak, median (most) | 35.4% (50.2%) | 33.9% (70.4%) |
-| runs with 2 or more identical calls in a row | 0 of 10 | 1 of 9 |
+| window peak, median (most) | 35.4% (50.2%) | 34.9% (70.4%) |
+| runs with 2 or more identical calls in a row | 0 of 10 | 1 of 10 |
 
-Mann-Whitney, two-sided: first token p < 0.001, tool time p ≈ 0.014,
-visible text tokens p = 0.010; every other metric p ≥ 0.095. Every run has
+Mann-Whitney, two-sided: first token p < 0.001, tool time p ≈ 0.008,
+visible text tokens p = 0.011; every other metric p ≥ 0.089. Every run has
 one failed request: the SDK's tokenizer probe (`/api/engine?...endpoint=
-tokenize`) answers 404 on xOllama; it is not a request of the agent's loop.
+tokenize`) answers 404 while the model is not loaded yet, by design of
+xOllama; the SDK's next probe, after the first generation, gets 200. It is
+not a request of the agent's loop.
 
 **Pause, first real test.** Run 8 (OmniMerge v4) was paused at 14:59:17
 because another project needed the GPU: held two seconds later between two
@@ -307,7 +309,9 @@ the run went on to `PASS` by the oracle with 17m 56s of wall time (26m 23s
 held, not counted). The endpoint rule (D73) then made it `INVALID`
 ("the model was loaded again during the run"): it cannot tell a reload the
 pause caused from one nobody asked for. The previous verdict, `PASS`, is
-kept in the record.
+kept in the record. **Decided by the owner the same day, D85:** a reload
+after a pause keeps the verdict. Run 8 was analysed again: `PASS`, the
+reload a note (`after_pause`), and the numbers above count it.
 
 **Found on the way (bug-016):** the two server releases list a tag's
 parameters in another order; `compare` called that a change. Fixed: the
