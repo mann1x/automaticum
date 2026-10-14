@@ -638,3 +638,26 @@ func TestReloadAfterPause(t *testing.T) {
 		t.Errorf("a reload not after the release: %s, %q", m.run.Verdict, m.run.VerdictReason)
 	}
 }
+
+// The scripted user's lines (040 §6.2): its questions are counted with the
+// rest, an action is a line of a rule (a resume is its cancel's second
+// half), a denial is counted whoever made it, and an action the SDK refused
+// is counted apart.
+func TestScriptedUserLines(t *testing.T) {
+	ev, err := ReadEvents(strings.NewReader(strings.Join([]string{
+		`{"t":"2026-10-14T10:00:00Z","k":"user","on":"approval","rule":0,"do":"approve","tool":"read_files","approved":true}`,
+		`{"t":"2026-10-14T10:00:01Z","k":"user","on":"approval","rule":1,"do":"deny","tool":"check_file","approved":false}`,
+		`{"t":"2026-10-14T10:00:02Z","k":"user","on":"approval","rule":0,"do":"deny","tool":"grep","approved":false}`,
+		`{"t":"2026-10-14T10:00:03Z","k":"user","on":"question","rule":0,"do":"answer","answer":"x"}`,
+		`{"t":"2026-10-14T10:00:04Z","k":"user","on":"turn","rule":2,"do":"cancel","text":"again"}`,
+		`{"t":"2026-10-14T10:00:05Z","k":"user","on":"resume","rule":2,"do":"send","text":"again"}`,
+		`{"t":"2026-10-14T10:00:06Z","k":"user","on":"turn","rule":3,"do":"restore"}`,
+		`{"t":"2026-10-14T10:00:07Z","k":"runner","note":"user_action_failed","rule":3,"do":"restore"}`,
+	}, "\n")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ev.Questions != 1 || ev.UserActions != 3 || ev.UserDenials != 2 || ev.UserFailed != 1 {
+		t.Errorf("questions %d, actions %d, denials %d, failed %d", ev.Questions, ev.UserActions, ev.UserDenials, ev.UserFailed)
+	}
+}

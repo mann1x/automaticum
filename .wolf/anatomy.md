@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-14T16:21:24.986Z
-> Files: 242 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-14T17:24:07.104Z
+> Files: 249 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -176,8 +176,8 @@
 - `arm.go` — loads automaticum's configuration: arms, lanes, endpoints (~7474 tok)
 - `campaign_test.go` — TestLoadCampaign (~413 tok)
 - `campaign.go` — Campaign (38 fields); methods: Validate (~1275 tok)
-- `cell.go` — mode C: CallerValues (sampler/thinking/output_tokens/context_window), BasisFacts, ParseCallerValues, ParseBasisFacts, Arm.ForCell (origin "caller", rehash) (~1323 tok)
 - `cell_test.go` — TestArmForCell, TestCellEndpoint (~800 tok)
+- `cell.go` — mode C: CallerValues (sampler/thinking/output_tokens/context_window), BasisFacts, ParseCallerValues, ParseBasisFacts, Arm.ForCell (origin "caller", rehash) (~1323 tok)
 - `config_test.go` — TestRepositoryArms, TestArmValidation, TestNothingIsDefaulted, TestExtendsAndIdentity + 3 more (~3694 tok)
 - `local.go` — Local (dir, lanes, endpoints, cell-endpoint overlay: Endpoint, MayUse, AddCellEndpoint); Endpoint.Cell; kinds ollama/xollama/openai-compatible/llamacpp; Token, APIKey (~2900 tok)
 - `model_test.go` — TestModels (~532 tok)
@@ -195,8 +195,8 @@
 - `control.go` — control (98 fields) (~4876 tok)
 - `daemon_test.go` — memState (127 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~14584 tok)
 - `daemon.go` — is automaticumd without its main: the queue, one worker (~5534 tok)
-- `modec.go` — mode C: CellSpec, CellRecord, normalise/same, cellLanes, armFor (applies the cell to an arm), checkCell (/props vs facts), startCell (~2100 tok)
 - `modec_test.go` — TestModeCCell (stub llama-server, 2 lanes, 409, refusal, restart), TestModeCBasis (~1500 tok)
+- `modec.go` — mode C: CellSpec, CellRecord, normalise/same, cellLanes, armFor (applies the cell to an arm), checkCell (/props vs facts), startCell (~2100 tok)
 
 ## internal/detect/
 
@@ -258,8 +258,8 @@
 
 - `identity_test.go` — m (37 fields) (~1878 tok)
 - `probe.go` — Identity (129 fields); methods: Changed (~3772 tok)
-- `props.go` — Props, ReadProps (llama-server GET /props at the root; 404 = vLLM, nil), Contradictions (slots, ctx per slot, template sha, commit, context window) (~1150 tok)
 - `props_test.go` — TestProps (~600 tok)
+- `props.go` — Props, ReadProps (llama-server GET /props at the root; 404 = vLLM, nil), Contradictions (slots, ctx per slot, template sha, commit, context window) (~1150 tok)
 - `protocol.go` — executes one run: an arm on a task, once, on a lane. It (~1671 tok)
 - `run_test.go` — fakeState (75 fields); methods: UpsertRun, AddBlobRefs, Put, Check (~5958 tok)
 - `run.go` — Interface: Engine (7 methods) (~8266 tok)
@@ -316,6 +316,8 @@
 
 ## internal/task/
 
+- `user.go` — scripted user (040 §6.2): User, UserDefault, UserRule; validate (events approval/question/turn/elapsed/completion, allowed responses, stage-2 refusals by name, no inline regex flags, times default 1) (~1900 tok)
+- `user_test.go` — TestUserScript (~1100 tok)
 - `exec.go` — Interface: Executor (4 methods) (~3851 tok)
 - `task_test.go` — TestLoadAll, TestLoadRejects, TestHashChangesWithAnyFile, TestVerifyDemo + 2 more (~2726 tok)
 - `task.go` — loads tasks from the tasks directory, builds what they need, (~3571 tok)
@@ -328,6 +330,7 @@
 
 ## runner/
 
+- `user.mjs` — createUser: the scripted user (approval, question, iteration counting over the whole run, beforeModel turn/elapsed actions, next() resume/completion), DENIED sentence (~1300 tok)
 - `package.json` — Node.js package manifest (~103 tok)
 - `PROTOCOL.md` — The runner: protocol 1 (~985 tok)
 - `runner.mjs` — The runner: one agent session for one run, inside the lane's container. (~2805 tok)
@@ -348,6 +351,7 @@
 
 ## runner/test/
 
+- `user.test.mjs` — scripted user engine tests (default user, approvals, questions, turn/elapsed, cancel+resume, completion, turns across resume) (~1500 tok)
 - `arm-stub.json` (~287 tok)
 - `session.test.mjs` — stub: reportOf (~1906 tok)
 - `wire.test.mjs` — Declares serve (~1056 tok)

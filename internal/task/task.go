@@ -36,6 +36,8 @@ type Task struct {
 	Artefacts     []Artefact        `toml:"artefact"`
 	Oracles       []Oracle          `toml:"oracle"`
 	Fixtures      []Fixture         `toml:"fixture"`
+	// User is the scripted user (040 §6.2); nil for the default one.
+	User *User `toml:"user"`
 
 	// Dir is the task's directory. Files is every regular file under it
 	// with its sha256, and Hash is the hash of that list: the task's
@@ -214,6 +216,11 @@ func (t *Task) validate() error {
 	}
 	if t.Limits.WallS < 0 || t.Limits.IdleS < 0 || t.Limits.OracleS < 0 {
 		return errors.New("limits must not be negative")
+	}
+	if t.User != nil {
+		if problems := t.User.validate(); len(problems) > 0 {
+			return errors.New(strings.Join(problems, "; "))
+		}
 	}
 	if t.Workspace.Seed != "" {
 		if err := rel(t.Workspace.Seed); err != nil {

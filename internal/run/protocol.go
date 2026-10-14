@@ -9,11 +9,13 @@ import (
 	"encoding/json"
 	"sync"
 	"time"
+
+	"github.com/mann1x/automaticum/internal/task"
 )
 
 // Protocol is the version of the contract between the harness and the
 // runner: the job file in, JSON lines out. See runner/PROTOCOL.md.
-const Protocol = 1
+const Protocol = 2
 
 // Paths inside the lane's container.
 const (
@@ -36,8 +38,11 @@ type Job struct {
 	Prompt    string          `json:"prompt"`
 	// DefaultAnswer is what the scripted user says when the agent asks.
 	DefaultAnswer string `json:"default_answer"`
-	Workspace     string `json:"workspace"`
-	Out           string `json:"out"`
+	// User is the task's scripted user (040 §6.2, protocol 2); absent, the
+	// runner approves every tool and answers DefaultAnswer.
+	User      *task.User `json:"user,omitempty"`
+	Workspace string     `json:"workspace"`
+	Out       string     `json:"out"`
 	// WallS is the limit the runner enforces itself by stopping the agent.
 	WallS int `json:"wall_s"`
 	// SDKRelease is the version the installed SDK package must be: that of

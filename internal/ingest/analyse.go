@@ -44,12 +44,12 @@ const ModelReloaded = "model_reloaded"
 // analysis records it as the metric analysis.version: the basis (020 §5)
 // says from it which detectors a run was analysed with, whether or not
 // they found anything.
-const AnalysisVersion = 2
+const AnalysisVersion = 3
 
 // Versions are the versions of the detectors this analysis applies:
 // ingest's own and the detector library's.
 var Versions = map[string]string{
-	"library": detect.Version, WireArm: WireArmVersion, CapHit: "1", GPUResidency: "1", ModelIdentity: "1", ModelReloaded: "2",
+	"library": detect.Version, WireArm: WireArmVersion, CapHit: "2", GPUResidency: "1", ModelIdentity: "1", ModelReloaded: "2",
 }
 
 // VersionsText is Versions as one line, in order.
@@ -213,6 +213,9 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 		m("tool_calls.failed.by_tool."+t, float64(failedBy[t]))
 	}
 	m("questions", float64(ev.Questions))
+	m("user.actions", float64(ev.UserActions))
+	m("user.denials", float64(ev.UserDenials))
+	m("user.failed", float64(ev.UserFailed))
 	m("events.lines", float64(ev.Lines))
 	if ev.BadLines > 0 {
 		m("events.unreadable_lines", float64(ev.BadLines))
@@ -254,7 +257,14 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 				empty++
 			}
 			reason := q.DoneReason
-			if reason == "" {
+			switch {
+			case reason != "":
+			case q.Failed:
+				// No answer came, so no finish reason could: a request cut
+				// by the agent's side (a steer, a cancel) or one that
+				// failed. It is not one the server left unexplained.
+				reason = "failed"
+			default:
 				reason = "none"
 			}
 			done[reason]++

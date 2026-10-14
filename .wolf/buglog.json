@@ -316,6 +316,59 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-10-14T18:55:00+02:00"
+    },
+    {
+      "id": "bug-020",
+      "timestamp": "2026-10-14T19:40:00+02:00",
+      "error_message": "cell warning: generation cap unverified: the server gave no finish reason for 1 of 12 requests (the request a steer cut)",
+      "file": "internal/ingest/analyse.go",
+      "root_cause": "requests that got no answer (Failed: cut by the client or failed) were counted as finish.none, which the cap audit reads as 'the server left it unexplained'; CapHits already skipped failed requests",
+      "fix": "count them as finish.failed; cap_hit version 2, AnalysisVersion 3; TestFailedRequestFinish",
+      "tags": [
+        "ingest",
+        "cap-audit",
+        "finish-reason",
+        "scripted-user",
+        "steer"
+      ],
+      "related_bugs": [
+        "bug-019"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-14T19:40:00+02:00"
+    },
+    {
+      "id": "bug-021",
+      "timestamp": "2026-10-14T19:40:00+02:00",
+      "error_message": "cell run --suite demo:cancel ran demo/cancel AND demo/scripted (2 tasks)",
+      "file": "cmd/automaticum/cell_cmds.go",
+      "root_cause": "the subset loop deleted each found id from the wanted set and tested len(want)==0 for 'no subset', so after the first match every later task of the suite matched",
+      "fix": "decide 'whole suite' once before the loop; extracted cellTasks(all, suite, subset) with TestCellTasks",
+      "tags": [
+        "cell",
+        "subset",
+        "cli"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-14T19:40:00+02:00"
+    },
+    {
+      "id": "bug-022",
+      "timestamp": "2026-10-14T19:40:00+02:00",
+      "error_message": "runner end outcome error: session not found: run-<id> (the completion rule's send after start() resolved)",
+      "file": "runner/runner.mjs",
+      "root_cause": "with interactive:false the SDK ends and disposes the session at 'ended'/'completed', so core.send() afterwards finds no session",
+      "fix": "the session is interactive only when the script may continue it (a cancel or a completion rule), noted as runner line 'interactive'; the runner stops it explicitly at the end",
+      "tags": [
+        "runner",
+        "sdk",
+        "scripted-user",
+        "interactive"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-14T19:40:00+02:00"
     }
   ]
 }

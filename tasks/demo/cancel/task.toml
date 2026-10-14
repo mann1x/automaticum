@@ -1,0 +1,53 @@
+# The demo task with a scripted user that cancels and resumes, then
+# restores the workspace (040 §6.2), for the harness's own tests. The file
+# must say 42.
+
+id = "cancel"
+suite = "demo"
+version = 1
+default_answer = "Continue."
+prompt = "answer.txt has the wrong number in it. Change it to 42."
+
+[limits]
+wall_s = 300
+oracle_s = 30
+
+[workspace]
+seed = "seed"
+
+[[oracle]]
+name = "check"
+primary = true
+image = "debian@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587"
+command = ["sh", "-c", "grep -q 'is 42\\.' answer.txt && echo RESULT ok || echo RESULT wrong"]
+expect_pattern = 'RESULT ok'
+timeout_s = 30
+
+[[fixture]]
+name = "good"
+expect = "pass"
+[fixture.files]
+"answer.txt" = "fixtures/good.txt"
+
+[[fixture]]
+name = "seed"
+expect = "fail"
+[fixture.files]
+"answer.txt" = "seed/answer.txt"
+
+[user.default]
+approval = "approve"
+answer = "Continue."
+
+[[user.rule]]
+on = "turn"
+turn = 2
+do = "cancel"
+text = "Start again: read answer.txt, then change the number."
+
+[[user.rule]]
+on = "turn"
+turn = 4
+do = "restore"
+restore = "workspace"
+checkpoint = 1

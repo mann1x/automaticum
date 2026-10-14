@@ -1,6 +1,11 @@
 package ingest
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+
+	"github.com/mann1x/automaticum/internal/store"
+)
 
 // A cap hit counts at any turn: the server's own "length", or a completion
 // that reached the limit the request declared, less the tolerance, from a
@@ -25,5 +30,21 @@ func TestCapHits(t *testing.T) {
 		if got[i] != want[i] {
 			t.Errorf("%d: %+v, want %+v", i, got[i], want[i])
 		}
+	}
+}
+
+// A request that got no answer (one the agent's side cut, a steer or a
+// cancel, or one that failed) has no finish reason and cannot have one: it
+// is counted as failed, not as unexplained, so it does not leave the cap
+// audit unverified.
+func TestFailedRequestFinish(t *testing.T) {
+	reqs := []Request{{Agent: true, Chat: true, DoneReason: "stop"}, {Agent: true, Chat: true, Failed: true}, {Agent: true, Chat: true}}
+	res := Analyse(&store.Run{ID: "r", Arm: json.RawMessage(`{}`)}, &Events{}, reqs)
+	got := map[string]float64{}
+	for _, m := range res.Metrics {
+		got[m.Name] = m.Value
+	}
+	if got["finish.stop"] != 1 || got["finish.failed"] != 1 || got["finish.none"] != 1 {
+		t.Errorf("finish: stop %g, failed %g, none %g", got["finish.stop"], got["finish.failed"], got["finish.none"])
 	}
 }

@@ -399,7 +399,7 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 	job := Job{
 		Protocol: Protocol, RunID: r.ID, SessionID: "run-" + r.ID, Arm: a.Resolved(),
 		Endpoint: JobEndpoint{Name: endpoint.Name, Kind: endpoint.Kind, BaseURL: endpoint.BaseURL, APIKey: key},
-		Prompt:   t.Prompt, DefaultAnswer: t.DefaultAnswer,
+		Prompt:   t.Prompt, DefaultAnswer: t.DefaultAnswer, User: t.User,
 		Workspace: containerWorkspace, Out: containerOut, WallS: wall.Seconds, SDKRelease: p.SDK.Version,
 	}
 	jb, _ := json.Marshal(job)
@@ -604,6 +604,15 @@ func (x *Executor) before(ctx context.Context, req Request, p *provenance) (*con
 	}
 	if t.PrimaryOracle() == nil {
 		return nil, nil, "the task has no primary oracle"
+	}
+	// A scripted user that restores a checkpoint needs the arm's
+	// checkpoints: without them the restore would fail inside the run.
+	if t.User != nil && (a.Agent.Checkpoints == nil || !*a.Agent.Checkpoints) {
+		for _, r := range t.User.Rules {
+			if r.Do == "restore" {
+				return nil, nil, fmt.Sprintf("the task's scripted user restores checkpoints, and arm %s has checkpoints off", a.Name)
+			}
+		}
 	}
 	for i := range t.Artefacts {
 		art := &t.Artefacts[i]

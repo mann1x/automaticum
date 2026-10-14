@@ -1,6 +1,6 @@
 # 040 — The runner
 
-**Status:** draft 1.1, 2026-10-13. Facts about the SDK in this file were read
+**Status:** draft 1.2, 2026-10-14. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
 running it. The parity table in §6 was checked row by row by the Cerebriline
 session on 2026-10-13 against its main branch (release 4.100.249 plus requests
@@ -284,6 +284,76 @@ task version.
 - With no script, the policy is auto-approve for every category and
   `ask_question` is answered by the task's declared default answer. That is the
   unattended behaviour of the old harness, made explicit.
+- **Decided by the owner (2026-10-14), D86:** a script may restore a
+  checkpoint's messages. The SDK then starts a new session fork within the
+  same run, and its guards, mistake counter and compaction state start from
+  nothing. The run records each fork with its time, and every counter and
+  guard metric says it restarted there, so reports can filter such runs.
+
+**As built, stage 1 (2026-10-14, runner protocol 2):** the script is the
+task's `[user]` table in `task.toml`, so it is part of the task's version:
+
+```toml
+[user.default]            # mandatory once [user] is there
+approval = "approve"      # or "deny"; an approval no rule matches
+feedback = "…"            # optional, with a default denial
+answer = "…"              # a question no rule answers
+
+[[user.rule]]             # in order; the first that matches acts
+on = "approval"           # approval | question | turn | elapsed | completion
+tool = "run_commands"     # approval: one tool, by name
+match = "rm -rf"          # approval: on the tool's input as JSON; question: on its text
+turn = 3                  # on = "turn": the lead agent's turn, counted over the whole run
+after_s = 600             # on = "elapsed": time of the run, time held left out
+times = 1                 # how often it may act; 1 when not stated, 0 every time
+do = "deny"               # see below
+text = "…"                # feedback, answer or message
+option = 2                # do = "option": the question's suggested option, from 1
+restore = "workspace"     # do = "restore"
+checkpoint = 1            # do = "restore": the SDK's checkpoint run count
+```
+
+| on | do |
+|---|---|
+| `approval` | `approve`, `deny` (with `text` as feedback) |
+| `question` | `answer` (`text`), `option` (an option not offered is the default answer, and the line says so) |
+| `turn`, `elapsed` | `steer` (now, into the running turn), `queue` (when the turn ends), `cancel` (abort the running work, then resume with `text`), `restore` (`workspace`) |
+| `completion` | `queue`: one more message after the agent ends the task |
+
+- Unknown fields, a rule whose fields do not go with its event or
+  response, and patterns that would mean something else in JavaScript
+  (inline flags) are refused when the task is loaded. A mode switch and a
+  restore of the messages (D86) are refused by name: they are stage 2,
+  waiting for the SDK's answers (mail to the Cerebriline session,
+  2026-10-14). So are approval by category, the plan-presented event and
+  the extension's sentence for a denied edit.
+- With a script every tool asks for approval (the SDK's `"*"` policy,
+  under each tool's own), and the script decides. Without one, nothing
+  changes from protocol 1.
+- A denial's reason is the SDK's sentence, "This tool call was rejected by
+  the user and not executed.", followed with feedback by " The user provided
+  the following feedback:" and the feedback on its own line inside
+  `<feedback>` tags. The SDK appends its own guidance to every denial.
+- Turn and elapsed rules act before the next model request: the last
+  turn's tools have run. A turn rule acts once on its turn.
+- A script with a cancel or a completion rule runs the session as
+  interactive (the run says so in a `runner` line `interactive`), so the
+  session stays open after a run of it ends; the runner stops it at the
+  end. Otherwise the session is non-interactive, as before.
+- Observed on the stub, SDK 4.100.250: a steer aborts the request in
+  flight, and the next request carries it as a user message; a cancel
+  then a send resumes the same session; the SDK numbers turns from 1 again
+  in each run of the session, so the script counts them itself.
+- Each action is a `user` line (PROTOCOL.md); ingest counts
+  `user.actions`, `user.denials` and `user.failed` (an action the SDK
+  refused; the run carries on, and did not play its script as meant).
+- A task whose script restores a checkpoint needs an arm with checkpoints
+  on, or the run is `SKIPPED` before it starts. The restore itself fails on
+  the stub ("No checkpoint found at or before run 1"); what the SDK's
+  checkpoint run count counts is asked of the Cerebriline session.
+- Demo tasks `demo/scripted` (a denial with feedback, a steer, a message
+  after completion) and `demo/cancel` (a cancel and resume, a restore) pass
+  on the stub.
 
 ## 7. What the runner returns
 

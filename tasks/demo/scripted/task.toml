@@ -1,0 +1,57 @@
+# The demo task with a scripted user (040 §6.2), for the harness's own
+# tests: it denies one tool call with feedback, steers at turn 2, and asks
+# for once more after the agent says it is done. The file must say 42.
+
+id = "scripted"
+suite = "demo"
+version = 1
+default_answer = "Continue."
+prompt = "answer.txt has the wrong number in it. Change it to 42."
+
+[limits]
+wall_s = 300
+oracle_s = 30
+
+[workspace]
+seed = "seed"
+
+[[oracle]]
+name = "check"
+primary = true
+image = "debian@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587"
+command = ["sh", "-c", "grep -q 'is 42\\.' answer.txt && echo RESULT ok || echo RESULT wrong"]
+expect_pattern = 'RESULT ok'
+timeout_s = 30
+
+[[fixture]]
+name = "good"
+expect = "pass"
+[fixture.files]
+"answer.txt" = "fixtures/good.txt"
+
+[[fixture]]
+name = "seed"
+expect = "fail"
+[fixture.files]
+"answer.txt" = "seed/answer.txt"
+
+[user.default]
+approval = "approve"
+answer = "Continue."
+
+[[user.rule]]
+on = "approval"
+tool = "check_file"
+do = "deny"
+text = "No need to check, the edit is enough."
+
+[[user.rule]]
+on = "turn"
+turn = 2
+do = "steer"
+text = "Keep the change to the one number."
+
+[[user.rule]]
+on = "completion"
+do = "queue"
+text = "Say once more that the file says 42."

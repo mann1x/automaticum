@@ -75,29 +75,9 @@ func cellRun(ctx context.Context, args []string) (err error) {
 	if err != nil {
 		return err
 	}
-	var tasks []string
-	want := map[string]bool{}
-	for _, id := range strings.Split(subset, ",") {
-		if id = strings.TrimSpace(id); id != "" {
-			want[id] = true
-		}
-	}
-	for _, t := range all {
-		if t.Suite == suiteName && (len(want) == 0 || want[t.ID]) {
-			tasks = append(tasks, t.Name())
-			delete(want, t.ID)
-		}
-	}
-	if len(want) > 0 {
-		var missing []string
-		for id := range want {
-			missing = append(missing, id)
-		}
-		slices.Sort(missing)
-		return fmt.Errorf("suite %s has no task %s", suiteName, strings.Join(missing, ", "))
-	}
-	if len(tasks) == 0 {
-		return fmt.Errorf("suite %s has no tasks", suiteName)
+	tasks, err := cellTasks(all, suiteName, subset)
+	if err != nil {
+		return err
 	}
 	if err := os.MkdirAll(*out, 0o755); err != nil {
 		return err
@@ -205,6 +185,39 @@ func cellRun(ctx context.Context, args []string) (err error) {
 		return exitCode(code)
 	}
 	return nil
+}
+
+// cellTasks are the tasks of a cell: every task of the suite, or those the
+// subset names (one id, or several separated by commas).
+func cellTasks(all []*task.Task, suiteName, subset string) ([]string, error) {
+	var tasks []string
+	want := map[string]bool{}
+	for _, id := range strings.Split(subset, ",") {
+		if id = strings.TrimSpace(id); id != "" {
+			want[id] = true
+		}
+	}
+	// Whether a subset was named is decided once: the set empties as its
+	// tasks are found, and an empty set must not then mean "every task".
+	whole := len(want) == 0
+	for _, t := range all {
+		if t.Suite == suiteName && (whole || want[t.ID]) {
+			tasks = append(tasks, t.Name())
+			delete(want, t.ID)
+		}
+	}
+	if len(want) > 0 {
+		var missing []string
+		for id := range want {
+			missing = append(missing, id)
+		}
+		slices.Sort(missing)
+		return nil, fmt.Errorf("suite %s has no task %s", suiteName, strings.Join(missing, ", "))
+	}
+	if len(tasks) == 0 {
+		return nil, fmt.Errorf("suite %s has no tasks", suiteName)
+	}
+	return tasks, nil
 }
 
 // modeC reads the mode C flags (065 §3.1); nil when the cell runs on the

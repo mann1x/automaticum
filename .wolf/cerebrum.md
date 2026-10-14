@@ -83,6 +83,11 @@
 - llama-server `/props` (llama.cpp `get_res_props`): `default_generation_settings.n_ctx` is the PER-SLOT context (`n_ctx_slot`, capped by training ctx and `--kv-unified-per-slot`), `total_slots` = `-np`, `build_info` = `b<number>-<commit>`; it is at the server root, not under `/v1`. Per-slot ctx is not always `-c`/`-np` (unified KV), so never derive one from the other.
 - On an OpenAI-compatible provider, thinking owner "tag" makes the SDK send its own `thinking.budgetTokens = 1024` and the run is INVALID; mode C caller values must state thinking (owner "arm").
 
+- Scripted user (2026-10-14, runner protocol 2): SDK 4.100.25x facts from runs on the stub: with `interactive:false` the session is disposed at "ended", so `send()` afterwards is "session not found" (use interactive only when a script continues the session); a `steer` send aborts the request in flight and the next request carries it as a user message; `abort()` + `send()` resumes the same session; the SDK numbers iterations from 1 again per run of the session, so count turns yourself; tool policy resolves as `{...toolPolicies["*"], ...toolPolicies[name]}`; the SDK appends " -- NOT a tool or system failure. Clarify with user before proceeding." to every denial reason.
+- A turn in a task's script = the lead agent's turn over the whole run (count `iteration_start` events with `payload.teamRole` "lead"), not the SDK's `iteration` field.
+- Runner tests: `docker run --rm --network none -v $PWD/runner:/runner:ro -w /runner node@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e339527e7472301c9c78a017978392 sh -c 'node --test test/*.test.mjs'` (Node 22 takes `node --test test/` as a module name). A new runner file must also be added to the COPY line of `images/base/Dockerfile`, then `automaticum image build`.
+- A new task must pass `automaticum oracle verify <task>` before any run, or the gate `oracle` skips it (cell exit 20).
+
 ## Do-Not-Repeat
 
 - 2026-10-13: Do not invent a threshold or a default number for a detector, guard or limit and then carry it as an Open item with "keep" as the recommendation. The owner: the SDK's guards are tuned on more than 600 recorded runs; use the thresholds those analyses identified. If one is missing, ask the SDK's session or read the SDK's source (packages/agents and packages/core/src/runtime/safety). Wrong: `repeated_tool_call` at 3 in a row, `runaway` at 10,000 for every run.
@@ -100,6 +105,8 @@
 
 - 2026-10-13: do not slice-and-splice a Go file between two text markers without checking their order in the file; it duplicated two type declarations in `internal/daemon/api.go`.
 - 2026-10-14: a detector that expects an Ollama `options.*` field must check the request's protocol (`Request.OpenAI`); OpenAI chat has no `num_ctx`. Bump the detector's version and `AnalysisVersion` when its output changes (bug-019).
+- 2026-10-14: when a loop deletes found items from a "wanted" set, decide "no filter given" before the loop; `len(want) == 0` inside it turns the filter off after the first hit (bug-021).
+- 2026-10-14: a request with no answer (Failed) must not be counted as "the server gave no finish reason"; keep the cap audit's counts consistent with CapHits, which skips failed requests (bug-020).
 
 ## Decision Log
 
@@ -141,4 +148,5 @@
 - 2026-10-13 D74: tag `qwen36-base-mtp_tb:27b-q4km-128k` is the base Qwen 3.6 27B model (variant `base`); GPU of `windows-2` is an RTX 3090, 24 GB; the ten real runs of that day got these facts added, marked as added later (`run identify`).
 - 2026-10-14 D84: canary judges the first 5 finished requests of a batch; a length band only where a task/suite declares one (length matters for specific evaluations, not in general); no retry of PASS/FAIL/TIMEOUT. Control tokens come from the model's tokenizer (type 3 via /api/show verbose), never a hand list.
 - 2026-10-14 D85: a reload on the first chat request after a pause's release keeps the verdict (finding note, evidence after_pause, metric endpoint.reloads_after_pause); any other reload still INVALID (D73). Run 8 of D81 restored by reanalyse.
+- 2026-10-14 D86: scripted user next; a restore of a checkpoint's messages is allowed, the session fork recorded with its time, and every counter/guard metric says it restarted there (reports can filter). Owner chose this over "workspace only" and "new run".
 - [2026-10-14] A basis fact must say what was applied, not what fired: detector versions came from findings and made run 8 (one reload note) look like another detector set. Ingest now records metric analysis.version; bump ingest.AnalysisVersion whenever a version in ingest.Versions changes.

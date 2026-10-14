@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-10-14 (revision 9).
+**Status:** current as of 2026-10-14 (revision 10).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -95,6 +95,7 @@ All dated 2026-10-12.
 | D83 | Pausing a run means releasing the endpoint: "when I need the GPU for something else". `run pause` holds the run between two model requests and, on an Ollama or xOllama endpoint, then drops the model; `run resume` lets it go on, and its next request loads the model again. Built on the SDK's `beforeModel` hook (in 4.100.251), in the same process only: a resume in a new process is not the same run and is not offered. To be tested on real runs: hold, unload, reload, release (2026-10-13; follows D77). | 050 §4, 040 |
 | D84 | The first-generations canary judges the first **5** finished requests of a batch. The length of a model's answers matters for specific kinds of evaluation, not in general: a length band is checked only where a task or suite declares one, and otherwise reported unchecked. Empty answers, answers ended by length and the model's own control tokens in visible text stop the batch. A retry never runs a `PASS`, `FAIL` or `TIMEOUT` again (2026-10-14; closes O22). | 050 §3.3, §4 |
 | D85 | A reload after a pause keeps the verdict: the first request after a pause's release reloads the model the pause dropped on purpose, and that reload is recorded apart, as a note, and does not make the run `INVALID` (D73). A reload anywhere else still does. Run 8 of batch D81 is analysed again under this rule (2026-10-14). | 070 §4.1, 050 §4 |
+| D86 | The scripted user is built next (milestone 4, 040 §6.2). A script may restore a checkpoint's messages: the SDK then starts a new session fork inside the same run, so its guards, mistake counter and compaction state start from nothing. That is allowed and recorded: the run records each fork with its time, and every counter and guard metric says it restarted there; reports can filter such runs (2026-10-14). | 040 §6.2 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked

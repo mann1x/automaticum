@@ -46,6 +46,13 @@ type Events struct {
 	Derived map[string]float64
 	// Questions is how many questions the scripted user answered.
 	Questions int
+	// UserActions is how many times a rule of the scripted user acted;
+	// UserDenials how many tool calls it denied, by a rule or by default.
+	UserActions int
+	UserDenials int
+	// UserFailed is how many of the scripted user's actions the SDK
+	// refused: the run did not play the script it was meant to.
+	UserFailed int
 }
 
 // eventLine is one line of a stream. The runner writes
@@ -64,6 +71,11 @@ type eventLine struct {
 	Note    string             `json:"note"`
 	Event   json.RawMessage    `json:"event"`
 	Derived map[string]float64 `json:"derived"`
+	// A scripted user's line (040 §6.2): the event it answered, the rule
+	// (0 for the default) and what it did.
+	On       string `json:"on"`
+	Rule     int    `json:"rule"`
+	Approved *bool  `json:"approved"`
 }
 
 type agentEvent struct {
@@ -153,7 +165,21 @@ func (ev *Events) line(line []byte, sc *scan) {
 		case "config_resolved":
 			ev.Derived = l.Derived
 		case "ask_question":
+			// Protocol 1.
 			ev.Questions++
+		case "user_action_failed":
+			ev.UserFailed++
+		}
+		return
+	case l.K == "user":
+		if l.On == "question" {
+			ev.Questions++
+		}
+		if l.Rule > 0 && l.On != "resume" {
+			ev.UserActions++
+		}
+		if l.On == "approval" && l.Approved != nil && !*l.Approved {
+			ev.UserDenials++
 		}
 		return
 	case l.K == "event":

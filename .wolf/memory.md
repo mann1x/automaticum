@@ -1153,3 +1153,31 @@
 | 18:30 | mode C step 3: cell endpoint overlay in config.Local, Arm.ForCell, CallerValues/BasisFacts, /props check per run (SKIPPED gate basis_facts → exit 20), --lanes N round-robin, cell provenance + basis labels, mode_c in result, CLI flags | internal/config/cell.go, local.go, internal/run/props.go, internal/daemon/modec.go, api.go, daemon.go, control.go, canary.go, basis.go, cell.go, cmd/automaticum/cell_cmds.go | tests pass; e2e on stub: exit 0 clean, exit 20 contradicted | ~60k |
 | 18:30 | bug-019: wire_arm v2 skips num_ctx on OpenAI-compatible requests; AnalysisVersion 2 | internal/ingest/wirearm.go, wire.go, analyse.go | e2e clean | ~5k |
 | 18:30 | specs 065 0.8 (mode C as built), 020 0.10, 070 0.15, 030 0.14 | docs/specs | done | ~4k |
+
+## Session: 2026-10-14 18:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 18:31
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 18:31
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 18:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:20 | Created internal/task/user.go | — | ~1681 |
+| 19:21 | Created internal/task/user_test.go | — | ~798 |
+| 19:21 | Created runner/user.mjs | — | ~1272 |
+| 19:24 | Created runner/test/user.test.mjs | — | ~1382 |
+| 19:33 | D86 recorded (restore of messages allowed, fork recorded); scripted user chosen as next milestone-4 item | docs/specs/decisions.md, 040, cerebrum | done | ~3k |
+| 19:33 | scripted user stage 1: [user] in task.toml (internal/task/user.go), runner protocol 2 (runner/user.mjs, runner.mjs), ingest user.actions/denials/failed, checkpoint check in run.before | internal/task, internal/run, internal/ingest, runner | tests pass; e2e demo/scripted PASS, demo/cancel PASS (restore refused by SDK) | ~70k |
+| 19:33 | bug-020 finish.failed (analysis 3), bug-021 cell subset, bug-022 interactive session for continuing scripts | internal/ingest/analyse.go, cmd/automaticum/cell_cmds.go, runner/runner.mjs | fixed with tests | ~8k |
+| 19:33 | mails 1383/1384 to Cerebriline: stage-2 SDK questions (plan event, categories, denial strings, mode switch, restore fork, checkpoints) | mailbox | sent | ~2k |

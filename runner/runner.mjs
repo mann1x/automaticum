@@ -15,9 +15,10 @@ import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BUNDLED_SKILLS_ON_BY_DEFAULT, buildConfig, compareResolved, derivedFromArm, unsupported } from "./session.mjs";
+import { createUser } from "./user.mjs";
 import { createWire, describe } from "./wire.mjs";
 
-const PROTOCOL = 1;
+const PROTOCOL = 2;
 const SDK_PACKAGE = "@cerebriline/sdk";
 const EXIT = { completed: 0, error: 1, refused: 3, invalid: 4, wall_limit: 5 };
 
@@ -104,20 +105,42 @@ async function main() {
 
 	const wire = createWire({ file: join(job.out, "wire.jsonl") });
 	const sdk = await import(SDK_PACKAGE);
-	let asked = 0;
-	const core = await sdk.ClineCore.create({
+	// The scripted user (040 §6.2). Its actions need the session, which is
+	// made below; they are only ever taken once it runs.
+	let core;
+	const user = createUser(job, {
+		out,
+		act: async (rule) => {
+			const failed = (err) => note("user_action_failed", { rule: rule.index, do: rule.do, error: describe(err) });
+			switch (rule.do) {
+				case "steer":
+				case "queue":
+					// Not awaited: a queued message waits for the turn to end.
+					core.send({ sessionId: job.session_id, prompt: rule.text, delivery: rule.do }).catch(failed);
+					return;
+				case "cancel":
+					await core.abort(job.session_id, "the scripted user cancelled").catch(failed);
+					return;
+				case "restore":
+					try {
+						const res = await core.restore({ sessionId: job.session_id, checkpointRunCount: rule.checkpoint, restore: { messages: false, workspace: true } });
+						note("restored", { rule: rule.index, checkpoint: res?.checkpoint ?? null });
+					} catch (err) {
+						failed(err);
+					}
+					return;
+			}
+		},
+	});
+	core = await sdk.ClineCore.create({
 		backendMode: "local",
 		dataDir,
 		clientName: "automaticum-runner",
 		fetch: wire.fetch,
 		capabilities: {
+			requestToolApproval: (request) => user.approval(request),
 			toolExecutors: {
-				// The scripted user of protocol 1: the task's default answer.
-				askQuestion: async (question, options) => {
-					asked++;
-					note("ask_question", { question, options, answer: job.default_answer });
-					return job.default_answer;
-				},
+				askQuestion: async (question, options) => user.question(question, options),
 			},
 		},
 	});
@@ -170,6 +193,9 @@ async function main() {
 		},
 	});
 	if (hooks) built.config.hooks = hooks;
+	// A script decides every approval; without one every tool runs, as
+	// before. The SDK reads "*" under each tool's own policy.
+	if (user.scripted) built.toolPolicies["*"] = { ...(built.toolPolicies["*"] ?? {}), autoApprove: false };
 
 	// 5a. The hold (PROTOCOL.md): while the file "hold" stands next to the
 	// job, the run waits before its next model request. The request being
@@ -182,6 +208,8 @@ async function main() {
 	let wallLeft = job.wall_s * 1000;
 	let wallFrom = 0;
 	let wallFired = false;
+	const runFrom = Date.now();
+	let heldMs = 0;
 	const armWall = () => {
 		wallFrom = Date.now();
 		wall = setTimeout(() => {
@@ -207,16 +235,28 @@ async function main() {
 					}
 				}
 				note("released", { held_ms: Date.now() - since });
+				heldMs += Date.now() - since;
 				armWall();
 			}
+			await user.beforeModel(Date.now() - runFrom - heldMs);
 			return prior ? prior(context) : undefined;
 		},
 	};
 
-	core.subscribe((event) => out("event", { event }), { sessionId: job.session_id });
+	core.subscribe(
+		(event) => {
+			out("event", { event });
+			const inner = event?.payload?.event;
+			if (event?.type === "agent_event" && inner?.type === "iteration_start" && (event.payload.teamRole ?? "lead") === "lead") user.iteration();
+		},
+		{ sessionId: job.session_id },
+	);
 
 	// 6. The wall limit is ours: the SDK has none.
 	armWall();
+	// A session the user may speak to again after it ends stays open; it is
+	// stopped below.
+	if (user.continues) note("interactive", { why: "the scripted user may speak after a run of the session ends (cancel, completion)" });
 
 	let started;
 	let failure;
@@ -224,10 +264,19 @@ async function main() {
 		started = await core.start({
 			config: built.config,
 			prompt: job.prompt,
-			interactive: false,
+			interactive: user.continues,
 			localRuntime: built.localRuntime,
 			toolPolicies: built.toolPolicies,
 		});
+		// The user may speak again when a run of the session ends: to resume
+		// after its own cancel, or with what a completion rule queues.
+		let last = started?.result;
+		for (let prompt = user.next(last); prompt !== null && !wallFired; prompt = user.next(last)) {
+			const more = await core.send({ sessionId: job.session_id, prompt });
+			if (more) last = more;
+		}
+		if (started && last) started = { ...started, result: last };
+		if (user.continues) await core.stop(job.session_id).catch((err) => note("stop_failed", { error: describe(err) }));
 	} catch (err) {
 		failure = err;
 	}
@@ -241,7 +290,8 @@ async function main() {
 		sdk: sdkFound,
 		read_back: problems === null ? "the SDK did not report its resolved configuration" : "compared",
 		requests: wire.count(),
-		questions_answered: asked,
+		questions_answered: user.counts.questions,
+		user: user.scripted ? user.counts : null,
 		agent_end: result?.finishReason ?? "",
 		// The agent claims success when it ends its task by itself.
 		claimed_success: result ? result.finishReason === "completed" : null,

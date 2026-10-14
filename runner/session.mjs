@@ -26,9 +26,9 @@ export const BUNDLED_SKILLS_ON_BY_DEFAULT = ["media-audio", "media-images", "med
 /** unsupported lists what an arm asks for that this runner cannot do. */
 export function unsupported(arm) {
 	const out = [];
-	if (arm.agent.approval !== "auto") out.push(`agent.approval "${arm.agent.approval}": only "auto" exists in protocol 1`);
-	if (arm.agent.escalation) out.push("agent.escalation: not supported in protocol 1");
-	if (arm.agent.sub_agents.spawn || arm.agent.sub_agents.teams) out.push("agent.sub_agents: not supported in protocol 1");
+	if (arm.agent.approval !== "auto") out.push(`agent.approval "${arm.agent.approval}": only "auto" exists in protocol 2`);
+	if (arm.agent.escalation) out.push("agent.escalation: not supported in protocol 2");
+	if (arm.agent.sub_agents.spawn || arm.agent.sub_agents.teams) out.push("agent.sub_agents: not supported in protocol 2");
 	if (!["act", "plan"].includes(arm.agent.mode)) out.push(`agent.mode "${arm.agent.mode}" is not act or plan`);
 	if (!["off", "on", "static"].includes(arm.protocol.mode)) out.push(`protocol.mode "${arm.protocol.mode}" is not known`);
 	for (const s of arm.agent.bundled_skills ?? []) {
