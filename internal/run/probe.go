@@ -329,3 +329,47 @@ func Unload(ctx context.Context, hc *http.Client, e *config.Endpoint, apiKey, ke
 	}
 	return others, fmt.Errorf("endpoint %s still holds another model a minute after it was asked to drop it", e.Name)
 }
+
+// ControlTokens reads the model's control tokens from an Ollama-kind
+// server: the tokens its tokenizer marks as control (type 3 in the weights
+// file's token types), such as the markers of a turn. A model writes them
+// only when its template leaks into what it says. Nothing is loaded.
+func ControlTokens(ctx context.Context, hc *http.Client, e *config.Endpoint, apiKey, model string) ([]string, error) {
+	b, _ := json.Marshal(map[string]any{"model": model, "verbose": true})
+	req, err := http.NewRequestWithContext(ctx, "POST", strings.TrimRight(e.BaseURL, "/")+"/api/show", bytes.NewReader(b))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+	}
+	resp, err := hc.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("endpoint %s does not answer /api/show", e.Name)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("endpoint %s: /api/show gave status %d", e.Name, resp.StatusCode)
+	}
+	var show struct {
+		ModelInfo struct {
+			Tokens []string `json:"tokenizer.ggml.tokens"`
+			Types  []int    `json:"tokenizer.ggml.token_type"`
+		} `json:"model_info"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 256<<20)).Decode(&show); err != nil {
+		return nil, fmt.Errorf("endpoint %s: /api/show: %w", e.Name, err)
+	}
+	mi := show.ModelInfo
+	if len(mi.Tokens) == 0 || len(mi.Tokens) != len(mi.Types) {
+		return nil, fmt.Errorf("endpoint %s does not list the tokens of %s and their types", e.Name, model)
+	}
+	out := []string{}
+	for i, t := range mi.Tokens {
+		if mi.Types[i] == 3 {
+			out = append(out, t)
+		}
+	}
+	return out, nil
+}

@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -187,6 +188,10 @@ type fakeRunner struct {
 	// cancelled.
 	hold    chan struct{}
 	started chan string
+	// wire, when set, is written as the run's wire capture under dir
+	// before the run is held.
+	wire string
+	dir  string
 }
 
 func (f *fakeRunner) Execute(ctx context.Context, req run.Request) (*store.Run, error) {
@@ -202,6 +207,11 @@ func (f *fakeRunner) Execute(ctx context.Context, req run.Request) (*store.Run, 
 	if req.OnLine != nil {
 		req.OnLine([]byte(`{"k":"event","n":1}`))
 		req.OnLine([]byte(`{"k":"event","n":2}`))
+	}
+	if f.wire != "" {
+		out := filepath.Join(f.dir, req.ID, "out")
+		os.MkdirAll(out, 0o755)
+		os.WriteFile(filepath.Join(out, "wire.jsonl"), []byte(f.wire), 0o644)
 	}
 	if f.started != nil {
 		f.started <- req.ID
@@ -994,5 +1004,81 @@ func TestAskedOf(t *testing.T) {
 	got, err = askedOf(&store.Run{ID: "r", Lane: "lane-1", Suite: "demo", TaskID: "answer", Arm: json.RawMessage(`{"name":"stub"}`)})
 	if err != nil || got.Arm != "stub" {
 		t.Errorf("%+v %v", got, err)
+	}
+}
+
+// agentWire is a wire capture of n agent requests, the last answer being
+// last.
+func agentWire(n int, last string) string {
+	var b strings.Builder
+	for i := 1; i <= n; i++ {
+		content := "a sound answer"
+		if i == n {
+			content = last
+		}
+		resp, _ := json.Marshal(map[string]any{"message": map[string]any{"content": content}, "done": true, "done_reason": "stop"})
+		l, _ := json.Marshal(map[string]any{"seq": i, "url": "http://h/api/chat", "status": 200,
+			"request_body": `{"tools":[{"type":"function"}]}`, "response_body": string(resp) + "\n"})
+		b.Write(append(l, '\n'))
+	}
+	return b.String()
+}
+
+// The canary judges the first five finished requests of a batch: sound
+// ones let it go on; a control token in the visible text stops it, the run
+// in flight aborted and the queued runs SKIPPED with the canary's words.
+func TestCanaryStopsBatch(t *testing.T) {
+	for _, tc := range []struct {
+		name, last string
+		stop       bool
+	}{{"sound", "all good", false}, {"leak", "done<|im_end|>", true}} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newRig(t, false)
+			dir := t.TempDir()
+			g.d.RunsDir, g.d.CanaryEvery = dir, 10*time.Millisecond
+			g.d.ControlTokens = func(context.Context, string) ([]string, error) { return []string{"<|im_end|>"}, nil }
+			hold := make(chan struct{})
+			g.runner.hold, g.runner.started, g.runner.wire, g.runner.dir = hold, make(chan string, 4), agentWire(5, tc.last), dir
+			go func() { g.d.Serve(g.ctx()); close(g.served) }()
+			var resp StartResponse
+			if code := g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Count: 3}, &resp); code != 202 {
+				t.Fatalf("start: %d", code)
+			}
+			<-g.runner.started
+			deadline := time.Now().Add(5 * time.Second)
+			var rec *CanaryRecord
+			for rec == nil && time.Now().Before(deadline) {
+				time.Sleep(10 * time.Millisecond)
+				g.d.mu.Lock()
+				rec = g.d.ctl.Canary[resp.Batch]
+				g.d.mu.Unlock()
+			}
+			if rec == nil || len(rec.Requests) != 5 || rec.Stopped != tc.stop {
+				t.Fatalf("canary: %+v", rec)
+			}
+			var bv BatchView
+			if code := g.call("GET", "/v1/batches/"+resp.Batch, nil, &bv); code != 200 || bv.Canary == nil {
+				t.Errorf("batch view: %d %+v", code, bv)
+			}
+			if !tc.stop {
+				close(hold)
+				for _, id := range resp.RunIDs {
+					if v := g.waitFinished(id); v.Verdict != "PASS" {
+						t.Errorf("%s: %+v", id, v)
+					}
+				}
+				return
+			}
+			first := g.waitFinished(resp.RunIDs[0])
+			if first.Verdict != "ABORTED" || !strings.Contains(first.VerdictReason, "canary") {
+				t.Errorf("the run in flight: %+v", first)
+			}
+			for _, id := range resp.RunIDs[1:] {
+				v := g.waitFinished(id)
+				if v.Verdict != "SKIPPED" || !strings.Contains(v.VerdictReason, "control token <|im_end|>") {
+					t.Errorf("%s: %+v", id, v)
+				}
+			}
+		})
 	}
 }

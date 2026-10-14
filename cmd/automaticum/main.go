@@ -41,6 +41,7 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   run retry <run>               queue a run again that ended SKIPPED, ABORTED or INVALID [--dry-run]
   lane drain <lane>             the run in flight finishes, then the lane starts nothing until resumed
   lane resume <lane>            the lane starts queued runs again
+  batch show <batch>            a batch's runs by state, whether it is paused, and what the canary said
   batch pause <batch>           start none of the batch's queued runs; hold its run in flight and free the endpoint [--keep-model]
   batch resume <batch>          let a paused batch go on
   batch stop <batch>            take the batch's queued runs off the queue; the run in flight finishes [--abort]
@@ -94,6 +95,7 @@ func main() {
 		"run retry":      retry("run"),
 		"lane drain":     laneControl(true),
 		"lane resume":    laneControl(false),
+		"batch show":     batchShow,
 		"batch pause":    batchControl("pause"),
 		"batch resume":   batchControl("resume"),
 		"batch stop":     batchControl("stop"),

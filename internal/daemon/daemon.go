@@ -69,6 +69,11 @@ type Daemon struct {
 	// ControlFile keeps what the operator asked of lanes and batches across
 	// a restart; empty keeps it in memory only.
 	ControlFile string
+	// CanaryEvery is how often the canary reads the runs in flight; zero
+	// means every five seconds. ControlTokens, when set, replaces asking
+	// the endpoint for a model's control tokens.
+	CanaryEvery   time.Duration
+	ControlTokens func(ctx context.Context, arm string) ([]string, error)
 
 	mu       sync.Mutex
 	flights  map[string]*flight // by lane
@@ -297,6 +302,9 @@ func (d *Daemon) Recover(ctx context.Context) error {
 func (d *Daemon) Serve(ctx context.Context) {
 	d.init()
 	var wg sync.WaitGroup
+	canary, stopCanary := context.WithCancel(ctx)
+	defer stopCanary()
+	go d.canaryLoop(canary)
 	for {
 		d.mu.Lock()
 		draining := d.draining
@@ -600,8 +608,8 @@ func (d *Daemon) laneFor(arm *config.Arm, asked string) (string, error) {
 // Notification is what a refusing or waiting gate sends (050 §2).
 type Notification struct {
 	Source string    `json:"source"`
-	Kind   string    `json:"kind"`   // gate
-	Status string    `json:"status"` // refuse or wait
+	Kind   string    `json:"kind"`   // gate or canary
+	Status string    `json:"status"` // refuse or wait; for the canary, stop
 	Gate   string    `json:"gate"`
 	Detail string    `json:"detail"`
 	Lane   string    `json:"lane"`
@@ -615,7 +623,7 @@ type Notification struct {
 // webhook that fails is logged and stops nothing.
 func (d *Daemon) notify(ctx context.Context, n Notification) {
 	n.Source, n.Time = "automaticum", time.Now().UTC()
-	d.Log.Warn("gate "+n.Status, "gate", n.Gate, "run", n.Run, "lane", n.Lane, "detail", n.Detail)
+	d.Log.Warn(n.Kind+" "+n.Status, "gate", n.Gate, "run", n.Run, "lane", n.Lane, "detail", n.Detail)
 	hook := d.Local.Daemon.Notify.Webhook
 	if hook == "" {
 		return

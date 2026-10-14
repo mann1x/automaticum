@@ -141,3 +141,20 @@ func TestHoldFile(t *testing.T) {
 		t.Errorf("releasing a run that is not held: %v", err)
 	}
 }
+
+func TestControlTokens(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var in map[string]any
+		json.NewDecoder(r.Body).Decode(&in)
+		if r.URL.Path != "/api/show" || in["verbose"] != true {
+			http.NotFound(w, r)
+			return
+		}
+		w.Write([]byte(`{"model_info":{"tokenizer.ggml.tokens":["a","<|im_start|>","<think>","<|im_end|>"],"tokenizer.ggml.token_type":[1,3,4,3]}}`))
+	}))
+	defer srv.Close()
+	got, err := ControlTokens(context.Background(), srv.Client(), &config.Endpoint{Name: "e", Kind: "ollama", BaseURL: srv.URL}, "", "m")
+	if err != nil || strings.Join(got, " ") != "<|im_start|> <|im_end|>" {
+		t.Errorf("%v %v", got, err)
+	}
+}

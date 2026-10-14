@@ -32,6 +32,9 @@ type Request struct {
 	ThinkBudgetTokens int
 	// Empty is true when the answer held no text, no thinking and no call.
 	Empty bool
+	// Visible is the answer's text as the user would see it: not its
+	// thinking, not its calls.
+	Visible string
 }
 
 type wireLine struct {
@@ -133,6 +136,7 @@ func (q *Request) answer(body string) {
 		EvalNS            int64  `json:"eval_duration"`
 	}
 	something := false
+	var visible strings.Builder
 	for _, line := range strings.Split(body, "\n") {
 		if strings.TrimSpace(line) == "" {
 			continue
@@ -144,6 +148,7 @@ func (q *Request) answer(body string) {
 		if m.Message.Content != "" || m.Message.Thinking != "" || len(m.Message.ToolCalls) > 0 {
 			something = true
 		}
+		visible.WriteString(m.Message.Content)
 		if m.Done {
 			q.DoneReason, q.ThinkBudget, q.ThinkBudgetTokens = m.DoneReason, m.ThinkBudget, m.ThinkBudgetTokens
 			q.PromptTokens, q.CachedTokens, q.PromptNS = m.PromptEvalCount, m.PromptCached, m.PromptEvalNS
@@ -152,4 +157,5 @@ func (q *Request) answer(body string) {
 		}
 	}
 	q.Empty = !q.Failed && !something
+	q.Visible = visible.String()
 }

@@ -93,6 +93,7 @@ All dated 2026-10-12.
 | D81 | The real batch that closes milestone 4: OmniMerge v4 (`omnimerge-v4-mtp_tb:27b-q4km-128k`) against base Qwen 3.6 27B, same settings, 10 runs per arm, interleaved, on `windows-2`; the xOllama session is told the start and the expected end. Later: Qwen 3.8 27B base against OmniMerge v6 (2026-10-13). | 110 §3 |
 | D82 | On an Ollama or xOllama endpoint the model is queried at the start of every run and what the server says is recorded with the run: digest, quantization, parameter size, template, parameters, server version. A served model can change under the same name (a cloud model moved from one quantization to another), and a variation must be explainable from the record. Reports show these facts per arm and say when one changed between runs (2026-10-13). | 020 §1.1, 070 §6 |
 | D83 | Pausing a run means releasing the endpoint: "when I need the GPU for something else". `run pause` holds the run between two model requests and, on an Ollama or xOllama endpoint, then drops the model; `run resume` lets it go on, and its next request loads the model again. Built on the SDK's `beforeModel` hook (in 4.100.251), in the same process only: a resume in a new process is not the same run and is not offered. To be tested on real runs: hold, unload, reload, release (2026-10-13; follows D77). | 050 §4, 040 |
+| D84 | The first-generations canary judges the first **5** finished requests of a batch. The length of a model's answers matters for specific kinds of evaluation, not in general: a length band is checked only where a task or suite declares one, and otherwise reported unchecked. Empty answers, answers ended by length and the model's own control tokens in visible text stop the batch. A retry never runs a `PASS`, `FAIL` or `TIMEOUT` again (2026-10-14; closes O22). | 050 §3.3, §4 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked
@@ -121,11 +122,10 @@ Each of these waits for a measurement or for the planning of its milestone.
 | O1 | How the native agent on Windows and macOS meets "a host runs only the Go application", given the runner needs Node. | 010 §4 | milestone 7 (D35) |
 | O5 | Which published C/C++ SWE-bench-style set, at which version; the order of languages after it. | 062 §6 | milestone 5 |
 | O6 | Which external harnesses need the offline event path. | 064 §3.2 | milestone 5, per harness |
-| O22 | The first-generations canary: after how many finished requests of a batch it judges (the spec says "three to five"), and the median-length band for a task that declares none (`manic_miner` declares none). Recommendation: judge after 5; with no declared band, the length check is reported unchecked rather than given a number nobody chose; empty answers, answers ended by length and control tokens in visible text stop the batch as 050 §3.3 says. | 050 §3.3 | the owner (2026-10-14) |
 
 Closed since the first revision: O2 (D32), O4 (D30), O7 (S4, then D34), O9
 (D31), O10 (D42), O11 (D33), O12 (D28), O13 (D29), O14 (D46), O8 (D47), O15
-(D48), O16 (D49), O17 (D50), O18 (D51), O3 (D57).
+(D48), O16 (D49), O17 (D50), O18 (D51), O3 (D57), O22 (D84).
 
 ## 4. External dependencies
 

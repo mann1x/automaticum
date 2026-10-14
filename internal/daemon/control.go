@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,12 +27,14 @@ type control struct {
 	Held map[string]time.Time `json:"held,omitempty"`
 	// Retries names, for each run made by a retry, the run it retries.
 	Retries map[string]string `json:"retries,omitempty"`
+	// Canary holds the canary's verdict on each batch it judged.
+	Canary map[string]*CanaryRecord `json:"canary,omitempty"`
 }
 
 // loadControl reads the control file once. A missing file is an empty one.
 // It is called with d.mu held.
 func (d *Daemon) loadControl() {
-	d.ctl = control{Drained: map[string]time.Time{}, Held: map[string]time.Time{}, Retries: map[string]string{}}
+	d.ctl = control{Drained: map[string]time.Time{}, Held: map[string]time.Time{}, Retries: map[string]string{}, Canary: map[string]*CanaryRecord{}}
 	if d.ControlFile == "" {
 		return
 	}
@@ -56,6 +59,9 @@ func (d *Daemon) loadControl() {
 	}
 	if d.ctl.Retries == nil {
 		d.ctl.Retries = map[string]string{}
+	}
+	if d.ctl.Canary == nil {
+		d.ctl.Canary = map[string]*CanaryRecord{}
 	}
 }
 
@@ -272,47 +278,70 @@ func (d *Daemon) handleBatchResume(w http.ResponseWriter, r *http.Request) {
 // recorded SKIPPED with that reason. Stopping is graceful: the run in
 // flight finishes, unless abort is asked.
 func (d *Daemon) handleBatchStop(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
 	batch := r.PathValue("batch")
 	var req struct {
 		Abort bool `json:"abort"`
 	}
 	json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&req)
-	f := d.batchFlight(batch)
-	queued, err := d.batchQueued(r, batch, f)
-	if err != nil {
+	var cause error
+	if req.Abort {
+		cause = run.ErrOperatorAbort
+	}
+	out, err := d.stopBatch(r.Context(), batch, "batch stopped by the operator before it started", cause)
+	switch {
+	case errors.Is(err, errNoBatch):
+		fail(w, http.StatusNotFound, "batch %s has no run queued or in flight", batch)
+	case err != nil:
 		fail(w, http.StatusInternalServerError, "%v", err)
-		return
+	default:
+		reply(w, http.StatusOK, out)
+	}
+}
+
+var errNoBatch = errors.New("no run of the batch is queued or in flight")
+
+// stopBatch records every queued run of a batch SKIPPED with reason and
+// takes it off the queue. The run in flight is ended with cause when cause
+// is not nil, and otherwise finishes.
+func (d *Daemon) stopBatch(ctx context.Context, batch, reason string, cause error) (BatchControl, error) {
+	out := BatchControl{Batch: batch, State: "stopped"}
+	f := d.batchFlight(batch)
+	queue, err := d.State.Queue(ctx)
+	if err != nil {
+		return out, err
+	}
+	var queued []store.QueueItem
+	for _, it := range queue {
+		if it.Batch == batch && (f == nil || it.RunID != f.runID) {
+			queued = append(queued, it)
+		}
 	}
 	if f == nil && len(queued) == 0 {
-		fail(w, http.StatusNotFound, "batch %s has no run queued or in flight", batch)
-		return
+		return out, errNoBatch
 	}
-	out := BatchControl{Batch: batch, State: "stopped"}
 	for _, it := range queued {
 		now := time.Now().UTC()
 		rec := &store.Run{ID: it.RunID, Batch: it.Batch, Lane: it.Lane, Verdict: store.Skipped,
-			VerdictReason: "batch stopped by the operator before it started", StartedAt: now, EndedAt: now, Provenance: askedProvenance(it)}
+			VerdictReason: reason, StartedAt: now, EndedAt: now, Provenance: askedProvenance(it)}
 		if suite, tid, ok := strings.Cut(it.Task, "/"); ok {
 			rec.Suite, rec.TaskID = suite, tid
 		}
 		if err := d.State.UpsertRun(ctx, rec); err != nil {
-			fail(w, http.StatusInternalServerError, "%v", err)
-			return
+			return out, err
 		}
 		if err := d.State.Unqueue(ctx, it.RunID); err != nil {
-			fail(w, http.StatusInternalServerError, "%v", err)
-			return
+			return out, err
 		}
 		out.Stopped = append(out.Stopped, it.RunID)
 	}
 	if f != nil {
 		out.InFlight = f.runID
 		switch {
-		case req.Abort && d.Abort(f.runID):
+		case cause != nil:
+			d.mu.Lock()
+			f.cancel(cause)
+			d.mu.Unlock()
 			out.Action = "aborting"
-		case req.Abort:
-			out.Action = "had already ended"
 		default:
 			out.Action = "finishes, then the batch is over"
 			// A held run would wait for ever for a resume nobody gives.
@@ -326,11 +355,10 @@ func (d *Daemon) handleBatchStop(w http.ResponseWriter, r *http.Request) {
 	err = d.saveControl()
 	d.mu.Unlock()
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "the control file: %v", err)
-		return
+		return out, fmt.Errorf("the control file: %w", err)
 	}
-	d.Log.Info("batch stopped", "batch", batch, "stopped", len(out.Stopped), "in_flight", out.InFlight, "abort", req.Abort)
-	reply(w, http.StatusOK, out)
+	d.Log.Info("batch stopped", "batch", batch, "stopped", len(out.Stopped), "in_flight", out.InFlight, "reason", reason)
+	return out, nil
 }
 
 // retryable is the set of verdicts a retry may run again: those that are

@@ -273,6 +273,7 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/runs/{id}/retry", d.handleRetry)
 	mux.HandleFunc("POST /v1/lanes/{lane}/drain", d.handleLane(true))
 	mux.HandleFunc("POST /v1/lanes/{lane}/resume", d.handleLane(false))
+	mux.HandleFunc("GET /v1/batches/{batch}", d.handleBatch)
 	mux.HandleFunc("POST /v1/batches/{batch}/pause", d.handleBatchPause)
 	mux.HandleFunc("POST /v1/batches/{batch}/resume", d.handleBatchResume)
 	mux.HandleFunc("POST /v1/batches/{batch}/stop", d.handleBatchStop)

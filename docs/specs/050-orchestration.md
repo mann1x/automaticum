@@ -108,8 +108,26 @@ ended by length, no control tokens in visible text, median length within the
 band the suite declares. Failure stops the batch. Twice, two hours ran at the
 wrong sampler before anyone looked.
 
-**Open (O22):** how many finished requests the canary waits for, and the
-length band of a task that declares none. Not built until the owner says.
+**Decided by the owner (2026-10-14), D84:** the canary judges the first 5
+finished requests of a batch. The length of the answers matters for specific
+kinds of evaluation, not in general: a band is checked only where a task or
+suite declares one, and otherwise the check is reported unchecked.
+
+**As built (milestone 4):** while a batch has a run in flight and no
+verdict, the daemon reads that run's wire capture every few seconds and
+takes the finished requests of the agent's loop (the SDK's own probes and
+requests that failed on the way are not generations), across the batch's
+runs in order, until it has five. Each is checked for an empty answer, an
+answer the server ended by length (`done_reason` `length`), and any of the
+model's own control tokens in the visible text: the tokens its tokenizer
+marks as control (type 3), read once from the endpoint's `/api/show`, such
+as `<|im_start|>` and `<|im_end|>`. Tokens of other types, such as
+`<think>` and `<tool_call>`, are not control tokens. An endpoint that cannot
+list the tokens leaves that check unchecked, never passed. One problem stops
+the batch: the run in flight is aborted ("the canary stopped the batch: ..."),
+the queued runs are recorded `SKIPPED` with the canary's words, and a
+notification goes out as for a refusing gate. The verdict, sound or not, is
+kept in `control.json` and shown by `automaticum batch show <batch>`.
 
 ## 4. Control
 

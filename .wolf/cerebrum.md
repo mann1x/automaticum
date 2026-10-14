@@ -135,3 +135,4 @@
 - 2026-10-13 D76: looping detectors use every match (the older first-match-only code is a blind spot); published loop rates are not reworked; every finding records `matching` and the library version.
 - 2026-10-13 D75: detector thresholds are the SDK guards' own (measured on recorded sessions), never chosen here; runaway has no default size. Closes O19, O20.
 - 2026-10-13 D74: tag `qwen36-base-mtp_tb:27b-q4km-128k` is the base Qwen 3.6 27B model (variant `base`); GPU of `windows-2` is an RTX 3090, 24 GB; the ten real runs of that day got these facts added, marked as added later (`run identify`).
+- 2026-10-14 D84: canary judges the first 5 finished requests of a batch; a length band only where a task/suite declares one (length matters for specific evaluations, not in general); no retry of PASS/FAIL/TIMEOUT. Control tokens come from the model's tokenizer (type 3 via /api/show verbose), never a hand list.

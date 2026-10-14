@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"net/url"
 	"sort"
+	"strings"
 
 	"github.com/mann1x/automaticum/internal/daemon"
+	"github.com/mann1x/automaticum/internal/human"
 )
 
 // laneControl drains a lane or lets it start runs again.
@@ -138,4 +140,60 @@ func retry(noun string) func(context.Context, []string) error {
 		}
 		return nil
 	}
+}
+
+// batchShow prints one batch: its runs by state, whether it is paused, and
+// what the canary said of its first requests.
+func batchShow(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("batch show", flag.ExitOnError)
+	_, dial := addClient(fs)
+	rest := parse(fs, args)
+	if len(rest) != 1 {
+		return fmt.Errorf("usage: automaticum batch show <batch>")
+	}
+	c, err := dial()
+	if err != nil {
+		return err
+	}
+	var v daemon.BatchView
+	if err := c.do(ctx, "GET", "/v1/batches/"+url.PathEscape(rest[0]), nil, &v); err != nil {
+		return err
+	}
+	if c.json {
+		return printJSON(v)
+	}
+	fmt.Printf("batch            %s\n", v.Batch)
+	if v.Paused {
+		fmt.Printf("state            paused\n")
+	}
+	if v.InFlight != "" {
+		fmt.Printf("in flight        %s\n", v.InFlight)
+	}
+	fmt.Printf("queued           %d\n", len(v.Queued))
+	verdicts := make([]string, 0, len(v.Finished))
+	for k := range v.Finished {
+		verdicts = append(verdicts, k)
+	}
+	sort.Strings(verdicts)
+	for _, k := range verdicts {
+		fmt.Printf("%-16s %d\n", k, v.Finished[k])
+	}
+	switch {
+	case v.Canary == nil:
+		fmt.Printf("canary           not judged yet\n")
+	case v.Canary.Stopped:
+		fmt.Printf("canary           stopped the batch at %s\n", human.Time(v.Canary.At))
+	default:
+		fmt.Printf("canary           sound at %s\n", human.Time(v.Canary.At))
+	}
+	if v.Canary != nil {
+		fmt.Printf("  judged         %s\n", strings.Join(v.Canary.Requests, " "))
+		for _, p := range v.Canary.Problems {
+			fmt.Printf("  problem        %s\n", p)
+		}
+		for _, u := range v.Canary.Unchecked {
+			fmt.Printf("  unchecked      %s\n", u)
+		}
+	}
+	return nil
 }

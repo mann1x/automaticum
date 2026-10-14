@@ -922,3 +922,25 @@
 |------|--------|---------|---------|--------|
 | 15:18 | Created internal/daemon/control.go | — | ~4075 |
 | 15:40 | Control at lane and batch level: lane drain/resume, batch pause/resume/stop/retry, run retry; control.json; tests TestLaneDrain, TestBatchPauseStopRetry, TestAskedOf; 050 §4 as built, 090 §1, O22 canary numbers | internal/daemon/control.go, daemon.go, api.go, daemon_test.go, cmd/automaticum/control_cmds.go, main.go, client_cmds.go, cmd/automaticumd/main.go, specs 050 090 decisions | make test green; not deployed (run 8 paused in flight) | ~30000 |
+
+## Session: 2026-10-14 15:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 15:23
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 15:23
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 15:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:49 | Created internal/daemon/canary.go | — | ~1149 |
+| 16:10 | Canary (D84): ingest.Canary/Finished/Request.Visible, run.ControlTokens, daemon canary loop stops the batch, batch show; O22 closed as D84; 050 §3.3 as built | internal/ingest/canary.go, wire.go, run/probe.go, daemon/canary.go, control.go, cmd/automaticum/control_cmds.go, specs | make test green; not deployed | ~25000 |
