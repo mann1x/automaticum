@@ -944,3 +944,24 @@
 |------|--------|---------|---------|--------|
 | 15:49 | Created internal/daemon/canary.go | — | ~1149 |
 | 16:10 | Canary (D84): ingest.Canary/Finished/Request.Visible, run.ControlTokens, daemon canary loop stops the batch, batch show; O22 closed as D84; 050 §3.3 as built | internal/ingest/canary.go, wire.go, run/probe.go, daemon/canary.go, control.go, cmd/automaticum/control_cmds.go, specs | make test green; not deployed | ~25000 |
+
+## Session: 2026-10-14 15:51
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 15:51
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 15:51
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 15:53
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:58 | Batch D81 part 2 ended (9 PASS + run 8 INVALID by the pause's reload); bug-016 tag parameters compared order-free (run.ParametersKey); deployed build with control + canary; smoke-tested drain, batch show, retry dry-run | internal/run/probe.go, daemon/compare.go, identity_test.go, buglog | deployed, daemon up | ~8000 |

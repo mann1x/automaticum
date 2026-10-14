@@ -245,6 +245,24 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-13T16:40:00+02:00"
+    },
+    {
+      "id": "bug-016",
+      "timestamp": "2026-10-14T15:54:00+02:00",
+      "error_message": "compare: tag parameters CHANGED BETWEEN RUNS for both arms of batch D81, although every value was the same",
+      "file": "internal/run/probe.go",
+      "root_cause": "the tag's parameters were hashed and compared as the server's raw text; xOllama 0.40.3-xollama.3 and .4 list the same parameters in a different order. Identity.Changed used the same raw comparison, so a reordering between the probes before and after a run could have made it INVALID",
+      "fix": "run.ParametersKey (one parameter per line, sorted, single space) is what compare hashes and Identity.Changed compares; the recorded text stays the server's own; TestParametersKey",
+      "tags": [
+        "compare",
+        "endpoint identity",
+        "parameters",
+        "false change",
+        "xollama"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-14T15:54:00+02:00"
     }
   ]
 }

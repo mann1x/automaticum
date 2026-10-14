@@ -158,3 +158,19 @@ func TestControlTokens(t *testing.T) {
 		t.Errorf("%v %v", got, err)
 	}
 }
+
+// A server that lists the same parameters in another order has not changed
+// them; another value has.
+func TestParametersKey(t *testing.T) {
+	a := "num_ctx                        131072\ntemperature                    1\nstop                           \"<|im_end|>\""
+	b := "temperature  1\nstop \"<|im_end|>\"\nnum_ctx 131072\n"
+	if ParametersKey(a) != ParametersKey(b) {
+		t.Errorf("%q != %q", ParametersKey(a), ParametersKey(b))
+	}
+	if got := (Identity{Parameters: a}).Changed(Identity{Parameters: b}); len(got) != 0 {
+		t.Errorf("a reordering is a change: %v", got)
+	}
+	if got := (Identity{Parameters: a}).Changed(Identity{Parameters: strings.Replace(b, "1\n", "0.8\n", 1)}); len(got) != 1 {
+		t.Errorf("another value is not a change: %v", got)
+	}
+}

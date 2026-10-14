@@ -69,10 +69,26 @@ func (a Identity) Changed(b Identity) []string {
 	cmp("server version", a.ServerVersion, b.ServerVersion)
 	cmp("model digest", a.Digest, b.Digest)
 	cmp("template", a.TemplateSHA256, b.TemplateSHA256)
-	cmp("parameters", a.Parameters, b.Parameters)
+	cmp("parameters", ParametersKey(a.Parameters), ParametersKey(b.Parameters))
 	cmp("renderer", a.Renderer, b.Renderer)
 	cmp("parser", a.Parser, b.Parser)
 	return out
+}
+
+// ParametersKey is a tag's parameters in a form that compares equal when
+// they hold the same values: one parameter per line, the lines sorted, the
+// space between name and value made single. A server lists them in an
+// order of its own, which another release of it may change.
+func ParametersKey(s string) string {
+	var lines []string
+	for _, l := range strings.Split(s, "\n") {
+		l = strings.TrimSpace(l)
+		if f := strings.Fields(l); len(f) > 0 {
+			lines = append(lines, f[0]+" "+strings.TrimSpace(strings.TrimPrefix(l, f[0])))
+		}
+	}
+	sort.Strings(lines)
+	return strings.Join(lines, "\n")
 }
 
 // Probe asks an endpoint for its identity and the model's. An error means

@@ -11,6 +11,7 @@ import (
 
 	"github.com/mann1x/automaticum/internal/config"
 	"github.com/mann1x/automaticum/internal/stats"
+	"github.com/mann1x/automaticum/internal/run"
 	"github.com/mann1x/automaticum/internal/store"
 )
 
@@ -103,7 +104,7 @@ func served(provenance json.RawMessage) map[string]string {
 	}
 	params := ""
 	if b.Parameters != "" {
-		sum := sha256.Sum256([]byte(b.Parameters))
+		sum := sha256.Sum256([]byte(run.ParametersKey(b.Parameters)))
 		params = hex.EncodeToString(sum[:6])
 	}
 	for fact, value := range map[string]string{"server version": b.ServerVersion, "model digest": cut(b.Digest), "quantization": b.Details.Quantization,
