@@ -199,7 +199,7 @@ func (f *fakeRunner) Execute(ctx context.Context, req run.Request) (*store.Run, 
 	f.seen = append(f.seen, req.ID)
 	hold := f.hold
 	f.mu.Unlock()
-	r := &store.Run{ID: req.ID, Batch: req.Batch, Suite: req.Task.Suite, TaskID: req.Task.ID, Lane: req.Lane, ArmID: req.Arm.ID,
+	r := &store.Run{ID: req.ID, Batch: req.Batch, Campaign: req.Campaign, Suite: req.Task.Suite, TaskID: req.Task.ID, Lane: req.Lane, ArmID: req.Arm.ID,
 		StartedAt: time.Now().UTC(), Harness: req.Arm.Harness.SDKRelease, Verdict: store.Pass, VerdictReason: "oracle passed"}
 	if req.OnStart != nil {
 		req.OnStart(r, "container-"+req.ID)
@@ -1260,5 +1260,161 @@ func TestCell(t *testing.T) {
 	}
 	if superseded != 1 {
 		t.Errorf("rows: %+v", v.Rows)
+	}
+}
+
+// The stop conditions of a batch or campaign, each alone.
+func TestStopReason(t *testing.T) {
+	now := time.Date(2026, 10, 14, 20, 0, 0, 0, time.UTC)
+	run := func(id, arm string, v store.Verdict) store.Run { return store.Run{ID: id, ArmID: arm, Verdict: v} }
+	recs := []store.Run{run("1", "a", store.Fail), run("2", "b", store.Pass), run("3", "a", store.Pass), run("4", "b", store.Pass), run("5", "a", store.Pass)}
+	if why, _ := stopReason(config.CampaignStop{}, recs, now); why != "" {
+		t.Errorf("no condition stopped: %s", why)
+	}
+	if why, _ := stopReason(config.CampaignStop{AfterConsecutivePass: 2}, recs, now); why == "" {
+		t.Error("every arm's last two passed and it did not stop")
+	}
+	if why, _ := stopReason(config.CampaignStop{AfterConsecutivePass: 3}, recs, now); why != "" {
+		t.Errorf("arm a has a FAIL among its last three: %s", why)
+	}
+	if why, _ := stopReason(config.CampaignStop{OnInvalid: true}, recs, now); why != "" {
+		t.Errorf("no INVALID: %s", why)
+	}
+	if why, _ := stopReason(config.CampaignStop{OnInvalid: true}, append(recs, run("6", "b", store.Invalid)), now); !strings.Contains(why, "INVALID") {
+		t.Errorf("INVALID: %q", why)
+	}
+	if why, timed := stopReason(config.CampaignStop{At: now.Add(-time.Minute)}, nil, now); why == "" || !timed {
+		t.Errorf("time: %q %v", why, timed)
+	}
+	if why, _ := stopReason(config.CampaignStop{At: now.Add(time.Minute)}, nil, now); why != "" {
+		t.Errorf("before its time: %s", why)
+	}
+}
+
+// campaignRepo is a checkout with the real arms and tasks and one campaign.
+func campaignRepo(t *testing.T, name, text string) string {
+	dir := t.TempDir()
+	for _, sub := range []string{"arms", "tasks"} {
+		abs, _ := filepath.Abs(filepath.Join("../..", sub))
+		if err := os.Symlink(abs, filepath.Join(dir, sub)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	os.MkdirAll(filepath.Join(dir, "campaigns"), 0o755)
+	os.WriteFile(filepath.Join(dir, "campaigns", name+".toml"), []byte(text), 0o644)
+	return dir
+}
+
+// A campaign runs its batches in order, each queued when the one before
+// has ended, and its runs say which campaign they belong to. A start
+// repeated starts nothing; pause holds the next batch; stop ends it.
+func TestCampaign(t *testing.T) {
+	g := newRig(t, false)
+	g.d.Repo = campaignRepo(t, "c1", `
+description = "two batches"
+[[batch]]
+name = "first"
+arms = ["stub"]
+tasks = ["demo/answer"]
+runs = 2
+[[batch]]
+name = "second"
+arms = ["stub"]
+tasks = ["demo/answer", "custom/manic_miner"]
+runs = 1
+[batch.stop]
+on_invalid = true
+`)
+	g.d.CampaignEvery = 10 * time.Millisecond
+	go func() { g.d.Serve(g.ctx()); close(g.served) }()
+	var v CampaignView
+	if code := g.call("POST", "/v1/campaigns", CampaignRequest{Name: "c1"}, &v); code != 202 || len(v.Batches) != 2 {
+		t.Fatalf("start: %d %+v", code, v)
+	}
+	if code := g.call("POST", "/v1/campaigns", CampaignRequest{Name: "c1"}, &v); code != 200 || !v.Repeated {
+		t.Errorf("repeated start: %d %+v", code, v)
+	}
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		g.call("GET", "/v1/campaigns/c1", nil, &v)
+		if v.State != "running" {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if v.State != "finished" || v.Batches[0].State != "finished" || v.Batches[1].State != "finished" {
+		t.Fatalf("campaign: %+v", v)
+	}
+	if !v.Batches[1].Started.After(v.Batches[0].Ended) && !v.Batches[1].Started.Equal(v.Batches[0].Ended) {
+		t.Errorf("the second batch started before the first ended: %+v", v.Batches)
+	}
+	ctx := context.Background()
+	for _, b := range v.Batches {
+		runs, _ := g.state.ListRuns(ctx, store.RunFilter{Batch: b.Batch})
+		want := map[string]int{"first": 2, "second": 2}[b.Name]
+		if len(runs) != want {
+			t.Errorf("%s: %d runs", b.Name, len(runs))
+		}
+		for _, r := range runs {
+			if r.Campaign != "c1" || r.Verdict != store.Pass {
+				t.Errorf("%s: %+v", r.ID, r)
+			}
+		}
+	}
+	if code := g.call("POST", "/v1/campaigns/c1/pause", nil, nil); code != 409 {
+		t.Errorf("a finished campaign was paused: %d", code)
+	}
+	var list []CampaignView
+	if g.call("GET", "/v1/campaigns", nil, &list); len(list) != 1 {
+		t.Errorf("list: %+v", list)
+	}
+}
+
+// Pausing a campaign holds its batch; resuming lets it go on; stopping ends
+// it with the queued runs SKIPPED.
+func TestCampaignPauseStop(t *testing.T) {
+	g := newRig(t, false)
+	g.d.Repo = campaignRepo(t, "c2", `
+[[batch]]
+name = "only"
+arms = ["stub"]
+tasks = ["demo/answer"]
+runs = 3
+[[batch]]
+name = "never"
+arms = ["stub"]
+tasks = ["demo/answer"]
+runs = 1
+`)
+	g.d.CampaignEvery = 10 * time.Millisecond
+	hold := make(chan struct{})
+	g.runner.hold, g.runner.started = hold, make(chan string, 8)
+	go func() { g.d.Serve(g.ctx()); close(g.served) }()
+	if code := g.call("POST", "/v1/campaigns", CampaignRequest{Name: "c2"}, nil); code != 202 {
+		t.Fatalf("start: %d", code)
+	}
+	first := <-g.runner.started
+	var v CampaignView
+	if code := g.call("POST", "/v1/campaigns/c2/pause", nil, &v); code != 200 || v.State != "paused" {
+		t.Fatalf("pause: %d %+v", code, v)
+	}
+	close(hold)
+	g.waitFinished(first)
+	time.Sleep(100 * time.Millisecond)
+	if len(g.status().Queue) != 2 {
+		t.Errorf("a paused campaign's batch went on: %+v", g.status().Queue)
+	}
+	if code := g.call("POST", "/v1/campaigns/c2/stop", nil, &v); code != 200 || v.State != "stopped" || v.Batches[1].State != "stopped" {
+		t.Fatalf("stop: %d %+v", code, v)
+	}
+	runs, _ := g.state.ListRuns(context.Background(), store.RunFilter{Batch: v.Batches[0].Batch})
+	skipped := 0
+	for _, r := range runs {
+		if r.Verdict == store.Skipped && strings.Contains(r.VerdictReason, "campaign c2 stopped") {
+			skipped++
+		}
+	}
+	if skipped != 2 || v.Batches[1].Batch != "" {
+		t.Errorf("after the stop: %d skipped, %+v", skipped, v.Batches)
 	}
 }

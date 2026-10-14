@@ -288,6 +288,7 @@ func runShow(ctx context.Context, args []string) error {
 	line("task", fmt.Sprintf("%s, version %d", r.Task, r.TaskVersion))
 	line("arm", strings.TrimSpace(r.Arm+" "+r.ArmID))
 	line("batch", r.Batch)
+	line("campaign", r.Campaign)
 	line("retries", r.RetryOf)
 	line("retried by", r.RetriedBy)
 	if r.Host != "" {

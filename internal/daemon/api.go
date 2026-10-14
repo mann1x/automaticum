@@ -122,6 +122,7 @@ type RunView struct {
 	ID            string    `json:"id"`
 	State         string    `json:"state"` // queued, running, finished
 	Batch         string    `json:"batch,omitempty"`
+	Campaign      string    `json:"campaign,omitempty"`
 	Task          string    `json:"task"`
 	TaskVersion   int       `json:"task_version,omitempty"`
 	Arm           string    `json:"arm,omitempty"`
@@ -226,7 +227,7 @@ type BlobView struct {
 
 func view(r *store.Run, full bool) RunView {
 	v := RunView{
-		ID: r.ID, State: "finished", Batch: r.Batch, Task: r.Suite + "/" + r.TaskID, TaskVersion: r.TaskVersion, ArmID: r.ArmID,
+		ID: r.ID, State: "finished", Batch: r.Batch, Campaign: r.Campaign, Task: r.Suite + "/" + r.TaskID, TaskVersion: r.TaskVersion, ArmID: r.ArmID,
 		Lane: r.Lane, Host: r.Host, Verdict: string(r.Verdict), VerdictReason: r.VerdictReason, PriorVerdict: string(r.PriorVerdict),
 		AgentEnd: r.AgentEnd, Claimed: r.ClaimedSuccess, StartedAt: r.StartedAt, EndedAt: r.EndedAt, WallMS: r.WallMS,
 		Provider: r.Provider, Model: r.Model, Endpoint: r.Endpoint, Thinking: r.Thinking, SDKRelease: r.Harness, Imported: r.Imported, Paused: r.Paused,
@@ -280,6 +281,12 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/lanes/{lane}/drain", d.handleLane(true))
 	mux.HandleFunc("POST /v1/lanes/{lane}/resume", d.handleLane(false))
 	mux.HandleFunc("GET /v1/batches/{batch}", d.handleBatch)
+	mux.HandleFunc("POST /v1/campaigns", d.handleCampaignStart)
+	mux.HandleFunc("GET /v1/campaigns", d.handleCampaigns)
+	mux.HandleFunc("GET /v1/campaigns/{name}", d.handleCampaign)
+	mux.HandleFunc("POST /v1/campaigns/{name}/pause", d.handleCampaignControl("pause"))
+	mux.HandleFunc("POST /v1/campaigns/{name}/resume", d.handleCampaignControl("resume"))
+	mux.HandleFunc("POST /v1/campaigns/{name}/stop", d.handleCampaignControl("stop"))
 	mux.HandleFunc("GET /v1/batches/{batch}/cell", d.handleCell)
 	mux.HandleFunc("POST /v1/batches/{batch}/pause", d.handleBatchPause)
 	mux.HandleFunc("POST /v1/batches/{batch}/resume", d.handleBatchResume)
@@ -383,7 +390,6 @@ func (d *Daemon) handleStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *Daemon) handleStart(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
 	var req StartRequest
 	dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 	dec.DisallowUnknownFields()
@@ -391,6 +397,19 @@ func (d *Daemon) handleStart(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusBadRequest, "the request is not understood: %v", err)
 		return
 	}
+	resp, code, err := d.start(r.Context(), req)
+	if err != nil {
+		fail(w, code, "%v", err)
+		return
+	}
+	reply(w, code, resp)
+}
+
+// start queues the runs a StartRequest asks for, or says what it would
+// queue. The status says how it went: 200 for a dry run or a repeated key,
+// 202 when runs were queued; with an error, what the error means.
+func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, int, error) {
+	var resp StartResponse
 	if req.Count == 0 {
 		req.Count = 1
 	}
@@ -406,30 +425,25 @@ func (d *Daemon) handleStart(w http.ResponseWriter, r *http.Request) {
 		taskNames = append([]string{req.Task}, taskNames...)
 	}
 	if len(names) == 0 || len(taskNames) == 0 || req.Count < 1 || req.Count*len(names)*len(taskNames) > 1000 {
-		fail(w, http.StatusBadRequest, "a run needs an arm, a task and at most 1000 runs in all")
-		return
+		return resp, http.StatusBadRequest, fmt.Errorf("a run needs an arm, a task and at most 1000 runs in all")
 	}
 	if req.Order != "interleaved" && req.Order != "blocks" {
-		fail(w, http.StatusBadRequest, "the order is \"interleaved\" or \"blocks\", not %q", req.Order)
-		return
+		return resp, http.StatusBadRequest, fmt.Errorf("the order is \"interleaved\" or \"blocks\", not %q", req.Order)
 	}
 	d.mu.Lock()
 	draining := d.draining
 	d.mu.Unlock()
 	if draining && !req.DryRun {
-		fail(w, http.StatusConflict, "the daemon is draining and takes no new runs")
-		return
+		return resp, http.StatusConflict, fmt.Errorf("the daemon is draining and takes no new runs")
 	}
 	var tks []*task.Task
 	for _, name := range taskNames {
 		t, err := task.Find(filepath.Join(d.Repo, "tasks"), name)
 		if err != nil {
-			fail(w, http.StatusUnprocessableEntity, "%v", err)
-			return
+			return resp, http.StatusUnprocessableEntity, err
 		}
 		if slices.ContainsFunc(tks, func(x *task.Task) bool { return x.Name() == t.Name() }) {
-			fail(w, http.StatusBadRequest, "task %s is named twice", t.Name())
-			return
+			return resp, http.StatusBadRequest, fmt.Errorf("task %s is named twice", t.Name())
 		}
 		tks = append(tks, t)
 	}
@@ -439,38 +453,32 @@ func (d *Daemon) handleStart(w http.ResponseWriter, r *http.Request) {
 	for _, name := range names {
 		a, err := config.LoadArm(filepath.Join(d.Repo, "arms"), name)
 		if err != nil {
-			fail(w, http.StatusUnprocessableEntity, "%v", err)
-			return
+			return resp, http.StatusUnprocessableEntity, err
 		}
 		if a.Template {
-			fail(w, http.StatusUnprocessableEntity, "%s is a template, not an arm", name)
-			return
+			return resp, http.StatusUnprocessableEntity, fmt.Errorf("%s is a template, not an arm", name)
 		}
 		if d.Local.Endpoints[a.Endpoint] == nil {
-			fail(w, http.StatusUnprocessableEntity, "arm %s names endpoint %q, which this installation does not have", name, a.Endpoint)
-			return
+			return resp, http.StatusUnprocessableEntity, fmt.Errorf("arm %s names endpoint %q, which this installation does not have", name, a.Endpoint)
 		}
 		l, err := d.laneFor(a, req.Lane)
 		if err != nil {
-			fail(w, http.StatusUnprocessableEntity, "%v", err)
-			return
+			return resp, http.StatusUnprocessableEntity, err
 		}
 		// The arms of one batch alternate on one lane: on two lanes the
 		// difference between the lanes would land on the arms.
 		if lane != "" && l != lane {
-			fail(w, http.StatusUnprocessableEntity, "arm %s would run on lane %s and %s on lane %s; name one lane both may use", names[0], lane, name, l)
-			return
+			return resp, http.StatusUnprocessableEntity, fmt.Errorf("arm %s would run on lane %s and %s on lane %s; name one lane both may use", names[0], lane, name, l)
 		}
 		if _, twice := ids[name]; twice {
-			fail(w, http.StatusBadRequest, "arm %s is named twice", name)
-			return
+			return resp, http.StatusBadRequest, fmt.Errorf("arm %s is named twice", name)
 		}
 		if arm == nil {
 			arm = a
 		}
 		lane, ids[name] = l, a.ID
 	}
-	resp := StartResponse{Lane: lane, ArmID: arm.ID, Task: tk.Name(), Image: LaneImage(tk.Layers), DryRun: req.DryRun}
+	resp = StartResponse{Lane: lane, ArmID: arm.ID, Task: tk.Name(), Image: LaneImage(tk.Layers), DryRun: req.DryRun}
 	if len(names) > 1 {
 		resp.ArmIDs = ids
 	}
@@ -482,8 +490,7 @@ func (d *Daemon) handleStart(w http.ResponseWriter, r *http.Request) {
 		var ids []string
 		queue, err := d.State.Queue(ctx)
 		if err != nil {
-			fail(w, http.StatusInternalServerError, "%v", err)
-			return
+			return resp, http.StatusInternalServerError, err
 		}
 		for _, it := range queue {
 			if it.Batch == resp.Batch {
@@ -492,8 +499,7 @@ func (d *Daemon) handleStart(w http.ResponseWriter, r *http.Request) {
 		}
 		runs, err := d.State.ListRuns(ctx, store.RunFilter{Batch: resp.Batch})
 		if err != nil {
-			fail(w, http.StatusInternalServerError, "%v", err)
-			return
+			return resp, http.StatusInternalServerError, err
 		}
 		for _, r := range runs {
 			ids = append(ids, r.ID)
@@ -501,8 +507,7 @@ func (d *Daemon) handleStart(w http.ResponseWriter, r *http.Request) {
 		if len(ids) > 0 {
 			sort.Strings(ids)
 			resp.RunIDs, resp.Repeated = dedupe(ids), true
-			reply(w, http.StatusOK, resp)
-			return
+			return resp, http.StatusOK, nil
 		}
 	}
 	// The arm of each run, in the order they are queued.
@@ -566,15 +571,13 @@ func (d *Daemon) handleStart(w http.ResponseWriter, r *http.Request) {
 		resp.RunIDs = append(resp.RunIDs, id)
 	}
 	if req.DryRun {
-		reply(w, http.StatusOK, resp)
-		return
+		return resp, http.StatusOK, nil
 	}
 	if err := d.State.Enqueue(ctx, items); err != nil {
-		fail(w, http.StatusInternalServerError, "%v", err)
-		return
+		return resp, http.StatusInternalServerError, err
 	}
 	d.poke()
-	reply(w, http.StatusAccepted, resp)
+	return resp, http.StatusAccepted, nil
 }
 
 func dedupe(sorted []string) []string {

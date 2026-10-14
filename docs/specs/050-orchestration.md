@@ -1,6 +1,6 @@
 # 050 — Orchestration: scheduling, gates, control
 
-**Status:** draft 0.12, 2026-10-14.
+**Status:** draft 0.13, 2026-10-14.
 
 ## 1. Scheduling
 
@@ -10,6 +10,23 @@
   drift in the host does not land on one arm. One host generates at about half
   the speed of another because of a power cap; lane skew is real.
 - A campaign is data (030 §6): batches, order, gates, stop conditions.
+  **As built (milestone 4):** `automaticum campaign start <name>` reads
+  `campaigns/<name>.toml` (030 §6), checks that every batch could be queued,
+  and keeps the definition as read: an edit to the file affects the next
+  start only. The daemon then starts each batch, under the key
+  `<campaign>-<batch>` (so a batch is never queued twice), when the one
+  before it has ended, and every few seconds applies the stop conditions;
+  a stopped batch's queued runs are recorded `SKIPPED` with the condition,
+  and its run in flight finishes. Each run records its campaign. The state
+  is in `control.json` and survives a restart. Starting a campaign again
+  starts nothing and shows where it is. `campaign pause` holds the current
+  batch as `batch pause` does (its run in flight held, the endpoint freed),
+  `campaign resume` lets it go on, `campaign stop` ends it gracefully. Its
+  end, finished or stopped, is notified as a refusing gate is.
+  `automaticum campaign show <name>` gives the state of each batch and, below
+  it, each batch compared (070 §6): the campaign's report. Not built yet:
+  gates of a campaign's own, priorities and reservations, and running one
+  campaign across two hosts (agent mode, milestone 7).
 - Priorities, and reservations ("this lane is mine until 08:00").
 - Other things use these GPUs. A lane can be marked busy by an external signal
   and the scheduler waits. It never preempts someone else's work. One heavy job
@@ -227,7 +244,7 @@ later):
   read drains every lane, so nothing the operator stopped starts by
   accident.
 - `requeue` is not built: with retry and the queue's order it had no use of
-  its own yet. Pause at campaign level comes with campaigns.
+  its own yet. Pause at campaign level: `campaign pause|resume|stop` (§1).
 
 ## 5. Watchdogs
 

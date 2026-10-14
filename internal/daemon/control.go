@@ -30,12 +30,14 @@ type control struct {
 	Retries map[string]string `json:"retries,omitempty"`
 	// Canary holds the canary's verdict on each batch it judged.
 	Canary map[string]*CanaryRecord `json:"canary,omitempty"`
+	// Campaigns are the campaigns started, by name.
+	Campaigns map[string]*CampaignState `json:"campaigns,omitempty"`
 }
 
 // loadControl reads the control file once. A missing file is an empty one.
 // It is called with d.mu held.
 func (d *Daemon) loadControl() {
-	d.ctl = control{Drained: map[string]time.Time{}, Held: map[string]time.Time{}, Retries: map[string]string{}, Canary: map[string]*CanaryRecord{}}
+	d.ctl = control{Drained: map[string]time.Time{}, Held: map[string]time.Time{}, Retries: map[string]string{}, Canary: map[string]*CanaryRecord{}, Campaigns: map[string]*CampaignState{}}
 	if d.ControlFile == "" {
 		return
 	}
@@ -63,6 +65,9 @@ func (d *Daemon) loadControl() {
 	}
 	if d.ctl.Canary == nil {
 		d.ctl.Canary = map[string]*CanaryRecord{}
+	}
+	if d.ctl.Campaigns == nil {
+		d.ctl.Campaigns = map[string]*CampaignState{}
 	}
 }
 

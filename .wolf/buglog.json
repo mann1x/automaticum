@@ -279,6 +279,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-14T17:12:00+02:00"
+    },
+    {
+      "id": "bug-018",
+      "timestamp": "2026-10-14T17:40:00+02:00",
+      "error_message": "vet: undefined: resp / too many return values, after moving a handler's body into a function with a bulk regex replace",
+      "file": "internal/daemon/api.go",
+      "root_cause": "the replace of fail(...)+return also rewrote the new wrapper's own decode error, and early returns used resp before its declaration; the same happened with compareView's reply",
+      "fix": "declare the result at the top of the new function; check the wrapper by hand after a bulk replace; vet after each step",
+      "tags": [
+        "refactor",
+        "regex",
+        "handler"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-14T17:40:00+02:00"
     }
   ]
 }

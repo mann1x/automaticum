@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-14T15:20:39.894Z
-> Files: 236 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-14T15:32:38.626Z
+> Files: 240 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -98,12 +98,13 @@
 
 ## cmd/automaticum/
 
+- `campaign_cmds.go` — campaign start|ls|show (with each batch's compare)|pause|resume|stop, printCampaign (~1500 tok)
 - `cell_cmds.go` — Declares exitCode (~1949 tok)
+- `cell_cmds.go` — cell run: start or resume by key, progress lines, waits through daemon restarts, writeCell (runs.jsonl, basis.txt, refusal.json, automaticum_result.json last), exit codes 0/10/20/30/70 (~2300 tok)
 - `client_cmds.go` — client (143 fields) (~7562 tok)
 - `compare_cmds.go` — Declares list (~2036 tok)
 - `config_cmds_test.go` — TestParseInterspersed (~116 tok)
 - `config_cmds.go` — place (119 fields) (~3088 tok)
-- `cell_cmds.go` — cell run: start or resume by key, progress lines, waits through daemon restarts, writeCell (runs.jsonl, basis.txt, refusal.json, automaticum_result.json last), exit codes 0/10/20/30/70 (~2300 tok)
 - `control_cmds.go` — lane drain|resume, batch pause|resume|stop|retry, run retry (~1300 tok)
 - `image_cmds.go` (~1096 tok)
 - `main.go` — Command automaticum is the command line of automaticum. (~1553 tok)
@@ -169,7 +170,10 @@
 
 ## internal/config/
 
+- `campaign.go` — Campaign, CampaignBatch, CampaignStop, LoadCampaign (strict TOML, sha256), Validate (~1000 tok)
+- `campaign_test.go` — TestLoadCampaign (~500 tok)
 - `arm.go` — loads automaticum's configuration: arms, lanes, endpoints (~7474 tok)
+- `campaign.go` — Struct: Campaign (~1165 tok)
 - `config_test.go` — TestRepositoryArms, TestArmValidation, TestNothingIsDefaulted, TestExtendsAndIdentity + 3 more (~3694 tok)
 - `local.go` — Local (77 fields); methods: Token, APIKey (~2391 tok)
 - `model_test.go` — TestModels (~532 tok)
@@ -181,8 +185,10 @@
 - `api.go` — HTTP handlers: reply, fail (~10748 tok)
 - `basis.go` — Struct: Basis (~2851 tok)
 - `basis.go` — Basis/BasisField (020 §5), basisFields order, basisOfRun from record+metrics (analysis.version → detectors), basisOf (mixed, sha256), DiffBasis, BasisGroup, handleBasis (~2900 tok)
-- `cell.go` — CellResult (automaticum.cell/1), CellRow, CellView, Refusal, handleCell (counts by last attempt, superseded retries, warnings, refusal 20/30), cellNumbers, BasisText (~3900 tok)
+- `campaign.go` — Struct: CampaignState (~3432 tok)
 - `canary.go` — first-generations canary (D84): CanaryRecord, canaryLoop/canaryTick reading RunsDir/<run>/out/wire.jsonl, canaryStop, controlTokens; BatchView + handleBatch (~1900 tok)
+- `campaign.go` — CampaignState/CampaignBatchState (in control.json), snapshot, campaignLoop/Tick/Step (start next batch by key <campaign>-<batch>, stop conditions), stopReason, endCampaign (notify), handlers start/ls/show/pause/resume/stop (~3500 tok)
+- `cell.go` — CellResult (automaticum.cell/1), CellRow, CellView, Refusal, handleCell (counts by last attempt, superseded retries, warnings, refusal 20/30), cellNumbers, BasisText (~3900 tok)
 - `cell.go` — Struct: CellResult (~3712 tok)
 - `compare.go` — CompareView (75 fields) (~2458 tok)
 - `control.go` — control (drained lanes, held batches, retries; control.json), handleLane, handleBatchPause/Resume/Stop, handleRetry, askedOf, askedProvenance (~4300 tok)

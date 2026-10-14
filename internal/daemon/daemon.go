@@ -72,7 +72,10 @@ type Daemon struct {
 	// CanaryEvery is how often the canary reads the runs in flight; zero
 	// means every five seconds. ControlTokens, when set, replaces asking
 	// the endpoint for a model's control tokens.
-	CanaryEvery   time.Duration
+	CanaryEvery time.Duration
+	// CampaignEvery is how often the campaigns are moved on; zero means
+	// every five seconds.
+	CampaignEvery time.Duration
 	ControlTokens func(ctx context.Context, arm string) ([]string, error)
 
 	mu       sync.Mutex
@@ -87,6 +90,8 @@ type Daemon struct {
 	holds    map[string]time.Time
 	notified map[string]bool
 	ctl      control
+	// campaignMu makes the campaigns move one step at a time.
+	campaignMu sync.Mutex
 }
 
 // flight is a run in flight on a lane.
@@ -305,6 +310,7 @@ func (d *Daemon) Serve(ctx context.Context) {
 	canary, stopCanary := context.WithCancel(ctx)
 	defer stopCanary()
 	go d.canaryLoop(canary)
+	go d.campaignLoop(canary)
 	for {
 		d.mu.Lock()
 		draining := d.draining
@@ -449,6 +455,9 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 		log.Warn("run skipped", "reason", reason)
 		done()
 	}
+	d.mu.Lock()
+	campaign := d.campaignOf(it.Batch)
+	d.mu.Unlock()
 	// The arm and the task are read now and fixed from here on.
 	arm, err := config.LoadArm(filepath.Join(d.Repo, "arms"), it.Arm)
 	if err != nil {
@@ -515,7 +524,7 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 	setLane("running", det)
 	log.Info("run starts", "arm", it.Arm, "task", it.Task)
 	r, err := d.Runner.Execute(ctx, run.Request{
-		ID: it.RunID, Arm: arm, Task: tk, Lane: it.Lane, Image: LaneImage(tk.Layers), Batch: it.Batch, Gates: answers, Identity: models[arm.Model.Model], Unloaded: unloaded,
+		ID: it.RunID, Arm: arm, Task: tk, Lane: it.Lane, Image: LaneImage(tk.Layers), Batch: it.Batch, Campaign: campaign, Gates: answers, Identity: models[arm.Model.Model], Unloaded: unloaded,
 		OnStart: func(partial *store.Run, containerID string) {
 			copy := *partial
 			det.ContainerID, det.Run = containerID, &copy

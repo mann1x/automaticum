@@ -1068,3 +1068,21 @@
 | 17:19 | Created internal/daemon/cell.go | — | ~3712 |
 | 17:20 | Created cmd/automaticum/cell_cmds.go | — | ~1949 |
 | 17:30 | cell run (065): StartRequest.Tasks, compareView leave, retry verdicts filter, cell.go result/rows/refusal, cell_cmds.go (resume by key, exit codes, files), TestCell; proved on stub: kill-and-resume and daemon-abort-and-resume; mode C not built | internal/daemon/cell.go api.go compare.go control.go, cmd cell_cmds.go main.go, 065 090 | deployed | ~30000 |
+
+## Session: 2026-10-14 17:26
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 17:26
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 17:27
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:30 | Created internal/config/campaign.go | — | ~1165 |
+| 17:32 | Created internal/daemon/campaign.go | — | ~3432 |
+| 17:45 | Campaigns: config.LoadCampaign, daemon campaign driver (control.json, batches in order by key, stop conditions, pause/resume/stop, notify), d.start refactor, run.Request.Campaign, CLI campaign *, campaigns/stub-demo.toml; proved on stub; mail 1371 to omnimergekit on mode C | internal/config/campaign.go, daemon/campaign.go api.go daemon.go, cmd campaign_cmds.go, 030 050 090 | deployed next | ~30000 |

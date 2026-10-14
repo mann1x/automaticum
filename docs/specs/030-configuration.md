@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.12, 2026-10-13.
+**Status:** draft 0.13, 2026-10-14.
 
 ## 1. Rules
 
@@ -190,3 +190,32 @@ model partly on the GPU.
 A campaign is data: batches, their order, interleaving, gates in addition to
 the built-in ones, and stop conditions (after N consecutive `PASS`, on the
 first `INVALID`, at a time). See 050.
+
+**As built (milestone 4, 2026-10-14):** `campaigns/<name>.toml`, tracked;
+unknown fields are errors.
+
+```toml
+description = "A against B overnight"
+
+[stop]                       # the whole campaign; optional
+at = 2026-10-15T08:00:00+02:00
+
+[[batch]]                    # in order; each starts when the one before has ended
+name = "ab"
+arms = ["arm-a", "arm-b"]
+tasks = ["custom/manic_miner"]
+runs = 10                    # runs of each arm on each task
+order = "interleaved"        # or "blocks"
+lane = "lane-1"              # optional
+
+[batch.stop]                 # this batch only; optional
+after_consecutive_pass = 5   # every arm's last 5 finished runs passed
+on_invalid = true            # the first INVALID run
+at = 2026-10-15T06:00:00+02:00
+```
+
+No stop condition holds unless the file sets it. `after_consecutive_pass`
+in a batch of several arms means that the last N finished runs of every arm
+passed; the N is the file's. A batch's condition ends the batch and the
+campaign goes on; the campaign's own `at` ends everything, and its other
+conditions, met in any batch, end the campaign.

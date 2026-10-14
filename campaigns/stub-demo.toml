@@ -1,0 +1,18 @@
+# A campaign on the stub model server, for trying campaigns without a GPU:
+# two batches of the stub arm, the second stopping at its first INVALID.
+description = "stub: the demo task, then the demo task and manic_miner"
+
+[[batch]]
+name = "demo"
+arms = ["stub"]
+tasks = ["demo/answer"]
+runs = 2
+
+[[batch]]
+name = "both"
+arms = ["stub"]
+tasks = ["demo/answer", "custom/manic_miner"]
+runs = 1
+
+[batch.stop]
+on_invalid = true
