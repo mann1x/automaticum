@@ -986,3 +986,29 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 16:50 | D85: reload after a pause keeps the verdict (ingest analyse model_reloaded v2, after_pause, endpoint.reloads_after_pause, TestReloadAfterPause); deployed; run 8 reanalysed → PASS; 110 §3.3 now 10 vs 10 | internal/ingest/analyse.go, wire.go, ingest_test.go, specs 070 110 decisions | done | ~9000 |
+
+## Session: 2026-10-14 16:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 16:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 16:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 16:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 16:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 16:58 | Cap audit, first part: ingest CapHits per request every turn (length or ≥ num_predict−16), cap.hits/cap.declared_tokens, cap_hit finding; compare CapAudit per arm CLEAN/CAPPED/UNVERIFIED; reanalysed 49 runs; D81 both CLEAN; asked omnimergekit (mail 1363) for code of pile-up/asymmetry/allowance | internal/ingest/cap.go, analyse.go, daemon/compare.go, cmd compare_cmds.go, 070 §5 | deployed | ~15000 |

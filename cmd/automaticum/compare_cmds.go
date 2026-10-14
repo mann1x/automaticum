@@ -131,6 +131,32 @@ func compare(ctx context.Context, args []string) error {
 		fmt.Printf("  %s against %s, pass counts: Fisher's exact test, two-sided p = %.3f\n", letter(p.A), letter(p.B), p.PassP)
 	}
 
+	fmt.Println("\ngeneration cap, at any turn:")
+	w = table()
+	fmt.Fprintln(w, "     VERDICT\tCAPPED REQUESTS\tCAPPED RUNS\tOF THEM PASSED\tOUTPUT LIMIT\tTHINKING BUDGET\tWHY")
+	tokens := func(vs []float64) string {
+		var out []string
+		for _, x := range vs {
+			out = append(out, human.Count(int64(x))+" tokens")
+		}
+		if len(out) == 0 {
+			return "-"
+		}
+		return strings.Join(out, ", ")
+	}
+	for i, g := range v.Groups {
+		c := g.Cap
+		fmt.Fprintf(w, "  %s  %s\t%d of %d\t%d of %d\t%d\t%s\t%s\t%s\n", letter(i), c.Verdict, c.CappedRequests, c.Requests,
+			c.CappedRuns, len(g.Runs), c.CappedPassed, tokens(c.Declared), tokens(c.ThinkBudget), c.Why)
+	}
+	w.Flush()
+	for i := range v.Groups {
+		if v.Groups[i].Cap.Verdict == "CAPPED" {
+			fmt.Println("  A CAPPED arm is not comparable with an arm at another output budget.")
+			break
+		}
+	}
+
 	fmt.Println("\nruns with a finding:")
 	w = table()
 	names := map[string]bool{}

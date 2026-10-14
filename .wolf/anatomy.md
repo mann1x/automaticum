@@ -210,6 +210,8 @@
 ## internal/ingest/
 
 - `analyse.go` — Interface: Blobs (47 methods) (~3994 tok)
+- `cap.go` — CapHit finding, CapTolerance 16 (omnimergekit), Capped, CapHits (~450 tok)
+- `cap_test.go` — TestCapHits (~350 tok)
 - `canary.go` — CanaryRequests = 5 (D84), CanaryVerdict, Finished, Canary (~700 tok)
 - `canary_test.go` — TestCanary (~800 tok)
 - `detectors.go` — Firing (23 fields) (~1014 tok)

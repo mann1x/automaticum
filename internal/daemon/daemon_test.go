@@ -1082,3 +1082,46 @@ func TestCanaryStopsBatch(t *testing.T) {
 		})
 	}
 }
+
+// The cap audit of an arm: CAPPED with any request at its limit, the passed
+// ones counted apart; CLEAN only when every request has a finish reason;
+// runs analysed before the audit leave it UNVERIFIED.
+func TestCompareCap(t *testing.T) {
+	g := newRig(t, false)
+	ctx := context.Background()
+	add := func(id, arm string, verdict store.Verdict, metrics map[string]float64) {
+		g.state.UpsertRun(ctx, &store.Run{ID: id, Batch: "b1", Suite: "demo", TaskID: "answer", ArmID: "id-" + arm, Verdict: verdict,
+			Arm: json.RawMessage(`{"name":"` + arm + `","model":{"model":"m"}}`)})
+		var ms []store.Metric
+		for n, v := range metrics {
+			ms = append(ms, store.Metric{RunID: id, Name: n, Value: v})
+		}
+		g.state.ReplaceMetrics(ctx, id, ms)
+	}
+	add("a1", "a", store.Pass, map[string]float64{"cap.hits": 0, "finish.stop": 10, "cap.declared_tokens": 96000, "thinking.budget_tokens.served": 48000})
+	add("a2", "a", store.Pass, map[string]float64{"cap.hits": 0, "finish.stop": 12, "cap.declared_tokens": 96000})
+	add("b1", "b", store.Pass, map[string]float64{"cap.hits": 2, "finish.stop": 8, "finish.length": 2})
+	add("b2", "b", store.Fail, map[string]float64{"cap.hits": 1, "finish.length": 1, "finish.stop": 3})
+	add("c1", "c", store.Pass, map[string]float64{"cap.hits": 0, "finish.stop": 3, "finish.none": 1})
+	add("d1", "d", store.Pass, map[string]float64{"finish.stop": 3})
+	var v CompareView
+	if code := g.call("GET", "/v1/compare?batch=b1", nil, &v); code != 200 {
+		t.Fatalf("%d", code)
+	}
+	got := map[string]CapAudit{}
+	for _, gr := range v.Groups {
+		got[gr.Arm] = gr.Cap
+	}
+	if a := got["a"]; a.Verdict != "CLEAN" || a.Requests != 22 || len(a.Declared) != 1 || a.Declared[0] != 96000 || len(a.ThinkBudget) != 1 {
+		t.Errorf("a: %+v", a)
+	}
+	if b := got["b"]; b.Verdict != "CAPPED" || b.CappedRequests != 3 || b.CappedRuns != 2 || b.CappedPassed != 1 {
+		t.Errorf("b: %+v", b)
+	}
+	if c := got["c"]; c.Verdict != "UNVERIFIED" || c.Unreported != 1 {
+		t.Errorf("c: %+v", c)
+	}
+	if d := got["d"]; d.Verdict != "UNVERIFIED" || len(d.NotAudited) != 1 {
+		t.Errorf("d: %+v", d)
+	}
+}

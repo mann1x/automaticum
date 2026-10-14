@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"slices"
 	"sort"
@@ -57,8 +58,88 @@ type CompareGroup struct {
 	Served map[string][]string `json:"served"`
 	// TokensPerSolved is the group's completion tokens over its PASS runs.
 	TokensPerSolved float64 `json:"tokens_per_solved,omitempty"`
+	// Cap is the generation-cap audit of the group (070 §5).
+	Cap CapAudit `json:"cap"`
 
 	values map[string][]float64
+}
+
+// CapAudit is the generation-cap audit of one arm on one task (070 §5): a
+// cap hit at any turn of a run counts.
+type CapAudit struct {
+	// Verdict is CLEAN, CAPPED or UNVERIFIED, and Why says what made it.
+	// A CAPPED group is not comparable with one at another budget.
+	Verdict string `json:"verdict"`
+	Why     string `json:"why"`
+	// Requests are the agent's requests audited; Unreported those for
+	// which the server gave no finish reason.
+	Requests   int `json:"requests"`
+	Unreported int `json:"unreported"`
+	// CappedRequests, CappedRuns, and of these runs CappedPassed the ones
+	// that still passed.
+	CappedRequests int `json:"capped_requests"`
+	CappedRuns     int `json:"capped_runs"`
+	CappedPassed   int `json:"capped_passed"`
+	// NotAudited are runs analysed before the audit existed.
+	NotAudited []string `json:"not_audited,omitempty"`
+	// Declared are the output limits the requests sent, and ThinkBudget the
+	// thinking budgets the server applied: the reasoning-budget regime.
+	Declared    []float64 `json:"declared_tokens,omitempty"`
+	ThinkBudget []float64 `json:"think_budget_tokens,omitempty"`
+}
+
+// audit adds one run's cap numbers to the group's.
+func (c *CapAudit) audit(id string, passed bool, metrics map[string]float64) {
+	hits, audited := metrics["cap.hits"]
+	if !audited {
+		c.NotAudited = append(c.NotAudited, id)
+		return
+	}
+	for name, v := range metrics {
+		if strings.HasPrefix(name, "finish.") {
+			c.Requests += int(v)
+		}
+	}
+	c.Unreported += int(metrics["finish.none"])
+	c.CappedRequests += int(hits)
+	if hits > 0 {
+		c.CappedRuns++
+		if passed {
+			c.CappedPassed++
+		}
+	}
+	for _, x := range []struct {
+		name string
+		into *[]float64
+	}{{"cap.declared_tokens", &c.Declared}, {"thinking.budget_tokens.served", &c.ThinkBudget}} {
+		if v, ok := metrics[x.name]; ok && !slices.Contains(*x.into, v) {
+			*x.into = append(*x.into, v)
+		}
+	}
+}
+
+// decide gives the group's verdict once every run is in.
+func (c *CapAudit) decide() {
+	slices.Sort(c.Declared)
+	slices.Sort(c.ThinkBudget)
+	switch {
+	case c.CappedRequests > 0:
+		c.Verdict = "CAPPED"
+		c.Why = fmt.Sprintf("%d requests in %d runs ended at their output limit", c.CappedRequests, c.CappedRuns)
+	case len(c.NotAudited) > 0:
+		c.Verdict = "UNVERIFIED"
+		c.Why = fmt.Sprintf("%d runs were analysed before the cap audit existed: `automaticum reanalyse` audits them", len(c.NotAudited))
+	case c.Unreported > 0:
+		// The pile-up test for such servers is not built yet.
+		c.Verdict = "UNVERIFIED"
+		c.Why = fmt.Sprintf("the server gave no finish reason for %d of %d requests", c.Unreported, c.Requests)
+	case c.Requests == 0:
+		c.Verdict = "UNVERIFIED"
+		c.Why = "no request of the agent's loop was recorded"
+	default:
+		c.Verdict = "CLEAN"
+		c.Why = fmt.Sprintf("none of %d requests ended at its output limit, and the server gave a finish reason for each", c.Requests)
+	}
 }
 
 // ComparePair is two groups against each other.
@@ -193,11 +274,14 @@ func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
 				fail(w, http.StatusInternalServerError, "%v", err)
 				return
 			}
+			byName := map[string]float64{}
 			for _, m := range metrics {
+				byName[m.Name] = m.Value
 				if !strings.HasSuffix(m.Name, ".available") {
 					g.values[m.Name] = append(g.values[m.Name], m.Value)
 				}
 			}
+			g.Cap.audit(run.ID, run.Verdict == store.Pass, byName)
 			findings, err := d.State.Findings(ctx, run.ID)
 			if err != nil {
 				fail(w, http.StatusInternalServerError, "%v", err)
@@ -224,6 +308,7 @@ func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
 				g.values[name] = vals
 			}
 		}
+		g.Cap.decide()
 		g.PassLow, g.PassHigh = stats.Wilson(g.Pass, len(g.Runs), stats.Z95)
 		for name, vals := range g.values {
 			g.Metrics[name] = stats.Summarise(vals)

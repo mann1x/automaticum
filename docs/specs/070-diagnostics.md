@@ -354,6 +354,26 @@ values the SDK derived from the arm. The rest of §2 is not written yet.
 - The reasoning-budget regime is recorded (unlimited, budgeted, off): a budget
   relocates rumination rather than removing it.
 
+**As built (milestone 4, first part, 2026-10-14):** at ingest every request
+of the agent's loop is audited, every turn: it is capped when the server
+says it ended by length, or when its completion reached the limit the
+request declared (`num_predict`) less 16 tokens. Each run gets the metric
+`cap.hits`, the limit it declared (`cap.declared_tokens`) and, when any
+request is capped, the finding `cap_hit` (severity warning) with each
+request, its tokens, its limit and how it is known. `automaticum compare`
+gives each arm a verdict: `CAPPED` when any request is, with capped
+requests, capped runs and how many of those still passed; `CLEAN` when none
+is and the server gave a finish reason for every request; `UNVERIFIED` when
+it did not, or when a run was analysed before the audit existed. It also
+shows the declared limits and the thinking budgets the server applied (the
+reasoning-budget regime). The 16-token tolerance is omnimergekit's.
+**Not built yet:** the derived answer allowance band, the pile-up test (for
+servers that give no honest finish reason; ingest does not yet keep every
+completion's length per arm) and the asymmetry between two arms: their
+definitions are being confirmed against omnimergekit's code (what a row
+is, and whether the counts are of requests or of runs) before they are
+ported.
+
 ## 6. Across runs
 
 **Decided by the owner (2026-10-13), D78:** a report gives every statistic

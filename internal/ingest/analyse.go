@@ -45,7 +45,7 @@ const reloadSeconds = 1.0
 
 // owned names the detectors whose findings ingest writes. Findings of any
 // other detector are kept as they are.
-var owned = map[string]bool{WireArm: true, GPUResidency: true, ModelReloaded: true, ModelIdentity: true, detect.ShortUnitRepeat: true, detect.CharRun: true,
+var owned = map[string]bool{WireArm: true, CapHit: true, GPUResidency: true, ModelReloaded: true, ModelIdentity: true, detect.ShortUnitRepeat: true, detect.CharRun: true,
 	detect.SentenceRepeat: true, detect.Runaway: true, detect.RepeatedToolCall: true,
 	detect.ReasoningRepetition: true, detect.ReasoningLoop: true}
 
@@ -260,6 +260,17 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 		}
 		if t := agent[0].ThinkBudgetTokens; t > 0 {
 			m("thinking.budget_tokens.served", float64(t))
+		}
+		// The cap audit, every turn (070 §5).
+		hits := CapHits(agent)
+		m("cap.hits", float64(len(hits)))
+		if v, ok := agent[0].Options["num_predict"].(float64); ok && v > 0 {
+			m("cap.declared_tokens", v)
+		}
+		if len(hits) > 0 {
+			raw, _ := json.Marshal(map[string]any{"capped": hits, "tolerance": CapTolerance})
+			res.Findings = append(res.Findings, store.Finding{RunID: r.ID, Detector: CapHit, DetectorVersion: "1",
+				Severity: "warning", Turn: hits[0].Seq, Count: len(hits), Evidence: raw})
 		}
 	}
 
