@@ -221,6 +221,14 @@ detector always reads with the release's defaults, so that runs compare.
   test now compares in the way the reference reports: over the same 907
   blocks, this library and the reference agree on every block, with no
   difference (11 short-unit, 4 letter-run and 19 sentence firings).
+  The same day the reference's owners packaged two real cohorts (9,611
+  blocks of model transcripts on benchmark tasks, kept outside this
+  repository) with their code's expected output for both of its versions.
+  `TestCohorts` (`AUTOMATICUM_COHORTS`) compares every block: no difference
+  on any detector or any block, in either way of matching, with the
+  runaway size of 10,000 characters given explicitly (6 short-unit, 1
+  letter-run, 363 sentence and 529 runaway firings). Criterion 8 of 110 §1
+  is met for the detectors the requirements define.
 - Not ported yet from the same source: the count of failed identical calls
   (6, and 4 for a call the tool refused in advance) and the repeated pair
   of call and result (3, and 6 for writing tools). Both need each call's

@@ -260,3 +260,9 @@ Not done in milestone 3, and carried forward:
 - The gates that need an agent on the endpoint's host (milestone 7), and the
   parts of `free`, `gpu_residency`, `host` and `bind_address` that 050 §3.1.1
   lists as not yet looked at.
+
+**Criterion 8, 2026-10-14:** the detector library and the reference code
+(omnimergekit `loop_detect.py`, version 2, commit `01f5ed3`) give the same
+flags on every block: 907 blocks of fixtures, controls and runs of both
+harnesses, and the reference owners' two real cohorts of 9,611 blocks with
+their expected output for both versions. No difference (070 §3.2).

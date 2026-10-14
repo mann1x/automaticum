@@ -884,3 +884,24 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 12:58 | reference detector v2 (omnimergekit 01f5ed3): 907 blocks, 0 differences in every-match mode; test now follows the reference's own matching field | internal/detect/reference_test.go, 070 | pass | ~2000 |
+
+## Session: 2026-10-14 12:55
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 12:55
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 12:55
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 12:57
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:15 | criterion 8: TestCohorts on the omnimergekit cohorts (9,611 real blocks, v1 and v2 expected), 0 differences | internal/detect/reference_test.go, 070, 110 | pass | ~3000 |

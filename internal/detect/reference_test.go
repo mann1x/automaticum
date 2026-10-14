@@ -146,3 +146,67 @@ json.dump(out, sys.stdout)`, ref)
 	}
 	t.Logf("%d blocks, matching %s on both sides; the reference code fired %v; %d differences", len(texts), o.Matching(), fired, differ)
 }
+
+// TestCohorts reads real cohorts packaged by the reference's owners: one
+// text block per line with the reference's own expected output, for both
+// of its versions ("expected_v2", every match; "expected_v1", first match).
+// AUTOMATICUM_COHORTS lists the files, separated by ":". They are model
+// transcripts on benchmark tasks and stay out of this repository. The
+// runaway size of the cohorts is 10,000 characters, given here explicitly.
+func TestCohorts(t *testing.T) {
+	files := os.Getenv("AUTOMATICUM_COHORTS")
+	if files == "" {
+		t.Skip("AUTOMATICUM_COHORTS not set")
+	}
+	type expected struct {
+		Rep, Runchar, Sentence, Runaway bool
+		SentenceReps                    int `json:"sentence_reps"`
+		Chars                           int
+	}
+	for _, path := range strings.Split(files, ":") {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		blocks, differ, fired := 0, map[string]int{}, map[string]int{}
+		for _, line := range strings.Split(string(raw), "\n") {
+			if strings.TrimSpace(line) == "" {
+				continue
+			}
+			var row struct {
+				Text string
+				V2   expected `json:"expected_v2"`
+				V1   expected `json:"expected_v1"`
+			}
+			if err := json.Unmarshal([]byte(line), &row); err != nil {
+				t.Fatal(err)
+			}
+			blocks++
+			for _, c := range []struct {
+				name string
+				o    Options
+				want expected
+			}{{"v2", Options{RunawayChars: 10000}, row.V2}, {"v1", Options{RunawayChars: 10000, FirstMatch: true}, row.V1}} {
+				got := map[string]bool{}
+				for _, h := range Block(row.Text, c.o) {
+					got[h.Detector] = true
+				}
+				for d, w := range map[string]bool{ShortUnitRepeat: c.want.Rep, CharRun: c.want.Runchar, SentenceRepeat: c.want.Sentence, Runaway: c.want.Runaway} {
+					if w {
+						fired[c.name+" "+d]++
+					}
+					if got[d] != w {
+						differ[c.name+" "+d]++
+						if differ[c.name+" "+d] <= 3 {
+							t.Errorf("%s, %s: %s is %v here, %v by the reference (%d characters, %.60q)", path[strings.LastIndex(path, "/")+1:], c.name, d, got[d], w, c.want.Chars, row.Text)
+						}
+					}
+				}
+				if n := len([]rune(row.Text)); n != c.want.Chars {
+					differ[c.name+" length"]++
+				}
+			}
+		}
+		t.Logf("%s: %d blocks; the reference fired %v; differences %v", path[strings.LastIndex(path, "/")+1:], blocks, fired, differ)
+	}
+}
