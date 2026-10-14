@@ -1,6 +1,6 @@
 # 110 — Acceptance and roadmap
 
-**Status:** draft 0.15, 2026-10-14. The milestone order in §3 was approved by the owner
+**Status:** draft 0.16, 2026-10-14. The milestone order in §3 was approved by the owner
 on 2026-10-12. Milestone 1 has been carried out: the store, the importer and
 the spike's measurements exist (080 §7.4, 100 §7), and the owner has decided
 the questions it raised (D46 to D51). Milestone 2 was planned and approved on
@@ -320,3 +320,14 @@ reload a note (`after_pause`), and the numbers above count it.
 **Found on the way (bug-016):** the two server releases list a tag's
 parameters in another order; `compare` called that a change. Fixed: the
 parameters are compared as values.
+
+**Analysed again under analysis version 3 (2026-10-14):** every run of
+this harness was analysed again (`automaticum reanalyse`: 69 runs; the 14
+`SKIPPED` ones have nothing to analyse). For batch D81 no verdict, metric,
+finding or cap audit changed: the basis's `detectors` fact now reads
+"analysis 3" for both arms, and three metrics of the scripted user appear,
+0 in every run. Across all 69 runs: no verdict changed; the two false
+`wire_arm` warnings of the first mode C cell went (bug-019); three
+`demo/scripted` runs count the request a steer cut as `finish.failed`
+instead of `finish.none` (bug-020). The numbers above are those of
+analysis 3.

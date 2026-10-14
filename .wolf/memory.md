@@ -1181,3 +1181,24 @@
 | 19:33 | scripted user stage 1: [user] in task.toml (internal/task/user.go), runner protocol 2 (runner/user.mjs, runner.mjs), ingest user.actions/denials/failed, checkpoint check in run.before | internal/task, internal/run, internal/ingest, runner | tests pass; e2e demo/scripted PASS, demo/cancel PASS (restore refused by SDK) | ~70k |
 | 19:33 | bug-020 finish.failed (analysis 3), bug-021 cell subset, bug-022 interactive session for continuing scripts | internal/ingest/analyse.go, cmd/automaticum/cell_cmds.go, runner/runner.mjs | fixed with tests | ~8k |
 | 19:33 | mails 1383/1384 to Cerebriline: stage-2 SDK questions (plan event, categories, denial strings, mode switch, restore fork, checkpoints) | mailbox | sent | ~2k |
+
+## Session: 2026-10-14 19:33
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 19:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 19:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 19:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:11 | reanalyse all own runs under analysis 3 (69; 14 SKIPPED have nothing): no verdict change; D81 numbers/cap/findings unchanged; modec2 wire_arm warnings gone; 3 steer runs finish.none->failed; read Cerebriline answers 1385/1386 (stage 2 inputs) | docs/specs/110 | done | ~8k |
