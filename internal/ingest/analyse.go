@@ -422,7 +422,7 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 	afterRelease := map[int]bool{}
 	for _, h := range held.Holds {
 		for _, q := range reqs {
-			if q.Path == "/api/chat" && !q.Failed && !h.To.IsZero() && !q.Start.Before(h.To) {
+			if q.Chat && !q.Failed && !h.To.IsZero() && !q.Start.Before(h.To) {
 				afterRelease[q.Seq] = true
 				break
 			}
@@ -431,7 +431,7 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 	var loads, afterPause []load
 	chats := 0
 	for _, q := range reqs {
-		if q.Path != "/api/chat" || q.Failed {
+		if !q.Chat || q.Failed {
 			continue
 		}
 		chats++

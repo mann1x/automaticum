@@ -17,6 +17,9 @@ type Request struct {
 	Status int
 	Failed bool // no response, or an error status
 	MS     float64
+	// Chat is true for a chat request, of either protocol: Ollama's
+	// /api/chat or an OpenAI-compatible .../chat/completions.
+	Chat bool
 	// Agent is true for a request the agent's loop made: a chat request
 	// that offers tools. The SDK's own probes and lookups are not.
 	Agent bool
@@ -90,9 +93,15 @@ func request(l *wireLine) Request {
 		q.Path = q.Path[:i]
 	}
 	q.Failed = l.Status == 0 || l.Status >= 400 || (len(l.Error) > 0 && !bytes.Equal(l.Error, []byte("null")))
+	if strings.HasSuffix(q.Path, "/chat/completions") && l.RequestBody != nil {
+		q.Chat = true
+		openAIRequest(&q, l)
+		return q
+	}
 	if q.Path != "/api/chat" || l.RequestBody == nil {
 		return q
 	}
+	q.Chat = true
 	var body map[string]json.RawMessage
 	if json.Unmarshal([]byte(*l.RequestBody), &body) != nil {
 		return q
@@ -157,6 +166,136 @@ func (q *Request) answer(body string) {
 			q.PromptTokens, q.CachedTokens, q.PromptNS = m.PromptEvalCount, m.PromptCached, m.PromptEvalNS
 			q.EvalTokens, q.EvalNS = m.EvalCount, m.EvalNS
 			q.LoadNS = m.LoadNS
+		}
+	}
+	q.Empty = !q.Failed && !something
+	q.Visible = visible.String()
+}
+
+// openAIFields maps the sampler fields of an OpenAI-compatible request body
+// to the option names of an Ollama request, so one comparison serves both
+// (070 §4.1). max_tokens is the output limit, num_predict on Ollama.
+var openAIFields = map[string]string{
+	"temperature": "temperature", "top_p": "top_p", "top_k": "top_k", "min_p": "min_p", "typical_p": "typical_p",
+	"repeat_penalty": "repeat_penalty", "repeat_last_n": "repeat_last_n", "presence_penalty": "presence_penalty",
+	"frequency_penalty": "frequency_penalty", "seed": "seed", "stop": "stop",
+	"max_tokens": "num_predict", "max_completion_tokens": "num_predict",
+}
+
+// openAIRequest reads an OpenAI-compatible chat request and its answer:
+// llama-server and vLLM speak it.
+func openAIRequest(q *Request, l *wireLine) {
+	var body map[string]json.RawMessage
+	if json.Unmarshal([]byte(*l.RequestBody), &body) != nil {
+		return
+	}
+	if tools := bytes.TrimSpace(body["tools"]); len(tools) > 2 {
+		q.Agent = true
+	}
+	q.Options = map[string]any{}
+	for field, option := range openAIFields {
+		if raw, ok := body[field]; ok {
+			var v any
+			json.Unmarshal(raw, &v)
+			q.Options[option] = v
+			delete(body, field)
+		}
+	}
+	// The thinking effort, where the request names one.
+	if raw, ok := body["reasoning_effort"]; ok {
+		body["think"] = raw
+	}
+	delete(body, "messages")
+	delete(body, "tools")
+	q.Body = body
+	if l.ResponseBody != nil {
+		q.openAIAnswer(*l.ResponseBody)
+	}
+}
+
+// openAIAnswer reads an OpenAI-compatible answer: a stream of "data:" lines
+// of chunks, or one JSON object. The counts are in its usage, and
+// llama-server adds its timings.
+func (q *Request) openAIAnswer(body string) {
+	type choice struct {
+		Delta, Message struct {
+			Content          string            `json:"content"`
+			ReasoningContent string            `json:"reasoning_content"`
+			Reasoning        string            `json:"reasoning"`
+			ToolCalls        []json.RawMessage `json:"tool_calls"`
+		}
+		FinishReason *string `json:"finish_reason"`
+	}
+	type chunk struct {
+		Choices []choice `json:"choices"`
+		Usage   *struct {
+			PromptTokens     int `json:"prompt_tokens"`
+			CompletionTokens int `json:"completion_tokens"`
+			Details          *struct {
+				Cached int `json:"cached_tokens"`
+			} `json:"prompt_tokens_details"`
+		} `json:"usage"`
+		Timings *struct {
+			CacheN      int     `json:"cache_n"`
+			PromptMS    float64 `json:"prompt_ms"`
+			PredictedN  int     `json:"predicted_n"`
+			PredictedMS float64 `json:"predicted_ms"`
+		} `json:"timings"`
+	}
+	something := false
+	var visible strings.Builder
+	read := func(c chunk) {
+		for _, ch := range c.Choices {
+			for _, m := range []struct {
+				Content, ReasoningContent, Reasoning string
+				ToolCalls                            []json.RawMessage
+			}{{ch.Delta.Content, ch.Delta.ReasoningContent, ch.Delta.Reasoning, ch.Delta.ToolCalls},
+				{ch.Message.Content, ch.Message.ReasoningContent, ch.Message.Reasoning, ch.Message.ToolCalls}} {
+				if m.Content != "" || m.ReasoningContent != "" || m.Reasoning != "" || len(m.ToolCalls) > 0 {
+					something = true
+				}
+				visible.WriteString(m.Content)
+			}
+			if ch.FinishReason != nil && *ch.FinishReason != "" {
+				q.DoneReason = *ch.FinishReason
+			}
+		}
+		if u := c.Usage; u != nil {
+			q.PromptTokens, q.EvalTokens = u.PromptTokens, u.CompletionTokens
+			if u.Details != nil {
+				q.CachedTokens = u.Details.Cached
+			}
+		}
+		if t := c.Timings; t != nil {
+			q.PromptNS, q.EvalNS = int64(t.PromptMS*1e6), int64(t.PredictedMS*1e6)
+			if q.CachedTokens == 0 {
+				q.CachedTokens = t.CacheN
+			}
+			if q.EvalTokens == 0 {
+				q.EvalTokens = t.PredictedN
+			}
+		}
+	}
+	trimmed := strings.TrimSpace(body)
+	if strings.HasPrefix(trimmed, "{") {
+		var c chunk
+		if json.Unmarshal([]byte(trimmed), &c) == nil {
+			read(c)
+		}
+	} else {
+		for _, line := range strings.Split(body, "\n") {
+			data, ok := strings.CutPrefix(strings.TrimSpace(line), "data:")
+			if !ok {
+				continue
+			}
+			data = strings.TrimSpace(data)
+			if data == "" || data == "[DONE]" {
+				continue
+			}
+			var c chunk
+			if json.Unmarshal([]byte(data), &c) == nil {
+				read(c)
+			}
 		}
 	}
 	q.Empty = !q.Failed && !something
