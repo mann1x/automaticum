@@ -1045,3 +1045,26 @@
 |------|--------|---------|---------|--------|
 | 17:05 | Created internal/daemon/basis.go | — | ~2851 |
 | 17:15 | Basis (020 §5): basis.go, compareView refactor, /v1/basis, basis show|diff, basis diff above every compare pair, mixed facts per arm; analysis.version metric + ingest.Versions; deployed, reanalysed 49; D81: arms differ only in weights; halves differ in server and lane image | internal/daemon/basis.go compare.go api.go, ingest/analyse.go, cmd compare_cmds.go main.go, 020 090 | deployed | ~20000 |
+
+## Session: 2026-10-14 17:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 17:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 17:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 17:09
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:19 | Created internal/daemon/cell.go | — | ~3712 |
+| 17:20 | Created cmd/automaticum/cell_cmds.go | — | ~1949 |
+| 17:30 | cell run (065): StartRequest.Tasks, compareView leave, retry verdicts filter, cell.go result/rows/refusal, cell_cmds.go (resume by key, exit codes, files), TestCell; proved on stub: kill-and-resume and daemon-abort-and-resume; mode C not built | internal/daemon/cell.go api.go compare.go control.go, cmd cell_cmds.go main.go, 065 090 | deployed | ~30000 |

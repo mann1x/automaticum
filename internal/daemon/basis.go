@@ -302,7 +302,7 @@ type BasisGroup struct {
 // handleBasis gives the basis of every arm on every task of some batches,
 // over the runs that `compare` counts.
 func (d *Daemon) handleBasis(w http.ResponseWriter, r *http.Request) {
-	v, code, err := d.compareView(r.Context(), r.URL.Query()["batch"])
+	v, code, err := d.compareView(r.Context(), r.URL.Query()["batch"], nil)
 	if err != nil {
 		fail(w, code, "%v", err)
 		return

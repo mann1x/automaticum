@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -51,6 +52,8 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   logs <run>                    a run's raw material [--events|--wire|--runner|--oracle]
   doctor                        every gate, on every lane, now [--lane L] [--arm A] [--task T] [--all]
   compare <batch> [<batch> ...] the arms of some batches side by side: every statistic, no conclusion [--all]
+  cell run --suite S[:subset] --arm A --out D --idempotency-key K
+                                one cell, blocking, safe to re-run: the result file, runs.jsonl, exit 0/10/20/30/70 [-n 1]
   basis show <batch> ...        every fact that must be equal for two arms to be compared, per arm [--arm A]
   basis diff <b[/arm]> <b[/arm]>  exactly the facts in which two bases differ
   reanalyse                     derive metrics and findings again from what is stored [--run R | --batch B] [--imported]
@@ -98,6 +101,7 @@ func main() {
 		"lane drain":     laneControl(true),
 		"lane resume":    laneControl(false),
 		"batch show":     batchShow,
+		"cell run":       cellRun,
 		"basis show":     basisShow,
 		"basis diff":     basisDiff,
 		"batch pause":    batchControl("pause"),
@@ -135,6 +139,10 @@ func main() {
 func fail(err error) {
 	if err == nil {
 		return
+	}
+	var code exitCode
+	if errors.As(err, &code) {
+		os.Exit(int(code))
 	}
 	if err != errFailed {
 		fmt.Fprintln(os.Stderr, "automaticum:", err)

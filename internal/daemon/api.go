@@ -88,6 +88,9 @@ type StartRequest struct {
 	Arms  []string `json:"arms,omitempty"`
 	Order string   `json:"order,omitempty"`
 	Task  string   `json:"task"`
+	// Tasks puts several tasks in one batch, Count runs of each arm on
+	// each, the tasks in turn within each round: a cell (065).
+	Tasks []string `json:"tasks,omitempty"`
 	Lane  string   `json:"lane,omitempty"`
 	Count int      `json:"count,omitempty"`
 	// Key makes the command safe to repeat: a second request with the
@@ -104,8 +107,10 @@ type StartResponse struct {
 	ArmID  string   `json:"arm_id"`
 	// ArmIDs holds every arm of the batch by name, when there are several.
 	ArmIDs map[string]string `json:"arm_ids,omitempty"`
-	// Order is the arm of each run, in the order they are queued.
+	// Order is the arm of each run, in the order they are queued; Tasks
+	// the task of each, when the batch has several.
 	Order    []string `json:"order,omitempty"`
+	Tasks    []string `json:"tasks,omitempty"`
 	Task     string   `json:"task"`
 	Image    string   `json:"image"`
 	DryRun   bool     `json:"dry_run,omitempty"`
@@ -275,6 +280,7 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/lanes/{lane}/drain", d.handleLane(true))
 	mux.HandleFunc("POST /v1/lanes/{lane}/resume", d.handleLane(false))
 	mux.HandleFunc("GET /v1/batches/{batch}", d.handleBatch)
+	mux.HandleFunc("GET /v1/batches/{batch}/cell", d.handleCell)
 	mux.HandleFunc("POST /v1/batches/{batch}/pause", d.handleBatchPause)
 	mux.HandleFunc("POST /v1/batches/{batch}/resume", d.handleBatchResume)
 	mux.HandleFunc("POST /v1/batches/{batch}/stop", d.handleBatchStop)
@@ -395,7 +401,11 @@ func (d *Daemon) handleStart(w http.ResponseWriter, r *http.Request) {
 	if req.Order == "" {
 		req.Order = "interleaved"
 	}
-	if len(names) == 0 || req.Task == "" || req.Count < 1 || req.Count*len(names) > 1000 {
+	taskNames := req.Tasks
+	if req.Task != "" {
+		taskNames = append([]string{req.Task}, taskNames...)
+	}
+	if len(names) == 0 || len(taskNames) == 0 || req.Count < 1 || req.Count*len(names)*len(taskNames) > 1000 {
 		fail(w, http.StatusBadRequest, "a run needs an arm, a task and at most 1000 runs in all")
 		return
 	}
@@ -410,11 +420,20 @@ func (d *Daemon) handleStart(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusConflict, "the daemon is draining and takes no new runs")
 		return
 	}
-	tk, err := task.Find(filepath.Join(d.Repo, "tasks"), req.Task)
-	if err != nil {
-		fail(w, http.StatusUnprocessableEntity, "%v", err)
-		return
+	var tks []*task.Task
+	for _, name := range taskNames {
+		t, err := task.Find(filepath.Join(d.Repo, "tasks"), name)
+		if err != nil {
+			fail(w, http.StatusUnprocessableEntity, "%v", err)
+			return
+		}
+		if slices.ContainsFunc(tks, func(x *task.Task) bool { return x.Name() == t.Name() }) {
+			fail(w, http.StatusBadRequest, "task %s is named twice", t.Name())
+			return
+		}
+		tks = append(tks, t)
 	}
+	tk := tks[0]
 	var arm *config.Arm
 	lane, ids := "", map[string]string{}
 	for _, name := range names {
@@ -502,7 +521,39 @@ func (d *Daemon) handleStart(w http.ResponseWriter, r *http.Request) {
 	if len(names) > 1 {
 		resp.Order = order
 	}
-	items := make([]store.QueueItem, len(order))
+	// Each round of arms runs on each task in turn.
+	type slot struct{ arm, task string }
+	var slots []slot
+	if req.Order == "blocks" {
+		for _, name := range names {
+			for range req.Count {
+				for _, t := range tks {
+					slots = append(slots, slot{name, t.Name()})
+				}
+			}
+		}
+	} else {
+		for range req.Count {
+			for _, t := range tks {
+				for _, name := range names {
+					slots = append(slots, slot{name, t.Name()})
+				}
+			}
+		}
+	}
+	if len(tks) > 1 {
+		resp.Tasks = make([]string, len(slots))
+		for i, sl := range slots {
+			resp.Tasks[i] = sl.task
+		}
+		resp.Order = nil
+		if len(names) > 1 {
+			for _, sl := range slots {
+				resp.Order = append(resp.Order, sl.arm)
+			}
+		}
+	}
+	items := make([]store.QueueItem, len(slots))
 	// Ids sort by time; the runs of one command share a stem, and the
 	// suffix keeps them in the order they were queued.
 	stem := run.NewID(now)
@@ -511,7 +562,7 @@ func (d *Daemon) handleStart(w http.ResponseWriter, r *http.Request) {
 		if len(items) > 1 {
 			id = fmt.Sprintf("%s-%03d", stem, i+1)
 		}
-		items[i] = store.QueueItem{RunID: id, Batch: resp.Batch, Arm: order[i], Task: tk.Name(), Lane: lane, EnqueuedAt: now}
+		items[i] = store.QueueItem{RunID: id, Batch: resp.Batch, Arm: slots[i].arm, Task: slots[i].task, Lane: lane, EnqueuedAt: now}
 		resp.RunIDs = append(resp.RunIDs, id)
 	}
 	if req.DryRun {

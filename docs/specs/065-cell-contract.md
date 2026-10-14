@@ -1,6 +1,6 @@
 # 065 — The cell contract and exports
 
-**Status:** draft 0.6, 2026-10-12.
+**Status:** draft 0.7, 2026-10-14.
 
 ## 1. Purpose
 
@@ -99,6 +99,62 @@ Rules, each from an incident:
 - Timestamps are UTC with offset.
 - The schema is versioned. A change that removes or re-defines a field is a new
   schema version.
+
+## 3.1 As built (milestone 4, 2026-10-14)
+
+`automaticum cell run --suite <suite[:subset]> --arm <arm> --out <dir>
+--idempotency-key <key> [-n 1] [--lane L] [--json]` runs every task of the
+suite, or of the subset (one task id or several, comma-separated), `-n`
+times each, for one arm, as one batch named by the key. It talks to the
+daemon and blocks; its progress lines are `started` (or `resumed`), then
+`n_done/n_total` whenever the number moves, then `finished` with the exit
+code. Stopping the command does not stop the cell: the daemon carries on,
+and a command that finds the daemon restarting waits for it. Running the
+command again with the same key attaches to the batch, waits for what is
+still queued or in flight, and runs again every run that ended `ABORTED`
+or `SKIPPED` (each as a retry of it, 050 §4); a run that is `INVALID` is
+not run again. A run a retry replaced is superseded: it is in
+`runs.jsonl`, counted as nothing.
+
+The files, each written whole: `runs.jsonl`, `basis.txt` (the basis in
+plain text, 065 §5), `refusal.json` on codes 20 and 30 (removed when the
+cell is clean), and `automaticum_result.json` last. The result file's
+fields are those of §3 plus `arm` and `batch`. As built:
+
+- `counts` are of each run's last attempt and sum to `n_expected`; runs
+  still queued or in flight are counted as `unfinished`.
+- `headline` is `pass_rate` (passes over `n_expected`): no local task
+  declares a headline of its own; a suite that declares one replaces it
+  (milestone 5). `scores` also has `loop_rate`: runs with a reasoning loop
+  or repetition finding over the runs with a result of the arm.
+- `basis` has every fact of 020 §5 with every value the counted runs had;
+  `task` differs by design in a cell of several tasks, any other fact with
+  more than one value is a warning. `task_set_sha256` is over each task's
+  name, version and the hash of its files as the runs recorded them.
+- `token_stats` and `tool_calls` are per-run summaries (median, quartiles,
+  spread); `generation_caps` is the cap audit of 070 §5; `degeneration`
+  counts, per detector, the runs with a result where it fired;
+  `detector_self_test` is the library's self-test, run when the result is
+  read.
+- `warnings`: INVALID runs, runs without a result, unfinished runs, an
+  incomplete cell, a capped or unverified cap audit, a basis mixed within
+  the cell, a task whose files changed, a failed self-test, runs of more
+  than one arm.
+- Exit codes are those of §2.1: 20 when every run of the cell was refused
+  by a gate (`refusal.json` names the gate), 30 when a run has no result
+  (`refusal.json` lists them), 10 when finished with warnings, 0 when clean,
+  70 for anything else.
+
+Proved on the stub model server: a cell of three runs whose command was
+stopped after 40 seconds (exit 30), then run again with the same key
+(exit 0, nothing run twice); and a cell whose daemon was aborted with a run
+in flight (exit 30, that run `ABORTED`), then run again (exactly that run
+retried, exit 0).
+
+**Not built yet:** mode C (`--endpoint-url`, `--served-model` and the
+caller's resolved values): the cell runs on the arm's own endpoint, and the
+command refuses the two flags. The cohort and its declared variable, and
+the layout of omnimergekit's result tree (§5).
 
 ## 4. Re-scoring
 

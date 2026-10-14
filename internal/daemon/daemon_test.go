@@ -1198,3 +1198,67 @@ func TestBasis(t *testing.T) {
 		t.Errorf("basis: %d %+v", code, groups)
 	}
 }
+
+// A cell over two tasks: complete when every run has a result; a run that
+// ended ABORTED makes it incomplete with that run named, and the resume's
+// retry supersedes it, so the counts sum to n_expected again.
+func TestCell(t *testing.T) {
+	g := newRig(t, true)
+	var resp StartResponse
+	req := StartRequest{Arm: "stub", Tasks: []string{"demo/answer", "custom/manic_miner"}, Count: 2, Key: "c1"}
+	if code := g.call("POST", "/v1/runs", req, &resp); code != 202 || len(resp.RunIDs) != 4 || len(resp.Tasks) != 4 {
+		t.Fatalf("start: %d %+v", code, resp)
+	}
+	if resp.Tasks[0] != "demo/answer" || resp.Tasks[1] != "custom/manic_miner" {
+		t.Errorf("order: %v", resp.Tasks)
+	}
+	for _, id := range resp.RunIDs {
+		g.waitFinished(id)
+	}
+	var v CellView
+	if code := g.call("GET", "/v1/batches/"+resp.Batch+"/cell", nil, &v); code != 200 {
+		t.Fatalf("cell: %d", code)
+	}
+	r := v.Result
+	if !r.Complete || r.NExpected != 4 || r.Counts["pass"] != 4 || r.Headline.Value != 1 || v.Refusal != nil || len(v.Rows) != 4 || r.Schema != CellSchema {
+		t.Errorf("complete cell: %+v %+v", r, v.Refusal)
+	}
+	for _, w := range r.Warnings {
+		if strings.Contains(w, "basis mixed") {
+			t.Errorf("a cell of several tasks is not mixed by its tasks: %s", w)
+		}
+	}
+	// One run ended without a result.
+	ctx := context.Background()
+	rec, _ := g.state.GetRun(ctx, resp.RunIDs[1])
+	rec.Verdict, rec.VerdictReason = store.Aborted, "the container engine failed"
+	rec.Arm = json.RawMessage(`{"name":"stub"}`)
+	g.state.UpsertRun(ctx, rec)
+	v = CellView{}
+	g.call("GET", "/v1/batches/"+resp.Batch+"/cell", nil, &v)
+	if v.Result.Complete || v.Refusal == nil || v.Refusal.Code != 30 || len(v.Refusal.Unfinished) != 1 || v.Result.Counts["aborted"] != 1 {
+		t.Fatalf("incomplete: %+v %+v", v.Result, v.Refusal)
+	}
+	var rv RetryView
+	if code := g.call("POST", "/v1/batches/"+resp.Batch+"/retry", map[string]any{"verdicts": []string{"ABORTED", "SKIPPED"}}, &rv); code != 202 || len(rv.Retries) != 1 {
+		t.Fatalf("resume: %d %+v", code, rv)
+	}
+	for nu := range rv.Retries {
+		g.waitFinished(nu)
+	}
+	v = CellView{}
+	g.call("GET", "/v1/batches/"+resp.Batch+"/cell", nil, &v)
+	r = v.Result
+	if !r.Complete || r.NExpected != 4 || r.Counts["pass"] != 4 || r.Counts["aborted"] != 0 || len(v.Rows) != 5 {
+		t.Errorf("resumed: %+v", r)
+	}
+	superseded := 0
+	for _, row := range v.Rows {
+		if row.SupersededBy != "" {
+			superseded++
+		}
+	}
+	if superseded != 1 {
+		t.Errorf("rows: %+v", v.Rows)
+	}
+}

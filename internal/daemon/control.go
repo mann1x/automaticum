@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -383,6 +384,9 @@ func (d *Daemon) handleRetry(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var req struct {
 		DryRun bool `json:"dry_run"`
+		// Verdicts narrows a batch's retry to these verdicts, each of them
+		// retryable; a cell's resume retries ABORTED and SKIPPED only.
+		Verdicts []store.Verdict `json:"verdicts"`
 	}
 	json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&req)
 	var recs []store.Run
@@ -410,7 +414,7 @@ func (d *Daemon) handleRetry(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, rec := range list {
-			if retryable[rec.Verdict] {
+			if retryable[rec.Verdict] && (len(req.Verdicts) == 0 || slices.Contains(req.Verdicts, rec.Verdict)) {
 				recs = append(recs, rec)
 			}
 		}

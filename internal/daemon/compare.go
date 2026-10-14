@@ -242,7 +242,7 @@ func counter(name string) bool {
 }
 
 func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
-	v, code, err := d.compareView(r.Context(), r.URL.Query()["batch"])
+	v, code, err := d.compareView(r.Context(), r.URL.Query()["batch"], nil)
 	if err != nil {
 		fail(w, code, "%v", err)
 		return
@@ -253,7 +253,10 @@ func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
 // compareView groups the counted runs of some batches by arm and task, with
 // every number of each group and of each pair, and each group's basis. An
 // error comes with the HTTP status it means.
-func (d *Daemon) compareView(ctx context.Context, batches []string) (CompareView, int, error) {
+//
+// leave names runs that are not counted at all, such as a run a retry
+// replaced.
+func (d *Daemon) compareView(ctx context.Context, batches []string, leave map[string]bool) (CompareView, int, error) {
 	if len(batches) == 0 {
 		return CompareView{}, http.StatusBadRequest, errors.New("name at least one batch")
 	}
@@ -269,6 +272,9 @@ func (d *Daemon) compareView(ctx context.Context, batches []string) (CompareView
 			return v, http.StatusNotFound, fmt.Errorf("batch %s has no finished run", b)
 		}
 		for _, run := range runs {
+			if leave[run.ID] {
+				continue
+			}
 			if run.Verdict == store.Skipped {
 				if v.NeverStarted == nil {
 					v.NeverStarted = map[string]string{}
