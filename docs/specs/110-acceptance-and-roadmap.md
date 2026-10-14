@@ -299,7 +299,11 @@ visible text tokens p = 0.011; every other metric p ≥ 0.089. Every run has
 one failed request: the SDK's tokenizer probe (`/api/engine?...endpoint=
 tokenize`) answers 404 while the model is not loaded yet, by design of
 xOllama; the SDK's next probe, after the first generation, gets 200. It is
-not a request of the agent's loop.
+not a request of the agent's loop. The SDK makes it only for a side call
+with no conversation behind it (a title or summary), to book that call's
+prompt exactly; on a failure that one call goes unbooked, nothing is
+estimated or retried, and no guard, compaction or context share uses it
+(the Cerebriline session, from the SDK's source).
 
 **Pause, first real test.** Run 8 (OmniMerge v4) was paused at 14:59:17
 because another project needed the GPU: held two seconds later between two
