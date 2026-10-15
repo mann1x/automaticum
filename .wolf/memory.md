@@ -1256,3 +1256,19 @@
 |------|--------|---------|---------|--------|
 | 00:28 | Created runner/plan.mjs | — | ~780 |
 | 00:35 | ported switch_to_act_mode from the extension (runner/plan.mjs): plan-mode extra tool, queued switch applied before the script, continuation prompt; ingest mode_switches.by_agent; demo/plan-switch PASS | runner, internal/ingest, internal/daemon, cmd/automaticum, docs/specs, tasks/demo/plan-switch | pass | ~45k |
+
+## Session: 2026-10-15 00:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-15 00:33
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-15 00:33
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:40 | Mode C sampler pass-through checked on the stub (all 7 fields incl. repeat_penalty/repeat_last_n/presence_penalty); fixed kind llamacpp -> SDK provider openai-compatible (bug-026), broken run invalidated | internal/config/cell.go, docs/specs/065 | pass | ~20k |

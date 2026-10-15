@@ -1,6 +1,6 @@
 # 065 — The cell contract and exports
 
-**Status:** draft 0.8, 2026-10-14.
+**Status:** draft 0.9, 2026-10-16.
 
 ## 1. Purpose
 
@@ -206,6 +206,16 @@ Proved on the stub model server speaking llama-server's protocol: a cell
 of two runs with the caller's sampler and facts that agree with `/props`
 (2 PASS, cap audit CLEAN over 8 requests, exit 0); daemon tests cover the
 refusal on a contradicted fact, two lanes, a reused key and a restart.
+
+**Checked on the stub (2026-10-16):** with `--endpoint-kind llamacpp` and
+with `openai-compatible`, every sampler field of `--caller-values`
+(temperature, top_k, top_p, min_p, repeat_penalty, repeat_last_n,
+presence_penalty) reaches the server's `/v1/chat/completions` as given,
+the three penalties together, as omnimergekit asked (mail, 2026-10-14).
+Until then kind `llamacpp` did not work: the arm's provider was the kind
+itself, a provider the SDK does not have, and the session ended before
+its first request (bug-026). The SDK provider for `llamacpp` is
+`openai-compatible`.
 
 **Agreed with omnimergekit for mode C (2026-10-14, mail):**
 `--endpoint-kind openai-compatible|llamacpp|ollama|xollama` (default

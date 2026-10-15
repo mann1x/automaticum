@@ -21,7 +21,7 @@ func TestArmForCell(t *testing.T) {
 	if err := a.ForCell("cell-x", "llamacpp", "served", cv); err != nil {
 		t.Fatal(err)
 	}
-	if a.Endpoint != "cell-x" || a.Model.Provider != "llamacpp" || a.Model.Model != "served" || *a.Model.OutputTokens != 4096 || *a.Model.ContextWindow != 16384 || *a.Sampler.Temperature != 0.6 {
+	if a.Endpoint != "cell-x" || a.Model.Provider != "openai-compatible" || a.Model.Model != "served" || *a.Model.OutputTokens != 4096 || *a.Model.ContextWindow != 16384 || *a.Sampler.Temperature != 0.6 {
 		t.Errorf("arm: %+v", a)
 	}
 	for _, k := range []string{"endpoint", "model.model", "model.output_tokens", "sampler.owner", "sampler.temperature"} {

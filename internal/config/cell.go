@@ -85,6 +85,17 @@ func ParseBasisFacts(data []byte) (*BasisFacts, error) {
 // caller is the origin of a value a mode C caller gave.
 const caller = "caller"
 
+// ProviderFor is the SDK provider that speaks to an endpoint of a kind.
+// llamacpp is an OpenAI-compatible llama-server (030 §3): the SDK has no
+// provider of that name, and asking for one ends the session before its
+// first request ("Unknown or disabled provider").
+func ProviderFor(kind string) string {
+	if kind == "llamacpp" {
+		return "openai-compatible"
+	}
+	return kind
+}
+
 // ForCell turns the arm into the arm of a mode C cell: it runs on the
 // cell's endpoint, of kind kind, asks for model (the server's alias), and
 // takes the caller's values. The result is validated like any arm and gets
@@ -98,7 +109,7 @@ func (a *Arm) ForCell(endpoint, kind, model string, cv *CallerValues) error {
 		a.Origins = map[string]string{}
 	}
 	a.Origins = maps.Clone(a.Origins)
-	a.Endpoint, a.Model.Provider, a.Model.Model = endpoint, kind, model
+	a.Endpoint, a.Model.Provider, a.Model.Model = endpoint, ProviderFor(kind), model
 	// A pinned digest was the arm's model's; the caller serves another.
 	a.Model.Digest = ""
 	delete(a.Origins, "model.digest")

@@ -427,6 +427,24 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-10-16T00:10:00+02:00"
+    },
+    {
+      "id": "bug-026",
+      "timestamp": "2026-10-16T00:40:00+02:00",
+      "error_message": "mode C cell with --endpoint-kind llamacpp: agent error 'Unknown or disabled provider \"llamacpp\".' before any chat request; verdict FAIL",
+      "file": "internal/config/cell.go",
+      "root_cause": "Arm.ForCell set model.provider to the endpoint kind; the SDK has no provider llamacpp (kind llamacpp is an OpenAI-compatible llama-server, 030 \u00a73); cell_test asserted the wrong provider",
+      "fix": "ProviderFor(kind): llamacpp -> openai-compatible; test corrected; the broken stub run invalidated with the reason; rerun PASS with every sampler field on the wire",
+      "tags": [
+        "mode-c",
+        "provider",
+        "llamacpp",
+        "config",
+        "verdict"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-16T00:40:00+02:00"
     }
   ]
 }
