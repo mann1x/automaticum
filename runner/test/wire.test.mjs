@@ -5,7 +5,7 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { createWire, describe } from "../wire.mjs";
+import { createWire, describe, offersTools } from "../wire.mjs";
 
 function serve(handler) {
 	return new Promise((resolve) => {
@@ -84,4 +84,27 @@ test("an Error is described, not serialised to {}", () => {
 	assert.equal(d.cause.name, "TypeError");
 	assert.equal(JSON.parse(JSON.stringify(d)).cause.message, "inner");
 	assert.deepEqual(describe("text"), { message: "text" });
+});
+
+test("only the agent's answered requests are counted: chat requests that offer tools, answered 2xx", async () => {
+	let status = 200;
+	const { srv, url } = await serve((req, res) => {
+		res.writeHead(status, { "content-type": "application/json" });
+		res.end("{}");
+	});
+	const file = join(mkdtempSync(join(tmpdir(), "wire-")), "wire.jsonl");
+	const wire = createWire({ file });
+	const agent = JSON.stringify({ messages: [], tools: [{ type: "function" }] });
+	await (await wire.fetch(url + "/v1/chat/completions", { method: "POST", body: agent })).text();
+	// A probe offers no tools; a lookup has no body.
+	await (await wire.fetch(url + "/v1/chat/completions", { method: "POST", body: JSON.stringify({ messages: [] }) })).text();
+	await (await wire.fetch(url + "/props")).text();
+	status = 500;
+	await (await wire.fetch(url + "/v1/chat/completions", { method: "POST", body: agent })).text();
+	srv.close();
+	await wire.close();
+	assert.equal(wire.count(), 4);
+	assert.equal(wire.answered(), 1);
+	assert.equal(offersTools("not json"), false);
+	assert.equal(offersTools('{"tools":[]}'), false);
 });

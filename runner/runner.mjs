@@ -285,6 +285,8 @@ async function main() {
 		return { config: built.config, localRuntime: built.localRuntime, toolPolicies: built.toolPolicies, interactive };
 	};
 
+	// agentError is the last error the agent reported, for the last line.
+	let agentError = null;
 	let unsubscribe = () => {};
 	const follow = (id) => {
 		unsubscribe();
@@ -295,6 +297,7 @@ async function main() {
 					const inner = event?.payload?.event;
 					if (event?.type !== "agent_event" || (event.payload.teamRole ?? "lead") !== "lead") return;
 					if (inner?.type === "iteration_start") user.iteration();
+					if (inner?.type === "error") agentError = describe(inner.error).message;
 				},
 				{ sessionId: id },
 			) ?? (() => {});
@@ -408,6 +411,11 @@ async function main() {
 		sdk: sdkFound,
 		read_back: problems === null ? "the SDK did not report its resolved configuration" : "compared",
 		requests: wire.count(),
+		// The agent's requests the server answered: none, and an agent
+		// that ended in error never reached the model (the harness then
+		// says ABORTED, not what the oracle says of an untouched workspace).
+		agent_requests_answered: wire.answered(),
+		agent_error: result?.finishReason === "error" ? agentError : null,
 		questions_answered: user.counts.questions,
 		user: user.scripted ? user.counts : null,
 		agent_end: result?.finishReason ?? "",

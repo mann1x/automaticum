@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-10-16 (revision 11).
+**Status:** current as of 2026-10-16 (revision 12).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -98,6 +98,7 @@ All dated 2026-10-12.
 | D86 | The scripted user is built next (milestone 4, 040 §6.2). A script may restore a checkpoint's messages: the SDK then starts a new session fork inside the same run, so its guards, mistake counter and compaction state start from nothing. That is allowed and recorded: the run records each fork with its time, and every counter and guard metric says it restarted there; reports can filter such runs (2026-10-14). | 040 §6.2 |
 | D87 | Every lane workspace is a git repository by default, its seed one commit, so the SDK's checkpoints exist for every arm that turns them on. A task may still say `[workspace] git = false`; a script that restores a checkpoint then cannot load. Runs record it, and the basis's task fact says "workspace a git repository", so a comparison across the change shows it (2026-10-16). | 060 §2, 040 §6.2 |
 | D88 | The scripted user's metrics (`user.*`) are hidden where they are zero: `compare` leaves out one that is zero in every run of every group, and `run show` leaves out a zero one (2026-10-16). | 070 §2 |
+| D89 | A run whose agent ended in error before the server answered any of its requests is `ABORTED`, not judged by the oracle: the model was never tested. The runner counts the agent's answered requests (chat requests that offer tools, 2xx) and reports the agent's error (2026-10-16). | 020 §3 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked

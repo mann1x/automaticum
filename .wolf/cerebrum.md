@@ -118,6 +118,7 @@
 ## Decision Log
 
 <!-- Significant technical decisions with rationale. Why X was chosen over Y. -->
+- [2026-10-16] Owner D89: agent ended in error before any agent request was answered (runner counts tools-offering chat requests answered 2xx) -> ABORTED, not oracle FAIL.
 - [2026-10-16] Owner D87: every lane workspace is a git repository by default (the SDK's checkpoints need one); `[workspace] git = false` stays available per task. Basis task fact says "workspace a git repository".
 - [2026-10-16] Owner D88: hide zero user.* metrics (compare: zero in every run of every group; run show: zero).
 - [2026-10-12] Owner: Go daemon; hosts run only the Go binary; Node runner inside the lane image; Docker lanes (slim base + language layers); Gitea for git tasks.

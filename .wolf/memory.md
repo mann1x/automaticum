@@ -1272,3 +1272,24 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 00:40 | Mode C sampler pass-through checked on the stub (all 7 fields incl. repeat_penalty/repeat_last_n/presence_penalty); fixed kind llamacpp -> SDK provider openai-compatible (bug-026), broken run invalidated | internal/config/cell.go, docs/specs/065 | pass | ~20k |
+
+## Session: 2026-10-15 00:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-15 00:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-15 00:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-15 00:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:55 | D89: runner counts answered agent requests + agent_error; harness ABORTED when agent ends in error with none answered; specs 020 0.11, decisions rev 12, PROTOCOL.md | runner/wire.mjs, runner/runner.mjs, internal/run | pass | ~25k |

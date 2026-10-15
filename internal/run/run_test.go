@@ -312,6 +312,21 @@ func TestVerdicts(t *testing.T) {
 			io.WriteString(out, event+endLine(OutcomeError, `,"reason":"endpoint gave 503"`))
 			return docker.Result{ExitCode: 1}, nil
 		}, store.Aborted, "endpoint gave 503"},
+		// D89: an agent that ended in error before the server answered any
+		// of its requests never reached the model. (A later agent_end in
+		// the line wins, as encoding/json takes the last of a repeated key.)
+		{"aborted: the agent ended in error before any answer", nil, func(_ context.Context, s docker.Spec, out io.Writer) (docker.Result, error) {
+			io.WriteString(out, event+endLine(OutcomeCompleted, `,"agent_end":"error","agent_requests_answered":0,"agent_error":"Unknown or disabled provider \"llamacpp\"."`))
+			return docker.Result{}, nil
+		}, store.Aborted, "Unknown or disabled provider"},
+		{"fail: the agent ended in error after the model answered", nil, func(_ context.Context, s docker.Spec, out io.Writer) (docker.Result, error) {
+			io.WriteString(out, event+endLine(OutcomeCompleted, `,"agent_end":"error","agent_requests_answered":3,"agent_error":"stream cut"`))
+			return docker.Result{}, nil
+		}, store.Fail, "said no"},
+		{"fail: an old runner that did not count", nil, func(_ context.Context, s docker.Spec, out io.Writer) (docker.Result, error) {
+			io.WriteString(out, event+endLine(OutcomeCompleted, `,"agent_end":"error"`))
+			return docker.Result{}, nil
+		}, store.Fail, "said no"},
 		{"invalid: resolved value differs from the arm", nil, func(_ context.Context, s docker.Spec, out io.Writer) (docker.Result, error) {
 			fix(s)
 			io.WriteString(out, endLine(OutcomeInvalid, `,"problems":["compaction.enabled: arm true, resolved false"]`))

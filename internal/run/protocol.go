@@ -80,6 +80,12 @@ type End struct {
 	// with the arm, or says why it was not.
 	ReadBack string `json:"read_back"`
 	Requests int    `json:"requests"`
+	// AgentRequestsAnswered is how many of the agent's requests (chat
+	// requests offering tools) the server answered; nil from a runner
+	// that did not count them. AgentError is the agent's last error when
+	// it ended in error.
+	AgentRequestsAnswered *int   `json:"agent_requests_answered"`
+	AgentError            string `json:"agent_error"`
 	// Iterations is how many turns the agent took; Questions how many of
 	// its questions the scripted user answered.
 	Iterations *int `json:"iterations"`

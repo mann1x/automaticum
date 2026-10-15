@@ -24,6 +24,18 @@ function headersOf(h) {
 	return out;
 }
 
+// offersTools says whether a request body is a chat request that offers
+// tools: a request of the agent's loop, as ingest counts them. The SDK's
+// probes and lookups offer none.
+export function offersTools(text) {
+	try {
+		const tools = JSON.parse(text ?? "")?.tools;
+		return Array.isArray(tools) && tools.length > 0;
+	} catch {
+		return false;
+	}
+}
+
 // bodyOf returns a request body as text when it can be read without
 // consuming it, and says what it was otherwise.
 function bodyOf(body) {
@@ -48,6 +60,8 @@ export function createWire({ file, fetch: inner = globalThis.fetch, now = () => 
 	const out = createWriteStream(file, { flags: "a" });
 	const pending = new Set();
 	let seq = 0;
+	// answered counts the agent's requests the server answered (2xx).
+	let answered = 0;
 
 	const write = (record) =>
 		new Promise((resolve, reject) => out.write(JSON.stringify(record) + "\n", (err) => (err ? reject(err) : resolve())));
@@ -84,6 +98,7 @@ export function createWire({ file, fetch: inner = globalThis.fetch, now = () => 
 		record.t_headers = atHeaders.toISOString();
 		record.ms_headers = atHeaders - started;
 		record.status = response.status;
+		if (response.status >= 200 && response.status < 300 && offersTools(body.text)) answered++;
 		record.response_headers = headersOf(response.headers);
 
 		// Read the copy to its end, however long the stream lasts.
@@ -127,6 +142,7 @@ export function createWire({ file, fetch: inner = globalThis.fetch, now = () => 
 	return {
 		fetch: wire,
 		count: () => seq,
+		answered: () => answered,
 		// close waits for the responses still being read, up to graceMs, and
 		// closes the file. It returns how many were cut short.
 		async close(graceMs = 5000) {

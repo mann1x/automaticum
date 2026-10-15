@@ -537,6 +537,14 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		facts.Aborted = "the runner failed: " + end.Reason
 	case end.Outcome != OutcomeCompleted:
 		facts.Aborted = fmt.Sprintf("the runner reported an outcome this harness does not know: %q", end.Outcome)
+	case end.AgentEnd == "error" && end.AgentRequestsAnswered != nil && *end.AgentRequestsAnswered == 0:
+		// The SDK ended the session before the model answered anything:
+		// the model was not tested, and the oracle would only judge the
+		// seed (owner, 2026-10-16, D89).
+		facts.Aborted = "the agent ended in error before the server answered any of its requests"
+		if end.AgentError != "" {
+			facts.Aborted += ": " + end.AgentError
+		}
 	}
 	if facts.Skipped != "" {
 		return finish()

@@ -83,6 +83,7 @@ One JSON object per line, each with a time `t` and a kind `k`.
 | `agent_end` | how the agent ended, as the SDK says it |
 | `claimed_success` | whether the agent ended its task by itself |
 | `usage`, `iterations`, `requests`, `questions_answered` | counts |
+| `agent_requests_answered`, `agent_error` | how many of the agent's requests (chat requests that offer tools) the server answered with a 2xx, and the agent's last error when it ended in error: none answered and an error end is `ABORTED` (D89) |
 | `user` | with a script: `approvals`, `denials`, `questions`, `actions` |
 
 | outcome | the harness's verdict | exit code |
@@ -91,7 +92,7 @@ One JSON object per line, each with a time `t` and a kind `k`.
 | `invalid`: the session is not the arm | `INVALID` | 4 |
 | `wall_limit` | `TIMEOUT` unless the oracle passes | 5 |
 | `error` | `ABORTED` | 1 |
-| `completed` | the oracle decides | 0 |
+| `completed` | the oracle decides, unless the agent ended in error with no request answered: `ABORTED` | 0 |
 | no last line at all | `ABORTED` | any |
 
 ## Mode switches and forks
