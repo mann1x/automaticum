@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.16, 2026-10-14.
+**Status:** draft 0.17, 2026-10-16.
 
 ## 1. The rule: no custom script
 
@@ -53,7 +53,9 @@ method is recorded.
 - **Cost** in tokens and, for priced endpoints, money.
 - **Scripted user** (040 §6.2): `user.actions`, `user.denials`,
   `user.failed`, and since analysis version 4 `user.forks` and
-  `user.mode_switches`.
+  `user.mode_switches`. **Decided by the owner (2026-10-16), D88:** hidden
+  where zero: `compare` leaves out one that is zero in every run of every
+  group, `run show` a zero one.
 
 ### 2.1 Per cell
 

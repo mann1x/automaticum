@@ -62,9 +62,14 @@ type Workspace struct {
 	Install []Install `toml:"install"`
 	// Git makes the workspace a git repository, the seed its first commit,
 	// before the agent starts. The SDK's checkpoints are commits in it: a
-	// workspace that is not a repository has none.
-	Git bool `toml:"git"`
+	// workspace that is not a repository has none. Every workspace is one
+	// unless the task says git = false (owner, D87); read it with GitRepo.
+	Git *bool `toml:"git"`
 }
+
+// GitRepo says whether the workspace is made a git repository: yes unless
+// the task says git = false (D87).
+func (w Workspace) GitRepo() bool { return w.Git == nil || *w.Git }
 
 // Install places one artefact at a path in the workspace.
 type Install struct {
@@ -224,8 +229,8 @@ func (t *Task) validate() error {
 	if t.User != nil {
 		problems := t.User.validate()
 		for i, r := range t.User.Rules {
-			if r.Do == "restore" && !t.Workspace.Git {
-				problems = append(problems, fmt.Sprintf("user.rule %d: a restore needs [workspace] git = true: the SDK's checkpoints are commits in a git repository", i+1))
+			if r.Do == "restore" && !t.Workspace.GitRepo() {
+				problems = append(problems, fmt.Sprintf("user.rule %d: a restore needs a git workspace, and the task says [workspace] git = false: the SDK's checkpoints are commits in a git repository", i+1))
 			}
 		}
 		if len(problems) > 0 {

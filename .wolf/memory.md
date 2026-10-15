@@ -1218,3 +1218,24 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 20:50 | scripted user stage 2: plan/mode/fork e2e on the stub (4 demos PASS), ingest session_fork + user.forks/mode_switches (analysis 4), protocol 3, specs 040 1.3, 060 0.8, 070 0.16 | runner/, internal/task, internal/ingest, internal/run, docs/specs, tasks/demo | pass | ~60k |
+
+## Session: 2026-10-14 20:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 20:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 20:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-14 20:51
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:10 | D87 git workspaces by default (git = false opt-out, basis task fact), D88 hide zero user.* metrics, runner shares readReceipts across sessions; 6 demos PASS incl. plan without re-read | internal/task, internal/run, internal/daemon, cmd/automaticum, runner, docs/specs | pass | ~40k |

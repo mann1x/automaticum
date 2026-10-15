@@ -1,6 +1,6 @@
 # 040 — The runner
 
-**Status:** draft 1.3, 2026-10-14. Facts about the SDK in this file were read
+**Status:** draft 1.4, 2026-10-16. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
 running it. The parity table in §6 was checked row by row by the Cerebriline
 session on 2026-10-13 against its main branch (release 4.100.249 plus requests
@@ -386,21 +386,31 @@ session's answers of 2026-10-14 (SDK and extension 4.100.251 source):
   records each fork in the finding `session_fork` and counts `user.forks`
   and `user.mode_switches` (070 §4.2).
 - **Checkpoints need a git repository.** The SDK's checkpoints are commits;
-  it keeps no shadow repository. A task whose script restores says
-  `[workspace] git = true` (060 §2); the runner makes the workspace a
-  repository with the seed as one commit, and the workspace diff leaves
-  `.git` out. Until now no lane workspace was a repository, so an arm with
-  checkpoints on never had one; whether every workspace should be is asked
-  of the owner.
+  it keeps no shadow repository. Until 2026-10-14 no lane workspace was a
+  repository, so an arm with checkpoints on never had one.
+  **Decided by the owner (2026-10-16), D87:** every workspace is one by
+  default, the seed one commit; a task may say `[workspace] git = false`
+  (060 §2), and a script that restores cannot then load. The workspace
+  diff leaves `.git` out; the record says `workspace.git`, and the basis's
+  task fact says "workspace a git repository".
 - Observed on the stub, SDK 4.100.250, arm `stub-plan`: plan mode offers
-  no `editor` and no `switch_to_act_mode` (it keeps `run_commands` and
-  `sed`), so on this release a plan is presented as text. The arm's
+  no `editor` (it keeps `run_commands` and `sed`): the SDK's own plan
+  filter. `switch_to_act_mode` is in no SDK release: the extension adds it
+  itself in plan mode (`config.extraTools`, `createSwitchToActModeTool`)
+  and its handler queues the switch (Cerebriline session, 2026-10-15). The
+  runner does not add it yet, a recorded difference: a plan is presented
+  as text. The arm's
   no-tool-call nudge answers the first text-only reply of each run, so the
   run ends on the second.
-- Observed on the stub: after a switch, the read-before-edit guard has
-  forgotten the files read in plan mode (the session was started again),
-  and refuses an edit until the file is read again. Asked of the
-  Cerebriline session whether the extension behaves the same.
+- **Read receipts.** The extension keeps one record of the files read for
+  its controller's lifetime and hands it to every session it builds, so
+  the read-before-edit guard does not forget across a switch (Cerebriline
+  session, 2026-10-15). Core makes a fresh one per session unless given
+  one. The runner first did not, and an edit after a switch was refused
+  (observed on the stub, 2026-10-14); since 2026-10-16 it passes one
+  `capabilities.readReceipts` for the whole run, so a switch and a fork
+  keep it. Not copied: the extension's record also outlives the task, so a
+  task in the same window inherits the receipts of the one before.
 - Demo tasks `demo/plan` (plan, then a switch to act) and `demo/fork` (a
   fork at turn 3 to checkpoint 1) pass on the stub; `demo/cancel` now
   restores the workspace for real.

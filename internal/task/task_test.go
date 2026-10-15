@@ -111,6 +111,27 @@ func TestLoadRejects(t *testing.T) {
 	}
 }
 
+// Every workspace is a git repository unless the task says git = false
+// (D87), and a script that restores a checkpoint needs one.
+func TestWorkspaceGit(t *testing.T) {
+	tk, err := Load(write(t, minimal, map[string]string{}))
+	if err != nil || !tk.Workspace.GitRepo() {
+		t.Fatalf("by default: %v, %v", tk.Workspace.GitRepo(), err)
+	}
+	tk, err = Load(write(t, minimal+"[workspace]\ngit = false\n", map[string]string{}))
+	if err != nil || tk.Workspace.GitRepo() {
+		t.Fatalf("git = false: %v, %v", tk.Workspace.GitRepo(), err)
+	}
+	restore := "[user.default]\napproval = \"approve\"\nanswer = \"x\"\n[[user.rule]]\non = \"turn\"\nturn = 2\ndo = \"restore\"\nrestore = \"workspace\"\ncheckpoint = 1\n"
+	if _, err := Load(write(t, minimal+restore, map[string]string{})); err != nil {
+		t.Errorf("a restore in a git workspace: %v", err)
+	}
+	_, err = Load(write(t, minimal+"[workspace]\ngit = false\n"+restore, map[string]string{}))
+	if err == nil || !strings.Contains(err.Error(), "git = false") {
+		t.Errorf("a restore without git: %v", err)
+	}
+}
+
 func TestHashChangesWithAnyFile(t *testing.T) {
 	dir := write(t, minimal, map[string]string{"extra/note.txt": "one"})
 	a, err := Load(dir)

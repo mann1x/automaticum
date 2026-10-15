@@ -251,6 +251,9 @@ type provenance struct {
 		// GitLeftOut says the workspace's .git directory is left out of
 		// the lists above (and is in workspace_after).
 		GitLeftOut bool `json:"git_left_out,omitempty"`
+		// Git says the runner was asked to make the workspace a git
+		// repository (D87: every workspace, unless the task says not).
+		Git bool `json:"git,omitempty"`
 	} `json:"workspace"`
 	Oracle *task.OracleResult `json:"oracle"`
 	// NotRecorded says what a full record holds that this one does not,
@@ -399,10 +402,11 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		return finish()
 	}
 	p.Workspace.Before = manifest.Hash()
+	p.Workspace.Git = t.Workspace.GitRepo()
 	job := Job{
 		Protocol: Protocol, RunID: r.ID, SessionID: "run-" + r.ID, Arm: a.Resolved(),
 		Endpoint: JobEndpoint{Name: endpoint.Name, Kind: endpoint.Kind, BaseURL: endpoint.BaseURL, APIKey: key},
-		Prompt:   t.Prompt, DefaultAnswer: t.DefaultAnswer, User: t.User, WorkspaceGit: t.Workspace.Git,
+		Prompt:   t.Prompt, DefaultAnswer: t.DefaultAnswer, User: t.User, WorkspaceGit: t.Workspace.GitRepo(),
 		Workspace: containerWorkspace, Out: containerOut, WallS: wall.Seconds, SDKRelease: p.SDK.Version,
 	}
 	jb, _ := json.Marshal(job)
@@ -490,7 +494,7 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		note("reading the workspace: %v", err)
 	} else {
 		p.Workspace.After = after.Hash()
-		if t.Workspace.Git {
+		if t.Workspace.GitRepo() {
 			// The repository the runner made is not the agent's work; it
 			// is in workspace_after whole.
 			after = withoutGit(after)

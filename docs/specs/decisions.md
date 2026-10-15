@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-10-14 (revision 10).
+**Status:** current as of 2026-10-16 (revision 11).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -96,6 +96,8 @@ All dated 2026-10-12.
 | D84 | The first-generations canary judges the first **5** finished requests of a batch. The length of a model's answers matters for specific kinds of evaluation, not in general: a length band is checked only where a task or suite declares one, and otherwise reported unchecked. Empty answers, answers ended by length and the model's own control tokens in visible text stop the batch. A retry never runs a `PASS`, `FAIL` or `TIMEOUT` again (2026-10-14; closes O22). | 050 §3.3, §4 |
 | D85 | A reload after a pause keeps the verdict: the first request after a pause's release reloads the model the pause dropped on purpose, and that reload is recorded apart, as a note, and does not make the run `INVALID` (D73). A reload anywhere else still does. Run 8 of batch D81 is analysed again under this rule (2026-10-14). | 070 §4.1, 050 §4 |
 | D86 | The scripted user is built next (milestone 4, 040 §6.2). A script may restore a checkpoint's messages: the SDK then starts a new session fork inside the same run, so its guards, mistake counter and compaction state start from nothing. That is allowed and recorded: the run records each fork with its time, and every counter and guard metric says it restarted there; reports can filter such runs (2026-10-14). | 040 §6.2 |
+| D87 | Every lane workspace is a git repository by default, its seed one commit, so the SDK's checkpoints exist for every arm that turns them on. A task may still say `[workspace] git = false`; a script that restores a checkpoint then cannot load. Runs record it, and the basis's task fact says "workspace a git repository", so a comparison across the change shows it (2026-10-16). | 060 §2, 040 §6.2 |
+| D88 | The scripted user's metrics (`user.*`) are hidden where they are zero: `compare` leaves out one that is zero in every run of every group, and `run show` leaves out a zero one (2026-10-16). | 070 §2 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked

@@ -78,6 +78,10 @@ func basisOfRun(rec *store.Run, metrics map[string]float64) map[string]string {
 		Task struct {
 			Hash string `json:"hash"`
 		} `json:"task"`
+		Workspace struct {
+			Git        bool `json:"git"`
+			GitLeftOut bool `json:"git_left_out"`
+		} `json:"workspace"`
 		Inference *struct {
 			Kind          string `json:"kind"`
 			ServerVersion string `json:"server_version"`
@@ -226,7 +230,13 @@ func basisOfRun(rec *store.Run, metrics map[string]float64) map[string]string {
 	} else {
 		set("agent settings", "", "the arm has none")
 	}
-	set("task", fmt.Sprintf("%s/%s version %d, files %s", rec.Suite, rec.TaskID, rec.TaskVersion, short(p.Task.Hash)), "")
+	// A workspace made a git repository (D87) is another place to work
+	// in: the fact says so. Runs before it had none, and keep their fact.
+	taskFact := fmt.Sprintf("%s/%s version %d, files %s", rec.Suite, rec.TaskID, rec.TaskVersion, short(p.Task.Hash))
+	if p.Workspace.Git || p.Workspace.GitLeftOut {
+		taskFact += ", workspace a git repository"
+	}
+	set("task", taskFact, "")
 	if p.Oracle.Oracle != "" {
 		set("scorer", fmt.Sprintf("%s, image %s", p.Oracle.Oracle, short(p.Oracle.ImageID)), "")
 	} else {

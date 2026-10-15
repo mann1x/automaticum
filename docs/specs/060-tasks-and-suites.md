@@ -1,6 +1,6 @@
 # 060 — Tasks, oracles and the suite interface
 
-**Status:** draft 0.8, 2026-10-14.
+**Status:** draft 0.9, 2026-10-16.
 
 ## 1. Scope
 
@@ -16,7 +16,7 @@ A task is a directory under `tasks/<suite>/<task>/`:
 | part | content |
 |---|---|
 | `task.toml` | id, version, problem id, labels (language, tier, family), required language layers, limits, the prompt, the oracles, declared default answer for questions |
-| workspace seed | the files the agent starts from, restored and hash-checked before every run; with `[workspace] git = true` the runner makes the workspace a git repository, the seed its one commit, which the SDK's checkpoints need (040 §6.2) |
+| workspace seed | the files the agent starts from, restored and hash-checked before every run; the runner makes the workspace a git repository, the seed its one commit, which the SDK's checkpoints need (040 §6.2); a task may say `[workspace] git = false` (**Decided by the owner (2026-10-16):** D87) |
 | visible tests | optional; a file set the agent may read and run |
 | oracle | command plus an expectation: an exit code, or a declared pattern when the command exits 0 either way |
 | hidden tests | outside the workspace, never mounted into the agent's container |

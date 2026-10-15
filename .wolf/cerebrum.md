@@ -91,6 +91,8 @@
 - (2026-10-14) Stub scripts for an arm with the no-tool-call nudge must answer it: every text-only reply gets one "[SYSTEM] Your last message contained no tool calls…" message before the run ends, so a run ends on the second text-only reply. And the read-before-edit guard needs a read_files of the file in the same session (a switch or fork starts a new one) before any editor call.
 - (2026-10-14) SDK 4.100.250 plan mode offers no editor and no switch_to_act_mode (it keeps run_commands and sed); a plan is presented as text. Runner protocol 3 = scripted user stage 2 (categories, mode, plan, fork, workspace_git).
 
+- (2026-10-16) Match the extension's session wiring before concluding the SDK "loses" state: the extension passes one capabilities.readReceipts (createReadReceipts) to every session; switch_to_act_mode is an extension extraTool, in no SDK release.
+
 ## Do-Not-Repeat
 
 - 2026-10-13: Do not invent a threshold or a default number for a detector, guard or limit and then carry it as an Open item with "keep" as the recommendation. The owner: the SDK's guards are tuned on more than 600 recorded runs; use the thresholds those analyses identified. If one is missing, ask the SDK's session or read the SDK's source (packages/agents and packages/core/src/runtime/safety). Wrong: `repeated_tool_call` at 3 in a row, `runaway` at 10,000 for every run.
@@ -114,6 +116,8 @@
 ## Decision Log
 
 <!-- Significant technical decisions with rationale. Why X was chosen over Y. -->
+- [2026-10-16] Owner D87: every lane workspace is a git repository by default (the SDK's checkpoints need one); `[workspace] git = false` stays available per task. Basis task fact says "workspace a git repository".
+- [2026-10-16] Owner D88: hide zero user.* metrics (compare: zero in every run of every group; run show: zero).
 - [2026-10-12] Owner: Go daemon; hosts run only the Go binary; Node runner inside the lane image; Docker lanes (slim base + language layers); Gitea for git tasks.
 - [2026-10-12] Owner: spec-only outcome for now; agent mode only for remote hosts; TOML with tasks in this repo; one operator plus assistants; verdicts PASS/FAIL/TIMEOUT/ABORTED/INVALID/SKIPPED; raw streams as content-addressed blobs on disk; runner at full extension parity; first language layers dotnet (C#), node, python, go, rust, c/c++.
 - [2026-10-12] Owner prefers store shape 3: DuckDB (state, config, metrics, stats) + Lance via lancedb-go (chunks, vectors, FTS). To be confirmed by the spike in spec 10.1.

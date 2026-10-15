@@ -14,7 +14,6 @@ oracle_s = 30
 
 [workspace]
 seed = "seed"
-git = true
 
 [[oracle]]
 name = "check"

@@ -330,6 +330,11 @@ func runShow(ctx context.Context, args []string) error {
 		fmt.Println("\nmetrics:")
 		w := table()
 		for _, m := range r.Metrics {
+			// The scripted user's counts say nothing at zero: a run
+			// without a script always has them.
+			if strings.HasPrefix(m.Name, "user.") && m.Value == 0 {
+				continue
+			}
 			fmt.Fprintf(w, "  %s\t%s\n", m.Name, human.Metric(m.Name, m.Value))
 		}
 		w.Flush()

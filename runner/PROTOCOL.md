@@ -37,7 +37,7 @@ wrongly, so the number went up.
 | `endpoint` | `name`, `kind`, `base_url` as the container reaches it, `api_key` if any |
 | `prompt`, `default_answer` | the task's prompt; what the default user answers to a question |
 | `user` | the task's scripted user (`[user]` of `task.toml`, 040 §6.2), with each rule's `times` stated and `categories`, the extension's approval categories and their tools; absent, every tool runs without asking and every question gets `default_answer` |
-| `workspace_git` | make the workspace a git repository before the session starts, its seed one commit (the task's `[workspace] git`): the SDK's checkpoints are commits |
+| `workspace_git` | make the workspace a git repository before the session starts, its seed one commit: the SDK's checkpoints are commits. True unless the task says `[workspace] git = false` (D87) |
 | `workspace`, `out` | paths in the container |
 | `wall_s` | the wall limit the runner enforces by stopping the agent |
 | `sdk_release` | the version the installed SDK package must be: that of the build the arm names, mounted at the runner's `node_modules` (the image holds no SDK) |
@@ -103,7 +103,10 @@ script's text (for a switch to act without one, the extension's sentence
 "The user approved switching to act mode. Continue with the approved plan
 now."). A fork restores the checkpoint's messages (and, with `both`, the
 files) into a new session `<session_id>-fork<n>`, stops the old one and
-follows the new one; its `fork` note lists what the SDK started again from
+follows the new one. One record of the files read
+(`capabilities.readReceipts`) serves every session of the run, as the
+extension's does, so the read-before-edit guard keeps it across a switch
+and a fork. The `fork` note lists what the SDK started again from
 nothing (`restarted`). Turns are counted by the runner over the whole run.
 
 ## What protocol 3 does not do

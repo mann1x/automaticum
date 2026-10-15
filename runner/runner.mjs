@@ -146,6 +146,12 @@ async function main() {
 		clientName: "automaticum-runner",
 		fetch: wire.fetch,
 		capabilities: {
+			// One record of the files read, for every session of the run, as
+			// the extension keeps one for its controller's lifetime: the
+			// read-before-edit guard does not forget across a mode switch or
+			// a fork (Cerebriline session, 2026-10-15). Without it core
+			// makes a fresh one per session.
+			readReceipts: sdk.createReadReceipts(),
 			requestToolApproval: (request) => user.approval(request),
 			toolExecutors: {
 				askQuestion: async (question, options) => user.question(question, options),

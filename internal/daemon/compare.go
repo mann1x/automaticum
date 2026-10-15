@@ -230,6 +230,36 @@ func served(provenance json.RawMessage) map[string]string {
 	return out
 }
 
+// dropQuietUser leaves out the scripted user's metrics (user.*) that are
+// zero in every run of every group: runs without a script always have
+// them at zero, and they would only fill the comparison (owner,
+// 2026-10-16). One that is not zero somewhere stays, zeros included.
+func dropQuietUser(groups []CompareGroup) {
+	quiet := map[string]bool{}
+	for _, g := range groups {
+		for name, vals := range g.values {
+			if !strings.HasPrefix(name, "user.") {
+				continue
+			}
+			if _, seen := quiet[name]; !seen {
+				quiet[name] = true
+			}
+			for _, x := range vals {
+				if x != 0 {
+					quiet[name] = false
+				}
+			}
+		}
+	}
+	for name, q := range quiet {
+		if q {
+			for _, g := range groups {
+				delete(g.values, name)
+			}
+		}
+	}
+}
+
 // counter says whether a metric counts events, so that a run without it
 // has none.
 func counter(name string) bool {
@@ -340,6 +370,7 @@ func (d *Daemon) compareView(ctx context.Context, batches []string, leave map[st
 			g.bases = append(g.bases, basisOfRun(&run, byName))
 		}
 	}
+	dropQuietUser(v.Groups)
 	for i := range v.Groups {
 		g := &v.Groups[i]
 		// A count that a run does not have is a zero of that run: a tool

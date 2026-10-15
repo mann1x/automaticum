@@ -1421,3 +1421,22 @@ runs = 1
 		t.Errorf("after the stop: %d skipped, %+v", skipped, v.Batches)
 	}
 }
+
+// The scripted user's metrics are left out of a comparison when they are
+// zero in every run of every group, and kept, zeros too, when one is not.
+func TestDropQuietUser(t *testing.T) {
+	groups := []CompareGroup{
+		{values: map[string][]float64{"user.actions": {0, 0}, "user.denials": {0, 1}, "turns": {0, 0}}},
+		{values: map[string][]float64{"user.actions": {0}, "user.denials": {0}}},
+	}
+	dropQuietUser(groups)
+	if _, ok := groups[0].values["user.actions"]; ok {
+		t.Error("user.actions is zero everywhere and stayed")
+	}
+	if _, ok := groups[1].values["user.denials"]; !ok {
+		t.Error("user.denials is not zero in group A and was dropped from B")
+	}
+	if _, ok := groups[0].values["turns"]; !ok {
+		t.Error("a metric not of the user was dropped")
+	}
+}
