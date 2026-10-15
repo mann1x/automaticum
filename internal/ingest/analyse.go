@@ -224,6 +224,7 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 	m("user.failed", float64(ev.UserFailed))
 	m("user.forks", float64(len(ev.Forks)))
 	m("user.mode_switches", float64(ev.ModeSwitches))
+	m("mode_switches.by_agent", float64(ev.AgentModeSwitches))
 	m("events.lines", float64(ev.Lines))
 	if ev.BadLines > 0 {
 		m("events.unreadable_lines", float64(ev.BadLines))

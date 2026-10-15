@@ -93,6 +93,8 @@
 
 - (2026-10-16) Match the extension's session wiring before concluding the SDK "loses" state: the extension passes one capabilities.readReceipts (createReadReceipts) to every session; switch_to_act_mode is an extension extraTool, in no SDK release.
 
+- (2026-10-16) Extension source for porting: the local Cline checkout (path in docs/local, untracked), read only with `git show v4.100.25x:<path>` (tags v4.100.250/251/252 exist). switch_to_act_mode lives in apps/vscode/src/sdk/sdk-session-config-builder.ts; the queued switch is applied on idle in sdk-mode-coordinator.ts (autoContinue with ACT_MODE_CONTINUATION_PROMPT, no user step).
+
 ## Do-Not-Repeat
 
 - 2026-10-13: Do not invent a threshold or a default number for a detector, guard or limit and then carry it as an Open item with "keep" as the recommendation. The owner: the SDK's guards are tuned on more than 600 recorded runs; use the thresholds those analyses identified. If one is missing, ask the SDK's session or read the SDK's source (packages/agents and packages/core/src/runtime/safety). Wrong: `repeated_tool_call` at 3 in a row, `runaway` at 10,000 for every run.

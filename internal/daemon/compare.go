@@ -230,15 +230,16 @@ func served(provenance json.RawMessage) map[string]string {
 	return out
 }
 
-// dropQuietUser leaves out the scripted user's metrics (user.*) that are
-// zero in every run of every group: runs without a script always have
-// them at zero, and they would only fill the comparison (owner,
-// 2026-10-16). One that is not zero somewhere stays, zeros included.
+// dropQuietUser leaves out the scripted user's metrics (user.*), and the
+// agent's mode switches with them, that are zero in every run of every
+// group: runs without a script or a plan always have them at zero, and
+// they would only fill the comparison (owner, 2026-10-16, D88). One that
+// is not zero somewhere stays, zeros included.
 func dropQuietUser(groups []CompareGroup) {
 	quiet := map[string]bool{}
 	for _, g := range groups {
 		for name, vals := range g.values {
-			if !strings.HasPrefix(name, "user.") {
+			if !quietWhenZero(name) {
 				continue
 			}
 			if _, seen := quiet[name]; !seen {
@@ -258,6 +259,11 @@ func dropQuietUser(groups []CompareGroup) {
 			}
 		}
 	}
+}
+
+// quietWhenZero says whether a metric is left out where it is zero (D88).
+func quietWhenZero(name string) bool {
+	return strings.HasPrefix(name, "user.") || strings.HasPrefix(name, "mode_switches.")
 }
 
 // counter says whether a metric counts events, so that a run without it

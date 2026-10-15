@@ -146,10 +146,8 @@ test("in plan mode an end is a plan: a switch to act with the extension's senten
 		],
 	});
 	assert.equal(u.continues, true);
-	u.tool("switch_to_act_mode");
 	assert.deepEqual(u.next({ finishReason: "completed" }, "plan"), { prompt: APPROVED_ACT, mode: "act" });
 	assert.equal(lines.at(-1).on, "plan");
-	assert.equal(lines.at(-1).switch_asked, true);
 	// Back in act mode, an end is a completion.
 	assert.deepEqual(u.next({ finishReason: "completed" }, "act"), { prompt: "Check it once more." });
 	assert.equal(u.next({ finishReason: "completed" }, "act"), null);

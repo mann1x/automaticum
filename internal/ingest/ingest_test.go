@@ -654,6 +654,7 @@ func TestScriptedUserLines(t *testing.T) {
 		`{"t":"2026-10-14T10:00:06Z","k":"user","on":"turn","rule":3,"do":"restore"}`,
 		`{"t":"2026-10-14T10:00:07Z","k":"runner","note":"user_action_failed","rule":3,"do":"restore"}`,
 		`{"t":"2026-10-14T10:00:08Z","k":"runner","note":"mode_switched","session":"s","from":"plan","to":"act","messages":4}`,
+		`{"t":"2026-10-14T10:00:08Z","k":"runner","note":"mode_switched","session":"s","from":"plan","to":"act","source":"agent","messages":6}`,
 		`{"t":"2026-10-14T10:00:09Z","k":"runner","note":"fork","from":"s","to":"s-fork1","checkpoint":1,"workspace":true,"messages":1,"restarted":["iterations","loop guards"]}`,
 	}, "\n")))
 	if err != nil {
@@ -664,8 +665,8 @@ func TestScriptedUserLines(t *testing.T) {
 	}
 	// A switch is counted; a fork (D86) is kept with its time and what
 	// restarted.
-	if ev.ModeSwitches != 1 || len(ev.Forks) != 1 {
-		t.Fatalf("switches %d, forks %+v", ev.ModeSwitches, ev.Forks)
+	if ev.ModeSwitches != 1 || ev.AgentModeSwitches != 1 || len(ev.Forks) != 1 {
+		t.Fatalf("switches %d by the user, %d by the agent, forks %+v", ev.ModeSwitches, ev.AgentModeSwitches, ev.Forks)
 	}
 	if f := ev.Forks[0]; f.To != "s-fork1" || f.Checkpoint != 1 || !f.Workspace || len(f.Restarted) != 2 || f.T.Second() != 9 {
 		t.Errorf("fork: %+v", f)

@@ -1239,3 +1239,20 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 00:10 | D87 git workspaces by default (git = false opt-out, basis task fact), D88 hide zero user.* metrics, runner shares readReceipts across sessions; 6 demos PASS incl. plan without re-read | internal/task, internal/run, internal/daemon, cmd/automaticum, runner, docs/specs | pass | ~40k |
+
+## Session: 2026-10-15 00:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-15 00:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-15 00:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:28 | Created runner/plan.mjs | — | ~780 |
+| 00:35 | ported switch_to_act_mode from the extension (runner/plan.mjs): plan-mode extra tool, queued switch applied before the script, continuation prompt; ingest mode_switches.by_agent; demo/plan-switch PASS | runner, internal/ingest, internal/daemon, cmd/automaticum, docs/specs, tasks/demo/plan-switch | pass | ~45k |

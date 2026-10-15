@@ -54,9 +54,11 @@ type Events struct {
 	// refused: the run did not play the script it was meant to.
 	UserFailed int
 	// Forks are the session forks a restore of messages started (D86), in
-	// order; ModeSwitches how often the scripted user switched the mode.
-	Forks        []Fork
-	ModeSwitches int
+	// order; ModeSwitches how often the scripted user switched the mode,
+	// AgentModeSwitches how often the agent did (switch_to_act_mode).
+	Forks             []Fork
+	ModeSwitches      int
+	AgentModeSwitches int
 }
 
 // Fork is one session fork of a run (D86): when it started, the
@@ -98,6 +100,9 @@ type eventLine struct {
 	Checkpoint int      `json:"checkpoint"`
 	Workspace  bool     `json:"workspace"`
 	Restarted  []string `json:"restarted"`
+	// Who made a mode switch: "user" or "agent"; absent before 2026-10-16,
+	// when only the user could.
+	Source string `json:"source"`
 }
 
 type agentEvent struct {
@@ -194,7 +199,11 @@ func (ev *Events) line(line []byte, sc *scan) {
 		case "fork":
 			ev.Forks = append(ev.Forks, Fork{T: l.T, From: l.From, To: l.To, Checkpoint: l.Checkpoint, Workspace: l.Workspace, Restarted: l.Restarted})
 		case "mode_switched":
-			ev.ModeSwitches++
+			if l.Source == "agent" {
+				ev.AgentModeSwitches++
+			} else {
+				ev.ModeSwitches++
+			}
 		}
 		return
 	case l.K == "user":

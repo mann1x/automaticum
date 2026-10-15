@@ -55,7 +55,9 @@ method is recorded.
   `user.failed`, and since analysis version 4 `user.forks` and
   `user.mode_switches`. **Decided by the owner (2026-10-16), D88:** hidden
   where zero: `compare` leaves out one that is zero in every run of every
-  group, `run show` a zero one.
+  group, `run show` a zero one. The same rule hides
+  `mode_switches.by_agent` (the agent's `switch_to_act_mode`, 040 §6.2)
+  where zero.
 
 ### 2.1 Per cell
 

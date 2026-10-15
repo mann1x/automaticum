@@ -16,6 +16,7 @@ import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BUNDLED_SKILLS_ON_BY_DEFAULT, buildConfig, compareResolved, derivedFromArm, unsupported } from "./session.mjs";
+import { ACT_MODE_CONTINUATION_PROMPT, createSwitchToActModeTool, withSwitchTool } from "./plan.mjs";
 import { createUser } from "./user.mjs";
 import { createWire, describe } from "./wire.mjs";
 
@@ -205,7 +206,13 @@ async function main() {
 	const holdFile = join(dirname(process.argv[2]), "hold");
 	// The session the run talks to now. A mode switch starts it again under
 	// the same id; a restore of the messages (D86) starts another.
-	const session = { id: job.session_id, mode: arm.agent.mode, forks: 0 };
+	// switchQueued says the agent called switch_to_act_mode: the switch is
+	// made once the run has ended, as the extension makes it.
+	const session = { id: job.session_id, mode: arm.agent.mode, forks: 0, switchQueued: false };
+	const switchTool = createSwitchToActModeTool(sdk.createTool, { currentMode: () => session.mode, queue: () => (session.switchQueued = true) });
+	// A session stays open after a run of it ends when the scripted user may
+	// speak again, or when the agent may switch itself to act mode.
+	const interactive = user.continues || arm.agent.mode === "plan";
 	let wall;
 	let wallLeft = job.wall_s * 1000;
 	let wallFrom = 0;
@@ -263,15 +270,19 @@ async function main() {
 			...(hooks ?? {}),
 			beforeModel: async (context) => {
 				await beforeModel();
-				return prior ? prior(context) : undefined;
+				const control = prior ? await prior(context) : undefined;
+				// As the extension's hook: no request after the switch is asked.
+				return session.switchQueued ? { ...control, stop: true } : control;
 			},
 		};
+		// The extension's switch tool, in plan mode only.
+		built.config = withSwitchTool(built.config, mode, switchTool);
 		// With a script, the tools of the extension's approval categories
 		// ask and the script decides; any other tool runs without asking, as
 		// in the extension. Without a script every tool runs, as before. A
 		// tool the arm disables stays disabled.
 		if (user.scripted) for (const tool of user.asking) built.toolPolicies[tool] = { ...(built.toolPolicies[tool] ?? {}), autoApprove: false };
-		return { config: built.config, localRuntime: built.localRuntime, toolPolicies: built.toolPolicies, interactive: user.continues };
+		return { config: built.config, localRuntime: built.localRuntime, toolPolicies: built.toolPolicies, interactive };
 	};
 
 	let unsubscribe = () => {};
@@ -284,7 +295,6 @@ async function main() {
 					const inner = event?.payload?.event;
 					if (event?.type !== "agent_event" || (event.payload.teamRole ?? "lead") !== "lead") return;
 					if (inner?.type === "iteration_start") user.iteration();
-					if (inner?.type === "content_start" && inner.contentType === "tool") user.tool(inner.toolName);
 				},
 				{ sessionId: id },
 			) ?? (() => {});
@@ -294,7 +304,7 @@ async function main() {
 	// A mode switch as the extension makes it (sdk-mode-coordinator.ts):
 	// the live messages and the saved compaction state, a session of the
 	// same id started again in the new mode with them, the old one stopped.
-	const switchMode = async (to) => {
+	const switchMode = async (to, source) => {
 		const from = session.mode;
 		const messages = await core.readLiveMessages(session.id);
 		const compaction = await core.readSessionCompactionState(session.id).catch(() => undefined);
@@ -302,7 +312,7 @@ async function main() {
 		session.mode = to;
 		follow(session.id);
 		await core.start({ ...startInput(session.id, to), initialMessages: messages, initialCompactionState: compaction });
-		note("mode_switched", { session: session.id, from, to, messages: messages.length, compaction_carried: compaction !== undefined });
+		note("mode_switched", { session: session.id, from, to, source, messages: messages.length, compaction_carried: compaction !== undefined });
 	};
 	// A restore of the messages (D86): a new session, the conversation up to
 	// the checkpoint, the old one stopped. Every counter and guard of the SDK
@@ -352,7 +362,10 @@ async function main() {
 	armWall();
 	// A session the user may speak to again after it ends stays open; it is
 	// stopped below.
-	if (user.continues) note("interactive", { why: "the scripted user may speak after a run of the session ends (a resume, a switch, a fork, a plan or a completion)" });
+	if (interactive)
+		note("interactive", {
+			why: user.continues ? "the scripted user may speak after a run of the session ends (a resume, a switch, a fork, a plan or a completion)" : "the agent may switch itself to act mode",
+		});
 
 	let started;
 	let failure;
@@ -361,15 +374,27 @@ async function main() {
 		// The user may speak again when a run of the session ends: the second
 		// half of its own cancel, switch or fork, or what a plan or a
 		// completion rule says.
+		// A switch the agent asked for comes first, as the extension applies
+		// it when the session goes idle, before anything else: the session in
+		// act mode, continued without a word from the user.
 		let last = started?.result;
-		for (let say = user.next(last, session.mode); say !== null && !wallFired; say = user.next(last, session.mode)) {
-			if (say.mode && say.mode !== session.mode) await switchMode(say.mode);
-			if (say.fork) await fork(say.fork);
+		while (!wallFired) {
+			let say;
+			if (session.switchQueued) {
+				session.switchQueued = false;
+				await switchMode("act", "agent");
+				say = { prompt: ACT_MODE_CONTINUATION_PROMPT };
+			} else {
+				say = user.next(last, session.mode);
+				if (say === null) break;
+				if (say.mode && say.mode !== session.mode) await switchMode(say.mode, "user");
+				if (say.fork) await fork(say.fork);
+			}
 			const more = await core.send({ sessionId: session.id, prompt: say.prompt });
 			if (more) last = more;
 		}
 		if (started && last) started = { ...started, result: last };
-		if (user.continues) await core.stop(session.id).catch((err) => note("stop_failed", { error: describe(err) }));
+		if (interactive) await core.stop(session.id).catch((err) => note("stop_failed", { error: describe(err) }));
 	} catch (err) {
 		failure = err;
 	}

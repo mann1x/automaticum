@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-15T22:00:00.422Z
-> Files: 263 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-15T22:28:51.510Z
+> Files: 264 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -333,7 +333,9 @@
 ## runner/
 
 - `package.json` — Node.js package manifest (~103 tok)
+- `plan.mjs` — The extension's switch_to_act_mode tool, ported from Cline 4.100.250 and (~780 tok)
 - `PROTOCOL.md` — The runner: protocol 3 (~1575 tok)
+- `plan.mjs` — the extension's switch_to_act_mode, ported word for word (Cline 4.100.250/.251): constants, createSwitchToActModeTool(createTool, {currentMode, queue}), withSwitchTool(config, mode, tool), ACT_MODE_CONTINUATION_PROMPT (~700 tok)
 - `runner.mjs` — The runner: one agent session for one run, inside the lane's container. (~4625 tok)
 - `session.mjs` — unsupported lists what an arm asks for that this runner cannot do. (~2455 tok)
 - `user.mjs` — The scripted user (040 §6.2): the task's rules, played against the (~2063 tok)
@@ -354,6 +356,7 @@
 ## runner/test/
 
 - `arm-stub.json` (~287 tok)
+- `plan.test.mjs` — switch_to_act_mode port: tool fields, execute in plan/act, added in plan and removed in act (~450 tok)
 - `session.test.mjs` — stub: reportOf (~1906 tok)
 - `user.test.mjs` — Declares categories (~2133 tok)
 - `wire.test.mjs` — Declares serve (~1056 tok)
@@ -455,6 +458,18 @@
 - `good.txt` (~5 tok)
 
 ## tasks/demo/cancel/seed/
+
+- `answer.txt` (~5 tok)
+
+## tasks/demo/plan-switch/
+
+- `task.toml` — demo task for an arm in plan mode: the scripted user approves the plan with a message (on = plan, do = queue), the agent calls switch_to_act_mode and the runner switches (~300 tok)
+
+## tasks/demo/plan-switch/fixtures/
+
+- `good.txt` (~5 tok)
+
+## tasks/demo/plan-switch/seed/
 
 - `answer.txt` (~5 tok)
 

@@ -1,6 +1,6 @@
 # 040 — The runner
 
-**Status:** draft 1.4, 2026-10-16. Facts about the SDK in this file were read
+**Status:** draft 1.5, 2026-10-16. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
 running it. The parity table in §6 was checked row by row by the Cerebriline
 session on 2026-10-13 against its main branch (release 4.100.249 plus requests
@@ -377,8 +377,7 @@ session's answers of 2026-10-14 (SDK and extension 4.100.251 source):
   mode with both, send the text. `send` with a mode does not switch.
   A `runner` line `mode_switched`.
 - **Plan.** A run of the session in plan mode that the agent ended by
-  itself is a plan; the `plan` line says whether it also called
-  `switch_to_act_mode`.
+  itself on text is a plan, and the script's `plan` rule answers it.
 - **Fork (D86).** `restore = "messages"` or `"both"` restores the
   checkpoint into a new session `<session>-fork<n>`; the old session is
   stopped. The `fork` line lists what started again from nothing:
@@ -395,13 +394,28 @@ session's answers of 2026-10-14 (SDK and extension 4.100.251 source):
   task fact says "workspace a git repository".
 - Observed on the stub, SDK 4.100.250, arm `stub-plan`: plan mode offers
   no `editor` (it keeps `run_commands` and `sed`): the SDK's own plan
-  filter. `switch_to_act_mode` is in no SDK release: the extension adds it
-  itself in plan mode (`config.extraTools`, `createSwitchToActModeTool`)
-  and its handler queues the switch (Cerebriline session, 2026-10-15). The
-  runner does not add it yet, a recorded difference: a plan is presented
-  as text. The arm's
-  no-tool-call nudge answers the first text-only reply of each run, so the
-  run ends on the second.
+  filter. The arm's no-tool-call nudge answers the first text-only reply
+  of each run, so the run ends on the second.
+- **`switch_to_act_mode`, ported from the extension (2026-10-16).** It is
+  in no SDK release (Cerebriline session, 2026-10-15): the extension builds
+  it (`sdk-session-config-builder.ts`, the same at 4.100.250 and
+  4.100.251), and the runner now does too, in `runner/plan.mjs`, its
+  description and texts word for word. It is an extra tool in plan mode
+  only, with no input, `completesRun`, no retry. Called in plan mode it
+  queues the switch and answers "You successfully switched to act mode,
+  proceed with the plan. …"; the run ends. Then, as the extension applies
+  a queued switch when the session goes idle (`sdk-mode-coordinator.ts`),
+  and before the script is asked, the session is started again in act mode
+  with its messages and continued with "The user approved switching to act
+  mode. Continue with the approved plan now." No user approval stands
+  between: the description tells the model to call it only after the user
+  approved the plan in a message, so a script that wants this path answers
+  the plan with a `queue` message. A `beforeModel` hook stops any request
+  while a switch is queued, as the extension's does. A session whose arm
+  starts in plan mode is interactive. The `mode_switched` line says
+  `source`, `agent` or `user`; ingest counts the agent's in
+  `mode_switches.by_agent`, hidden where zero like `user.*` (D88). Demo
+  `demo/plan-switch` passes on the stub.
 - **Read receipts.** The extension keeps one record of the files read for
   its controller's lifetime and hands it to every session it builds, so
   the read-before-edit guard does not forget across a switch (Cerebriline

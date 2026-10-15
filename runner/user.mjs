@@ -27,9 +27,6 @@ export function createUser(job, { out, act }) {
 	// pending is what the user says once the run of the session it stopped
 	// has ended: a resume, a mode switch or a fork.
 	let pending = null;
-	// switchAsked says the agent called switch_to_act_mode in this run of
-	// the session: it asks to leave plan mode.
-	let switchAsked = false;
 
 	const free = (r) => r.times === 0 || r.used < r.times;
 	const fire = (r, event, fields = {}) => {
@@ -99,11 +96,6 @@ export function createUser(job, { out, act }) {
 			turn++;
 		},
 
-		// tool is called with the name of each tool the lead agent calls.
-		tool(name) {
-			if (name === "switch_to_act_mode") switchAsked = true;
-		},
-
 		// beforeModel acts on the turn and elapsed rules that are due, in
 		// their order; activeMs is the run's time so far, time held left out.
 		async beforeModel(activeMs) {
@@ -130,8 +122,6 @@ export function createUser(job, { out, act }) {
 		// turn or time rule began, or what a plan or a completion rule says.
 		// Null when the user has nothing more to say.
 		next(result, mode) {
-			const asked = switchAsked;
-			switchAsked = false;
 			const say = (r) => {
 				if (r.do === "mode") return { prompt: r.text || (r.mode === "act" ? APPROVED_ACT : r.text), mode: r.mode };
 				if (r.do === "restore") return { prompt: r.text, fork: { checkpoint: r.checkpoint, workspace: r.restore === "both" } };
@@ -146,12 +136,13 @@ export function createUser(job, { out, act }) {
 			}
 			if (result?.finishReason !== "completed") return null;
 			// In plan mode an end the agent chose is its plan (the extension's
-			// "plan_completion_result"), or its request to switch.
+			// "plan_completion_result"). An end by switch_to_act_mode never
+			// comes here: the runner switches first, as the extension does.
 			const on = mode === "plan" ? "plan" : "completion";
 			const r = rules.find((r) => r.on === on && free(r));
 			if (!r) return null;
 			const s = say(r);
-			fire(r, on, { text: s.prompt, mode: s.mode, switch_asked: on === "plan" ? asked : undefined });
+			fire(r, on, { text: s.prompt, mode: s.mode });
 			return s;
 		},
 

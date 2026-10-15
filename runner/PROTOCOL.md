@@ -61,7 +61,7 @@ One JSON object per line, each with a time `t` and a kind `k`.
 | `k` | content |
 |---|---|
 | `event` | `event`: one SDK session event, unchanged, errors described by hand |
-| `runner` | `note` and its fields: `prepared`, `config_resolved` (the SDK's own report), `wall_limit`, `interactive`, `restored`, `user_action_failed`, `workspace_git` (`head`), `mode_switched` (`from`, `to`, `messages`, `compaction_carried`), `fork` (`from`, `to`, `checkpoint`, `checkpoint_ref`, `workspace`, `messages`, `restarted`), ... |
+| `runner` | `note` and its fields: `prepared`, `config_resolved` (the SDK's own report), `wall_limit`, `interactive`, `restored`, `user_action_failed`, `workspace_git` (`head`), `mode_switched` (`from`, `to`, `source` user or agent, `messages`, `compaction_carried`), `fork` (`from`, `to`, `checkpoint`, `checkpoint_ref`, `workspace`, `messages`, `restarted`), ... |
 | `user` | the scripted user: `on` (approval, question, turn, elapsed, completion, plan, resume), `rule` (from 1; 0 for the default), `do`, and what it answered or sent |
 | `end` | the last line, see below |
 
@@ -108,6 +108,15 @@ follows the new one. One record of the files read
 extension's does, so the read-before-edit guard keeps it across a switch
 and a fork. The `fork` note lists what the SDK started again from
 nothing (`restarted`). Turns are counted by the runner over the whole run.
+
+## switch_to_act_mode
+
+In plan mode the session has the extension's `switch_to_act_mode` as an
+extra tool (`plan.mjs`, ported word for word). When the agent calls it the
+run ends, and before the scripted user is asked the runner switches the
+session to act mode and sends the extension's continuation sentence, as
+the extension does when the session goes idle. A session whose arm starts
+in plan mode is interactive for this.
 
 ## What protocol 3 does not do
 
