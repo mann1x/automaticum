@@ -118,7 +118,7 @@
 ## Decision Log
 
 <!-- Significant technical decisions with rationale. Why X was chosen over Y. -->
-- [2026-10-16] Owner D90-D94: milestone 5 focuses on BFCL (SWE-bench only proved to work); SWE subset = seeded 50 from Lite (few image downloads); env-only image cache; BFCL/SWE tested on blackswan-2 with its own daemon (a main host, D8 holds); both blackswan-2 GPUs when free, never unload others. Neutral name of bs2 = blackswan-2.
+- [2026-10-16] Owner D90-D94: milestone 5 focuses on BFCL (SWE-bench only proved to work); SWE subset = seeded 50 from Lite (few image downloads); env-only image cache; BFCL/SWE tested on blackswan-2 with its own daemon (a main host, D8 holds); both blackswan-2 GPUs when free, never unload others. Its neutral name is blackswan-2 (mapping in docs/local).
 - [2026-10-16] Owner D89: agent ended in error before any agent request was answered (runner counts tools-offering chat requests answered 2xx) -> ABORTED, not oracle FAIL.
 - [2026-10-16] Owner D87: every lane workspace is a git repository by default (the SDK's checkpoints need one); `[workspace] git = false` stays available per task. Basis task fact says "workspace a git repository".
 - [2026-10-16] Owner D88: hide zero user.* metrics (compare: zero in every run of every group; run show: zero).
