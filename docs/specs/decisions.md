@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-10-16 (revision 13).
+**Status:** current as of 2026-10-16 (revision 14).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -104,6 +104,9 @@ All dated 2026-10-12.
 | D92 | SWE-bench evaluation images: the official harness's environment-level cache; each instance image is removed after its evaluation (2026-10-16). | 062 §2 |
 | D93 | BFCL and SWE-bench are tested on blackswan-2 with an automaticum daemon of its own (daemon, store, lanes, data root): blackswan-2 is a main host, not a remote one, so D8 holds and no agent mode is needed (2026-10-16). | 010 §3, 110 §3 |
 | D94 | automaticum may use both of blackswan-2's GPUs when they are free; it never unloads a model it did not load (2026-10-16). | 030 §4 |
+| D95 | On blackswan-2, automaticum's data root (store, blobs, work directories) is on a data disk of its own, not on the root filesystem that holds Docker's root; the path is in the local host map (2026-10-16). | 010 §3, 080 §2 |
+| D96 | A disk gate refuses to start a SWE-bench evaluation while the filesystem holding Docker's root has less than 200 GB free. On blackswan-2 it is below that now: the SWE-bench smoke waits until the owner has freed space (2026-10-16). | 062 §2, 050 §3 |
+| D97 | automaticum never launches a model server, in any mode. The person running it (or `omk_eval` in mode C, D20) starts the server; automaticum registers it as an endpoint and uses it (2026-10-16). | 030 §4, 065 §2 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked

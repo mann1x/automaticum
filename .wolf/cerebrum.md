@@ -96,6 +96,7 @@
 - (2026-10-16) Extension source for porting: the local Cline checkout (path in docs/local, untracked), read only with `git show v4.100.25x:<path>` (tags v4.100.250/251/252 exist). switch_to_act_mode lives in apps/vscode/src/sdk/sdk-session-config-builder.ts; the queued switch is applied on idle in sdk-mode-coordinator.ts (autoContinue with ACT_MODE_CONTINUATION_PROMPT, no user step).
 
 ## Do-Not-Repeat
+- [2026-10-16] Chained `git commit` after the private-string check with `;`, so a hit (the nickname of blackswan-2 in .wolf/) was committed and pushed anyway. Gate the commit on the check (`if grep ...; then stop; else commit; fi`), and the check pattern includes `\bbs2\b`.
 
 - 2026-10-13: Do not invent a threshold or a default number for a detector, guard or limit and then carry it as an Open item with "keep" as the recommendation. The owner: the SDK's guards are tuned on more than 600 recorded runs; use the thresholds those analyses identified. If one is missing, ask the SDK's session or read the SDK's source (packages/agents and packages/core/src/runtime/safety). Wrong: `repeated_tool_call` at 3 in a row, `runaway` at 10,000 for every run.
 - [2026-10-13] Built the SDK into the lane image with a label, so one image carried one SDK and a new release meant rebuilding images. The owner: "we need to support multiple sdk versions at the same time. the images should be sdk agnostic and support provisioning of a specific sdk version at runtime. we need the testing to be reproducible on demand". Anything that is a variable of an arm must not be baked into an image.
@@ -119,6 +120,7 @@
 
 <!-- Significant technical decisions with rationale. Why X was chosen over Y. -->
 - [2026-10-16] Owner D90-D94: milestone 5 focuses on BFCL (SWE-bench only proved to work); SWE subset = seeded 50 from Lite (few image downloads); env-only image cache; BFCL/SWE tested on blackswan-2 with its own daemon (a main host, D8 holds); both blackswan-2 GPUs when free, never unload others. Its neutral name is blackswan-2 (mapping in docs/local).
+- [2026-10-16] Owner D95-D97: blackswan-2 data root on its own data disk (not the root fs with Docker); SWE-bench disk gate floor 200 GB free on Docker's filesystem (blackswan-2 below it now: SWE smoke waits for the owner to free space); automaticum never launches model servers, the user or omk_eval starts them, automaticum registers and consumes.
 - [2026-10-16] Owner D89: agent ended in error before any agent request was answered (runner counts tools-offering chat requests answered 2xx) -> ABORTED, not oracle FAIL.
 - [2026-10-16] Owner D87: every lane workspace is a git repository by default (the SDK's checkpoints need one); `[workspace] git = false` stays available per task. Basis task fact says "workspace a git repository".
 - [2026-10-16] Owner D88: hide zero user.* metrics (compare: zero in every run of every group; run show: zero).
