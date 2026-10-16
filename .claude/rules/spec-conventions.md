@@ -11,5 +11,5 @@
 - When a section replaces an old script, name it in `100-legacy-import.md` section 5.
 - CLI examples use the `automaticum <noun> <verb>` shape, e.g. `automaticum run show <id>`; the full list is in `090-interfaces.md` section 1.
 - Respect the hard constraints of `010-architecture.md` section 1: Go on the host, Node only inside containers.
-- The repo is public: neutral host names only (`linux-gpu-1`, `linux-gpu-2`, `windows-1`, `windows-2`, `mac-1`), no absolute paths or addresses.
+- The repo is public: neutral host names only (`linux-gpu-1`, `linux-gpu-2`, `windows-1`, `windows-2`, `mac-1`, `blackswan-2`), no absolute paths or addresses.
 - Mirror every new owner decision in `.wolf/cerebrum.md` under `## Decision Log`.

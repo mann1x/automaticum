@@ -1,14 +1,14 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-15T22:28:51.510Z
-> Files: 264 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-16T04:00:00.589Z
+> Files: 268 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~3289 tok)
-- `CLAUDE.md` — automaticum (~3640 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~3892 tok)
+- `CLAUDE.md` — automaticum (~3664 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
 - `LICENSE` — Project license (~3029 tok)
@@ -19,7 +19,7 @@
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~53471 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~57277 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~0 tok)
 - `score-history.jsonl` (~988 tok)
@@ -34,14 +34,14 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~96518 tok)
+- `fingerprint.json` — Declares usage (~96684 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` (~1653 tok)
+- `current-session.jsonl` — End: it (~17075 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~38600 tok)
-- `state.json` (~40 tok)
+- `roi-stats.json` (~40475 tok)
+- `state.json` (~41 tok)
 
 ## .claude/
 
@@ -105,7 +105,7 @@
 
 - `campaign_cmds.go` (~1452 tok)
 - `cell_cmds.go` — exitCode: names (~2996 tok)
-- `client_cmds.go` — client (138 fields) (~7682 tok)
+- `client_cmds.go` — client (136 fields) (~7747 tok)
 - `compare_cmds.go` — Declares list (~3430 tok)
 - `config_cmds_test.go` — TestParseInterspersed, TestCellTasks (~370 tok)
 - `config_cmds.go` — place (119 fields) (~3088 tok)
@@ -129,22 +129,22 @@
 
 - `000-overview.md` — 000 — Overview, vocabulary and map of the spec set (~2073 tok)
 - `010-architecture.md` — 010 — Architecture (~1615 tok)
-- `020-run-record.md` — 020 — The run record, verdicts and the basis (~3184 tok)
+- `020-run-record.md` — 020 — The run record, verdicts and the basis (~3330 tok)
 - `030-configuration.md` — 030 — Configuration (~2663 tok)
-- `040-runner.md` — 040 — The runner (~8037 tok)
+- `040-runner.md` — 040 — The runner (~8489 tok)
 - `050-orchestration.md` — 050 — Orchestration: scheduling, gates, control (~4189 tok)
-- `060-tasks-and-suites.md` — 060 — Tasks, oracles and the suite interface (~1477 tok)
+- `060-tasks-and-suites.md` — 060 — Tasks, oracles and the suite interface (~1491 tok)
 - `061-suite-bfcl.md` — 061 — Suite: BFCL (Berkeley Function-Calling Leaderboard) (~551 tok)
 - `062-suite-swe-bench.md` — 062 — Suite: SWE-bench and SWE-bench-style sets (~610 tok)
 - `063-suite-multi-language.md` — 063 — Suite: our own multi-language agentic suite (~536 tok)
 - `064-engine-adapters.md` — 064 — Engine adapters: Cerebriline as the engine of an external harness (~962 tok)
-- `065-cell-contract.md` — 065 — The cell contract and exports (~3245 tok)
-- `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~6948 tok)
+- `065-cell-contract.md` — 065 — The cell contract and exports (~3390 tok)
+- `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~7013 tok)
 - `080-store.md` — 080 — The store (~4404 tok)
 - `090-interfaces.md` — 090 — Interfaces (~2257 tok)
 - `100-legacy-import.md` — 100 — Import of the old harness's corpus (~3426 tok)
 - `110-acceptance-and-roadmap.md` — 110 — Acceptance and roadmap (~5610 tok)
-- `decisions.md` — Decisions and open questions (~5225 tok)
+- `decisions.md` — Decisions and open questions (~5453 tok)
 
 ## docs/specs/archive/
 
@@ -166,7 +166,7 @@
 
 ## images/base/
 
-- `Dockerfile` — Docker container definition (~238 tok)
+- `Dockerfile` — Docker container definition (~242 tok)
 
 ## images/layers/typescript/
 
@@ -177,8 +177,8 @@
 - `arm.go` — loads automaticum's configuration: arms, lanes, endpoints (~7474 tok)
 - `campaign_test.go` — TestLoadCampaign (~413 tok)
 - `campaign.go` — Campaign (38 fields); methods: Validate (~1275 tok)
-- `cell_test.go` — TestArmForCell, TestCellEndpoint (~779 tok)
-- `cell.go` — CallerValues (39 fields); methods: ForCell (~1417 tok)
+- `cell_test.go` — TestArmForCell, TestCellEndpoint (~782 tok)
+- `cell.go` — CallerValues (41 fields); methods: ForCell (~1530 tok)
 - `config_test.go` — TestRepositoryArms, TestArmValidation, TestNothingIsDefaulted, TestExtendsAndIdentity + 3 more (~3694 tok)
 - `local.go` — Local (96 fields); methods: Endpoint, MayUse, AddCellEndpoint, Token (~2943 tok)
 - `model_test.go` — TestModels (~532 tok)
@@ -188,13 +188,13 @@
 ## internal/daemon/
 
 - `api.go` — HTTP handlers: reply, fail (~12246 tok)
-- `basis.go` — Basis (89 fields) (~4091 tok)
+- `basis.go` — Basis (91 fields) (~4198 tok)
 - `campaign.go` — CampaignState (114 fields) (~3730 tok)
 - `canary.go` — CanaryRecord (36 fields); methods: Error, Is (~1597 tok)
 - `cell.go` — CellResult (97 fields) (~4032 tok)
-- `compare.go` — CompareView (97 fields) (~3942 tok)
+- `compare.go` — CompareView (99 fields) (~4233 tok)
 - `control.go` — control (100 fields) (~4996 tok)
-- `daemon_test.go` — memState (126 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~14610 tok)
+- `daemon_test.go` — memState (126 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~14826 tok)
 - `daemon.go` — is automaticumd without its main: the queue, one worker (~5715 tok)
 - `modec_test.go` — TestModeCCell, TestModeCBasis (~1727 tok)
 - `modec.go` — CellSpec (69 fields) (~2251 tok)
@@ -224,14 +224,14 @@
 
 ## internal/ingest/
 
-- `analyse.go` — Interface: Blobs (52 methods) (~5082 tok)
+- `analyse.go` — Interface: Blobs (53 methods) (~5099 tok)
 - `canary_test.go` — TestCanary (~680 tok)
 - `canary.go` — CanaryVerdict (14 fields) (~698 tok)
 - `cap_test.go` — TestCapHits, TestFailedRequestFinish (~586 tok)
 - `cap.go` — CapHit is the finding that a request of the agent's loop was ended by its (~460 tok)
 - `detectors.go` — Firing (23 fields) (~1014 tok)
-- `events.go` — turns a run's stored raw material into what is queried: (~3075 tok)
-- `ingest_test.go` — TestReadEvents, TestReadWire, TestCompareWireClean, TestCompareWire + 2 more (~9332 tok)
+- `events.go` — turns a run's stored raw material into what is queried: (~3163 tok)
+- `ingest_test.go` — TestReadEvents, TestReadWire, TestCompareWireClean, TestCompareWire + 2 more (~9394 tok)
 - `openai_test.go` — TestOpenAIWire, TestOpenAIWireFromStub (~1191 tok)
 - `sample_test.go` — TestSample, TestDumpBlocks (~1010 tok)
 - `sampler.go` — Setting (43 fields) (~1398 tok)
@@ -262,9 +262,9 @@
 - `probe.go` — Identity (128 fields); methods: Changed (~3766 tok)
 - `props_test.go` — TestProps (~559 tok)
 - `props.go` — Props (39 fields) (~1186 tok)
-- `protocol.go` — executes one run: an arm on a task, once, on a lane. It (~1786 tok)
-- `run_test.go` — fakeState (75 fields); methods: UpsertRun, AddBlobRefs, Put, Check (~5958 tok)
-- `run.go` — Interface: Engine (7 methods) (~8635 tok)
+- `protocol.go` — executes one run: an arm on a task, once, on a lane. It (~1885 tok)
+- `run_test.go` — fakeState (74 fields); methods: UpsertRun, AddBlobRefs, Put, Check (~6304 tok)
+- `run.go` — Interface: Engine (7 methods) (~8822 tok)
 - `verdict.go` — Facts (20 fields) (~588 tok)
 
 ## internal/sdk/
@@ -319,8 +319,8 @@
 ## internal/task/
 
 - `exec.go` — Interface: Executor (4 methods) (~3851 tok)
-- `task_test.go` — TestLoadAll, TestLoadRejects, TestHashChangesWithAnyFile, TestVerifyDemo + 2 more (~2726 tok)
-- `task.go` — loads tasks from the tasks directory, builds what they need, (~3770 tok)
+- `task_test.go` — TestLoadAll, TestLoadRejects, TestWorkspaceGit, TestHashChangesWithAnyFile + 3 more (~3025 tok)
+- `task.go` — loads tasks from the tasks directory, builds what they need, (~3861 tok)
 - `user_test.go` — TestUserScript (~1060 tok)
 - `user.go` — User (45 fields) (~2600 tok)
 
@@ -334,12 +334,11 @@
 
 - `package.json` — Node.js package manifest (~103 tok)
 - `plan.mjs` — The extension's switch_to_act_mode tool, ported from Cline 4.100.250 and (~780 tok)
-- `PROTOCOL.md` — The runner: protocol 3 (~1575 tok)
-- `plan.mjs` — the extension's switch_to_act_mode, ported word for word (Cline 4.100.250/.251): constants, createSwitchToActModeTool(createTool, {currentMode, queue}), withSwitchTool(config, mode, tool), ACT_MODE_CONTINUATION_PROMPT (~700 tok)
-- `runner.mjs` — The runner: one agent session for one run, inside the lane's container. (~4625 tok)
+- `PROTOCOL.md` — The runner: protocol 3 (~1819 tok)
+- `runner.mjs` — The runner: one agent session for one run, inside the lane's container. (~5173 tok)
 - `session.mjs` — unsupported lists what an arm asks for that this runner cannot do. (~2455 tok)
-- `user.mjs` — The scripted user (040 §6.2): the task's rules, played against the (~2063 tok)
-- `wire.mjs` — createWire returns a fetch that appends one JSON line per request to (~1492 tok)
+- `user.mjs` — The scripted user (040 §6.2): the task's rules, played against the (~1979 tok)
+- `wire.mjs` — createWire returns a fetch that appends one JSON line per request to (~1642 tok)
 
 ## runner/sdk/4.100.250/
 
@@ -356,10 +355,10 @@
 ## runner/test/
 
 - `arm-stub.json` (~287 tok)
-- `plan.test.mjs` — switch_to_act_mode port: tool fields, execute in plan/act, added in plan and removed in act (~450 tok)
+- `plan.test.mjs` — createTool as the SDK's: it hands back what it was given. (~415 tok)
 - `session.test.mjs` — stub: reportOf (~1906 tok)
-- `user.test.mjs` — Declares categories (~2133 tok)
-- `wire.test.mjs` — Declares serve (~1056 tok)
+- `user.test.mjs` — Declares categories (~2112 tok)
+- `wire.test.mjs` — Declares serve (~1352 tok)
 
 ## spike/001-store/
 
@@ -451,7 +450,7 @@
 
 ## tasks/demo/cancel/
 
-- `task.toml` — The demo task with a scripted user that cancels and resumes, then (~311 tok)
+- `task.toml` — The demo task with a scripted user that cancels and resumes, then (~308 tok)
 
 ## tasks/demo/cancel/fixtures/
 
@@ -461,27 +460,27 @@
 
 - `answer.txt` (~5 tok)
 
-## tasks/demo/plan-switch/
-
-- `task.toml` — demo task for an arm in plan mode: the scripted user approves the plan with a message (on = plan, do = queue), the agent calls switch_to_act_mode and the runner switches (~300 tok)
-
-## tasks/demo/plan-switch/fixtures/
-
-- `good.txt` (~5 tok)
-
-## tasks/demo/plan-switch/seed/
-
-- `answer.txt` (~5 tok)
-
 ## tasks/demo/fork/
 
-- `task.toml` — The demo task with a scripted user that restores a checkpoint's messages (~302 tok)
+- `task.toml` — The demo task with a scripted user that restores a checkpoint's messages (~298 tok)
 
 ## tasks/demo/fork/fixtures/
 
 - `good.txt` (~5 tok)
 
 ## tasks/demo/fork/seed/
+
+- `answer.txt` (~5 tok)
+
+## tasks/demo/plan-switch/
+
+- `task.toml` — The demo task in which the agent switches itself to act mode (the (~301 tok)
+
+## tasks/demo/plan-switch/fixtures/
+
+- `good.txt` (~5 tok)
+
+## tasks/demo/plan-switch/seed/
 
 - `answer.txt` (~5 tok)
 

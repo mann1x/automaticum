@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-10-16 (revision 12).
+**Status:** current as of 2026-10-16 (revision 13).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -99,6 +99,11 @@ All dated 2026-10-12.
 | D87 | Every lane workspace is a git repository by default, its seed one commit, so the SDK's checkpoints exist for every arm that turns them on. A task may still say `[workspace] git = false`; a script that restores a checkpoint then cannot load. Runs record it, and the basis's task fact says "workspace a git repository", so a comparison across the change shows it (2026-10-16). | 060 §2, 040 §6.2 |
 | D88 | The scripted user's metrics (`user.*`) are hidden where they are zero: `compare` leaves out one that is zero in every run of every group, and `run show` leaves out a zero one (2026-10-16). | 070 §2 |
 | D89 | A run whose agent ended in error before the server answered any of its requests is `ABORTED`, not judged by the oracle: the model was never tested. The runner counts the agent's answered requests (chat requests that offer tools, 2xx) and reports the agent's error (2026-10-16). | 020 §3 |
+| D90 | Milestone 5 focuses on BFCL (both cells, 061 §3). SWE-bench is only proved to work end to end (the predictions-file adapter on a few instances); its cells come later (2026-10-16). | 110 §3, 061, 062 |
+| D91 | The SWE-bench subset is a seeded draw of 50 instances from Lite, fixed with its seed, ids and hash before any result exists; the aim is to keep the evaluation images downloaded small (2026-10-16). | 062 §1 |
+| D92 | SWE-bench evaluation images: the official harness's environment-level cache; each instance image is removed after its evaluation (2026-10-16). | 062 §2 |
+| D93 | BFCL and SWE-bench are tested on blackswan-2 with an automaticum daemon of its own (daemon, store, lanes, data root): blackswan-2 is a main host, not a remote one, so D8 holds and no agent mode is needed (2026-10-16). | 010 §3, 110 §3 |
+| D94 | automaticum may use both of blackswan-2's GPUs when they are free; it never unloads a model it did not load (2026-10-16). | 030 §4 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked
