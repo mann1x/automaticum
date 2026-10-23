@@ -1,0 +1,92 @@
+# cs_inventory_refactor: split a god class into components and add backorders (training task, bm-889 rollout pool).
+#
+# A training task: it is trained on and never scored as an eval. The checker is compiled (as
+# manic_miner's run_game): the agent can run ./run_tests and read its verdict, not its tests.
+
+id = "cs_inventory_refactor"
+suite = "train-ml"
+version = 1
+training = true
+layers = ["dotnet"]
+default_answer = "Use your own judgement and continue."
+
+prompt = """
+`WarehouseManager` in Warehouse.Core has turned into a god class and we keep breaking things when we touch it. Please do the refactoring described in README.md ("The refactoring we want"): pull it apart into the catalogue / stock repository / pricing / order processing / reporting types listed there and keep `WarehouseManager` as a thin facade so existing callers keep working. While you're in there, sales wants backorders instead of rejecting orders we can't fully ship -- the README spells out how that should work. Everything else must keep behaving exactly as it does now. Run `./run_tests` to check your work -- it prints a JSON verdict listing the checks that fail -- and run it again before you say you are done."""
+
+[labels]
+language = "csharp"
+family = "refactor"
+tier = "long"
+
+[limits]
+wall_s = 2700
+idle_s = 600
+oracle_s = 300
+
+[workspace]
+seed = "seed"
+
+[[artefact]]
+name = "run_tests"
+image = "node@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567"
+inputs = ["oracle/build.mjs", "oracle/run_tests.logic.js"]
+command = ["node", "/task/oracle/build.mjs", "/task/oracle/run_tests.logic.js", "/out/run_tests"]
+output = "run_tests"
+sha256 = "cc8b8d2b378802ce97c323eb31b1dd60be6530dc084810256bee20eb429df301"
+
+[[workspace.install]]
+artefact = "run_tests"
+path = "run_tests"
+mode = "0555"
+
+[[oracle]]
+name = "tests"
+primary = true
+artefact = "run_tests"
+image = "mcr.microsoft.com/dotnet/sdk@sha256:738f72aff955d5c5690e06b6fc8ecd1b90ead564099a257ac528ff720b8da85f"
+command = ["./run_tests"]
+expect_pattern = '"ok":true'
+timeout_s = 300
+
+[[fixture]]
+name = "known-good"
+expect = "pass"
+[fixture.files]
+"src/Warehouse.Core/Catalog.cs" = "fixtures/good/src/Warehouse.Core/Catalog.cs"
+"src/Warehouse.Core/InMemoryStockRepository.cs" = "fixtures/good/src/Warehouse.Core/InMemoryStockRepository.cs"
+"src/Warehouse.Core/IStockRepository.cs" = "fixtures/good/src/Warehouse.Core/IStockRepository.cs"
+"src/Warehouse.Core/Models.cs" = "fixtures/good/src/Warehouse.Core/Models.cs"
+"src/Warehouse.Core/OrderProcessor.cs" = "fixtures/good/src/Warehouse.Core/OrderProcessor.cs"
+"src/Warehouse.Core/PricingService.cs" = "fixtures/good/src/Warehouse.Core/PricingService.cs"
+"src/Warehouse.Core/StockReport.cs" = "fixtures/good/src/Warehouse.Core/StockReport.cs"
+"src/Warehouse.Core/WarehouseManager.cs" = "fixtures/good/src/Warehouse.Core/WarehouseManager.cs"
+
+[[fixture]]
+name = "seed"
+expect = "fail"
+
+[[fixture]]
+name = "priced-on-requested"
+expect = "fail"
+[fixture.files]
+"src/Warehouse.Core/Catalog.cs" = "fixtures/bad-price/src/Warehouse.Core/Catalog.cs"
+"src/Warehouse.Core/InMemoryStockRepository.cs" = "fixtures/bad-price/src/Warehouse.Core/InMemoryStockRepository.cs"
+"src/Warehouse.Core/IStockRepository.cs" = "fixtures/bad-price/src/Warehouse.Core/IStockRepository.cs"
+"src/Warehouse.Core/Models.cs" = "fixtures/bad-price/src/Warehouse.Core/Models.cs"
+"src/Warehouse.Core/OrderProcessor.cs" = "fixtures/bad-price/src/Warehouse.Core/OrderProcessor.cs"
+"src/Warehouse.Core/PricingService.cs" = "fixtures/bad-price/src/Warehouse.Core/PricingService.cs"
+"src/Warehouse.Core/StockReport.cs" = "fixtures/bad-price/src/Warehouse.Core/StockReport.cs"
+"src/Warehouse.Core/WarehouseManager.cs" = "fixtures/bad-price/src/Warehouse.Core/WarehouseManager.cs"
+
+[[fixture]]
+name = "facade-keeps-history"
+expect = "fail"
+[fixture.files]
+"src/Warehouse.Core/Catalog.cs" = "fixtures/bad-state/src/Warehouse.Core/Catalog.cs"
+"src/Warehouse.Core/InMemoryStockRepository.cs" = "fixtures/bad-state/src/Warehouse.Core/InMemoryStockRepository.cs"
+"src/Warehouse.Core/IStockRepository.cs" = "fixtures/bad-state/src/Warehouse.Core/IStockRepository.cs"
+"src/Warehouse.Core/Models.cs" = "fixtures/bad-state/src/Warehouse.Core/Models.cs"
+"src/Warehouse.Core/OrderProcessor.cs" = "fixtures/bad-state/src/Warehouse.Core/OrderProcessor.cs"
+"src/Warehouse.Core/PricingService.cs" = "fixtures/bad-state/src/Warehouse.Core/PricingService.cs"
+"src/Warehouse.Core/StockReport.cs" = "fixtures/bad-state/src/Warehouse.Core/StockReport.cs"
+"src/Warehouse.Core/WarehouseManager.cs" = "fixtures/bad-state/src/Warehouse.Core/WarehouseManager.cs"

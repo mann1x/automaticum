@@ -1,0 +1,80 @@
+# cs_buildfix: repair a broken .NET 8 solution setup and two code defects (training task, bm-889 rollout pool).
+#
+# A training task: it is trained on and never scored as an eval. The checker is compiled (as
+# manic_miner's run_game): the agent can run ./run_tests and read its verdict, not its tests.
+
+id = "cs_buildfix"
+suite = "train-ml"
+version = 1
+training = true
+layers = ["dotnet"]
+default_answer = "Use your own judgement and continue."
+
+prompt = """
+I just took over the Parcel repo and `dotnet build Parcel.sln` doesn't even get through -- looks like the project files got mangled in the last merge. Can you get the solution building on the .NET 8 SDK again (no new NuGet packages, and keep the repo-wide warnings-as-errors / nullable settings) and then make sure the quotes and labels actually match what README.md describes? The courier desk says some prices look too low. Run `./run_tests` to check your work -- it prints a JSON verdict listing the checks that fail -- and run it again before you say you are done."""
+
+[labels]
+language = "csharp"
+family = "build-config"
+tier = "short"
+
+[limits]
+wall_s = 1500
+idle_s = 600
+oracle_s = 300
+
+[workspace]
+seed = "seed"
+
+[[artefact]]
+name = "run_tests"
+image = "node@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567"
+inputs = ["oracle/build.mjs", "oracle/run_tests.logic.js"]
+command = ["node", "/task/oracle/build.mjs", "/task/oracle/run_tests.logic.js", "/out/run_tests"]
+output = "run_tests"
+sha256 = "c30a87dec87874d902af5623c613e2b1af66306e28b80808bf115e240e51c4b2"
+
+[[workspace.install]]
+artefact = "run_tests"
+path = "run_tests"
+mode = "0555"
+
+[[oracle]]
+name = "tests"
+primary = true
+artefact = "run_tests"
+image = "mcr.microsoft.com/dotnet/sdk@sha256:738f72aff955d5c5690e06b6fc8ecd1b90ead564099a257ac528ff720b8da85f"
+command = ["./run_tests"]
+expect_pattern = '"ok":true'
+timeout_s = 300
+
+[[fixture]]
+name = "known-good"
+expect = "pass"
+[fixture.files]
+"src/Parcel.Core/Parcel.Core.csproj" = "fixtures/good/src/Parcel.Core/Parcel.Core.csproj"
+"src/Parcel.Core/RateCalculator.cs" = "fixtures/good/src/Parcel.Core/RateCalculator.cs"
+"src/Parcel.Core/LabelPrinter.cs" = "fixtures/good/src/Parcel.Core/LabelPrinter.cs"
+"src/Parcel.Cli/Parcel.Cli.csproj" = "fixtures/good/src/Parcel.Cli/Parcel.Cli.csproj"
+
+[[fixture]]
+name = "seed"
+expect = "fail"
+
+[[fixture]]
+name = "round-nearest"
+expect = "fail"
+[fixture.files]
+"src/Parcel.Core/Parcel.Core.csproj" = "fixtures/bad-round/src/Parcel.Core/Parcel.Core.csproj"
+"src/Parcel.Core/RateCalculator.cs" = "fixtures/bad-round/src/Parcel.Core/RateCalculator.cs"
+"src/Parcel.Core/LabelPrinter.cs" = "fixtures/bad-round/src/Parcel.Core/LabelPrinter.cs"
+"src/Parcel.Cli/Parcel.Cli.csproj" = "fixtures/bad-round/src/Parcel.Cli/Parcel.Cli.csproj"
+
+[[fixture]]
+name = "null-forgiving"
+expect = "fail"
+[fixture.files]
+"src/Parcel.Core/Parcel.Core.csproj" = "fixtures/bad-bang/src/Parcel.Core/Parcel.Core.csproj"
+"src/Parcel.Core/RateCalculator.cs" = "fixtures/bad-bang/src/Parcel.Core/RateCalculator.cs"
+"src/Parcel.Core/LabelPrinter.cs" = "fixtures/bad-bang/src/Parcel.Core/LabelPrinter.cs"
+"src/Parcel.Cli/Parcel.Cli.csproj" = "fixtures/bad-bang/src/Parcel.Cli/Parcel.Cli.csproj"

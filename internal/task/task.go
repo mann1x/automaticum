@@ -379,8 +379,10 @@ func (t *Task) validate() error {
 		if f.Expect != "pass" && f.Expect != "fail" {
 			return fmt.Errorf("fixture %s: expect must be pass or fail", f.Name)
 		}
-		if len(f.Files) == 0 {
-			return fmt.Errorf("fixture %s: no files", f.Name)
+		// A fixture's files are laid over the seed, so one with none is the
+		// seed as given: allowed only as a fixture that must fail.
+		if len(f.Files) == 0 && f.Expect == "pass" {
+			return fmt.Errorf("fixture %s: no files, so it is the seed, which cannot be expected to pass", f.Name)
 		}
 		for dst, src := range f.Files {
 			if err := rel(dst); err != nil {

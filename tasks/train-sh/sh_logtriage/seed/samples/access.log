@@ -1,0 +1,13 @@
+203.0.113.7 - - [12/Mar/2026:09:15:02 +0000] "GET /api/items?id=3 HTTP/1.1" 200 512 "-" "curl/8.5.0" 87
+203.0.113.7 - - [12/Mar/2026:09:15:04 +0000] "GET /api/items?id=4 HTTP/1.1" 200 498 "-" "curl/8.5.0" 92
+198.51.100.23 - alice [12/Mar/2026:09:16:40 +0000] "POST /login HTTP/1.1" 302 0 "https://shop.example/" "Mozilla/5.0 (X11; Linux x86_64)" 140
+198.51.100.23 - alice [12/Mar/2026:09:16:41 +0000] "GET /account HTTP/1.1" 200 7342 "https://shop.example/login" "Mozilla/5.0 (X11; Linux x86_64)" 233
+192.0.2.55 - - [12/Mar/2026:09:31:12 +0000] "GET /report/monthly?fmt=pdf HTTP/1.1" 200 88310 "-" "Mozilla/5.0" 1874
+192.0.2.55 - - [12/Mar/2026:09:31:59 +0000] "GET /favicon.ico HTTP/1.1" 404 153 "-" "Mozilla/5.0" 3
+
+192.0.2.55 - - [12/Mar/2026:09:40:00 +0000] "-" 408 0 "-" "-" 30000
+203.0.113.7 - - [12/Mar/2026:10:02:13 +0000] "GET /api/items HTTP/1.1" 500 61 "-" "curl/8.5.0" 500
+203.0.113.7 - - [12/Mar/2026:10:02:15 +0000] "GET /api/items HTTP/1.1" 200 2048 "-" "curl/8.5.0" 64
+this line was cut by logrotate [12/Mar/2026:10:0
+198.51.100.23 - alice [12/Mar/2026:10:05:09 +0000] "POST /login HTTP/1.1" 200 811 "-" "Mozilla/5.0 (X11; Linux x86_64)" 120
+198.51.100.23 - alice [12/Mar/2026:10:07:30 +0000] "GET /account/orders?page=2 HTTP/1.1" 200 15020 "-" "Mozilla/5.0 (X11; Linux x86_64)" 499

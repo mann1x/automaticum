@@ -1,0 +1,21 @@
+{
+ "tests": ["billable_weight_rounds_up", "weight_limits", "zone_prices", "minimum_charge", "zone_parsing",
+           "label_with_company", "label_without_company", "cli_quote", "cli_errors", "strict_build_settings"],
+ "steps": [
+  {"label": "clean", "cmd": ["sh", "-c", "rm -rf src/*/bin src/*/obj"], "timeout_s": 30},
+  {"label": "dotnet build Parcel.sln", "cmd": ["dotnet", "build", "Parcel.sln", "--nologo", "--disable-build-servers",
+   "-nodeReuse:false", "-p:UseSharedCompilation=false", "-clp:NoSummary"], "timeout_s": 180},
+  {"label": "build the hidden tests (they use the public API in README.md)", "cmd": ["dotnet", "build", "__checker__/Checker.csproj", "--nologo",
+   "--disable-build-servers", "-nodeReuse:false", "-p:UseSharedCompilation=false", "-clp:NoSummary"], "timeout_s": 180},
+  {"label": "tests", "cmd": ["dotnet", "__checker__/bin/Debug/net8.0/Checker.dll"], "timeout_s": 120, "tests": true}
+ ],
+ "files": {"__checker__/Checker.csproj": "checker/Checker.csproj",
+           "__checker__/Directory.Build.props": "checker/Directory.Build.props",
+           "__checker__/Tests.cs": "checker/Tests.cs",
+           "__checker__/home/.local/share/NuGet/Migrations/1": "checker/nuget_migrations_marker"},
+ "env": {"HOME": "$WORK/__checker__/home", "DOTNET_CLI_HOME": "$WORK/__checker__/home",
+         "NUGET_PACKAGES": "$WORK/__checker__/home/.nuget/packages",
+         "DOTNET_NOLOGO": "1", "DOTNET_CLI_TELEMETRY_OPTOUT": "1", "DOTNET_SKIP_FIRST_TIME_EXPERIENCE": "1",
+         "DOTNET_GENERATE_ASPNET_CERTIFICATE": "false", "DOTNET_CLI_USE_MSBUILD_SERVER": "0",
+         "MSBUILDDISABLENODEREUSE": "1", "DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK": "1"}
+}

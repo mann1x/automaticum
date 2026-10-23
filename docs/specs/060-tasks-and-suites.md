@@ -1,6 +1,6 @@
 # 060 — Tasks, oracles and the suite interface
 
-**Status:** draft 0.10, 2026-10-23.
+**Status:** draft 0.11, 2026-10-23.
 
 ## 1. Scope
 
@@ -43,6 +43,10 @@ Needed beyond the old harness:
   <task>` proves the oracle passes the known-good fixture and fails the
   known-bad one. A task without both cannot be used in a campaign. The
   reference is run several times to reject flaky tests.
+- A fixture's files are laid over the seed. A fixture with no files is the
+  seed as given; it may only be expected to fail (a seed that passes is a
+  broken task). From 2026-10-23, so a task need not copy its seed into a
+  fixture.
 - For an external suite the equivalent is gold validation (050 §3.2).
 
 ### 3.1 Periodic oracle sampling

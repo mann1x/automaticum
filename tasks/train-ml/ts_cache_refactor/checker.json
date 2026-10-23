@@ -1,0 +1,10 @@
+{
+ "tests": ["caches_get", "method_rules", "status_rules", "cache_control_rules", "expiry", "key_normalization",
+           "invalidate_prefix", "returns_copy", "module_cache_control", "module_key", "module_lru",
+           "module_layout", "lru_eviction", "lru_replace_and_expiry", "max_entries_validation"],
+ "steps": [
+  {"label": "tests", "cmd": ["node", "__checker__/check.ts"], "timeout_s": 120, "tests": true}
+ ],
+ "files": {"__checker__/check.ts": "checker/check.ts"},
+ "env": {"NODE_NO_WARNINGS": "1"}
+}

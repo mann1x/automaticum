@@ -1,0 +1,10 @@
+{
+ "tests": ["series_until_inclusive", "series_skip_utc", "agenda_utc_day", "agenda_offset_input", "back_to_back",
+           "overlap_detected", "other_room", "series_all_or_nothing", "series_adjacent_ok", "cancel_unknown",
+           "cancel_then_rebook", "invalid_range"],
+ "steps": [
+  {"label": "tests", "cmd": ["node", "__checker__/check.ts"], "timeout_s": 120, "tests": true}
+ ],
+ "files": {"__checker__/check.ts": "checker/check.ts"},
+ "env": {"TZ": "America/New_York", "NODE_NO_WARNINGS": "1"}
+}

@@ -1,0 +1,16 @@
+[package]
+name = "csvcore"
+version.workspace = true
+license.workspace = true
+edition = "2021"
+description = "Minimal CSV reading/writing for csvtool"
+
+[lib]
+path = "src/csv.rs"
+
+[features]
+default = []
+# column statistics (sum, ...) used by the csvtool CLI
+stats = []
+
+[dependencies]

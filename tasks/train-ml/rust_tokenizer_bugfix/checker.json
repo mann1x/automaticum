@@ -1,0 +1,12 @@
+{
+ "tests": ["literals_and_whitespace", "precedence", "power_associativity", "unary_minus", "unicode_identifiers",
+           "token_columns", "error_columns", "overflow", "division", "variables_and_functions", "syntax_errors"],
+ "steps": [
+  {"label": "cargo build", "cmd": ["cargo", "build", "--offline", "--quiet"], "timeout_s": 180},
+  {"label": "compile checks", "cmd": ["sh", "-c", "mkdir -p tests && cp __checker__/calc.rs tests/__checker___calc.rs && out=$(cargo test --offline --no-run --test __checker___calc 2>&1) || { printf '%s\\n' \"$out\" | grep -E '^error|^ *--> src/'; echo 'the hidden checks do not compile against this crate: keep the public API described in README.md'; exit 1; }"], "timeout_s": 180},
+  {"label": "tests", "cmd": ["cargo", "test", "--offline", "--quiet", "--test", "__checker___calc", "--", "--nocapture", "--test-threads=1"], "timeout_s": 180, "tests": true}
+ ],
+ "files": {"__checker__/calc.rs": "checker/calc.rs"},
+ "env": {"RUSTUP_HOME": "/usr/local/rustup", "CARGO_HOME": "$WORK/.cargo", "CARGO_TARGET_DIR": "$WORK/target",
+         "CARGO_NET_OFFLINE": "true", "CARGO_TERM_COLOR": "never", "CARGO_INCREMENTAL": "0"}
+}

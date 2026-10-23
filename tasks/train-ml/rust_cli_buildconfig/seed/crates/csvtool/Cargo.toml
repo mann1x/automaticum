@@ -1,0 +1,8 @@
+[package]
+name = "csvtool-cli"
+version.workspace = true
+license.workspace = true
+description = "Command-line front end for csvcore"
+
+[dependencies]
+csvcore = { path = "../csvcore" }

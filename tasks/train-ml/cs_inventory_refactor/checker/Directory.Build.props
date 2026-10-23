@@ -1,0 +1,3 @@
+<Project>
+  <!-- stops MSBuild from importing the workspace's Directory.Build.props into the hidden test project -->
+</Project>

@@ -1,0 +1,75 @@
+# space_invaders: repair a broken single-file browser Space Invaders (training task, bm-889 rollout pool).
+#
+# A training twin of manic_miner (same shape, different game): it is trained on and never scored as
+# an eval. The checker is compiled, as manic_miner's run_game: the agent can run ./run_game and read
+# its JSON verdict, not its rules.
+
+id = "space_invaders"
+suite = "train-game"
+version = 1
+training = true
+layers = ["typescript"]
+default_answer = "Use your own judgement and continue."
+
+prompt = """
+space_invaders.html is broken -- the game doesn't start at all. Can you get it working? Run `./run_game space_invaders.html` to find out whether it really plays: it loads the page, gets past the start countdown, pumps animation frames and then tests the game's rules, and prints a JSON verdict saying what went wrong. Run it after each edit so you know straight away whether what you wrote still loads, and run it once more before you tell me it's fixed -- don't call it done from reading the code."""
+
+[labels]
+language = "javascript"
+family = "repair"
+tier = "long"
+
+[limits]
+wall_s = 2700
+idle_s = 600
+oracle_s = 120
+
+[workspace]
+seed = "seed"
+
+[[artefact]]
+name = "run_tests"
+image = "node@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567"
+inputs = ["oracle/build.mjs", "oracle/run_tests.logic.js"]
+command = ["node", "/task/oracle/build.mjs", "/task/oracle/run_tests.logic.js", "/out/run_tests"]
+output = "run_tests"
+sha256 = "6aa78daadcf7c25cbb48addaae822f891cd0fc04368ed7d2e732f8dfe7fc484e"
+
+# The agent's copy of the checker: it may run it, and cannot read its source.
+[[workspace.install]]
+artefact = "run_tests"
+path = "run_game"
+mode = "0555"
+
+# The checker exits 0 either way, so it is judged by the pattern: the page loads, frames ran past the
+# countdown, the game reached PLAYING, and every rule in game_logic held.
+[[oracle]]
+name = "game"
+primary = true
+artefact = "run_tests"
+image = "node@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567"
+command = ["./run_game", "space_invaders.html"]
+expect_pattern = '"ok":\s*true.*"frames_run":\s*(1[89][0-9]|[2-9][0-9]{2}|[1-9][0-9]{3,}).*"reached_playing":\s*true.*"game_logic":\s*\{"ok":\s*true'
+timeout_s = 120
+
+[[fixture]]
+name = "known-good"
+expect = "pass"
+[fixture.files]
+"space_invaders.html" = "fixtures/known-good.html"
+
+[[fixture]]
+name = "seed"
+expect = "fail"
+
+[[fixture]]
+name = "no-stepdown"
+expect = "fail"
+[fixture.files]
+"space_invaders.html" = "fixtures/known-bad-no-stepdown.html"
+
+[[fixture]]
+name = "no-speedup"
+expect = "fail"
+[fixture.files]
+"space_invaders.html" = "fixtures/known-bad-no-speedup.html"

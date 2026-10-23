@@ -551,6 +551,23 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-23T21:20:34+02:00"
+    },
+    {
+      "id": "bug-033",
+      "timestamp": "2026-10-23T21:40:35+02:00",
+      "error_message": "task: tasks/train-game/space_invaders/task.toml: fixture seed: no files",
+      "file": "internal/task/task.go",
+      "root_cause": "validate refused any [[fixture]] without files, though Verify lays fixture files over the prepared seed, so an empty fixture is exactly the seed; all 17 training tasks from backup_models declare the seed fixture that way",
+      "fix": "A fixture with no files is allowed when expect = \"fail\" (the seed); refused for expect = \"pass\". TestSeedFixture; 060 \u00a73",
+      "tags": [
+        "task-loader",
+        "fixture",
+        "oracle-verify",
+        "training"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-23T21:40:35+02:00"
     }
   ]
 }

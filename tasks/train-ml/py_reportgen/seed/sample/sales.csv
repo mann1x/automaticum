@@ -1,0 +1,13 @@
+date,region,product,channel,units,revenue
+2024-01-03,north,widget,web,4,79.96
+2024-01-03,south,gadget,store,1,49.50
+2024-01-11,east,widget,store,2,39.98
+2024-01-19,north,gizmo,web,1,129.00
+2024-01-30,west,gadget,web,3,148.50
+2024-02-02,south,widget,web,6,119.94
+2024-02-14,north,gadget,store,2,99.00
+2024-02-14,east,gizmo,web,1,129.00
+2024-02-29,west,widget,store,5,99.95
+2024-03-01,north,widget,web,2,39.98
+2024-03-08,south,gizmo,store,1,129.00
+2024-03-15,east,gadget,web,4,198.00

@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Space Invaders</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #05060a; color: #d8ffd8; font-family: "Courier New", monospace; }
+  #wrap { position: relative; width: 640px; margin: 24px auto; }
+  #hud { display: flex; justify-content: space-between; padding: 6px 4px; font-size: 18px; letter-spacing: 1px; }
+  #hud span.label { color: #7fbf7f; margin-right: 6px; }
+  canvas { display: block; background: #000; border: 2px solid #1f3f1f; image-rendering: pixelated; }
+  #game-over { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: none;
+    flex-direction: column; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.75); }
+  #game-over h1 { font-size: 48px; margin: 0 0 12px; color: #ff5050; }
+  #game-over p { margin: 4px; font-size: 18px; }
+  #help { text-align: center; font-size: 13px; color: #6f8f6f; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div><span class="label">SCORE</span><span id="score">0</span></div>
+    <div><span class="label">WAVE</span><span id="level">1</span></div>
+    <div><span class="label">LIVES</span><span id="lives">3</span></div>
+  </div>
+  <canvas id="game" width="640" height="480"></canvas>
+  <div id="game-over">
+    <h1 id="go-title">GAME OVER</h1>
+    <p>Final score: <span id="go-score">0</span></p>
+    <p>Press ENTER to play again</p>
+  </div>
+  <div id="help">&larr; &rarr; move &nbsp;&middot;&nbsp; SPACE fire &nbsp;&middot;&nbsp; ENTER restart</div>
+</div>
+<script>
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+const WIDTH = 640;
+const HEIGHT = 480;
+
+const PLAYER_W = 26;
+const PLAYER_H = 16;
+const PLAYER_Y = 440;
+const PLAYER_SPEED = 4;
+const START_LIVES = 3;
+const FIRE_COOLDOWN = 15;
+const HIT_RECOVERY = 90;
+
+const SHOT_W = 2;
+const SHOT_H = 10;
+const SHOT_SPEED = 8;
+
+const ALIEN_ROWS = 5;
+const ALIEN_COLS = 11;
+const ALIEN_W = 24;
+const ALIEN_H = 16;
+const ALIEN_GAP_X = 40;
+const ALIEN_GAP_Y = 30;
+const FLEET_LEFT = 80;
+const FLEET_TOP = 60;
+const MARCH_STEP = 8;
+const DROP_STEP = 16;
+const EDGE_MARGIN = 10;
+const SLOWEST_MARCH = 30;
+const ROW_POINTS = [30, 20, 20, 10, 10];
+
+const BOMB_W = 3;
+const BOMB_H = 8;
+const BOMB_SPEED = 3;
+const MAX_BOMBS = 3;
+
+const SHIELD_COUNT = 4;
+const SHIELD_COLS = 8;
+const SHIELD_ROWS = 4;
+const SHIELD_BLOCK = 6;
+const SHIELD_Y = 380;
+const SHIELD_HP = 2;
+
+const COUNTDOWN_SECONDS = 3;
+const WAVE_CLEAR_FRAMES = 90;
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+const keys = {};
+
+let gameState = 'COUNTDOWN';
+let level = 1;
+let countdownStart = 0;
+let countdownValue = COUNTDOWN_SECONDS;
+let transitionTimer = 0;
+
+const player = {
+  x: WIDTH / 2 - PLAYER_W / 2,
+  y: PLAYER_Y,
+  w: PLAYER_W,
+  h: PLAYER_H,
+  lives: START_LIVES,
+  score: 0,
+  cooldown: 0,
+  hitTimer: 0,
+  frameCount: 0
+};
+
+let aliens = [];
+let playerShot = null;
+let bombs = [];
+let shieldBlocks = [];
+
+const fleet = {
+  dir: 1,
+  timer: 0,
+  bombTimer: 60,
+  pose: 0
+};
+
+let stars = [];
+
+// ---------------------------------------------------------------------------
+// Setup
+// ---------------------------------------------------------------------------
+function makeStars() {
+  stars = [];
+  for (let i = 0; i < 60; i++) {
+    stars.push({ x: Math.random() * WIDTH, y: Math.random() * HEIGHT, b: 0.3 + Math.random() * 0.7 });
+  }
+}
+
+function buildShields() {
+  shieldBlocks = [];
+  const shieldWidth = SHIELD_COLS * SHIELD_BLOCK;
+  for (let s = 0; s < SHIELD_COUNT; s++) {
+    const centre = (WIDTH / (SHIELD_COUNT + 1)) * (s + 1);
+    const left = Math.round(centre - shieldWidth / 2);
+    for (let r = 0; r < SHIELD_ROWS; r++) {
+      for (let c = 0; c < SHIELD_COLS; c++) {
+        // Notch out the bottom middle, like the arcade bunkers.
+        if (r === SHIELD_ROWS - 1 && c >= 3 && c <= 4) continue;
+        shieldBlocks.push({
+          x: left + c * SHIELD_BLOCK,
+          y: SHIELD_Y + r * SHIELD_BLOCK,
+          w: SHIELD_BLOCK,
+          h: SHIELD_BLOCK,
+          hp: SHIELD_HP,
+          shield: s
+        });
+      }
+    }
+  }
+}
+
+function setupWave(n) {
+  aliens = [];
+  const top = FLEET_TOP + Math.min(n - 1, 5) * DROP_STEP;
+  for (let row = 0; row < ALIEN_ROWS; row++) {
+    for (let col = 0; col < ALIEN_COLS; col++) {
+      aliens.push({
+        x: FLEET_LEFT + col * ALIEN_GAP_X,
+        y: top + row * ALIEN_GAP_Y,
+        w: ALIEN_W,
+        h: ALIEN_H,
+        row,
+        col,
+        alive: true,
+        points: ROW_POINTS[row]
+      });
+    }
+  }
+  fleet.dir = 1;
+  fleet.timer = 0;
+  fleet.pose = 0;
+  fleet.bombTimer = Math.max(25, 70 - n * 5);
+  playerShot = null;
+  bombs = [];
+  buildShields();
+}
+
+function beginCountdown() {
+  gameState = 'COUNTDOWN';
+  countdownStart = performance.now();
+  countdownValue = COUNTDOWN_SECONDS;
+}
+
+function newGame() {
+  level = 1;
+  player.x = WIDTH / 2 - PLAYER_W / 2;
+  player.lives = START_LIVES;
+  player.score = 0;
+  player.cooldown = 0;
+  player.hitTimer = 0;
+  setupWave(level);
+  hideGameOver();
+  updateHud();
+  beginCountdown();
+}
+
+// ---------------------------------------------------------------------------
+// Input
+// ---------------------------------------------------------------------------
+document.addEventListener('keydown', (e) => {
+  keys[e.code] = true;
+  if (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'Space') e.preventDefault();
+  if (e.code === 'Enter' && gameState === 'GAME_OVER') newGame();
+});
+
+document.addEventListener('keyup', (e) => {
+  keys[e.code] = false;
+});
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function rectsOverlap(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function aliveAliens() {
+  return aliens.filter((a) => a.alive);
+}
+
+function marchInterval() {
+  const alive = aliveAliens().length;
+  const total = ALIEN_ROWS * ALIEN_COLS;
+  return Math.max(1, Math.ceil((alive / total) * SLOWEST_MARCH));
+}
+
+// ---------------------------------------------------------------------------
+// Update
+// ---------------------------------------------------------------------------
+function updatePlayer() {
+  if (player.cooldown > 0) player.cooldown--;
+  if (player.hitTimer > 0) {
+    player.hitTimer--;
+    return;
+  }
+  if (keys.ArrowLeft) player.x -= PLAYER_SPEED;
+  if (keys.ArrowRight) player.x += PLAYER_SPEED;
+  if (player.x < 0) player.x = 0;
+  if (player.x > WIDTH - player.w) player.x = WIDTH - player.w;
+
+  if (keys.Space && playerShot === null && player.cooldown === 0) fireShot();
+}
+
+function fireShot() {
+  playerShot = {
+    x: player.x + player.w / 2 - SHOT_W / 2,
+    y: player.y - SHOT_H,
+    w: SHOT_W,
+    h: SHOT_H,
+    vy: -SHOT_SPEED
+  };
+  player.cooldown = FIRE_COOLDOWN;
+}
+
+function updateShot() {
+  if (!playerShot) return;
+  playerShot.y += playerShot.vy;
+  if (playerShot.y + playerShot.h < 0) {
+    playerShot = null;
+    return;
+  }
+  for (const a of aliens) {
+    if (a.alive && rectsOverlap(playerShot, a)) {
+      a.alive = false;
+      player.score += a.points;
+      playerShot = null;
+      return;
+    }
+  }
+  for (const b of shieldBlocks) {
+    if (b.hp > 0 && rectsOverlap(playerShot, b)) {
+      b.hp--;
+      playerShot = null;
+      return;
+    }
+  }
+}
+
+function marchFleet() {
+  const alive = aliveAliens();
+  if (alive.length === 0) return;
+  let minX = Infinity;
+  let maxX = -Infinity;
+  for (const a of alive) {
+    minX = Math.min(minX, a.x);
+    maxX = Math.max(maxX, a.x + a.w);
+  }
+  const hitsEdge = fleet.dir > 0
+    ? maxX + MARCH_STEP > WIDTH - EDGE_MARGIN
+    : minX - MARCH_STEP < EDGE_MARGIN;
+  if (hitsEdge) {
+    for (const a of alive) a.y += DROP_STEP;
+    fleet.dir = -fleet.dir;
+  } else {
+    for (const a of alive) a.x += MARCH_STEP * fleet.dir;
+  }
+  fleet.pose = 1 - fleet.pose;
+}
+
+function updateFleet() {
+  fleet.timer++;
+  if (fleet.timer >= marchInterval()) {
+    fleet.timer = 0;
+    marchFleet();
+  }
+  for (const a of aliens) {
+    if (!a.alive) continue;
+    // Aliens chew through any shield they walk into.
+    for (const b of shieldBlocks) {
+      if (b.hp > 0 && rectsOverlap(a, b)) b.hp = 0;
+    }
+    if (a.y + a.h >= player.y) {
+      gameOver();
+      return;
+    }
+  }
+}
+
+function dropBomb() {
+  const alive = aliveAliens();
+  if (alive.length === 0 || bombs.length >= MAX_BOMBS) return;
+  const columns = [...new Set(alive.map((a) => a.col))];
+  const col = columns[Math.floor(Math.random() * columns.length)];
+  let shooter = null;
+  for (const a of alive) {
+    if (a.col === col && (shooter === null || a.y > shooter.y)) shooter = a;
+  }
+  bombs.push({
+    x: shooter.x + shooter.w / 2 - BOMB_W / 2,
+    y: shooter.y + shooter.h,
+    w: BOMB_W,
+    h: BOMB_H,
+    vy: BOMB_SPEED
+  });
+}
+
+function updateBombs() {
+  fleet.bombTimer--;
+  if (fleet.bombTimer <= 0) {
+    dropBomb();
+    fleet.bombTimer = Math.max(15, 40 - level * 3) + Math.floor(Math.random() * 40);
+  }
+  for (let i = bombs.length - 1; i >= 0; i--) {
+    const bomb = bombs[i];
+    bomb.y += bomb.vy;
+    if (bomb.y > HEIGHT) {
+      bombs.splice(i, 1);
+      continue;
+    }
+    let blocked = false;
+    for (const b of shieldBlocks) {
+      if (b.hp > 0 && rectsOverlap(bomb, b)) {
+        b.hp--;
+        blocked = true;
+        break;
+      }
+    }
+    if (blocked) {
+      bombs.splice(i, 1);
+      continue;
+    }
+    if (player.hitTimer === 0 && rectsOverlap(bomb, player)) {
+      bombs.splice(i, 1);
+      playerHit();
+      return;
+    }
+  }
+}
+
+function playerHit() {
+  player.lives--;
+  player.hitTimer = HIT_RECOVERY;
+  bombs = [];
+  if (player.lives <= 0) {
+    player.lives = 0;
+    gameOver();
+  }
+}
+
+function checkWaveClear() {
+  if (aliveAliens().length > 0) return;
+  gameState = 'WAVE_CLEAR';
+  transitionTimer = WAVE_CLEAR_FRAMES;
+  playerShot = null;
+  bombs = [];
+}
+
+function nextWave() {
+  level++;
+  setupWave(level);
+  updateHud();
+  beginCountdown();
+}
+
+function gameOver() {
+  gameState = 'GAME_OVER';
+  playerShot = null;
+  const overlay = document.getElementById('game-over');
+  overlay.style.display = 'flex';
+  document.getElementById('go-score').textContent = String(player.score);
+  updateHud();
+}
+
+function hideGameOver() {
+  document.getElementById('game-over').style.display = 'none';
+}
+
+function updateHud() {
+  document.getElementById('score').textContent = String(player.score);
+  document.getElementById('lives').textContent = String(player.lives);
+  document.getElementById('level').textContent = String(level);
+}
+
+function update() {
+  if (gameState === 'COUNTDOWN') {
+    const elapsed = performance.now() - countdownStart;
+    countdownValue = COUNTDOWN_SECONDS - Math.floor(elapsed / 1000);
+    if (elapsed >= COUNTDOWN_SECONDS * 1000) gameState = 'PLAYING';
+    return;
+  }
+  if (gameState === 'WAVE_CLEAR') {
+    transitionTimer--;
+    if (transitionTimer <= 0) nextWave();
+    return;
+  }
+  if (gameState !== 'PLAYING') return;
+
+  player.frameCount++;
+  updatePlayer();
+  updateShot();
+  updateFleet();
+  if (gameState !== 'PLAYING') return;
+  updateBombs();
+  if (gameState !== 'PLAYING') return;
+  checkWaveClear();
+  updateHud();
+}
+
+// ---------------------------------------------------------------------------
+// Drawing
+// ---------------------------------------------------------------------------
+function drawAlien(a) {
+  const colours = ['#ff6bd6', '#6bd6ff', '#6bd6ff', '#9bff6b', '#9bff6b'];
+  ctx.fillStyle = colours[a.row];
+  const x = a.x;
+  const y = a.y;
+  ctx.fillRect(x + 4, y, a.w - 8, 4);
+  ctx.fillRect(x, y + 4, a.w, 6);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(x + 6, y + 5, 3, 3);
+  ctx.fillRect(x + a.w - 9, y + 5, 3, 3);
+  ctx.fillStyle = colours[a.row];
+  if (fleet.pose === 0) {
+    ctx.fillRect(x + 2, y + 10, 4, 6);
+    ctx.fillRect(x + a.w - 6, y + 10, 4, 6);
+  } else {
+    ctx.fillRect(x + 6, y + 10, 4, 6);
+    ctx.fillRect(x + a.w - 10, y + 10, 4, 6);
+  }
+}
+
+function drawPlayer() {
+  if (player.hitTimer > 0 && Math.floor(player.hitTimer / 6) % 2 === 0) return;
+  ctx.fillStyle = '#50ff50';
+  ctx.fillRect(player.x, player.y + 6, player.w, player.h - 6);
+  ctx.fillRect(player.x + player.w / 2 - 3, player.y, 6, 6);
+}
+
+function draw() {
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  for (const s of stars) {
+    ctx.globalAlpha = s.b;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(s.x, s.y, 1, 1);
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.fillStyle = '#2fbf2f';
+  for (const b of shieldBlocks) {
+    if (b.hp <= 0) continue;
+    ctx.globalAlpha = b.hp / SHIELD_HP;
+    ctx.fillRect(b.x, b.y, b.w, b.h);
+  }
+  ctx.globalAlpha = 1;
+
+  for (const a of aliens) if (a.alive) drawAlien(a);
+
+  drawPlayer();
+
+  if (playerShot) {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(playerShot.x, playerShot.y, playerShot.w, playerShot.h);
+  }
+
+  ctx.fillStyle = '#ffd34f';
+  for (const bomb of bombs) ctx.fillRect(bomb.x, bomb.y, bomb.w, bomb.h);
+
+  ctx.fillStyle = '#2fbf2f';
+  ctx.fillRect(0, PLAYER_Y + PLAYER_H + 4, WIDTH, 2);
+
+  ctx.textAlign = 'center';
+  if (gameState === 'COUNTDOWN') {
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '28px "Courier New", monospace';
+    ctx.fillText('WAVE ' + level, WIDTH / 2, HEIGHT / 2 - 40);
+    ctx.font = '64px "Courier New", monospace';
+    ctx.fillText(String(Math.max(1, countdownValue)), WIDTH / 2, HEIGHT / 2 + 20);
+  } else if (gameState === 'WAVE_CLEAR') {
+    ctx.fillStyle = '#9bff6b';
+    ctx.font = '32px "Courier New", monospace';
+    ctx.fillText('WAVE ' + level + ' CLEARED', WIDTH / 2, HEIGHT / 2);
+  }
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+makeStars();
+newGame();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

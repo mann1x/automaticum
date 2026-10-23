@@ -1,0 +1,13 @@
+{
+  "name": "roombook",
+  "version": "1.4.0",
+  "private": true,
+  "type": "module",
+  "description": "Meeting-room bookings with weekly series",
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=23.6"
+  }
+}

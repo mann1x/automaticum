@@ -1,0 +1,10 @@
+{
+ "tests": ["round_half_up", "no_float_error", "line_rounding", "qty_validation", "discount_before_tax",
+           "fractional_percent", "fixed_after_percent", "never_negative", "mixed_invoice"],
+ "steps": [
+  {"label": "compile", "cmd": ["python3", "-m", "compileall", "-q", "ledger"], "timeout_s": 60},
+  {"label": "tests", "cmd": ["python3", "-B", "__checker__/check.py"], "timeout_s": 120, "tests": true}
+ ],
+ "files": {"__checker__/check.py": "checker/check.py"},
+ "env": {"PYTHONDONTWRITEBYTECODE": "1"}
+}

@@ -1,0 +1,1 @@
+deploy	ALL=(www-data) NOPASSWD: /usr/local/bin/release

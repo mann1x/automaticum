@@ -1,0 +1,79 @@
+# py_reportgen: implement the v0.3 report format of a CSV sales-report CLI (training task, bm-889 rollout pool).
+#
+# A training task: it is trained on and never scored as an eval. The checker is compiled (as
+# manic_miner's run_game): the agent can run ./run_tests and read its verdict, not its tests.
+
+id = "py_reportgen"
+suite = "train-ml"
+version = 1
+training = true
+layers = ["python"]
+default_answer = "Use your own judgement and continue."
+
+prompt = """
+The README of `salesreport` describes the v0.3 report (multi-key `--group-by`, month buckets, the share column, the TOTAL row and `--format markdown`), but the code still only does the old single-column text table. Please implement the v0.3 report so the tool behaves exactly as README.md says -- including the parts that already exist. Keep it standard library only. Run `./run_tests` to check your work -- it prints a JSON verdict listing the checks that fail -- and run it again before you say you are done."""
+
+[labels]
+language = "python"
+family = "feature"
+tier = "long"
+
+[limits]
+wall_s = 2700
+idle_s = 600
+oracle_s = 240
+
+[workspace]
+seed = "seed"
+
+[[artefact]]
+name = "run_tests"
+image = "node@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567"
+inputs = ["oracle/build.mjs", "oracle/run_tests.logic.js"]
+command = ["node", "/task/oracle/build.mjs", "/task/oracle/run_tests.logic.js", "/out/run_tests"]
+output = "run_tests"
+sha256 = "7ab1095548792dd0f2e51751fd9db53797f828059c059fc1201b7371313e43af"
+
+[[workspace.install]]
+artefact = "run_tests"
+path = "run_tests"
+mode = "0555"
+
+[[oracle]]
+name = "tests"
+primary = true
+artefact = "run_tests"
+image = "python@sha256:14a4933e6cef421424f7a66d89a3f4eafcbd0d90e0a822251f298e05132dc735"
+command = ["./run_tests"]
+expect_pattern = '"ok":true'
+timeout_s = 240
+
+[[fixture]]
+name = "known-good"
+expect = "pass"
+[fixture.files]
+"salesreport/filters.py" = "fixtures/good/salesreport/filters.py"
+"salesreport/aggregate.py" = "fixtures/good/salesreport/aggregate.py"
+"salesreport/render.py" = "fixtures/good/salesreport/render.py"
+"salesreport/cli.py" = "fixtures/good/salesreport/cli.py"
+
+[[fixture]]
+name = "seed"
+expect = "fail"
+
+[[fixture]]
+name = "float-share"
+expect = "fail"
+[fixture.files]
+"salesreport/filters.py" = "fixtures/good/salesreport/filters.py"
+"salesreport/aggregate.py" = "fixtures/bad-float-share/salesreport/aggregate.py"
+"salesreport/render.py" = "fixtures/good/salesreport/render.py"
+"salesreport/cli.py" = "fixtures/good/salesreport/cli.py"
+
+[[fixture]]
+name = "until-exclusive"
+expect = "fail"
+[fixture.files]
+"salesreport/aggregate.py" = "fixtures/good/salesreport/aggregate.py"
+"salesreport/render.py" = "fixtures/good/salesreport/render.py"
+"salesreport/cli.py" = "fixtures/good/salesreport/cli.py"

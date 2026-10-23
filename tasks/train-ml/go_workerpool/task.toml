@@ -1,0 +1,75 @@
+# go_workerpool: fix a bounded worker pool (ordering, retries, error wrapping, cancellation leak) (training task, bm-889 rollout pool).
+#
+# A training task: it is trained on and never scored as an eval. The checker is compiled (as
+# manic_miner's run_game): the agent can run ./run_tests and read its verdict, not its tests.
+# NOTE: the checker builds and runs a Go binary, so the oracle needs an exec /tmp (see NOTES.md).
+
+id = "go_workerpool"
+suite = "train-ml"
+version = 1
+training = true
+layers = ["go"]
+default_answer = "Use your own judgement and continue."
+
+prompt = """
+The nightly exporters that use our `pool` package are misbehaving: the results come back attached to the wrong tables, flaky jobs get retried more often than configured, our `errors.Is` checks on job failures never match, and after a cancelled run the process slowly piles up goroutines. Please fix `pool` so it follows the contract in README.md (keep the public API as it is). Run `./run_tests` to check your work -- it prints a JSON verdict listing the checks that fail -- and run it again before you say you are done."""
+
+[labels]
+language = "go"
+family = "bug-fix"
+tier = "short"
+
+[limits]
+wall_s = 1500
+idle_s = 600
+oracle_s = 300
+
+[workspace]
+seed = "seed"
+
+[[artefact]]
+name = "run_tests"
+image = "node@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567"
+inputs = ["oracle/build.mjs", "oracle/run_tests.logic.js"]
+command = ["node", "/task/oracle/build.mjs", "/task/oracle/run_tests.logic.js", "/out/run_tests"]
+output = "run_tests"
+sha256 = "3de57ab6debcf5a7322c96ac549f8d8079ca0916f6b8f9bdad0581e32c470c9a"
+
+[[workspace.install]]
+artefact = "run_tests"
+path = "run_tests"
+mode = "0555"
+
+[[oracle]]
+name = "tests"
+primary = true
+artefact = "run_tests"
+image = "golang@sha256:167053a2bb901972bf2c1611f8f52c44d5fe7e762e5cab213708d82c421614db"
+command = ["./run_tests"]
+expect_pattern = '"ok":true'
+timeout_s = 300
+
+[[fixture]]
+name = "known-good"
+expect = "pass"
+[fixture.files]
+"pool/pool.go" = "fixtures/good/pool/pool.go"
+"pool/attempt.go" = "fixtures/good/pool/attempt.go"
+
+[[fixture]]
+name = "seed"
+expect = "fail"
+
+[[fixture]]
+name = "retry-off-by-one"
+expect = "fail"
+[fixture.files]
+"pool/pool.go" = "fixtures/bad-retry/pool/pool.go"
+"pool/attempt.go" = "fixtures/bad-retry/pool/attempt.go"
+
+[[fixture]]
+name = "cancel-returns-nil"
+expect = "fail"
+[fixture.files]
+"pool/pool.go" = "fixtures/bad-noerr/pool/pool.go"
+"pool/attempt.go" = "fixtures/bad-noerr/pool/attempt.go"

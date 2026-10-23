@@ -1,0 +1,16 @@
+# old section.key	new key	type (str|int|bool)
+server.host	http.bind	str
+server.port	http.port	int
+server.keepalive	http.keepalive	bool
+server.workers	http.workers	int
+database.url	db.dsn	str
+database.pool	db.pool_size	int
+database.timeout	db.timeout_s	int
+log.level	logging.level	str
+log.file	logging.path	str
+log.json	logging.json	bool
+global.name	service.name	str
+global.owner	service.owner	str
+cache.enabled	cache.enabled	bool
+cache.ttl	cache.ttl_s	int
+cache.servers	cache.servers	str

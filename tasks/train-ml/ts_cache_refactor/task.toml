@@ -1,0 +1,90 @@
+# ts_cache_refactor: split a one-file TypeScript HTTP response cache into modules and add LRU
+# eviction (training task, bm-889 rollout pool).
+#
+# A training task: it is trained on and never scored as an eval. The checker is compiled (as
+# manic_miner's run_game): the agent can run ./run_tests and read its verdict, not its tests.
+
+id = "ts_cache_refactor"
+suite = "train-ml"
+version = 1
+training = true
+layers = ["typescript"]
+default_answer = "Use your own judgement and continue."
+
+prompt = """
+Can you do issue #41 in edge-cache? `src/cache.ts` is one big class that nobody wants to touch. The README has a "Planned restructure" section with the module layout we agreed on, plus the new `maxEntries` LRU bound we need because the gateway's memory keeps growing. Everything the cache does today has to keep working exactly as the README describes. It runs directly on Node with type stripping, no build step and no dependencies. Run `./run_tests` to check your work -- it prints a JSON verdict listing the checks that fail -- and run it again before you say you are done."""
+
+[labels]
+language = "typescript"
+family = "refactor"
+tier = "long"
+
+[limits]
+wall_s = 2700
+idle_s = 600
+oracle_s = 180
+
+[workspace]
+seed = "seed"
+
+[[artefact]]
+name = "run_tests"
+image = "node@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567"
+inputs = ["oracle/build.mjs", "oracle/run_tests.logic.js"]
+command = ["node", "/task/oracle/build.mjs", "/task/oracle/run_tests.logic.js", "/out/run_tests"]
+output = "run_tests"
+sha256 = "2ea817f0b1216a7753f5c1cc510dc8feee5b6cf2f4a072b9d470bfeffb2d06a9"
+
+[[workspace.install]]
+artefact = "run_tests"
+path = "run_tests"
+mode = "0555"
+
+[[oracle]]
+name = "tests"
+primary = true
+artefact = "run_tests"
+image = "node@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567"
+command = ["./run_tests"]
+expect_pattern = '"ok":true'
+timeout_s = 180
+
+[[fixture]]
+name = "known-good"
+expect = "pass"
+[fixture.files]
+"src/cacheControl.ts" = "fixtures/good/src/cacheControl.ts"
+"src/key.ts" = "fixtures/good/src/key.ts"
+"src/lru.ts" = "fixtures/good/src/lru.ts"
+"src/responseCache.ts" = "fixtures/good/src/responseCache.ts"
+"src/index.ts" = "fixtures/good/src/index.ts"
+"src/cache.ts" = "fixtures/good/src/cache.ts"
+"test/cache.test.ts" = "fixtures/good/test/cache.test.ts"
+
+[[fixture]]
+name = "seed"
+expect = "fail"
+
+[[fixture]]
+name = "fifo-not-lru"
+expect = "fail"
+[fixture.files]
+"src/cacheControl.ts" = "fixtures/good/src/cacheControl.ts"
+"src/key.ts" = "fixtures/good/src/key.ts"
+"src/lru.ts" = "fixtures/bad-fifo/src/lru.ts"
+"src/responseCache.ts" = "fixtures/good/src/responseCache.ts"
+"src/index.ts" = "fixtures/good/src/index.ts"
+"src/cache.ts" = "fixtures/good/src/cache.ts"
+"test/cache.test.ts" = "fixtures/good/test/cache.test.ts"
+
+[[fixture]]
+name = "case-sensitive-directives"
+expect = "fail"
+[fixture.files]
+"src/cacheControl.ts" = "fixtures/bad-case/src/cacheControl.ts"
+"src/key.ts" = "fixtures/good/src/key.ts"
+"src/lru.ts" = "fixtures/good/src/lru.ts"
+"src/responseCache.ts" = "fixtures/good/src/responseCache.ts"
+"src/index.ts" = "fixtures/good/src/index.ts"
+"src/cache.ts" = "fixtures/good/src/cache.ts"
+"test/cache.test.ts" = "fixtures/good/test/cache.test.ts"

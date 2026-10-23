@@ -1,0 +1,50 @@
+{
+ "tests": [
+  "from_triplets",
+  "transpose",
+  "multiply_vector",
+  "multiply_matrix",
+  "multiply_cancellation",
+  "add_scaled",
+  "prune",
+  "diagonal",
+  "operations_compose",
+  "mm_read_general",
+  "mm_read_symmetric",
+  "mm_read_errors",
+  "mm_roundtrip"
+ ],
+ "steps": [
+  {
+   "label": "make",
+   "cmd": [
+    "make"
+   ],
+   "timeout_s": 180
+  },
+  {
+   "label": "compile checks",
+   "cmd": [
+    "sh",
+    "-c",
+    "out=$(g++ -std=c++17 -g -O1 -fno-omit-frame-pointer -fsanitize=address,undefined -fno-sanitize-recover=undefined -Iinclude src/*.cpp __checker__/check.cpp -o chk 2>&1) || { printf '%s\\n' \"$out\" | grep -E '^(src|include)/[^ ]*:[0-9]+:[0-9]+: (fatal )?error'; echo 'the hidden checks do not compile against this library: keep the API of include/sparse/*.hpp (README.md)'; exit 1; }"
+   ],
+   "timeout_s": 180
+  },
+  {
+   "label": "tests",
+   "cmd": [
+    "./chk"
+   ],
+   "timeout_s": 180,
+   "tests": true
+  }
+ ],
+ "files": {
+  "__checker__/check.cpp": "checker/check.cpp"
+ },
+ "env": {
+  "ASAN_OPTIONS": "detect_leaks=0:abort_on_error=0",
+  "UBSAN_OPTIONS": "print_stacktrace=0"
+ }
+}

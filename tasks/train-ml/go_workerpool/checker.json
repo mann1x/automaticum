@@ -1,0 +1,69 @@
+{
+ "tests": [
+  "results_in_job_order",
+  "each_job_runs_once",
+  "respects_worker_limit",
+  "invalid_workers",
+  "empty_batch",
+  "retry_attempt_count",
+  "retry_then_success",
+  "permanent_error_not_retried",
+  "error_wrapping",
+  "cancel_marks_unstarted_jobs",
+  "no_goroutine_leak"
+ ],
+ "steps": [
+  {
+   "label": "exec probe",
+   "cmd": [
+    "sh",
+    "-c",
+    "cp /bin/true ./.exec_probe && ./.exec_probe || { echo 'this checker runs a compiled Go test binary, but the temp dir is mounted noexec here: run_tests needs an exec /tmp'; exit 1; }"
+   ],
+   "timeout_s": 30
+  },
+  {
+   "label": "go build ./...",
+   "cmd": [
+    "go",
+    "build",
+    "./..."
+   ],
+   "timeout_s": 240
+  },
+  {
+   "label": "build the hidden tests",
+   "cmd": [
+    "go",
+    "build",
+    "-o",
+    ".chk",
+    "./__checker__"
+   ],
+   "timeout_s": 240
+  },
+  {
+   "label": "tests",
+   "cmd": [
+    "./.chk"
+   ],
+   "timeout_s": 120,
+   "tests": true
+  }
+ ],
+ "files": {
+  "__checker__/main.go": "checker/main.go"
+ },
+ "env": {
+  "HOME": "$WORK",
+  "TMPDIR": "/tmp",
+  "GOTMPDIR": "$WORK",
+  "GOCACHE": "$WORK/.gocache",
+  "GOPATH": "$WORK/.gopath",
+  "GOFLAGS": "-mod=mod",
+  "GOTOOLCHAIN": "local",
+  "GOPROXY": "off",
+  "GOSUMDB": "off",
+  "CGO_ENABLED": "0"
+ }
+}

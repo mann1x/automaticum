@@ -1,0 +1,6 @@
+# mode owner path   (collected with: stat -c '%a %U %n' /home/* /srv/* /root)
+700 root /root
+750 alice /home/alice
+777 bob /home/bob
+755 alice /home/carol
+2775 deploy /srv/deploy/

@@ -1,0 +1,81 @@
+# c_parser_bugfix: fix a small C INI-parser library so it follows its README (training task, bm-889 rollout pool).
+#
+# A training task: it is trained on and never scored as an eval. The checker is compiled (as
+# manic_miner's run_game): the agent can run ./run_tests and read its verdict, not its tests.
+# Needs an exec /tmp in the oracle sandbox (the checker runs a compiled C test program).
+
+id = "c_parser_bugfix"
+suite = "train-ml"
+version = 1
+training = true
+layers = ["cpp"]
+default_answer = "Use your own judgement and continue."
+
+prompt = """
+We use libini (this repo) to read service configs and a few things are broken: values with escaped quotes come out wrong, configs that use continuation lines sometimes return garbage or crash the service, and huge port numbers are silently accepted. There may be more -- README.md is the spec. Please fix the library (keep the API and the Makefile build working). Run `./run_tests` to check your work -- it prints a JSON verdict listing the checks that fail -- and run it again before you say you are done."""
+
+[labels]
+language = "c"
+family = "bug-fix"
+tier = "short"
+
+[limits]
+wall_s = 1500
+idle_s = 600
+oracle_s = 240
+
+[workspace]
+seed = "seed"
+
+[[artefact]]
+name = "run_tests"
+image = "node@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567"
+inputs = ["oracle/build.mjs", "oracle/run_tests.logic.js"]
+command = ["node", "/task/oracle/build.mjs", "/task/oracle/run_tests.logic.js", "/out/run_tests"]
+output = "run_tests"
+sha256 = "071a436ec663333a756ff4fc0cecb122d2c203d2d5c3203bb3a967acea9e5038"
+
+[[workspace.install]]
+artefact = "run_tests"
+path = "run_tests"
+mode = "0555"
+
+[[oracle]]
+name = "tests"
+primary = true
+artefact = "run_tests"
+image = "gcc@sha256:db19db55a3bd1f836212a76854c4f6c7c4ccb0c9a9426dbf542e3505bc8cdfec"
+command = ["./run_tests"]
+expect_pattern = '"ok":true'
+timeout_s = 240
+
+[[fixture]]
+name = "known-good"
+expect = "pass"
+[fixture.files]
+"src/ini_util.c" = "fixtures/good/src/ini_util.c"
+"src/ini_doc.c" = "fixtures/good/src/ini_doc.c"
+"src/ini_get.c" = "fixtures/good/src/ini_get.c"
+"src/ini_parse.c" = "fixtures/good/src/ini_parse.c"
+
+[[fixture]]
+name = "seed"
+expect = "fail"
+
+[[fixture]]
+name = "naive-quote-scan"
+expect = "fail"
+[fixture.files]
+"src/ini_util.c" = "fixtures/bad-quote/src/ini_util.c"
+"src/ini_doc.c" = "fixtures/bad-quote/src/ini_doc.c"
+"src/ini_get.c" = "fixtures/bad-quote/src/ini_get.c"
+"src/ini_parse.c" = "fixtures/bad-quote/src/ini_parse.c"
+
+[[fixture]]
+name = "range-check-long-max"
+expect = "fail"
+[fixture.files]
+"src/ini_util.c" = "fixtures/bad-range/src/ini_util.c"
+"src/ini_doc.c" = "fixtures/bad-range/src/ini_doc.c"
+"src/ini_get.c" = "fixtures/bad-range/src/ini_get.c"
+"src/ini_parse.c" = "fixtures/bad-range/src/ini_parse.c"

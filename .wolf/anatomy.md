@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-23T16:00:00.733Z
-> Files: 294 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-23T19:27:28.788Z
+> Files: 303 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -360,8 +360,8 @@
 ## internal/task/
 
 - `exec.go` — Interface: Executor (4 methods) (~3851 tok)
-- `task_test.go` — TestLoadAll, TestLoadRejects, TestWorkspaceGit, TestHashChangesWithAnyFile + 3 more (~3025 tok)
-- `task.go` — loads tasks from the tasks directory, builds what they need, (~3861 tok)
+- `task_test.go` — TestLoadAll, TestLoadRejects, TestWorkspaceGit, TestHashChangesWithAnyFile, TestVerifyDemo (~3890 tok)
+- `task.go` — loads tasks from the tasks directory, builds what they need, (~4279 tok)
 - `user_test.go` — TestUserScript (~1060 tok)
 - `user.go` — User (45 fields) (~2600 tok)
 
@@ -415,8 +415,8 @@
 
 ## runner/sdk/4.100.262/
 
-- `package.json` — The SDK bundle of build 4.100.262 (~60 tok)
 - `package-lock.json` — Lockfile for 4.100.262, made in the pinned node image (~46000 tok)
+- `package.json` — The SDK bundle of build 4.100.262 (~60 tok)
 - `sdk.toml` — SDK release 4.100.262, pinned bundle 6ca86407deb5: agentic reasoning probe, preserve_thinking, request+response capture (~110 tok)
 
 ## runner/test/
@@ -484,6 +484,18 @@
 - `t9-regex-1.json` (~65 tok)
 - `t9-regex-4-skip.json` (~101 tok)
 - `t9-regex-4.json` (~84 tok)
+
+## tasks/train-game/
+
+- `space_invaders/` — training twin of manic_miner (D105): seed, compiled checker run_game (oracle/build.mjs + run_tests.logic.js), fixtures known-good and two near-misses; typescript layer
+
+## tasks/train-ml/
+
+- 12 training tasks (D105), two per language: py_ledger, py_reportgen (python), ts_scheduler, ts_cache_refactor (typescript), cs_buildfix, cs_inventory_refactor (dotnet), go_workerpool, go_kvstore_feature (go), c_parser_bugfix, cpp_matrix_feature (cpp), rust_tokenizer_bugfix, rust_cli_buildconfig (rust). Each: task.toml, seed/, fixtures/, oracle/ (build.mjs + run_tests.logic.js, a Node SEA pinned by sha256), checker/ (source of the hidden tests), checker.json
+
+## tasks/train-sh/
+
+- 4 shell training tasks on the python layer: sh_logtriage, sh_config_migrate, sh_backup_rotate, sh_user_audit; same layout as train-ml. The server paths and 10.0.0.x addresses in them are made-up task data
 
 ## tasks/custom/manic_miner/
 

@@ -1,0 +1,75 @@
+# go_kvstore_feature: implement kvd's v1 HTTP API (JSON, versions, CAS, TTL, prefix listing) (training task, bm-889 rollout pool).
+#
+# A training task: it is trained on and never scored as an eval. The checker is compiled (as
+# manic_miner's run_game): the agent can run ./run_tests and read its verdict, not its tests.
+# NOTE: the checker builds and runs a Go binary, so the oracle needs an exec /tmp (see NOTES.md).
+
+id = "go_kvstore_feature"
+suite = "train-ml"
+version = 1
+training = true
+layers = ["go"]
+default_answer = "Use your own judgement and continue."
+
+prompt = """
+kvd's HTTP API is still the plain-text prototype and the clients team is blocked on it. Please implement the v1 API as specified in README.md: JSON entries and JSON errors, versions with ETag / If-Match / If-None-Match, TTLs, and prefix listing with pagination. Keep `api.NewHandler` and `store.New` with their current signatures (the server and the tests build on them); anything else in `store` and `api` can change. Run `./run_tests` to check your work -- it prints a JSON verdict listing the checks that fail -- and run it again before you say you are done."""
+
+[labels]
+language = "go"
+family = "feature"
+tier = "long"
+
+[limits]
+wall_s = 2700
+idle_s = 600
+oracle_s = 300
+
+[workspace]
+seed = "seed"
+
+[[artefact]]
+name = "run_tests"
+image = "node@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567"
+inputs = ["oracle/build.mjs", "oracle/run_tests.logic.js"]
+command = ["node", "/task/oracle/build.mjs", "/task/oracle/run_tests.logic.js", "/out/run_tests"]
+output = "run_tests"
+sha256 = "213d7179a523e6c790ecad141481c5015e3120568108c2cc77fa85818b5eabbc"
+
+[[workspace.install]]
+artefact = "run_tests"
+path = "run_tests"
+mode = "0555"
+
+[[oracle]]
+name = "tests"
+primary = true
+artefact = "run_tests"
+image = "golang@sha256:167053a2bb901972bf2c1611f8f52c44d5fe7e762e5cab213708d82c421614db"
+command = ["./run_tests"]
+expect_pattern = '"ok":true'
+timeout_s = 300
+
+[[fixture]]
+name = "known-good"
+expect = "pass"
+[fixture.files]
+"store/store.go" = "fixtures/good/store/store.go"
+"api/server.go" = "fixtures/good/api/server.go"
+
+[[fixture]]
+name = "seed"
+expect = "fail"
+
+[[fixture]]
+name = "ttl-boundary"
+expect = "fail"
+[fixture.files]
+"store/store.go" = "fixtures/bad-ttl/store/store.go"
+"api/server.go" = "fixtures/bad-ttl/api/server.go"
+
+[[fixture]]
+name = "next-on-full-page"
+expect = "fail"
+[fixture.files]
+"store/store.go" = "fixtures/bad-next/store/store.go"
+"api/server.go" = "fixtures/bad-next/api/server.go"

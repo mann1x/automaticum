@@ -1,0 +1,13 @@
+{
+  "name": "edge-cache",
+  "version": "0.9.3",
+  "private": true,
+  "type": "module",
+  "description": "In-process HTTP response cache for the API gateway",
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=23.6"
+  }
+}

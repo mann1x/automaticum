@@ -1,0 +1,50 @@
+{
+ "tests": [
+  "basic_pairs",
+  "comments",
+  "line_endings",
+  "quoted_values",
+  "escaped_quotes",
+  "syntax_errors",
+  "duplicate_keys",
+  "continuation_lines",
+  "long_values",
+  "unescape_bounds",
+  "int_values",
+  "int_errors",
+  "parse_file"
+ ],
+ "steps": [
+  {
+   "label": "make",
+   "cmd": [
+    "make"
+   ],
+   "timeout_s": 120
+  },
+  {
+   "label": "compile checks",
+   "cmd": [
+    "sh",
+    "-c",
+    "out=$(gcc -std=c11 -g -O1 -fno-omit-frame-pointer -fsanitize=address,undefined -fno-sanitize-recover=undefined -Iinclude -Isrc src/*.c __checker__/check.c -o chk 2>&1) || { printf '%s\\n' \"$out\" | grep -E '^(src|include)/[^ ]*:[0-9]+:[0-9]+: (fatal )?error'; echo 'the hidden checks do not compile against this library: keep the API of include/ini.h (README.md)'; exit 1; }"
+   ],
+   "timeout_s": 120
+  },
+  {
+   "label": "tests",
+   "cmd": [
+    "./chk"
+   ],
+   "timeout_s": 120,
+   "tests": true
+  }
+ ],
+ "files": {
+  "__checker__/check.c": "checker/check.c"
+ },
+ "env": {
+  "ASAN_OPTIONS": "detect_leaks=0:abort_on_error=0",
+  "UBSAN_OPTIONS": "print_stacktrace=0"
+ }
+}

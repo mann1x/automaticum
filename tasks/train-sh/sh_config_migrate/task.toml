@@ -1,0 +1,67 @@
+# sh_config_migrate: fix the INI -> flat config migration script and its validation report (training task, bm-889 rollout pool).
+#
+# A training task: it is trained on and never scored as an eval. The checker is compiled (as
+# manic_miner's run_game): the agent can run ./run_tests and read its verdict, not its tests.
+
+id = "sh_config_migrate"
+suite = "train-sh"
+version = 1
+training = true
+layers = ["python"]
+default_answer = "Use your own judgement and continue."
+
+prompt = """
+We tried a dry run of the config migration for the rollout and it is not safe yet: the payments config fails on its database URL, a duplicated pool setting silently kept the old value, and a config that had an error still produced a .conf file that the deploy job picked up. Please fix `migrate.sh` / `lib/ini2flat.awk` so they behave as README.md specifies. Run `./run_tests` to check your work -- it prints a JSON verdict listing the checks that fail -- and run it again before you say you are done."""
+
+[labels]
+language = "bash"
+family = "bug-fix"
+tier = "short"
+
+[limits]
+wall_s = 1500
+idle_s = 600
+oracle_s = 180
+
+[workspace]
+seed = "seed"
+
+[[artefact]]
+name = "run_tests"
+image = "node@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567"
+inputs = ["oracle/build.mjs", "oracle/run_tests.logic.js"]
+command = ["node", "/task/oracle/build.mjs", "/task/oracle/run_tests.logic.js", "/out/run_tests"]
+output = "run_tests"
+sha256 = "ba29c43c77c845f2cb4a1aee14dcdee118ec528e5fca090946a029e1507dcab7"
+
+[[workspace.install]]
+artefact = "run_tests"
+path = "run_tests"
+mode = "0555"
+
+[[oracle]]
+name = "tests"
+primary = true
+artefact = "run_tests"
+image = "python@sha256:14a4933e6cef421424f7a66d89a3f4eafcbd0d90e0a822251f298e05132dc735"
+command = ["./run_tests"]
+expect_pattern = '"ok":true'
+timeout_s = 180
+
+[[fixture]]
+name = "known-good"
+expect = "pass"
+[fixture.files]
+"migrate.sh" = "fixtures/good/migrate.sh"
+"lib/ini2flat.awk" = "fixtures/good/lib/ini2flat.awk"
+
+[[fixture]]
+name = "seed"
+expect = "fail"
+
+[[fixture]]
+name = "comment-before-quote"
+expect = "fail"
+[fixture.files]
+"migrate.sh" = "fixtures/bad-quotes/migrate.sh"
+"lib/ini2flat.awk" = "fixtures/bad-quotes/lib/ini2flat.awk"

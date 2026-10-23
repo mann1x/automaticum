@@ -1,0 +1,3 @@
+# ops on-call
+Cmnd_Alias RESTART = /usr/bin/systemctl restart *
+%ops	ALL=(root) NOPASSWD: RESTART

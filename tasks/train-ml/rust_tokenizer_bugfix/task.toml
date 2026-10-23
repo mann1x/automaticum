@@ -1,0 +1,79 @@
+# rust_tokenizer_bugfix: fix an integer expression evaluator crate so it follows its README (training task,
+# bm-889 rollout pool).
+#
+# A training task: it is trained on and never scored as an eval. The checker is compiled (as
+# manic_miner's run_game): the agent can run ./run_tests and read its verdict, not its tests.
+# Needs an exec /tmp in the oracle sandbox (cargo runs the compiled test binary).
+
+id = "rust_tokenizer_bugfix"
+suite = "train-ml"
+version = 1
+training = true
+layers = ["rust"]
+default_answer = "Use your own judgement and continue."
+
+prompt = """
+Bug reports against exprcalc (this crate): `2 ^ 3 ^ 2` gives 64, `-2 ^ 2` gives 4, a formula using the variable `größe` is rejected, and one user got a panic instead of an error on a large multiplication. The README is the spec -- please fix the crate so it behaves as documented (there may be related problems the reports didn't mention). Run `./run_tests` to check your work -- it prints a JSON verdict listing the checks that fail -- and run it again before you say you are done."""
+
+[labels]
+language = "rust"
+family = "bug-fix"
+tier = "short"
+
+[limits]
+wall_s = 1500
+idle_s = 600
+oracle_s = 300
+
+[workspace]
+seed = "seed"
+
+[[artefact]]
+name = "run_tests"
+image = "node@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567"
+inputs = ["oracle/build.mjs", "oracle/run_tests.logic.js"]
+command = ["node", "/task/oracle/build.mjs", "/task/oracle/run_tests.logic.js", "/out/run_tests"]
+output = "run_tests"
+sha256 = "e626a829133984363ebac23f0d665d2b66375ba0592f32a27b0b0e532ea20d90"
+
+[[workspace.install]]
+artefact = "run_tests"
+path = "run_tests"
+mode = "0555"
+
+[[oracle]]
+name = "tests"
+primary = true
+artefact = "run_tests"
+image = "rust@sha256:540c902e99c384163b688bbd8b5b8520e94e7731b27f7bd0eaa56ae1960627ab"
+command = ["./run_tests"]
+expect_pattern = '"ok":true'
+timeout_s = 300
+
+[[fixture]]
+name = "known-good"
+expect = "pass"
+[fixture.files]
+"src/lexer.rs" = "fixtures/good/src/lexer.rs"
+"src/parser.rs" = "fixtures/good/src/parser.rs"
+"src/eval.rs" = "fixtures/good/src/eval.rs"
+
+[[fixture]]
+name = "seed"
+expect = "fail"
+
+[[fixture]]
+name = "byte-columns"
+expect = "fail"
+[fixture.files]
+"src/lexer.rs" = "fixtures/bad-columns/src/lexer.rs"
+"src/parser.rs" = "fixtures/bad-columns/src/parser.rs"
+"src/eval.rs" = "fixtures/bad-columns/src/eval.rs"
+
+[[fixture]]
+name = "unchecked-min-div"
+expect = "fail"
+[fixture.files]
+"src/lexer.rs" = "fixtures/bad-div-overflow/src/lexer.rs"
+"src/parser.rs" = "fixtures/bad-div-overflow/src/parser.rs"
+"src/eval.rs" = "fixtures/bad-div-overflow/src/eval.rs"

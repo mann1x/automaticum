@@ -1,0 +1,11 @@
+{
+ "tests": ["summary_counts", "query_stripped", "top_paths_ties", "top_paths_limit", "hour_keys", "status_per_hour",
+           "slow_threshold", "bad_request_field", "gzip_input", "spaces_in_filename", "argument_order", "empty_input",
+           "exit_codes"],
+ "steps": [
+  {"label": "syntax", "cmd": ["bash", "-n", "bin/logsum.sh"], "timeout_s": 30},
+  {"label": "tests", "cmd": ["python3", "-B", "__checker__/check.py"], "timeout_s": 180, "tests": true}
+ ],
+ "files": {"__checker__/check.py": "checker/check.py"},
+ "env": {"PYTHONDONTWRITEBYTECODE": "1"}
+}

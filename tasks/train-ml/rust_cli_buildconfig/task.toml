@@ -1,0 +1,85 @@
+# rust_cli_buildconfig: repair the Cargo workspace setup of a CSV CLI and fix its CSV handling (training task,
+# bm-889 rollout pool).
+#
+# A training task: it is trained on and never scored as an eval. The checker is compiled (as
+# manic_miner's run_game): the agent can run ./run_tests and read its verdict, not its tests.
+# Needs an exec /tmp in the oracle sandbox (runs the built csvtool binary and a compiled check program).
+
+id = "rust_cli_buildconfig"
+suite = "train-ml"
+version = 1
+training = true
+layers = ["rust"]
+default_answer = "Use your own judgement and continue."
+
+prompt = """
+I reorganised csvtool into a Cargo workspace (csvcore library + the CLI) and now `cargo build` doesn't even get started. Please get the workspace building again so it produces the `csvtool` binary described in README.md, then make sure the tool actually behaves as the README says -- I suspect the CSV handling has a couple of bugs too (quoted fields, sums over columns with gaps). Don't add external crates. Run `./run_tests` to check your work -- it prints a JSON verdict listing the checks that fail -- and run it again before you say you are done."""
+
+[labels]
+language = "rust"
+family = "build-config"
+tier = "long"
+
+[limits]
+wall_s = 2700
+idle_s = 600
+oracle_s = 300
+
+[workspace]
+seed = "seed"
+
+[[artefact]]
+name = "run_tests"
+image = "node@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567"
+inputs = ["oracle/build.mjs", "oracle/run_tests.logic.js"]
+command = ["node", "/task/oracle/build.mjs", "/task/oracle/run_tests.logic.js", "/out/run_tests"]
+output = "run_tests"
+sha256 = "4b9f2b30e49a8f44dc8f5ec9e2aae611d0273d9d5d1f4efd1f9297451b7ab9a7"
+
+[[workspace.install]]
+artefact = "run_tests"
+path = "run_tests"
+mode = "0555"
+
+[[oracle]]
+name = "tests"
+primary = true
+artefact = "run_tests"
+image = "rust@sha256:540c902e99c384163b688bbd8b5b8520e94e7731b27f7bd0eaa56ae1960627ab"
+command = ["./run_tests"]
+expect_pattern = '"ok":true'
+timeout_s = 300
+
+[[fixture]]
+name = "known-good"
+expect = "pass"
+[fixture.files]
+"Cargo.toml" = "fixtures/good/Cargo.toml"
+"crates/csvcore/Cargo.toml" = "fixtures/good/crates/csvcore/Cargo.toml"
+"crates/csvtool/Cargo.toml" = "fixtures/good/crates/csvtool/Cargo.toml"
+"crates/csvcore/src/reader.rs" = "fixtures/good/crates/csvcore/src/reader.rs"
+"crates/csvcore/src/stats.rs" = "fixtures/good/crates/csvcore/src/stats.rs"
+
+[[fixture]]
+name = "seed"
+expect = "fail"
+
+[[fixture]]
+name = "sum-keeps-empty-cells"
+expect = "fail"
+[fixture.files]
+"Cargo.toml" = "fixtures/bad-sum-empty/Cargo.toml"
+"crates/csvcore/Cargo.toml" = "fixtures/bad-sum-empty/crates/csvcore/Cargo.toml"
+"crates/csvtool/Cargo.toml" = "fixtures/bad-sum-empty/crates/csvtool/Cargo.toml"
+"crates/csvcore/src/reader.rs" = "fixtures/bad-sum-empty/crates/csvcore/src/reader.rs"
+"crates/csvcore/src/stats.rs" = "fixtures/bad-sum-empty/crates/csvcore/src/stats.rs"
+
+[[fixture]]
+name = "binary-misnamed"
+expect = "fail"
+[fixture.files]
+"Cargo.toml" = "fixtures/bad-bin-name/Cargo.toml"
+"crates/csvcore/Cargo.toml" = "fixtures/bad-bin-name/crates/csvcore/Cargo.toml"
+"crates/csvtool/Cargo.toml" = "fixtures/bad-bin-name/crates/csvtool/Cargo.toml"
+"crates/csvcore/src/reader.rs" = "fixtures/bad-bin-name/crates/csvcore/src/reader.rs"
+"crates/csvcore/src/stats.rs" = "fixtures/bad-bin-name/crates/csvcore/src/stats.rs"

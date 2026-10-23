@@ -1,0 +1,8 @@
+root:x:0:
+sudo:x:27:alice
+ops:x:1010:bob,deploy
+alice:x:1000:
+bob:x:1001:
+carol:x:1002:
+deploy:x:1003:
+backup:x:1004:

@@ -1,0 +1,11 @@
+{
+ "tests": ["usage_errors", "daily_rule", "weekly_rule", "iso_week_year", "monthly_rule", "default_policy", "dry_run",
+           "separate_sets", "sidecars", "ignored_files", "future_backups", "option_order", "empty_tree",
+           "delete_failure"],
+ "steps": [
+  {"label": "syntax", "cmd": ["bash", "-n", "rotate.sh"], "timeout_s": 30},
+  {"label": "tests", "cmd": ["python3", "-B", "__checker__/check.py"], "timeout_s": 240, "tests": true}
+ ],
+ "files": {"__checker__/check.py": "checker/check.py"},
+ "env": {"PYTHONDONTWRITEBYTECODE": "1"}
+}

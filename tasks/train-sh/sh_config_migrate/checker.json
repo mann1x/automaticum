@@ -1,0 +1,11 @@
+{
+ "tests": ["basic_layout", "comments_and_blanks", "inline_comments", "quoted_values", "duplicate_keys",
+           "case_and_global", "unmapped_keys", "bool_values", "int_values", "parse_errors",
+           "error_file_not_deployed", "file_selection", "usage"],
+ "steps": [
+  {"label": "syntax", "cmd": ["bash", "-n", "migrate.sh"], "timeout_s": 30},
+  {"label": "tests", "cmd": ["python3", "-B", "__checker__/check.py"], "timeout_s": 180, "tests": true}
+ ],
+ "files": {"__checker__/check.py": "checker/check.py"},
+ "env": {"PYTHONDONTWRITEBYTECODE": "1"}
+}

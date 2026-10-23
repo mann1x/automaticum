@@ -1,0 +1,11 @@
+{
+ "tests": ["single_key_text", "multi_key_text", "month_bucket", "month_with_channel", "share_half_up",
+           "share_thirds", "tie_order", "date_range_inclusive", "markdown_single", "markdown_multi",
+           "unknown_key", "no_records"],
+ "steps": [
+  {"label": "compile", "cmd": ["python3", "-m", "compileall", "-q", "salesreport"], "timeout_s": 60},
+  {"label": "tests", "cmd": ["python3", "-B", "__checker__/check.py"], "timeout_s": 180, "tests": true}
+ ],
+ "files": {"__checker__/check.py": "checker/check.py"},
+ "env": {"PYTHONDONTWRITEBYTECODE": "1"}
+}

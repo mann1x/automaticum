@@ -1,0 +1,76 @@
+# ts_scheduler: fix a TypeScript room-booking library with weekly series (training task, bm-889 rollout pool).
+#
+# A training task: it is trained on and never scored as an eval. The checker is compiled (as
+# manic_miner's run_game): the agent can run ./run_tests and read its verdict, not its tests.
+
+id = "ts_scheduler"
+suite = "train-ml"
+version = 1
+training = true
+layers = ["typescript"]
+default_answer = "Use your own judgement and continue."
+
+prompt = """
+We've had a handful of bug reports against `roombook` this week -- for example a colleague in New York sees some bookings listed under the wrong day, and weekly series seem to end too early. Please go through the library and make it follow the rules in README.md (it runs directly on Node, no build step). Run `./run_tests` to check your work -- it prints a JSON verdict listing the checks that fail -- and run it again before you say you are done."""
+
+[labels]
+language = "typescript"
+family = "bug-fix"
+tier = "short"
+
+[limits]
+wall_s = 1500
+idle_s = 600
+oracle_s = 180
+
+[workspace]
+seed = "seed"
+
+[[artefact]]
+name = "run_tests"
+image = "node@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567"
+inputs = ["oracle/build.mjs", "oracle/run_tests.logic.js"]
+command = ["node", "/task/oracle/build.mjs", "/task/oracle/run_tests.logic.js", "/out/run_tests"]
+output = "run_tests"
+sha256 = "9cdee77bda6c0d278ba0cee93f30129d1b48fc711af520d9cfaf91a9aa0668d7"
+
+[[workspace.install]]
+artefact = "run_tests"
+path = "run_tests"
+mode = "0555"
+
+[[oracle]]
+name = "tests"
+primary = true
+artefact = "run_tests"
+image = "node@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567"
+command = ["./run_tests"]
+expect_pattern = '"ok":true'
+timeout_s = 180
+
+[[fixture]]
+name = "known-good"
+expect = "pass"
+[fixture.files]
+"src/time.ts" = "fixtures/good/src/time.ts"
+"src/recurrence.ts" = "fixtures/good/src/recurrence.ts"
+"src/calendar.ts" = "fixtures/good/src/calendar.ts"
+
+[[fixture]]
+name = "seed"
+expect = "fail"
+
+[[fixture]]
+name = "local-daykey"
+expect = "fail"
+[fixture.files]
+"src/recurrence.ts" = "fixtures/good/src/recurrence.ts"
+"src/calendar.ts" = "fixtures/good/src/calendar.ts"
+
+[[fixture]]
+name = "cancel-plain-error"
+expect = "fail"
+[fixture.files]
+"src/time.ts" = "fixtures/good/src/time.ts"
+"src/recurrence.ts" = "fixtures/good/src/recurrence.ts"
+"src/calendar.ts" = "fixtures/bad-cancel-error/src/calendar.ts"

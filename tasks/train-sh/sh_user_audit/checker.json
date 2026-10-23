@@ -1,0 +1,10 @@
+{
+ "tests": ["uid_checks", "aging_rules", "aging_without_shadow", "world_writable", "home_owner", "key_comments",
+           "key_bad", "sudo_groups", "sudo_dropins", "sudo_dedup", "full_report", "clean_snapshot", "usage"],
+ "steps": [
+  {"label": "syntax", "cmd": ["bash", "-c", "for f in audit.sh lib/*.sh checks/*.sh; do bash -n \"$f\" || exit 1; done"], "timeout_s": 30},
+  {"label": "tests", "cmd": ["python3", "-B", "__checker__/check.py"], "timeout_s": 240, "tests": true}
+ ],
+ "files": {"__checker__/check.py": "checker/check.py"},
+ "env": {"PYTHONDONTWRITEBYTECODE": "1"}
+}

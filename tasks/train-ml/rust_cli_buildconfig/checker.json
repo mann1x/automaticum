@@ -1,0 +1,12 @@
+{
+ "tests": ["lib_parse_line", "lib_quote_escape", "lib_table", "lib_write_record", "lib_column_sum", "cli_binary",
+           "cli_count", "cli_columns", "cli_sum", "cli_sum_errors", "cli_select", "cli_errors"],
+ "steps": [
+  {"label": "cargo build", "cmd": ["cargo", "build", "--offline"], "timeout_s": 240},
+  {"label": "compile checks", "cmd": ["sh", "-c", "T=\"$CARGO_TARGET_DIR/debug\"; [ -f \"$T/libcsvcore.rlib\" ] || { echo 'the workspace build did not produce the csvcore library (libcsvcore.rlib)'; exit 1; }; out=$(rustc --edition 2021 --crate-name chk --crate-type bin --extern csvcore=\"$T/libcsvcore.rlib\" -L \"dependency=$T/deps\" -o chk __checker__/check.rs 2>&1) || { printf '%s\\n' \"$out\" | grep -E '^error'; echo 'the hidden checks do not compile against csvcore as built by the workspace: keep the library API and the stats module described in README.md'; exit 1; }"], "timeout_s": 240},
+  {"label": "tests", "cmd": ["./chk"], "timeout_s": 120, "tests": true}
+ ],
+ "files": {"__checker__/check.rs": "checker/check.rs"},
+ "env": {"RUSTUP_HOME": "/usr/local/rustup", "CARGO_HOME": "$WORK/.cargo", "CARGO_TARGET_DIR": "$WORK/target",
+         "CARGO_NET_OFFLINE": "true", "CARGO_TERM_COLOR": "never", "CARGO_INCREMENTAL": "0"}
+}

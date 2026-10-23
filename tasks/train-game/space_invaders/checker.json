@@ -1,0 +1,4 @@
+{"logic": "checker/run_game.logic.js",
+ "tests": ["wave_setup", "countdown", "move", "bounds", "fire", "one_shot", "cooldown", "march", "edge_step_down",
+           "speed_up", "shot_hits_alien", "shot_misses", "bomb_hits_player", "game_over", "shield_shot", "shield_bomb",
+           "bombs_drop", "wave_clear", "invasion", "hud"]}

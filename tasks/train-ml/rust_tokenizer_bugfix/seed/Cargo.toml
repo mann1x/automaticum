@@ -1,0 +1,8 @@
+[package]
+name = "exprcalc"
+version = "0.3.1"
+edition = "2021"
+description = "Integer expression evaluator with variables and a few built-in functions"
+license = "MIT"
+
+[dependencies]

@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -391,5 +392,31 @@ func TestTrainingFlag(t *testing.T) {
 	}
 	if _, err := Load(make("demo", "training = true\n")); err == nil {
 		t.Error("a training task outside a train-* suite")
+	}
+}
+
+func TestSeedFixture(t *testing.T) {
+	make := func(expect string) string {
+		dir := filepath.Join(t.TempDir(), "demo", "answer")
+		if err := os.CopyFS(dir, os.DirFS(filepath.Join(tasksRoot, "demo", "answer"))); err != nil {
+			t.Fatal(err)
+		}
+		f, err := os.OpenFile(filepath.Join(dir, "task.toml"), os.O_APPEND|os.O_WRONLY, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fmt.Fprintf(f, "\n[[fixture]]\nname = \"as-seeded\"\nexpect = %q\n", expect)
+		f.Close()
+		return dir
+	}
+	tk, err := Load(make("fail"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f := tk.Fixtures[len(tk.Fixtures)-1]; f.Name != "as-seeded" || len(f.Files) != 0 {
+		t.Errorf("%+v", f)
+	}
+	if _, err := Load(make("pass")); err == nil {
+		t.Error("a fixture with no files, the seed itself, expected to pass")
 	}
 }
