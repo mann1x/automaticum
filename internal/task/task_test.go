@@ -366,19 +366,30 @@ func TestPrivateRoot(t *testing.T) {
 	}
 }
 
-// A training task (D105) is an ordinary public task that says so.
+// A training task (D105) is a public task in a train-* suite that says
+// training = true; the one without the other is refused.
 func TestTrainingFlag(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "demo", "answer")
-	if err := os.CopyFS(dir, os.DirFS(filepath.Join(tasksRoot, "demo", "answer"))); err != nil {
-		t.Fatal(err)
+	make := func(suite, extra string) string {
+		dir := filepath.Join(t.TempDir(), suite, "answer")
+		if err := os.CopyFS(dir, os.DirFS(filepath.Join(tasksRoot, "demo", "answer"))); err != nil {
+			t.Fatal(err)
+		}
+		src, _ := os.ReadFile(filepath.Join(dir, "task.toml"))
+		body := strings.Replace(string(src), `suite = "demo"`, `suite = "`+suite+`"`, 1)
+		body = strings.Replace(body, "version = 1\n", "version = 1\n"+extra, 1)
+		if err := os.WriteFile(filepath.Join(dir, "task.toml"), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return dir
 	}
-	src, _ := os.ReadFile(filepath.Join(dir, "task.toml"))
-	body := strings.Replace(string(src), "version = 1\n", "version = 1\ntraining = true\n", 1)
-	if err := os.WriteFile(filepath.Join(dir, "task.toml"), []byte(body), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	tk, err := Load(dir)
+	tk, err := Load(make("train-sh", "training = true\n"))
 	if err != nil || !tk.Training || tk.Private {
 		t.Fatalf("%v %+v", err, tk)
+	}
+	if _, err := Load(make("train-sh", "")); err == nil {
+		t.Error("a task in a train-* suite that does not say training")
+	}
+	if _, err := Load(make("demo", "training = true\n")); err == nil {
+		t.Error("a training task outside a train-* suite")
 	}
 }

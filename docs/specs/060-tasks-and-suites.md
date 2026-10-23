@@ -135,6 +135,15 @@ refused.
 
 **Decided by the owner (2026-10-23, D105):** the training pool of
 omnimergekit's recovery (the multi-language suite's tasks and converted
-terminal-bench tasks) is **public**, in the repository's `tasks/<suite>/`,
-each marked `training = true`: its runs are rollouts for training, not
-measurements, and no training task is a held-out gate (`manic_miner` is).
+tasks written for it) is **public**, in the repository's training suites,
+each task marked `training = true`: its runs are rollouts for training, not
+measurements, and no training task is ever an eval or a held-out gate
+(`manic_miner` is). The suites are `train-ml` (two tasks in each of C#,
+C/C++, Python, TypeScript, Go and Rust), `train-sh` (shell, sysadmin and
+data tasks written for the pool; terminal-bench is not converted, so it
+stays a clean eval) and `train-game` (`space_invaders`, a training twin of
+`manic_miner`). A suite whose name starts with `train-` holds only training
+tasks, and a training task lives only in such a suite: the loader refuses
+either without the other. The oracle's and the lane's `/tmp` allow
+programs to run (`exec`), as the build container's does: a compiled
+language's checker builds its tests there and runs them.

@@ -271,7 +271,10 @@ func (e *Env) RunOracle(ctx context.Context, t *Task, o *Oracle, workspace strin
 	r, err := e.Exec.Run(ctx, docker.Spec{
 		Image: o.Image, Cmd: o.Command, User: e.user(), Network: "none", WorkDir: "/w", ReadOnlyRoot: true,
 		Mounts: []docker.Mount{{Source: tmp, Target: "/w", ReadOnly: true}},
-		Tmpfs:  map[string]string{"/tmp": ""},
+		// /tmp is the oracle's only writable place, and a checker of a
+		// compiled language builds its tests there and runs them, so it
+		// may hold programs: exec, as in the build container.
+		Tmpfs:  map[string]string{"/tmp": "exec"},
 		Labels: map[string]string{"automaticum": "oracle"},
 	}, timeout, &out, &out, nil)
 	res.Duration = time.Since(start)

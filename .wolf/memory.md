@@ -1028,3 +1028,14 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 20:52 | D105 revised by owner: training tasks public in tasks/<suite>/ with training = true (Task.Training); mail 1863 to backup_models | internal/task, 060, decisions | tests pass | ~5k |
+
+## Session: 2026-10-23 20:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 20:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:00 | Training suites train-ml/train-sh/train-game tied to training = true; oracle and lane /tmp mounted exec (compiled checkers); mails 1861/1864 | internal/task, internal/run, 060 | tests pass | ~8k |

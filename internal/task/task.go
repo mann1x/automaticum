@@ -47,7 +47,8 @@ type Task struct {
 	Canary  string `toml:"canary"`
 	// Training marks a task of a training pool (D105): its runs are
 	// rollouts for training, not measurements, and it is never a held-out
-	// gate. Training tasks are public, in the repository's tasks/.
+	// gate. Training tasks are public, in the repository's tasks/, in a
+	// suite whose name starts with "train-".
 	Training bool `toml:"training"`
 
 	// Dir is the task's directory. Files is every regular file under it
@@ -277,6 +278,11 @@ func (t *Task) validate() error {
 	}
 	if t.Limits.WallS < 0 || t.Limits.IdleS < 0 || t.Limits.OracleS < 0 {
 		return errors.New("limits must not be negative")
+	}
+	// A training task lives in a train-* suite, and a train-* suite holds
+	// only training tasks, so one can never be taken for an eval (D105).
+	if train := strings.HasPrefix(t.Suite, "train-"); train != t.Training {
+		return errors.New("a task in a train-* suite says training = true, and only such a task does")
 	}
 	if t.Private && len(strings.TrimSpace(t.Canary)) < 16 {
 		return errors.New("a private task needs a canary string of 16 characters or more")

@@ -451,7 +451,9 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 			// The SDK build the arm names; the image holds none.
 			{Source: x.SDK.Path(a.Harness.SDKRelease), Target: sdk.Mount, ReadOnly: true},
 		},
-		Tmpfs:       map[string]string{"/tmp": ""},
+		// exec: the agent's own builds and tests (go test, cargo test, a
+		// task's run_tests checker) put programs in /tmp and run them.
+		Tmpfs:       map[string]string{"/tmp": "exec"},
 		MemoryBytes: int64(lane.MemoryGB * (1 << 30)), NanoCPUs: int64(lane.CPUs * 1e9), PidsLimit: lane.Pids,
 		Labels: map[string]string{"automaticum": "run", "automaticum.run": r.ID, "automaticum.lane": req.Lane},
 		// Time held is not the run's time: the outer limit moves by it,
