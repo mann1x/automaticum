@@ -115,8 +115,8 @@ Decided so far:
 - The runner aims at full parity with the VS Code extension, with a scripted
   user for approvals, questions and steering.
 - Configuration is TOML; tasks live in this repository, where training-pool
-  tasks are public and marked `training = true` (D105); a private tasks root
-  outside it holds private tasks.
+  tasks are public, in `train-*` suites, and marked `training = true` (D105);
+  a private tasks root outside it holds private tasks.
 
 Confirmed after the spike ([080](docs/specs/080-store.md), 2026-10-13): **DuckDB** for state,
 configuration, metrics and statistics, **Lance** for text chunks, vectors and

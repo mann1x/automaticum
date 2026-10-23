@@ -20,6 +20,8 @@
 
 ## Key Learnings
 
+- Language lane layers (2026-10-23) copy each toolchain from the oracle image's digest (`COPY --from`), so agent and oracle compilers match. Check the source image's Debian release first: gcc:14 is Debian 13 and cannot be copied onto the Debian 12 base (bug-032), so `cpp` starts from the gcc image and copies Node and the runner from `automaticum-lane:base`. `automaticum image build` needs `-repo .` when the config is `examples/config` (its repo points elsewhere).
+
 - **Project:** automaticum is a Go test harness for coding agents on @cerebriline/sdk. The specs in docs/specs/000..110 plus decisions.md are the source of truth; docs/specs/archive/ is input only. The old harness is READ-ONLY.
 - Do not rebuild the lane image or bin/, and do not restart the daemon, while a batch is running. Write and test code meanwhile, then deploy afterwards.
 - Builds: the host GCC 10 cannot link DuckDB, so anything that imports `internal/store/duck` is built in the link image (`make build`). The CLI also builds with `CGO_ENABLED=0`, without store commands. New store commands go in `store_cgo.go`, with a stub in `store_nocgo.go`.

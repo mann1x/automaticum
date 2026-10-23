@@ -533,6 +533,24 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-23T16:40:00+02:00"
+    },
+    {
+      "id": "bug-032",
+      "timestamp": "2026-10-23T21:20:34+02:00",
+      "error_message": "gcc: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.38' not found (cpp lane layer copying gcc:14 onto the base)",
+      "file": "images/layers/cpp/Dockerfile",
+      "root_cause": "The pinned gcc:14 image is Debian 13 (glibc 2.41); the lane base is node on Debian 12 (glibc 2.36), so GCC 14 and its libstdc++ in /usr/local/lib64 cannot run there",
+      "fix": "The cpp layer starts FROM the gcc image and copies Node, npm, the runner from automaticum-lane:base, reinstalls the base's apt tools and creates the node user (1000:1000)",
+      "tags": [
+        "docker",
+        "lane-image",
+        "glibc",
+        "gcc",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-23T21:20:34+02:00"
     }
   ]
 }

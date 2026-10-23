@@ -189,6 +189,26 @@
 
 - `Dockerfile` — Docker container definition (~247 tok)
 
+## images/layers/cpp/
+
+- `Dockerfile` — C and C++: GCC 14 and make, from the gcc:14 oracle image (Debian 13), with Node, the runner and the node user from the base (~330 tok)
+
+## images/layers/dotnet/
+
+- `Dockerfile` — .NET 8 SDK copied from the oracle image, offline, telemetry off (~260 tok)
+
+## images/layers/go/
+
+- `Dockerfile` — Go 1.23 copied from the oracle image, offline (GOPROXY=off, GOTOOLCHAIN=local) (~180 tok)
+
+## images/layers/python/
+
+- `Dockerfile` — Python 3.12 copied from the oracle image, standard library only (~330 tok)
+
+## images/layers/rust/
+
+- `Dockerfile` — Rust 1.83 copied from the oracle image, Debian gcc as linker, Cargo offline (~230 tok)
+
 ## images/layers/typescript/
 
 - `Dockerfile` — Docker container definition (~98 tok)

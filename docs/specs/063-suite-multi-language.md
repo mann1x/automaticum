@@ -1,6 +1,6 @@
 # 063 — Suite: our own multi-language agentic suite
 
-**Status:** draft 0.5, 2026-10-12. The tasks themselves are omnimergekit's to
+**Status:** draft 0.6, 2026-10-23. The tasks themselves are omnimergekit's to
 write. This file states what automaticum provides so that such a suite can
 exist.
 
@@ -19,6 +19,22 @@ TypeScript, Go, Rust**, the same answer as for the language layers (030 §3).
   interpreter version in the basis.
 - **Per-language time limits**, calibrated from the reference solution's run
   time on the lane.
+
+As built (2026-10-23): the layers are `python`, `go`, `rust`, `cpp`, `dotnet`
+and `typescript` under `images/layers/`, each built by `automaticum image
+build <name>` as `automaticum-lane:<name>`. Each takes its toolchain from the
+very image, pinned by digest, that the training tasks' oracles run in, so the
+agent and the oracle use the same compiler: Python 3.12 (standard library
+only), Go 1.23, Rust 1.83, GCC 14 with make, the .NET 8 SDK. None fetches
+packages when a run starts (Go and Cargo are set offline). `libatomic1`, which
+the compiled task checkers need, comes from the base.
+
+- The `cpp` layer is the exception to "on the base": the GCC 14 image is
+  Debian 13, and its compiler needs a newer C library than the base's
+  Debian 12. It starts from that image and copies Node, the runner and the
+  `node` user's id from the base, so the base is rebuilt first.
+- The layers carry no language server yet: the runner does not read
+  diagnostics (040 §6), so 030 §3's language server is added with that work.
 
 ## 3. Tests
 
