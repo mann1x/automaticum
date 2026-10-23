@@ -50,7 +50,7 @@ const SessionFork = "session_fork"
 // analysis records it as the metric analysis.version: the basis (020 §5)
 // says from it which detectors a run was analysed with, whether or not
 // they found anything.
-const AnalysisVersion = 5
+const AnalysisVersion = 6
 
 // Versions are the versions of the detectors this analysis applies:
 // ingest's own and the detector library's.
@@ -97,7 +97,7 @@ func Run(ctx context.Context, st store.State, blobs Blobs, runID string) (*Resul
 	if err != nil {
 		return nil, err
 	}
-	ev, reqs := &Events{Notices: map[string]int{}, GuardTrips: map[string]int{}}, []Request(nil)
+	ev, reqs := &Events{Notices: map[string]int{}, GuardTrips: map[string]int{}, GuardCauses: map[string]int{}}, []Request(nil)
 	for _, ref := range refs {
 		if ref.Kind != "events" && (ref.Kind != "wire" || r.Imported) {
 			continue
@@ -231,6 +231,13 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 		trips += ev.GuardTrips[key]
 	}
 	m("guard_trips", float64(trips))
+	// By cause too, beside the guard and phase totals, not instead of them.
+	for _, key := range sortedKeys(ev.GuardCauses) {
+		m("guard_trips."+key, float64(ev.GuardCauses[key]))
+	}
+	if ev.GuardStopCause != "" {
+		m("guard_stop."+ev.GuardStopCause, 1)
+	}
 	if ev.GuardStop != "" {
 		m("guard_stop."+ev.GuardStop, 1)
 	}

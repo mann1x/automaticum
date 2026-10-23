@@ -515,6 +515,24 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-23T13:43:33+02:00"
+    },
+    {
+      "id": "bug-031",
+      "timestamp": "2026-10-23T16:40:00+02:00",
+      "error_message": "latent: automaticum detect on a run with guard trips would panic (assignment to entry in nil map)",
+      "file": "internal/ingest/events.go",
+      "root_cause": "internal/daemon/api.go builds ingest.Events{Notices: ...} without GuardTrips, then Events.Read increments ev.GuardTrips for a guard_trip note",
+      "fix": "Events.Read creates Notices, GuardTrips and GuardCauses when they are nil; TestGuardTrips reads into a bare Events",
+      "tags": [
+        "ingest",
+        "nil-map",
+        "detect",
+        "guard_trips",
+        "fixed"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-23T16:40:00+02:00"
     }
   ]
 }

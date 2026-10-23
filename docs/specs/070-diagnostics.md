@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.18, 2026-10-23.
+**Status:** draft 0.19, 2026-10-23.
 
 ## 1. The rule: no custom script
 
@@ -62,6 +62,12 @@ method is recorded.
   `guard_trips.<guard>.<phase>` count the trips the runner noted, and
   `guard_stop.<guard>.<phase>` is 1 on a run its arm's `guards.stop_on`
   stopped (D100). A nudge's phase is which nudge it was. Hidden where zero, by the same rule.
+  From analysis version 6 a trip whose guard says what was repeating is
+  also counted by that cause, beside the guard-and-phase total:
+  `guard_trips.<guard>.<phase>.<cause>` and, on a stopped run,
+  `guard_stop.<guard>.<phase>.<cause>`. In SDK 4.100.259 that is the
+  reasoning-loop guard: `reasoning_loop` (the reasoning repeated),
+  `answer_loop` (the reply) and `argument_loop` (a tool call's arguments).
 
 ### 2.1 Per cell
 

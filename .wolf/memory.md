@@ -902,3 +902,25 @@
 |------|--------|---------|---------|--------|
 | 15:58 | Edited runner/session.mjs | added 3 condition(s) | ~267 |
 | 16:10 | D103: arm thinking.reasoning_history/reasoning_inline (base auto/true, dropped from identity), runner protocol 6 passes them in providerConfig; mail 1833 to ollama on the SDK auto probe 404 | internal/config/arm.go, arms/base.toml, runner/session.mjs, runner/runner.mjs, internal/run/protocol.go, runner/PROTOCOL.md, 030, decisions | tests pass | ~30k |
+
+## Session: 2026-10-23 15:59
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 15:59
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 16:00
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 16:04
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 16:33 | Owner: Gemma loop test waits for the SDK release with the reasoning-history probe fix; auto must resolve to 'last' on opencoti. Batch c34c78 stopped (run 001 finishes). Mails 1835 (ollama), 1836 (backup_models). Deploy 50af8e4 (protocol 6) when the lane is idle | - | waiting | ~2k |
+| 16:41 | Guard metrics split by cause (guard_trips/guard_stop.<guard>.<phase>.<cause>), analysis version 6; fixed nil-map panic in Events.Read for the detect view | internal/ingest/events.go, analyse.go, ingest_test.go, 070 | tests pass | ~8k |

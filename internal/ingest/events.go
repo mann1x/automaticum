@@ -41,6 +41,11 @@ type Events struct {
 	// run, for an arm that stops at the first one (D99).
 	GuardTrips map[string]int
 	GuardStop  string
+	// GuardCauses counts the trips again by what was repeating, for the
+	// guards that say ("reasoning_loop.cut.answer_loop"); GuardStopCause is
+	// the same key of the trip that ended the run, or empty.
+	GuardCauses    map[string]int
+	GuardStopCause string
 	// FirstTokenMS is the time to the first token of the first request.
 	FirstTokenMS float64
 	// Tokens by kind, as the SDK split them, and how it split.
@@ -97,6 +102,7 @@ type eventLine struct {
 	// A runner's guard_trip or guard_stop note (protocol 4).
 	Guard string `json:"guard"`
 	Phase string `json:"phase"`
+	Cause string `json:"cause"`
 	// A scripted user's line (040 §6.2): the event it answered, the rule
 	// (0 for the default) and what it did.
 	On       string `json:"on"`
@@ -155,13 +161,23 @@ type scan struct {
 
 // ReadEvents reads a run's event stream: the JSON lines the runner printed.
 func ReadEvents(r io.Reader) (*Events, error) {
-	ev := &Events{Notices: map[string]int{}, GuardTrips: map[string]int{}}
+	ev := &Events{Notices: map[string]int{}, GuardTrips: map[string]int{}, GuardCauses: map[string]int{}}
 	return ev, ev.Read(r)
 }
 
 // Read adds one more stream to what was read: an imported run may have
 // several.
 func (ev *Events) Read(r io.Reader) error {
+	// A caller may start from a bare Events; the counts need their maps.
+	if ev.Notices == nil {
+		ev.Notices = map[string]int{}
+	}
+	if ev.GuardTrips == nil {
+		ev.GuardTrips = map[string]int{}
+	}
+	if ev.GuardCauses == nil {
+		ev.GuardCauses = map[string]int{}
+	}
 	rd := bufio.NewReaderSize(r, 1<<20)
 	sc := &scan{started: map[string]time.Time{}, inputs: map[string]string{}, partial: map[string]*bytes.Buffer{}}
 	for {
@@ -212,10 +228,16 @@ func (ev *Events) line(line []byte, sc *scan) {
 				key += "." + l.Phase
 			}
 			ev.GuardTrips[key]++
+			if l.Cause != "" {
+				ev.GuardCauses[key+"."+l.Cause]++
+			}
 		case "guard_stop":
 			ev.GuardStop = l.Guard
 			if l.Phase != "" {
 				ev.GuardStop += "." + l.Phase
+			}
+			if l.Cause != "" {
+				ev.GuardStopCause = ev.GuardStop + "." + l.Cause
 			}
 		case "mode_switched":
 			if l.Source == "agent" {

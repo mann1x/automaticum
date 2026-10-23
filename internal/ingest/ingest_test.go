@@ -677,10 +677,10 @@ func TestScriptedUserLines(t *testing.T) {
 // phase, and the trip that stopped the run is kept (D99).
 func TestGuardTrips(t *testing.T) {
 	ev, err := ReadEvents(strings.NewReader(strings.Join([]string{
-		`{"t":"2026-10-23T10:00:00Z","k":"runner","note":"guard_trip","guard":"reasoning_loop","phase":"cut","iteration":4,"message":"m"}`,
-		`{"t":"2026-10-23T10:00:01Z","k":"runner","note":"guard_trip","guard":"reasoning_loop","phase":"cut","iteration":5,"message":"m"}`,
+		`{"t":"2026-10-23T10:00:00Z","k":"runner","note":"guard_trip","guard":"reasoning_loop","phase":"cut","cause":"reasoning_loop","iteration":4,"message":"m"}`,
+		`{"t":"2026-10-23T10:00:01Z","k":"runner","note":"guard_trip","guard":"reasoning_loop","phase":"cut","cause":"answer_loop","iteration":5,"message":"m"}`,
 		`{"t":"2026-10-23T10:00:02Z","k":"runner","note":"guard_trip","guard":"loop_detection","phase":"","iteration":null,"message":""}`,
-		`{"t":"2026-10-23T10:00:02Z","k":"runner","note":"guard_stop","guard":"reasoning_loop","phase":"cut","iteration":4,"message":"m"}`,
+		`{"t":"2026-10-23T10:00:02Z","k":"runner","note":"guard_stop","guard":"reasoning_loop","phase":"cut","cause":"reasoning_loop","iteration":4,"message":"m"}`,
 	}, "\n")))
 	if err != nil {
 		t.Fatal(err)
@@ -691,5 +691,17 @@ func TestGuardTrips(t *testing.T) {
 	}
 	if ev.GuardStop != "reasoning_loop.cut" {
 		t.Errorf("stop %q", ev.GuardStop)
+	}
+	// By cause as well: what was repeating, the reasoning or the reply.
+	if len(ev.GuardCauses) != 2 || ev.GuardCauses["reasoning_loop.cut.reasoning_loop"] != 1 || ev.GuardCauses["reasoning_loop.cut.answer_loop"] != 1 {
+		t.Errorf("causes %v", ev.GuardCauses)
+	}
+	if ev.GuardStopCause != "reasoning_loop.cut.reasoning_loop" {
+		t.Errorf("stop cause %q", ev.GuardStopCause)
+	}
+	// A bare Events, as the daemon's detect view starts from, reads them too.
+	bare := &Events{}
+	if err := bare.Read(strings.NewReader(`{"t":"2026-10-23T10:00:00Z","k":"runner","note":"guard_trip","guard":"reasoning_loop","phase":"cut","cause":"reasoning_loop"}` + "\n")); err != nil || bare.GuardCauses["reasoning_loop.cut.reasoning_loop"] != 1 {
+		t.Errorf("bare: %v %v", err, bare.GuardCauses)
 	}
 }
