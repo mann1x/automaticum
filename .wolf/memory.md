@@ -890,3 +890,15 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 15:45 | D101: Gemma arms on SDK opencoti provider + thinking effort high; bug-029 fixed (wire_arm reads reasoning_budget_tokens); deployed 421324d on blackswan-2; batch b20261023-134319-c34c78 started, wire verified | arms/g4-128e.toml, internal/ingest/wire.go, wirearm.go, openai_test.go, decisions.md | running | ~25k |
+
+## Session: 2026-10-23 15:51
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 15:51
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:58 | Edited runner/session.mjs | added 3 condition(s) | ~267 |
+| 16:10 | D103: arm thinking.reasoning_history/reasoning_inline (base auto/true, dropped from identity), runner protocol 6 passes them in providerConfig; mail 1833 to ollama on the SDK auto probe 404 | internal/config/arm.go, arms/base.toml, runner/session.mjs, runner/runner.mjs, internal/run/protocol.go, runner/PROTOCOL.md, 030, decisions | tests pass | ~30k |

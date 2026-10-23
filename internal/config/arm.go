@@ -72,6 +72,14 @@ type Thinking struct {
 	Enabled      *bool  `toml:"enabled" json:"enabled,omitempty"`
 	Effort       string `toml:"effort" json:"effort,omitempty"`
 	BudgetTokens *int   `toml:"budget_tokens" json:"budget_tokens,omitempty"`
+	// ReasoningHistory is how much of the model's earlier reasoning the SDK
+	// sends back in the history: "auto" (the SDK measures what the
+	// server's template does with it), "all", "last" or "none".
+	// ReasoningInline lets "auto" fold the last block into the reply when
+	// the template drops the reasoning field. Both are the client's,
+	// whoever owns thinking (D103).
+	ReasoningHistory string `toml:"reasoning_history" json:"reasoning_history,omitempty"`
+	ReasoningInline  *bool  `toml:"reasoning_inline" json:"reasoning_inline,omitempty"`
 }
 
 // Sampler is who owns the sampler, its name and its values.
@@ -227,6 +235,7 @@ var (
 	// A release number, or one followed by "+" and a commit for a build
 	// that was never released.
 	releaseRE = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+(\+[0-9A-Za-z][0-9A-Za-z.-]*)?$`)
+	histories = map[string]bool{"auto": true, "all": true, "last": true, "none": true}
 	efforts   = map[string]bool{"minimal": true, "low": true, "medium": true, "high": true, "xhigh": true, "max": true}
 	extKinds  = map[string]bool{"rules": true, "skills": true, "workflows": true, "plugins": true, "hooks": true}
 )
@@ -501,6 +510,11 @@ func (a *Arm) Validate() []string {
 	default:
 		bad("thinking.owner must be \"tag\" or \"arm\"")
 	}
+	need(a.Thinking.ReasoningHistory != "", "thinking.reasoning_history")
+	need(a.Thinking.ReasoningInline != nil, "thinking.reasoning_inline")
+	if h := a.Thinking.ReasoningHistory; h != "" && !histories[h] {
+		bad("thinking.reasoning_history %q is not one of auto, all, last, none", h)
+	}
 
 	s := &a.Sampler
 	values := s.Temperature != nil || s.TopP != nil || s.TopK != nil || s.MinP != nil || s.TypicalP != nil ||
@@ -648,6 +662,12 @@ func (a *Arm) Resolved() []byte {
 	if s := a.Guards.StopOn; s != nil && len(*s) == 0 {
 		c := *a
 		c.Guards.StopOn = nil
+		a = &c
+	}
+	// "auto" with inlining is what the SDK does when it is told nothing.
+	if th := a.Thinking; th.ReasoningHistory == "auto" && th.ReasoningInline != nil && *th.ReasoningInline {
+		c := *a
+		c.Thinking.ReasoningHistory, c.Thinking.ReasoningInline = "", nil
 		a = &c
 	}
 	b, err := json.Marshal(a)

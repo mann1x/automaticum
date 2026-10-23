@@ -147,6 +147,42 @@ func TestStopOnIdentity(t *testing.T) {
 	}
 }
 
+// How much earlier reasoning goes back in the history is stated in every
+// arm (D103). "auto" with inlining is what the SDK does when told nothing,
+// so it leaves the arm's identity as it was; any other choice is part of it.
+func TestReasoningHistory(t *testing.T) {
+	dir := arms(t, map[string]string{
+		"a":   good,
+		"b":   strings.Replace(good, "[thinking]\n", "[thinking]\nreasoning_history = \"all\"\n", 1),
+		"c":   strings.Replace(good, "[thinking]\n", "[thinking]\nreasoning_inline = false\n", 1),
+		"bad": strings.Replace(good, "[thinking]\n", "[thinking]\nreasoning_history = \"some\"\n", 1),
+	})
+	a, err := LoadArm(dir, "a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(a.Resolved()), "reasoning_history") || strings.Contains(string(a.Resolved()), "reasoning_inline") {
+		t.Errorf("auto with inlining is in the resolved arm: %s", a.Resolved())
+	}
+	b, err := LoadArm(dir, "b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b.Resolved()), `"reasoning_history":"all"`) || a.ID == b.ID {
+		t.Errorf("reasoning_history is not part of the arm: %s", b.Resolved())
+	}
+	c, err := LoadArm(dir, "c")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(c.Resolved()), `"reasoning_inline":false`) || a.ID == c.ID {
+		t.Errorf("reasoning_inline is not part of the arm: %s", c.Resolved())
+	}
+	if _, err := LoadArm(dir, "bad"); err == nil || !strings.Contains(err.Error(), "auto, all, last, none") {
+		t.Errorf("an unknown reasoning_history: %v", err)
+	}
+}
+
 // Without the parent, every guard and compaction setting is reported: none
 // has a default.
 func TestNothingIsDefaulted(t *testing.T) {
@@ -164,6 +200,7 @@ func TestNothingIsDefaulted(t *testing.T) {
 		"agent.task_progress.enabled", "agent.sub_agents.spawn", "agent.config_extensions", "agent.bundled_skills",
 		"agent.escalation", "agent.mistake_limit", "agent.tool_result_cap", "agent.max_iterations", "limits.wall_s",
 		"limits.idle_s", "harness.sdk_release", "agent.host_ide", "agent.mode",
+		"thinking.reasoning_history", "thinking.reasoning_inline",
 	} {
 		if !strings.Contains(all, w) {
 			t.Errorf("an arm that does not state %s was not told so", w)

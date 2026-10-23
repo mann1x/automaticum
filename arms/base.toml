@@ -27,6 +27,15 @@ interval = 2
 spawn = false
 teams = false
 
+[thinking]
+# How much of the model's earlier reasoning goes back in the history, as the
+# plugin's "Prior reasoning": auto (the SDK measures what the server's
+# template does with it), all, last or none; and whether auto may fold the
+# last block into the reply when the template drops it. The plugin's
+# defaults (D103).
+reasoning_history = "auto"
+reasoning_inline = true
+
 [guards]
 edit_verification = "nudge" # extension
 stop_on = []                # no guard's trip ends the run (D99, D100)

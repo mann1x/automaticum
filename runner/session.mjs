@@ -104,6 +104,12 @@ export function buildConfig(job, { systemPrompt, fetch, onConfigResolved }) {
 		if (arm.thinking.effort) config.reasoningEffort = arm.thinking.effort;
 		if (arm.thinking.budget_tokens !== undefined) config.thinkingBudgetTokens = arm.thinking.budget_tokens;
 	}
+	// How much earlier reasoning goes back in the history (D103). The SDK
+	// reads it from the provider configuration; the arm leaves it out when
+	// it is "auto" with inlining, which is what the SDK does unasked.
+	const history = {};
+	if (arm.thinking.reasoning_history !== undefined) history.reasoningHistory = arm.thinking.reasoning_history;
+	if (arm.thinking.reasoning_inline !== undefined) history.reasoningInline = arm.thinking.reasoning_inline;
 	if (arm.sampler.owner === "arm") {
 		const sampling = {};
 		for (const [from, to] of Object.entries(SAMPLER_FIELDS)) {
@@ -111,7 +117,9 @@ export function buildConfig(job, { systemPrompt, fetch, onConfigResolved }) {
 		}
 		// The SDK drops a provider configuration whose provider is not the
 		// session's own.
-		config.providerConfig = { providerId: arm.model.provider, modelId: arm.model.model, sampling };
+		config.providerConfig = { providerId: arm.model.provider, modelId: arm.model.model, sampling, ...history };
+	} else if (Object.keys(history).length > 0) {
+		config.providerConfig = { providerId: arm.model.provider, modelId: arm.model.model, ...history };
 	}
 
 	const toolPolicies = {};

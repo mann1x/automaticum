@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-23T13:35:47.002Z
-> Files: 286 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-23T13:58:33.017Z
+> Files: 289 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -353,7 +353,7 @@
 - `plan.mjs` — The extension's switch_to_act_mode tool, ported from Cline 4.100.250 and (~780 tok)
 - `PROTOCOL.md` — The runner: protocol 3 (~1819 tok)
 - `runner.mjs` — The runner: one agent session for one run, inside the lane's container. (~5173 tok)
-- `session.mjs` — unsupported lists what an arm asks for that this runner cannot do. (~2455 tok)
+- `session.mjs` — unsupported lists what an arm asks for that this runner cannot do. (~2618 tok)
 - `user.mjs` — The scripted user (040 §6.2): the task's rules, played against the (~1979 tok)
 - `wire.mjs` — createWire returns a fetch that appends one JSON line per request to (~1642 tok)
 

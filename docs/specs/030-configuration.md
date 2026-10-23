@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.15, 2026-10-23.
+**Status:** draft 0.16, 2026-10-23.
 
 ## 1. Rules
 
@@ -167,6 +167,20 @@ announce is refused (the guards and phases of 4.100.259 are in
 resolved arm, so arms resolved before the field existed keep their
 identity. Every run counts its guards' trips (`guard_trips.<guard>.<phase>`,
 070).
+
+**Decided by the owner (2026-10-23):** how much of the model's earlier
+reasoning goes back in the history is stated in every arm (D103), as the
+plugin offers it: `thinking.reasoning_history` is `auto`, `all` (every
+earlier block), `last` (the latest block only) or `none`, and
+`thinking.reasoning_inline` says whether `auto` may fold the last block into
+the reply text, as `<think>…</think>`, when the server's template drops the
+reasoning field. Under `auto` the SDK asks the endpoint what its template
+does with prior reasoning and sends the last block only where it is
+rendered; providers it cannot measure keep their earlier behaviour. The base
+arm states `auto` and `true`, the plugin's defaults. The SDK does the same
+when told nothing, so that pair is left out of the resolved arm and arms
+resolved before the fields existed keep their identity; any other choice is
+part of it. Both are the client's settings, whoever owns thinking.
 
 ### 5.2 Extending and resolving
 

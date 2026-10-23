@@ -21,7 +21,7 @@ import { guardTrip, stopsOn } from "./guards.mjs";
 import { createUser } from "./user.mjs";
 import { createWire, describe } from "./wire.mjs";
 
-const PROTOCOL = 5;
+const PROTOCOL = 6;
 const SDK_PACKAGE = "@cerebriline/sdk";
 const EXIT = { completed: 0, error: 1, refused: 3, invalid: 4, wall_limit: 5, guard_stop: 6 };
 

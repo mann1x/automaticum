@@ -147,3 +147,18 @@ test("what protocol 1 cannot do is refused, not approximated", () => {
 	arm.agent.bundled_skills = ["media-audio", "sdd-plan"];
 	assert.equal(unsupported(arm).length, 4);
 });
+
+test("how much earlier reasoning goes back is the arm's, in the provider configuration (D103)", () => {
+	const arm = stub();
+	assert.equal(build(arm).config.providerConfig?.reasoningHistory, undefined);
+	arm.thinking.reasoning_history = "last";
+	arm.thinking.reasoning_inline = false;
+	const { config } = build(arm);
+	assert.equal(config.providerConfig.reasoningHistory, "last");
+	assert.equal(config.providerConfig.reasoningInline, false);
+	assert.equal(config.providerConfig.providerId, arm.model.provider);
+	// Also when the model tag owns the sampler.
+	arm.sampler = { owner: "tag" };
+	const tag = build(arm).config.providerConfig;
+	assert.deepEqual(tag, { providerId: arm.model.provider, modelId: arm.model.model, reasoningHistory: "last", reasoningInline: false });
+});
