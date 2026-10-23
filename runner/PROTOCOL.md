@@ -1,4 +1,4 @@
-# The runner: protocol 6
+# The runner: protocol 7
 
 The runner is a Node program that runs **one** agent session for one run,
 inside the lane's container, and exits. The harness (`internal/run`) writes
@@ -41,6 +41,14 @@ how much of the model's earlier reasoning the history sent back carries
 (D103). The resolved arm leaves them out when they are `auto` and `true`,
 which is what the SDK does unasked. A protocol 5 runner would ignore a
 stated choice, so the number went up.
+
+**Protocol 7 (2026-10-23):** the job may ask for the request capture
+(`save_model_requests`, D104): the runner passes the SDK's
+`saveModelRequests` with responses, writing one file per model request and
+one per response under `requests/` in its output directory, as the plugin's
+"Save model requests" does, and notes `capture`. The harness keeps the
+directory as the `model_requests` blob. Off unless the batch was started
+with it; an SDK before 4.100.261 writes nothing.
 
 ## In
 
@@ -156,7 +164,7 @@ the guard and `metadata.phase` what it did; for a `nudge`, the phase is
 trip the arm's `guards.stop_on` names is also a `guard_stop` note, the
 session is aborted, and the last line's outcome is `guard_stop`.
 
-## What protocol 6 does not do
+## What protocol 7 does not do
 
 Escalation, sub-agents and teams, MCP approvals (no arm starts an MCP
 server), the emulation of editor behaviour (diagnostics after edits,

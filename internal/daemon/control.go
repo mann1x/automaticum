@@ -34,12 +34,15 @@ type control struct {
 	Campaigns map[string]*CampaignState `json:"campaigns,omitempty"`
 	// Cells are the mode C cells' endpoints, by batch (065 §3.1).
 	Cells map[string]*CellSpec `json:"cells,omitempty"`
+	// Capture names the batches whose runs save every model request and
+	// response the SDK sends and reads (D104): opt-in, off by default.
+	Capture map[string]bool `json:"capture,omitempty"`
 }
 
 // loadControl reads the control file once. A missing file is an empty one.
 // It is called with d.mu held.
 func (d *Daemon) loadControl() {
-	d.ctl = control{Drained: map[string]time.Time{}, Held: map[string]time.Time{}, Retries: map[string]string{}, Canary: map[string]*CanaryRecord{}, Campaigns: map[string]*CampaignState{}, Cells: map[string]*CellSpec{}}
+	d.ctl = control{Drained: map[string]time.Time{}, Held: map[string]time.Time{}, Retries: map[string]string{}, Canary: map[string]*CanaryRecord{}, Campaigns: map[string]*CampaignState{}, Cells: map[string]*CellSpec{}, Capture: map[string]bool{}}
 	if d.ControlFile == "" {
 		return
 	}
@@ -70,6 +73,9 @@ func (d *Daemon) loadControl() {
 	}
 	if d.ctl.Campaigns == nil {
 		d.ctl.Campaigns = map[string]*CampaignState{}
+	}
+	if d.ctl.Capture == nil {
+		d.ctl.Capture = map[string]bool{}
 	}
 	if d.ctl.Cells == nil {
 		d.ctl.Cells = map[string]*CellSpec{}

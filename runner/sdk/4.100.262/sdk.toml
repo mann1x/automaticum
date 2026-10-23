@@ -1,0 +1,9 @@
+# SDK release 4.100.262, from the registry: "auto" prior reasoning measured
+# on an agentic turn (user, assistant with tool calls, tool), so on the
+# Gemma-4 template it resolves to the last block, native; preserve_thinking
+# sent where the template reads it, so an injected user message does not
+# drop that block; nothing inlined into a tool-calling message; the
+# request and response capture (saveModelRequests, D104).
+version = "4.100.262"
+source = "registry"
+bundle_sha256 = "6ca86407deb57deec79e7c95af9947979ebd2dd7cd0f170d304defb88c954295"

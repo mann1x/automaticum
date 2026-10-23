@@ -21,7 +21,7 @@ import { guardTrip, stopsOn } from "./guards.mjs";
 import { createUser } from "./user.mjs";
 import { createWire, describe } from "./wire.mjs";
 
-const PROTOCOL = 6;
+const PROTOCOL = 7;
 const SDK_PACKAGE = "@cerebriline/sdk";
 const EXIT = { completed: 0, error: 1, refused: 3, invalid: 4, wall_limit: 5, guard_stop: 6 };
 
@@ -142,9 +142,15 @@ async function main() {
 			}
 		},
 	});
+	// Every model request and response as the SDK sent and read them,
+	// when the batch asks (D104; SDK 4.100.261 on): one file each under
+	// requests/, kept by the harness as the model_requests blob.
+	const capture = job.save_model_requests ? { dir: join(job.out, "requests"), responses: true } : undefined;
+	if (capture) note("capture", { dir: capture.dir });
 	core = await sdk.ClineCore.create({
 		backendMode: "local",
 		dataDir,
+		...(capture ? { saveModelRequests: capture } : {}),
 		clientName: "automaticum-runner",
 		fetch: wire.fetch,
 		capabilities: {

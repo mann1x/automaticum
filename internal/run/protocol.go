@@ -15,7 +15,7 @@ import (
 
 // Protocol is the version of the contract between the harness and the
 // runner: the job file in, JSON lines out. See runner/PROTOCOL.md.
-const Protocol = 6
+const Protocol = 7
 
 // Paths inside the lane's container.
 const (
@@ -51,6 +51,10 @@ type Job struct {
 	// SDKRelease is the version the installed SDK package must be: that of
 	// the build the arm names.
 	SDKRelease string `json:"sdk_release"`
+	// SaveModelRequests asks the runner to save every model request and
+	// response the SDK sends and reads, under requests/ in Out (protocol
+	// 7, D104).
+	SaveModelRequests bool `json:"save_model_requests,omitempty"`
 }
 
 // JobEndpoint is the model server as the runner reaches it.

@@ -174,6 +174,7 @@ func runStart(ctx context.Context, args []string) error {
 	fs.IntVar(&req.Count, "n", 1, "how many runs")
 	fs.StringVar(&req.Key, "idempotency-key", "", "repeating the command with the same key starts nothing new")
 	fs.BoolVar(&req.DryRun, "dry-run", false, "say what would start, start nothing")
+	fs.BoolVar(&req.CaptureRequests, "capture-requests", false, "every run saves the model requests and responses as the SDK sent and read them (large; off by default)")
 	if rest := parse(fs, args); len(rest) > 0 || len(arms) == 0 || req.Task == "" {
 		return errors.New("usage: automaticum run start --arm <arm> [--arm <arm> ...] --task <task> [-n 5] [--order interleaved|blocks] [--lane <lane>]")
 	}

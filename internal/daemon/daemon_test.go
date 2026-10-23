@@ -875,6 +875,36 @@ func (g *rig) stays(id string) string {
 	return ""
 }
 
+// A batch started with the request capture hands it to every run, and only
+// that batch; a restarted daemon still knows (D104).
+func TestCaptureRequests(t *testing.T) {
+	g := newRig(t, false)
+	g.d.ControlFile = filepath.Join(t.TempDir(), "control.json")
+	go func() { g.d.Serve(g.ctx()); close(g.served) }()
+	var with, without StartResponse
+	if code := g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Count: 2, CaptureRequests: true}, &with); code != 202 {
+		t.Fatalf("start: %d", code)
+	}
+	if code := g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer"}, &without); code != 202 {
+		t.Fatalf("start: %d", code)
+	}
+	for _, id := range append(with.RunIDs, without.RunIDs...) {
+		g.waitFinished(id)
+	}
+	g.runner.mu.Lock()
+	for _, r := range g.runner.reqs {
+		if r.CaptureRequests != (r.Batch == with.Batch) {
+			t.Errorf("run %s of batch %s: capture %v", r.ID, r.Batch, r.CaptureRequests)
+		}
+	}
+	g.runner.mu.Unlock()
+	again := &Daemon{Local: g.d.Local, ControlFile: g.d.ControlFile}
+	again.init()
+	if !again.ctl.Capture[with.Batch] || again.ctl.Capture[without.Batch] {
+		t.Errorf("a restarted daemon reads %v", again.ctl.Capture)
+	}
+}
+
 // A drained lane finishes its run in flight and starts nothing else until
 // it is resumed, and a restarted daemon still knows it is drained.
 func TestLaneDrain(t *testing.T) {

@@ -391,6 +391,12 @@ plugin's, the same for every host.
   arm, provider, sampler, served template hash and the resolved
   prior-reasoning scope beside it; each response says whether the server
   or a guard cut it, so a cut turn is scored only up to the cut.
+  **Built (2026-10-23):** `automaticum run start -capture-requests`
+  switches it on for the batch (kept in the daemon's control file); the
+  runner (protocol 7) passes the SDK's `saveModelRequests` with responses
+  (4.100.261 on), one file per request and per response under
+  `requests/`, kept as the run's `model_requests` blob. Campaigns and the
+  export command follow.
 - `automaticum export conversations --batch <id> [--run <id>] --out <dir>`
   hands out those files and that metadata; it does not rebuild turns.
   Loop spans (character offsets of the repeats, the second occurrence on)

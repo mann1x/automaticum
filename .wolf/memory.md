@@ -974,3 +974,16 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 17:50 | last-inline malformed prompt on Gemma-4 template reproduced (mail 1844/1845); owner: stop batch 6d0eb5, wait for SDK inlining fix; 003 aborted; 001 FAIL (reasoning_loop cut 3 + aborted 1), 002 FAIL stopped at reasoning_loop cut; capture made opt-in (110 §3.5, D104) | docs/specs/110, decisions | waiting on SDK | ~6k |
+
+## Session: 2026-10-23 18:03
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 18:03
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:58 | Mail 1846 (owner via ollama: pause until 4.100.261, keep auto). Found the served Gemma-4 template reads reasoning/reasoning_content natively, gated by position (after last user msg) or preserve_thinking+tool_calls; probe's user-assistant-user shape misreads it as 'drops'. Sent 1848 | - | waiting on 4.100.261 | ~4k |
+| 18:30 | Owner: Gemma loop test restarts on SDK 4.100.262 (preserve_thinking), not .261; mails ack 1849, 1850 backup_models | - | waiting on .262 | ~2k |
+| 19:05 | SDK 4.100.262 provisioned (6ca86407deb5); Gemma arms on it (stop 1450426c58e5, shipped feae157037e0); opt-in request capture built: run start -capture-requests -> control file -> job.save_model_requests -> runner saveModelRequests -> model_requests blob; runner protocol 7 | daemon, run, runner, cmd, 110 | tests pass | ~25k |

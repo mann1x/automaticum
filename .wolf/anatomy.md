@@ -109,6 +109,7 @@
 - `stub-sdk-4.100.258.toml` — The stub arm on SDK release 4.100.258: the same settings, another build of (~53 tok)
 - `stub-sdk-4.100.259.toml` — The stub arm on SDK release 4.100.259, for the harness's own tests of that (~40 tok)
 - `stub-sdk-4.100.260.toml` — The stub arm on SDK release 4.100.260, for the harness's own tests of that (~40 tok)
+- `stub-sdk-4.100.262.toml` — The stub arm on SDK release 4.100.262 (~50 tok)
 - `stub-stop-sdk-4.100.258.toml` — The stub arm on SDK release 4.100.258 that ends a run at the first trip of (~66 tok)
 - `stub-stop-sdk-4.100.259.toml` — The stub arm on SDK release 4.100.259 that ends a run at the first trip of (~64 tok)
 - `stub.toml` — An arm for the stub model server: used by the harness's own tests and for (~99 tok)
@@ -391,6 +392,12 @@
 - `package-lock.json` — npm lock file (~52617 tok)
 - `package.json` — Node.js package manifest (~64 tok)
 - `sdk.toml` — SDK release 4.100.260, from the registry: "auto" prior reasoning is (~122 tok)
+
+## runner/sdk/4.100.262/
+
+- `package.json` — The SDK bundle of build 4.100.262 (~60 tok)
+- `package-lock.json` — Lockfile for 4.100.262, made in the pinned node image (~46000 tok)
+- `sdk.toml` — SDK release 4.100.262, pinned bundle 6ca86407deb5: agentic reasoning probe, preserve_thinking, request+response capture (~110 tok)
 
 ## runner/test/
 

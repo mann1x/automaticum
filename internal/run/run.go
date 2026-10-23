@@ -154,6 +154,10 @@ type Request struct {
 	// caller's values and basis facts and what the server said of itself.
 	// It is recorded as is.
 	Cell any
+	// CaptureRequests has the runner save every model request and response
+	// as the SDK sent and read them (D104); they are kept as the
+	// model_requests blob.
+	CaptureRequests bool
 }
 
 // NewID returns a run id that sorts by time.
@@ -408,6 +412,7 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		Endpoint: JobEndpoint{Name: endpoint.Name, Kind: endpoint.Kind, BaseURL: endpoint.BaseURL, APIKey: key},
 		Prompt:   t.Prompt, DefaultAnswer: t.DefaultAnswer, User: t.User, WorkspaceGit: t.Workspace.GitRepo(),
 		Workspace: containerWorkspace, Out: containerOut, WallS: wall.Seconds, SDKRelease: p.SDK.Version,
+		SaveModelRequests: req.CaptureRequests,
 	}
 	jb, _ := json.Marshal(job)
 	if err := os.WriteFile(filepath.Join(jobDir, jobFile), jb, 0o644); err != nil {
@@ -759,6 +764,8 @@ func kindOf(name string) string {
 		return "wire"
 	case name == "data" || name == "home":
 		return "session"
+	case name == "requests":
+		return "model_requests"
 	case strings.HasPrefix(name, "runtime"):
 		return "runtime_log"
 	}

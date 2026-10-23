@@ -101,6 +101,10 @@ type StartRequest struct {
 	// endpoint, with the caller's values, on Cell.NLanes lanes. It needs a
 	// key and one arm.
 	Cell *CellSpec `json:"cell,omitempty"`
+	// CaptureRequests makes every run of the batch save the model requests
+	// and responses as the SDK sent and read them (D104). It changes
+	// nothing that is sent, so it is no part of the arm.
+	CaptureRequests bool `json:"capture_requests,omitempty"`
 }
 
 // StartResponse says what was, or would be, queued.
@@ -609,6 +613,16 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 			d.ctl.Cells[resp.Batch] = req.Cell
 			err = d.saveControl()
 		}
+		d.mu.Unlock()
+		if err != nil {
+			return resp, http.StatusInternalServerError, err
+		}
+	}
+	if req.CaptureRequests {
+		// Kept with the control state, so a restarted daemon still knows.
+		d.mu.Lock()
+		d.ctl.Capture[resp.Batch] = true
+		err := d.saveControl()
 		d.mu.Unlock()
 		if err != nil {
 			return resp, http.StatusInternalServerError, err

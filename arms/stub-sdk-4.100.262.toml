@@ -1,0 +1,6 @@
+# The stub arm on SDK release 4.100.262, for the harness's own tests of that
+# build.
+extends = "stub"
+
+[harness]
+sdk_release = "4.100.262"

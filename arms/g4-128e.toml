@@ -2,12 +2,13 @@
 # shares. Not runnable: it names no endpoint and no model.
 #
 # The owner's values of 2026-10-23: the SDK's opencoti provider (the server
-# is opencoti, a llama-server; this provider keeps the model's reasoning out
-# of the history it sends back), thinking on at effort high, a window of
+# is opencoti, a llama-server; how much earlier reasoning goes back is
+# thinking.reasoning_history, auto from the base), thinking on at effort high, a window of
 # 256000, a wall limit of 1 h and an idle limit of 15 min, SDK release
-# 4.100.260 (every guard announces its actions since 4.100.259; from
-# 4.100.260 "auto" prior reasoning is measured on opencoti, where it
-# resolves to the last block, D103). The sampler
+# 4.100.262 (every guard announces its actions since 4.100.259; from
+# 4.100.262 "auto" prior reasoning is measured on an agentic turn, so on
+# Google's template it resolves to the last block, native, kept past an
+# injected user message by preserve_thinking, D103). The sampler
 # is the owner's, the one under which the model loops: temperature 1.0,
 # min_p 0, no repeat penalty (1 over 0 tokens), no presence penalty; top_k 64
 # and top_p 0.95 as Gemma's own. The arm owns it, so every request carries it
@@ -49,4 +50,4 @@ wall_s = 3600
 idle_s = 900
 
 [harness]
-sdk_release = "4.100.260"
+sdk_release = "4.100.262"
