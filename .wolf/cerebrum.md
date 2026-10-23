@@ -57,6 +57,8 @@
 
 ## Do-Not-Repeat
 
+- [2026-10-23] Never take a sampler from another session's account of "the owner's config": omnimergekit's "8244" values (temp 0.7, rep 1.13/72, pres 0.25) were the owner's ANTI-loop sampler, so the Gemma loop test measured the fix. Ask the owner for the exact sampler of the condition under test, and show it before the first run. Owner's loop sampler: temp 1.0, min_p 0, rep 1 / last 0, pres 0.
+
 - [2026-10-23] A batch id is not the run ids' prefix (runs 20261023-110717-819b65-NNN belonged to batch b20261023-110717-524ef9). Read the batch from `run show -json <run>` (field `batch`) before `batch pause`. First runs on a new llama-server: check /props chat_format and reasoning_format; "Content-only"/"none" means no tool calls or reasoning will be parsed, so pause and tell the server owner.
 
 - [2026-10-23] In SDK 4.100.258 only reasoning_loop (cut/aborted/removed) and tool_intent_overrun (cut) announce a trip (notice metadata.kind/phase). Tool-call loop detection puts its soft warning in the tool result text and a hard one in the mistake tracker: no event. Never match guard sentences; ask the SDK for a notice. A new arm field whose false value must not change arm identity is dropped from Resolved() when false.
