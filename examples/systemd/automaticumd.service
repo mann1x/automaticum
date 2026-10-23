@@ -1,0 +1,21 @@
+# The daemon as a systemd service: restarted on failure, started after the
+# container engine and the disk that holds the data root. Replace <root> with
+# the installation's directory (bin/, config/, repo/, data/, work/).
+[Unit]
+Description=automaticum daemon (test harness for coding agents)
+After=docker.service network-online.target
+Requires=docker.service
+RequiresMountsFor=<root>
+
+[Service]
+Type=simple
+Environment=AUTOMATICUM_CONFIG=<root>/config
+WorkingDirectory=<root>/work
+ExecStart=<root>/bin/automaticumd --config <root>/config
+Restart=on-failure
+RestartSec=10
+KillSignal=SIGTERM
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

@@ -1,4 +1,49 @@
 {
-  "suggestions": [],
-  "generated_at": null
+  "generated_at": "2026-10-19T02:01:02.179Z",
+  "achievements": [
+    "Milestones 1 to 4 built in about four days (2026-10-12 to 10-16): the store, the legacy importer, configuration, the Docker client, tasks, the run executor, the runner, SDK bundles, ingest, detectors, gates, statistics, compare, basis, cells, campaigns, control and the canary. The status line in CLAUDE.md still says Milestone 1 is in progress.",
+    "Store spike finished and written up in spike/001-store/REPORT.md. It passed T2 (20 SIGKILLs, 320 acknowledged runs all in DuckDB, whole Lance appends only). On 5M real-derived vectors T11 gave recall 0.906 at refine 30 with p95 43 ms. FTS p95 stayed under 10 ms at 3.9M chunks. The owner decided D46 to D51 from these results.",
+    "The legacy corpus is in the daemon's store: 531 runs, including the two sibling lanes with a lane prefix, and `store check` is OK. Importer 0.2.0 re-mapped the INVALID, ABORTED and TIMEOUT verdicts. The raw 43.4 GB came down to 0.85 GB stored.",
+    "First real runs: the D55/D59 arm on manic_miner v4 passed 5/5 on SDK 4.100.250 and 5/5 on 4.100.251. Median wall time was 12m 13s against the owner's reference of 12m.",
+    "Batch D81 (base Qwen 3.6 27B against OmniMerge v4) ended 10 vs 10. Run 8, which was reloaded after a pause, was put back to PASS under D85. The cap audit is CLEAN for both arms, and the basis diff shows the arms differ only in weights.",
+    "The detector library v2 (D75, D76) was ported from the SDK guards, with no invented thresholds. It shows 0 differences from omnimergekit's reference on 907 blocks and on the 9,611-block cohorts (criterion 8). The whole corpus was analysed again: 559 runs in 4m 10s.",
+    "SDK out of the lane images (D66 to D68): `sdk add|ls|verify`, offline rebuild, and one image running both 4.100.250 and 4.100.251.",
+    "Mode C cell contract (065) built: OpenAI-compatible stub, a /props check (exit 20 on contradicted basis facts), `--lanes N` round robin, and sampler pass-through checked on all 7 fields.",
+    "Scripted user in two stages, runner protocol 3: plan, mode switch, fork (D86), git workspaces by default (D87), and switch_to_act_mode ported into runner/plan.mjs. All 6 demo tasks PASS on the stub.",
+    "Lane and batch control (drain, pause, resume, stop, retry), the canary that stops a batch (D84), campaigns, and a single formatter for values a person reads (D69, durations in h m s).",
+    "Milestone 5 groundwork: owner decisions D90 to D97 recorded (BFCL focus, SWE-bench subset and cache, blackswan-2 with its own daemon and data root, a 200 GB disk floor, endpoints never launched)."
+  ],
+  "improvements": [
+    "Split the largest files: internal/daemon/api.go (~12k tokens) by area (runs, control, compare, cell, campaign handlers), daemon_test.go (~15k) into per-feature test files, legacyimport/importer.go (~9.5k), run/run.go (~8.8k), cmd/automaticum/client_cmds.go (~7.7k) and config/arm.go (~7.5k).",
+    "Stop the OpenWolf hooks writing empty session headers to .wolf/memory.md. Most sessions log 0 actions, some timestamps are out of order (an 00:18 entry under 10-12, a 12:58 row inside the 21:20 session), and the noise costs tokens on every read.",
+    "Bring CLAUDE.md's Status section up to date (it still says Milestone 1 is in progress) and check that the Layout list matches anatomy.md.",
+    "Add an integration test for the analysis version. Bumps v1 to v4 (bugs 019, 020, the session_fork work) each needed a manual `reanalyse`. A test should fail when a stored run's analysis.version is older than ingest.Versions, so stale analysis cannot slip into compare.",
+    "Add a drift check between runner/plan.mjs (switch_to_act_mode ported from Cline 4.100.250) and each SDK bundle in runner/sdk/. It should pin the source tag and fail `sdk verify` if a newer SDK ships its own tool.",
+    "Make store coverage easier to run: `make test` skips internal/store/duck and internal/store/lance because cgo builds only work in the link image. A CI target or a single `make test-all` that runs `make lance-c` first would stop store regressions going unseen.",
+    "Speed up the blob archive mover on many small blobs (measured 2.5 MB/s), for example by batching small blobs per archive file, before the SWE-bench corpus grows the store."
+  ],
+  "next_tasks": [
+    "Write the Milestone 5 plan into 110 §3 from D90 to D97 and get owner approval before creating any new package. CLAUDE.md forbids new packages outside an approved plan.",
+    "Draft 061-suite-bfcl.md properly (now ~550 tokens): the BFCL task adapter, oracle and suite interface for the D90 focus. Mark undecided points **Open** with recommendations and ask the owner in one batch.",
+    "Build the 200 GB disk-floor gate (D96) in internal/gate, so that the SWE-bench smoke waits in the queue instead of being SKIPPED. Test it with a fake free-space reading.",
+    "Set up blackswan-2 with its own daemon and data root on its data disk (D95), using the full deployment script. Check that compare and basis can read runs from both stores, or record that as Open.",
+    "Check D97 (automaticum never launches model servers) against what exists: examples/config/endpoints/stub.toml says the daemon can start the stub, and `stub serve` exists. Confirm with the owner whether the test stub is exempt.",
+    "Port the cap-audit pile-up and allowance checks deferred to Milestone 5, using the fixtures in omnimergekit's test_cap_report.py (mails 1363 and 1364). Do not invent thresholds.",
+    "Follow up mail 1535 to Cerebriline (provider and parser without the agent loop; whether switch_to_act_mode lives in the SDK or in automaticum) and mail 1371 on mode C. Fold the answers into 040 and 064.",
+    "Rebuild the chunk dataset in the spike root with `bench chunks`. It predates the D49/D50 blob and offset columns, so it must not be reused as it is.",
+    "Ask the owner about the open invalid-run groups B and C and the sibling-lane runs from mail 1231, then mark them in the store as decided.",
+    "Commit the pending .wolf changes (anatomy, cerebrum, memory, cron-state) after the Caliber pre-commit check."
+  ],
+  "risks": [
+    "Possible conflict between owner decision D97 and the code: 'endpoints are never launched' against an example endpoint file and a `stub serve` that describe the daemon starting a model server.",
+    "Deploying while batches run: several features (D83 pause, control, canary) waited undeployed because a real run was in flight. Run 8 was INVALID after the pause reload until D85. Each hot redeploy risks a mixed basis between batch halves; the D81 halves already differ in server and lane image.",
+    "Pause inside a run depends on the SDK (D77), and the current pause unloads the model. Every pause causes a reload, which is accepted only under D85's after_pause rule, so wall time and caching can still differ between paused and unpaused runs.",
+    "Vector search is fragile on harder data: the worst-case synthetic set reached only 0.63 recall at 5M, and id-based recall on real chunks tops out at 0.92 because of near-copies. A different corpus such as SWE-bench diffs could fall below T11 without anyone noticing.",
+    "Regex search over raw streams takes 8m 46s unless the streaming deltas are skipped (D48). Any query path that forgets the skip will be slow at SWE-bench scale.",
+    "Ported code drifts: the guards, tool-call thresholds and switch_to_act_mode are copies keyed to SDK release tags. A new SDK release can change them silently unless thresholds are re-read per tag.",
+    "Environment dependencies: the oracle binary needs libatomic1 in the lane base image, bind mounts need absolute host paths, and the zod pin (bug-009) holds 4.100.250 together. A base-image bump could break all tasks.",
+    "Provenance gap: run 0166's kill is labelled 'reported' because nothing in the corpus records it. Legacy comparisons that depend on it rest on what was said, not on evidence.",
+    "Store tests run only in the link image, so a host `make test` stays green while DuckDB or Lance code is broken.",
+    "Public-repo hygiene: the nickname slip had to be fixed in c4d6cd3. Adding blackswan-2 setup files raises the chance of private host names or absolute paths leaking into tracked files."
+  ]
 }

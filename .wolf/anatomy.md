@@ -1,14 +1,14 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-16T04:00:00.589Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-23T10:00:00.937Z
 > Files: 268 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~3892 tok)
-- `CLAUDE.md` — automaticum (~3664 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~3843 tok)
+- `CLAUDE.md` — automaticum (~3668 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
 - `LICENSE` — Project license (~3029 tok)
@@ -19,7 +19,7 @@
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~57277 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~57952 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~0 tok)
 - `score-history.jsonl` (~988 tok)
@@ -34,13 +34,13 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~96684 tok)
+- `fingerprint.json` — Declares usage (~96686 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` — End: it (~17075 tok)
+- `current-session.jsonl` (~26853 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~40475 tok)
+- `roi-stats.json` (~41187 tok)
 - `state.json` (~41 tok)
 
 ## .claude/
@@ -56,7 +56,7 @@
 ## .claude/rules/
 
 - `openwolf.md` — OpenWolf protocol (~207 tok)
-- `spec-conventions.md` — Spec conventions (~371 tok)
+- `spec-conventions.md` — Spec conventions (~375 tok)
 - `wolf-hooks.md` — Hook conventions (~250 tok)
 
 ## .claude/skills/add-wolf-hook/
@@ -123,7 +123,7 @@
 
 ## docs/local/
 
-- `hosts.local.md` — Local mapping (untracked) (~420 tok)
+- `hosts.local.md` — Local mapping (untracked) (~497 tok)
 
 ## docs/specs/
 
@@ -144,7 +144,7 @@
 - `090-interfaces.md` — 090 — Interfaces (~2257 tok)
 - `100-legacy-import.md` — 100 — Import of the old harness's corpus (~3426 tok)
 - `110-acceptance-and-roadmap.md` — 110 — Acceptance and roadmap (~5610 tok)
-- `decisions.md` — Decisions and open questions (~5453 tok)
+- `decisions.md` — Decisions and open questions (~5873 tok)
 
 ## docs/specs/archive/
 
@@ -163,6 +163,10 @@
 ## examples/config/lanes/
 
 - `lane-1.toml` (~32 tok)
+
+## examples/systemd/
+
+- `automaticumd.service` — The daemon as a systemd service (restart on failure, after Docker and the data disk); <root> is the installation's directory (~190 tok)
 
 ## images/base/
 
@@ -209,8 +213,8 @@
 
 ## internal/docker/
 
-- `docker_test.go` — TestDemux, TestRun, TestRunTimeoutAndCancel (~1085 tok)
-- `docker.go` — is a small client for the Docker Engine API over the local (~4290 tok)
+- `docker_test.go` — TestDemux, TestRun, TestRunTimeoutAndCancel, TestPickVersion (~1180 tok)
+- `docker.go` — is a small client for the Docker Engine API over the local (~4744 tok)
 
 ## internal/gate/
 

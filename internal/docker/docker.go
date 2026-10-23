@@ -20,6 +20,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -27,13 +28,18 @@ import (
 const DefaultSocket = "/var/run/docker.sock"
 
 // apiVersion is the oldest API version this client needs. The engine serves
-// any version from its minimum up to its own.
+// any version from its minimum up to its own; an engine whose minimum is
+// newer (Docker 29.1 and later refuse anything below 1.44) is spoken to at
+// its minimum instead, read once from its unversioned /version.
 const apiVersion = "v1.41"
 
 // Client talks to one engine.
 type Client struct {
 	http   *http.Client
 	stream *http.Client // no overall timeout: logs, waits, builds
+
+	mu  sync.Mutex
+	ver string // the API version in use, once the engine has said its minimum
 }
 
 // New returns a client for the engine at socket; "" means DefaultSocket.
@@ -65,7 +71,7 @@ func IsNotFound(err error) bool {
 }
 
 func (c *Client) do(ctx context.Context, hc *http.Client, method, path string, query url.Values, body io.Reader, contentType string) (*http.Response, error) {
-	u := "http://docker/" + apiVersion + path
+	u := "http://docker/" + c.apiVersion(ctx) + path
 	if len(query) > 0 {
 		u += "?" + query.Encode()
 	}
@@ -114,6 +120,59 @@ func (c *Client) json(ctx context.Context, method, path string, query url.Values
 		return err
 	}
 	return json.NewDecoder(resp.Body).Decode(out)
+}
+
+// apiVersion is apiVersion, or the engine's minimum when that is newer. A
+// failed question is not remembered: the request that follows reports the
+// engine's own error.
+func (c *Client) apiVersion(ctx context.Context) string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.ver != "" {
+		return c.ver
+	}
+	req, err := http.NewRequestWithContext(ctx, "GET", "http://docker/version", nil)
+	if err != nil {
+		return apiVersion
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return apiVersion
+	}
+	defer resp.Body.Close()
+	var v Version
+	if resp.StatusCode != http.StatusOK || json.NewDecoder(resp.Body).Decode(&v) != nil {
+		return apiVersion
+	}
+	c.ver = pickVersion(v.MinAPIVersion)
+	return c.ver
+}
+
+// pickVersion is apiVersion unless the engine's minimum is newer.
+func pickVersion(min string) string {
+	if min != "" && newer(min, strings.TrimPrefix(apiVersion, "v")) {
+		return "v" + min
+	}
+	return apiVersion
+}
+
+// newer reports whether API version a ("1.44") is after b.
+func newer(a, b string) bool {
+	pa, pb := strings.SplitN(a, ".", 2), strings.SplitN(b, ".", 2)
+	if len(pa) != 2 || len(pb) != 2 {
+		return false
+	}
+	for i := range 2 {
+		x, err1 := strconv.Atoi(pa[i])
+		y, err2 := strconv.Atoi(pb[i])
+		if err1 != nil || err2 != nil {
+			return false
+		}
+		if x != y {
+			return x > y
+		}
+	}
+	return false
 }
 
 // Version is what the engine says about itself.

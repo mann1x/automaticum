@@ -1,6 +1,6 @@
 # 110 — Acceptance and roadmap
 
-**Status:** draft 0.16, 2026-10-14. The milestone order in §3 was approved by the owner
+**Status:** draft 0.17, 2026-10-23. The milestone order in §3 was approved by the owner
 on 2026-10-12. Milestone 1 has been carried out: the store, the importer and
 the spike's measurements exist (080 §7.4, 100 §7), and the owner has decided
 the questions it raised (D46 to D51). Milestone 2 was planned and approved on
@@ -331,3 +331,25 @@ finding or cap audit changed: the basis's `detectors` fact now reads
 `demo/scripted` runs count the request a steer cut as `finish.failed`
 instead of `finish.none` (bug-020). The numbers above are those of
 analysis 3.
+
+### 3.4 Milestone 5, step 0: the installation on blackswan-2 (2026-10-23)
+
+At the owner's request, blackswan-2 has a stable installation of its own
+(D93, D95), separate from the main host's and not reached through it:
+
+- the daemon runs as a systemd service that restarts on failure and waits
+  for the data disk and the container engine (`examples/systemd/`);
+- the binaries are the main host's build of the same commit (glibc 2.28
+  baseline), and a clone of this repository at that commit is the
+  installation's `repo`;
+- the SDK bundles 4.100.250 and 4.100.251 were copied with their archived
+  packages, and `automaticum sdk verify` reproduced both with no network, at
+  their pinned hashes;
+- the lane images were built there; every task's oracle was proven there with
+  `automaticum oracle verify`, and the rebuilt `run_game` has the pinned hash;
+- `demo/answer` on the stub passed on both SDK builds.
+
+The engine there (Docker 29.1) refuses API versions below 1.44, which the
+client pinned at 1.41; the client now uses the engine's minimum when it is
+newer (bug-027). The installation is updated by checking out a newer commit
+and copying that commit's binaries, with the lane idle and the queue empty.

@@ -118,3 +118,18 @@ func TestRunTimeoutAndCancel(t *testing.T) {
 		t.Fatalf("container survived cancellation: %v", err)
 	}
 }
+
+func TestPickVersion(t *testing.T) {
+	for _, c := range []struct{ min, want string }{
+		{"", "v1.41"},
+		{"1.24", "v1.41"},
+		{"1.41", "v1.41"},
+		{"1.44", "v1.44"},
+		{"1.100", "v1.100"},
+		{"x", "v1.41"},
+	} {
+		if got := pickVersion(c.min); got != c.want {
+			t.Errorf("pickVersion(%q) = %s, want %s", c.min, got, c.want)
+		}
+	}
+}
