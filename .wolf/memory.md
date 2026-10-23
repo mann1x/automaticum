@@ -1007,3 +1007,24 @@
 | 19:46 | Owner: skip the shipped arm, free gpu0 for training. Batch 0edd50 stopped, 001 aborted (4 reasoning_loop cuts in 11 turns); stop-only batch b20261023-174444-e19ff1 (10 runs, capture on) started; backup_models told | - | running | ~3k |
 | 20:30 | Mail 1857 answered (1858): owner D105 private tasks root; lane layers = base+typescript only; pool batch = shipped-style arm + -capture-requests + task [limits]; new engine -> new endpoint name | decisions.md | pending loader change | ~5k |
 | 20:45 | D105 built: task.toml private + canary; Roots{Public, Private}; local config private_tasks; daemon + CLI read both roots; TestPrivateRoot | internal/task, config, daemon, cmd, 060, example config | tests pass | ~12k |
+
+## Session: 2026-10-23 20:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 20:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 20:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 20:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:52 | D105 revised by owner: training tasks public in tasks/<suite>/ with training = true (Task.Training); mail 1863 to backup_models | internal/task, 060, decisions | tests pass | ~5k |

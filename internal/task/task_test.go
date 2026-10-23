@@ -365,3 +365,20 @@ func TestPrivateRoot(t *testing.T) {
 		t.Errorf("a task in both roots: %v", err)
 	}
 }
+
+// A training task (D105) is an ordinary public task that says so.
+func TestTrainingFlag(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "demo", "answer")
+	if err := os.CopyFS(dir, os.DirFS(filepath.Join(tasksRoot, "demo", "answer"))); err != nil {
+		t.Fatal(err)
+	}
+	src, _ := os.ReadFile(filepath.Join(dir, "task.toml"))
+	body := strings.Replace(string(src), "version = 1\n", "version = 1\ntraining = true\n", 1)
+	if err := os.WriteFile(filepath.Join(dir, "task.toml"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	tk, err := Load(dir)
+	if err != nil || !tk.Training || tk.Private {
+		t.Fatalf("%v %+v", err, tk)
+	}
+}

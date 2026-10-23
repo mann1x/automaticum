@@ -45,6 +45,10 @@ type Task struct {
 	// task in the private root must be private (D105).
 	Private bool   `toml:"private"`
 	Canary  string `toml:"canary"`
+	// Training marks a task of a training pool (D105): its runs are
+	// rollouts for training, not measurements, and it is never a held-out
+	// gate. Training tasks are public, in the repository's tasks/.
+	Training bool `toml:"training"`
 
 	// Dir is the task's directory. Files is every regular file under it
 	// with its sha256, and Hash is the hash of that list: the task's
