@@ -55,8 +55,11 @@
 
 ## .claude/rules/
 
+- `endpoint-probe.md` — Endpoint probe and gate conventions (~420 tok)
 - `openwolf.md` — OpenWolf protocol (~207 tok)
+- `runner-protocol.md` — Runner protocol conventions (~560 tok)
 - `spec-conventions.md` — Spec conventions (~375 tok)
+- `wire-arm.md` — Wire detector conventions: ReadWire option names, CompareWire, WireArmVersion bump (~520 tok)
 - `wolf-hooks.md` — Hook conventions (~250 tok)
 
 ## .claude/skills/add-wolf-hook/

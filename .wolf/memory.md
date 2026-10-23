@@ -868,3 +868,25 @@
 | 15:35 | Edited internal/ingest/wire.go | expanded (+8 lines) | ~99 |
 | 15:35 | Edited internal/ingest/wirearm.go | expanded (+6 lines) | ~144 |
 | 15:35 | Edited internal/ingest/wirearm.go | inline fix | ~26 |
+
+## Session: 2026-10-23 15:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 15:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:38 | Caliber doc sync: new rule for the wire detector (think_budget_tokens, WireArmVersion 3, D101); anatomy entries for the three missing rule files | .claude/rules/wire-arm.md, .wolf/anatomy.md | ingest tests pass | ~2500 |
+
+## Session: 2026-10-23 15:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 15:42
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:45 | D101: Gemma arms on SDK opencoti provider + thinking effort high; bug-029 fixed (wire_arm reads reasoning_budget_tokens); deployed 421324d on blackswan-2; batch b20261023-134319-c34c78 started, wire verified | arms/g4-128e.toml, internal/ingest/wire.go, wirearm.go, openai_test.go, decisions.md | running | ~25k |
