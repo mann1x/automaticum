@@ -23,6 +23,14 @@ type Props struct {
 	ChatTemplateSHA256 string `json:"chat_template_sha256"`
 	ChatTemplateBytes  int    `json:"chat_template_bytes"`
 	BuildInfo          string `json:"build_info,omitempty"`
+	// The template the server takes for a request with tools, when it has
+	// one apart from the default; what the template can do; the model's
+	// alias and end-of-turn token; the default sampler.
+	ToolTemplateSHA256 string                     `json:"chat_template_tool_use_sha256,omitempty"`
+	Caps               map[string]bool            `json:"chat_template_caps,omitempty"`
+	ModelAlias         string                     `json:"model_alias,omitempty"`
+	EOSToken           string                     `json:"eos_token,omitempty"`
+	Sampler            map[string]json.RawMessage `json:"-"`
 }
 
 // ReadProps asks an OpenAI-compatible endpoint for llama-server's /props,
@@ -55,19 +63,30 @@ func ReadProps(ctx context.Context, hc *http.Client, e *config.Endpoint, apiKey 
 	}
 	var raw struct {
 		Settings struct {
-			NCtx int `json:"n_ctx"`
+			NCtx   int                        `json:"n_ctx"`
+			Params map[string]json.RawMessage `json:"params"`
 		} `json:"default_generation_settings"`
-		TotalSlots   int    `json:"total_slots"`
-		ModelPath    string `json:"model_path"`
-		ChatTemplate string `json:"chat_template"`
-		BuildInfo    string `json:"build_info"`
+		TotalSlots   int             `json:"total_slots"`
+		ModelPath    string          `json:"model_path"`
+		ChatTemplate string          `json:"chat_template"`
+		ToolTemplate string          `json:"chat_template_tool_use"`
+		Caps         map[string]bool `json:"chat_template_caps"`
+		ModelAlias   string          `json:"model_alias"`
+		EOSToken     string          `json:"eos_token"`
+		BuildInfo    string          `json:"build_info"`
 	}
 	if err := json.NewDecoder(io.LimitReader(resp.Body, 16<<20)).Decode(&raw); err != nil {
 		return nil, fmt.Errorf("endpoint %s: /props is not understood: %v", e.Name, err)
 	}
 	sum := sha256.Sum256([]byte(raw.ChatTemplate))
-	return &Props{NCtx: raw.Settings.NCtx, TotalSlots: raw.TotalSlots, ModelPath: raw.ModelPath,
-		ChatTemplateSHA256: hex.EncodeToString(sum[:]), ChatTemplateBytes: len(raw.ChatTemplate), BuildInfo: raw.BuildInfo}, nil
+	p := &Props{NCtx: raw.Settings.NCtx, TotalSlots: raw.TotalSlots, ModelPath: raw.ModelPath,
+		ChatTemplateSHA256: hex.EncodeToString(sum[:]), ChatTemplateBytes: len(raw.ChatTemplate), BuildInfo: raw.BuildInfo,
+		Caps: raw.Caps, ModelAlias: raw.ModelAlias, EOSToken: raw.EOSToken, Sampler: raw.Settings.Params}
+	if raw.ToolTemplate != "" {
+		t := sha256.Sum256([]byte(raw.ToolTemplate))
+		p.ToolTemplateSHA256 = hex.EncodeToString(t[:])
+	}
+	return p, nil
 }
 
 // Contradictions lists every way the server's /props contradicts the

@@ -156,6 +156,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"total_slots":                 s.slots(),
 			"model_path":                  "stub/" + s.script.Model + ".gguf",
 			"chat_template":               template,
+			"chat_template_caps":          map[string]bool{"supports_tools": true, "supports_tool_calls": true},
 			"build_info":                  "stub",
 		})
 	case "/v1/chat/completions":

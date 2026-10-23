@@ -462,6 +462,42 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-23T12:02:40+02:00"
+    },
+    {
+      "id": "bug-028",
+      "timestamp": "2026-10-23T12:54:39+02:00",
+      "error_message": "gate template: the tag does not offer tool calls (SKIPPED) on a llama-server-kind endpoint whose /props gives no chat_template_caps",
+      "file": "internal/run/probe.go",
+      "root_cause": "The new /props probe set Capabilities to [completion] when chat_template_caps was absent, so the gate read silence as 'no tools'",
+      "fix": "Missing caps add 'template capabilities' to NotProbed and the gate says Unchecked; the stub's /props now reports caps like llama-server; tests for both",
+      "tags": [
+        "probe",
+        "llamacpp",
+        "props",
+        "gate"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-23T12:54:39+02:00"
+    },
+    {
+      "id": "bug-029",
+      "timestamp": "2026-10-23T12:54:39+02:00",
+      "error_message": "wire_arm: stated, not sent: thinking.effort = \"high\", sent think as nothing (OpenAI-compatible endpoint; the request carried reasoning_budget_tokens 48000)",
+      "file": "internal/ingest/wirearm.go",
+      "root_cause": "The wire_arm thinking check reads the Ollama 'think' field only; SDK 4.100.258's openai-compatible provider sends an effort as reasoning_budget_tokens and sends nothing for thinking on without an effort",
+      "fix": "OPEN: not fixed yet. The Gemma arms leave thinking to the server (owner tag), so they are not affected; the check must learn the OpenAI-side fields before an OpenAI arm states thinking",
+      "tags": [
+        "wire_arm",
+        "openai-compatible",
+        "thinking",
+        "open"
+      ],
+      "related_bugs": [
+        "bug-019"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-23T12:54:39+02:00"
     }
   ]
 }

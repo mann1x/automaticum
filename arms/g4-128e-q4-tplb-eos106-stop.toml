@@ -1,0 +1,9 @@
+# Gemma-4 26B-A4B (128 experts) Q4_K_M with end token 106, no thinking re-injection template; the run stops at the first guard trip (D99).
+extends = "g4-128e"
+endpoint = "g4-128e-q4-tplb-eos106"
+
+[model]
+model = "gemma-4-26b-a4b-it-q4km-eos106"
+
+[guards]
+stop_at_first_trip = true

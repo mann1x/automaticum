@@ -134,12 +134,21 @@ func Probe(ctx context.Context, hc *http.Client, e *config.Endpoint, apiKey, mod
 			return id, err
 		}
 		id.NotProbed = []string{"server version", "model digest", "template", "parameters", "residency"}
+		listed := false
 		for _, m := range models.Data {
-			if m.ID == model {
-				return id, nil
+			listed = listed || m.ID == model
+		}
+		if !listed {
+			return id, fmt.Errorf("endpoint %s does not list model %s", e.Name, model)
+		}
+		if e.Kind == "llamacpp" {
+			// llama-server says the rest at /props, beside /v1. A
+			// server that does not answer it stays not probed.
+			if p, err := ReadProps(ctx, hc, e, apiKey); err == nil && p != nil {
+				fillFromProps(&id, p)
 			}
 		}
-		return id, fmt.Errorf("endpoint %s does not list model %s", e.Name, model)
+		return id, nil
 	}
 
 	var version struct {
@@ -388,4 +397,39 @@ func ControlTokens(ctx context.Context, hc *http.Client, e *config.Endpoint, api
 		}
 	}
 	return out, nil
+}
+
+// llamaSampler are the sampler settings of /props that are recorded: the
+// ones an arm can state (config.Sampler).
+var llamaSampler = []string{"temperature", "top_k", "top_p", "min_p", "typical_p", "repeat_last_n",
+	"repeat_penalty", "presence_penalty", "frequency_penalty", "seed"}
+
+// fillFromProps records what llama-server says of itself: its build, the
+// template it serves, what that template can do, its default sampler and
+// window, and which weights file it serves (named, not hashed).
+func fillFromProps(id *Identity, p *Props) {
+	id.NotProbed = nil
+	id.ServerVersion = p.BuildInfo
+	id.TemplateSHA256, id.TemplateBytes = p.ChatTemplateSHA256, p.ChatTemplateBytes
+	switch {
+	case p.Caps == nil:
+		// An older server does not say what its template can do.
+		id.NotProbed = append(id.NotProbed, "template capabilities")
+	case p.Caps["supports_tools"] || p.Caps["supports_tool_calls"]:
+		id.Capabilities = []string{"completion", "tools"}
+	default:
+		id.Capabilities = []string{"completion"}
+	}
+	var lines []string
+	for _, k := range llamaSampler {
+		if v, ok := p.Sampler[k]; ok {
+			lines = append(lines, k+" "+string(v))
+		}
+	}
+	if p.NCtx > 0 {
+		lines = append(lines, fmt.Sprintf("num_ctx %d", p.NCtx))
+	}
+	id.Parameters = strings.Join(lines, "\n")
+	id.Details, _ = json.Marshal(p)
+	id.NotProbed = append([]string{"model digest", "residency"}, id.NotProbed...)
 }

@@ -223,6 +223,9 @@ func template(_ context.Context, in *Input) (Status, string) {
 	if id.Renderer != "" || id.Parser != "" {
 		how += fmt.Sprintf(", renderer %q, parser %q", id.Renderer, id.Parser)
 	}
+	if slices.Contains(id.NotProbed, "template capabilities") {
+		return Unchecked, "the server does not say whether its template can call tools: " + how
+	}
 	if !slices.Contains(id.Capabilities, "tools") {
 		return Refuse, "the tag does not offer tool calls, so its template or renderer is not intact: " + how
 	}

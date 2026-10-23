@@ -784,3 +784,19 @@
 |------|--------|---------|---------|--------|
 | 12:36 | Created runner/guards.mjs | — | ~478 |
 | 12:43 | D98-D99 recorded (Gemma loop test values; stop_at_first_trip). Runner protocol 4: guards.mjs guard_trip notes + guard_stop outcome; arm field guards.stop_at_first_trip (false dropped from Resolved, identities kept); verdict FAIL on guard stop with oracle answer in reason; ingest guard_trips metrics (analysis 5); compare/run show hide zero. Stub: stop arm FAIL at reasoning_loop cut, shipped arm PASS with 1 trip; all demos PASS. Mail 1811 to Cerebriline for notices of the other guards | runner/, internal/{config,run,ingest,daemon}, specs 020/030/040/070, decisions | done | ~40k |
+
+## Session: 2026-10-23 12:43
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 12:43
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 12:44
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:54 | Ready for bm-889: llama-server /props probe (template sha, caps, sampler, n_ctx, model path, eos) with unchecked when caps absent (bug-028); 6 Gemma arms + template + 2 catalogue entries; thinking left to server (SDK sends nothing for thinking on to OpenAI-compatible; bug-029 wire_arm gap open); 050/110 updated | internal/run/{probe,props}.go, internal/gate, internal/stubmodel, arms/g4-*, models/gemma-* | done | ~30k |

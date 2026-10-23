@@ -1,0 +1,8 @@
+# What this model is, in the owner's words (030 §4.1), as named on
+# 2026-10-23: the same Q4_K_M file as gemma-4-26b-a4b-it-q4km with the
+# end-of-sequence token rewritten from 1 to 106 in its metadata (tensors
+# unchanged), so a turn ends on token 106.
+tag = "gemma-4-26b-a4b-it-q4km-eos106"
+family = "Gemma 4"
+size = "26B-A4B"
+variant = "instruct, 128 experts, unpruned, end token 106"

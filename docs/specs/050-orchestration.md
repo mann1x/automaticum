@@ -1,6 +1,6 @@
 # 050 — Orchestration: scheduling, gates, control
 
-**Status:** draft 0.13, 2026-10-14.
+**Status:** draft 0.14, 2026-10-23.
 
 ## 1. Scheduling
 
@@ -86,7 +86,7 @@ text, loads a model or unloads one**.
 | `lane` | the lane exists, may use the arm's endpoint, the arm is not a template | |
 | `free` | the endpoint holds no other model in memory; if it does, **wait** (D64) | requests in flight for someone else: needs the agent |
 | `model_tag` | the endpoint has the tag; its digest equals the arm's pin when the arm pins one | |
-| `template` | the server lists tool calls among what the tag can do; template size and hash, renderer and parser are recorded | the template's text is not parsed |
+| `template` | the server lists tool calls among what the tag can do; template size and hash, renderer and parser are recorded. On llama-server (kind `llamacpp`, since 2026-10-23) the facts come from `/props`: the build, the template's hash, `chat_template_caps`, the default sampler and window, the weights file and its end token; a server that gives no `chat_template_caps` leaves the gate unchecked | the template's text is not parsed; a weights file is named, not hashed |
 | `sampler` | the arm is complete; the tag's own sampler values are listed next to it | "written and read back" is the wire comparison after the run (070 §4.1) |
 | `thinking` | who owns thinking and the tag's budget; never refuses (D63) | |
 | `gpu_residency` | a loaded model is fully on the GPU; unchecked when it is not loaded. After the run the same look is a metric and, when partly off the GPU, a finding | named tensors parked on the CPU: needs the server log |
