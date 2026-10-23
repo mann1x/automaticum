@@ -6,6 +6,8 @@
 
 ## User Preferences
 
+- (2026-10-23) The client session starts its own batches: for the training pool, backup_models (omnimergekit) is the client and starts the runs; automaticum prepares the installation, arm and endpoint, hands over the exact commands and does not start a client's batch itself, nor ask the owner for a go on the client's behalf.
+
 - [2026-10-23] Run behaviour the owner chooses (which guards stop a run, thresholds, sets) goes in the arm as configuration, never hard-coded in the runner or harness.
 
 - When the owner lists setup steps, do them in the order given.
@@ -83,6 +85,8 @@
 ## Decision Log
 
 Full list with ids is in docs/specs/decisions.md. Keep this log in step.
+
+- 2026-10-23 D106: export loop spans come from the SDK guard's cuts too, not only the detector library (widens D102); each span has source guard|detector; guard span = cut response (complete:false), reasoning field, end verdict.chars, start at the second of the trailing verdict.cycles repeats of verdict.sample.
 
 - 2026-10-12: Go daemon on hosts and Node only in lanes. Docker lanes with slim base plus language layers. TOML config. Agent mode for remote hosts. Verdicts are PASS/FAIL/TIMEOUT/ABORTED/INVALID/SKIPPED. Apache-2.0. Gitea per daemon. Plugins are compiled in.
 - 2026-10-13 store: DuckDB + Lance (lance-c behind our own cgo wrapper) + blobs. Build base manylinux_2_28. D46-D52: binding review at M6, dedup by message part, regex skips deltas, refine at least 30, chunk locator, earlier campaigns imported on demand, embeddings run manually.

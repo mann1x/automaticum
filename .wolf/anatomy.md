@@ -1,7 +1,11 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-23T19:27:28.788Z
-> Files: 303 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-23T20:11:52.900Z
+> Files: 304 tracked | Anatomy hits: 0 | Misses: 0
+
+## ../../../../root/.claude/projects/-srv-dev-disk-by-label-opt-dev-automaticum/memory/
+
+- `client-sessions-start-their-own-batches.md` (~233 tok)
 
 ## ./
 
@@ -485,18 +489,6 @@
 - `t9-regex-4-skip.json` (~101 tok)
 - `t9-regex-4.json` (~84 tok)
 
-## tasks/train-game/
-
-- `space_invaders/` — training twin of manic_miner (D105): seed, compiled checker run_game (oracle/build.mjs + run_tests.logic.js), fixtures known-good and two near-misses; typescript layer
-
-## tasks/train-ml/
-
-- 12 training tasks (D105), two per language: py_ledger, py_reportgen (python), ts_scheduler, ts_cache_refactor (typescript), cs_buildfix, cs_inventory_refactor (dotnet), go_workerpool, go_kvstore_feature (go), c_parser_bugfix, cpp_matrix_feature (cpp), rust_tokenizer_bugfix, rust_cli_buildconfig (rust). Each: task.toml, seed/, fixtures/, oracle/ (build.mjs + run_tests.logic.js, a Node SEA pinned by sha256), checker/ (source of the hidden tests), checker.json
-
-## tasks/train-sh/
-
-- 4 shell training tasks on the python layer: sh_logtriage, sh_config_migrate, sh_backup_rotate, sh_user_audit; same layout as train-ml. The server paths and 10.0.0.x addresses in them are made-up task data
-
 ## tasks/custom/manic_miner/
 
 - `README.md` — Project documentation (~345 tok)
@@ -587,3 +579,12 @@
 ## tasks/demo/scripted/seed/
 
 - `answer.txt` (~5 tok)
+
+## tasks/train-game/
+
+
+## tasks/train-ml/
+
+
+## tasks/train-sh/
+

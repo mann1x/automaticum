@@ -1075,3 +1075,23 @@
 | 21:27 | Edited internal/task/task_test.go | modified TestSeedFixture() | ~238 |
 | 21:29 | Session end: 2 writes across 2 files (task.go, task_test.go) | 0 reads | ~338 tok |
 | 21:40 | 17 training tasks (train-ml/sh/game) load, build and oracle-verify 3x; loader allows a files-less fail fixture (bug-033); pool arm g4-128e-bf16-c13-shipped; dotnet layer build servers off | tasks/train-*, internal/task, arms/, images/layers/dotnet | ok | ~15000 |
+
+## Session: 2026-10-23 21:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 21:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 21:43
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:11 | owner: backup_models is the client and starts the pool; mailed commands (1872): run start per task with -capture-requests, or a campaign without capture | mail | ok | ~1500 |
+| 22:11 | Created ../../../../root/.claude/projects/-srv-dev-disk-by-label-opt-dev-automaticum/memory/client-sessions-start-their-own-batches.md | — | ~218 |
+| 22:11 | Session end: 1 writes across 1 files (client-sessions-start-their-own-batches.md) | 0 reads | ~234 tok |
+| 23:31 | Session end: 1 writes across 1 files (client-sessions-start-their-own-batches.md) | 0 reads | ~234 tok |
+| 23:32 | D106 recorded (export loop spans from guard cuts too, source field); 110 0.20 | docs/specs/decisions.md, 110 | ok | ~2000 |

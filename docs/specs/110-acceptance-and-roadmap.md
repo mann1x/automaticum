@@ -1,6 +1,6 @@
 # 110 — Acceptance and roadmap
 
-**Status:** draft 0.19, 2026-10-23. The milestone order in §3 was approved by the owner
+**Status:** draft 0.20, 2026-10-23. The milestone order in §3 was approved by the owner
 on 2026-10-12. Milestone 1 has been carried out: the store, the importer and
 the spike's measurements exist (080 §7.4, 100 §7), and the owner has decided
 the questions it raised (D46 to D51). Milestone 2 was planned and approved on
@@ -400,7 +400,15 @@ plugin's, the same for every host.
 - `automaticum export conversations --batch <id> [--run <id>] --out <dir>`
   hands out those files and that metadata; it does not rebuild turns.
   Loop spans (character offsets of the repeats, the second occurrence on)
-  come from the detector library (070) only, as agreed with omnimergekit.
+  come from the detector library (070) and, **decided by the owner
+  (2026-10-23, D106)**, from the SDK guard's cuts: one JSON line per span,
+  `{request, field, start, end, source}` with `source` `detector` or
+  `guard`. A guard span is in the response the guard cut (the capture's
+  response with `complete: false` that ends just before the guard's notice;
+  its reasoning length equals the notice's `verdict.chars`), from the second
+  of the trailing `verdict.cycles` repeats of `verdict.sample` to
+  `verdict.chars`. The runner's `guard_trip` note does not carry the
+  verdict; the SDK's notice in the event log does.
 - `manic_miner` runs are the held-out gate and are never exported as
   training data; the training pool is the multi-language suite (063) once
   it has tasks.
