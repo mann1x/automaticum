@@ -448,7 +448,7 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 	}
 	var tks []*task.Task
 	for _, name := range taskNames {
-		t, err := task.Find(filepath.Join(d.Repo, "tasks"), name)
+		t, err := task.Find(d.taskRoots(), name)
 		if err != nil {
 			return resp, http.StatusUnprocessableEntity, err
 		}
@@ -885,7 +885,7 @@ func (d *Daemon) handleDoctor(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusInternalServerError, "the arms cannot be read: %v", err)
 		return
 	}
-	tasks, err := task.LoadAll(filepath.Join(d.Repo, "tasks"))
+	tasks, err := task.LoadAll(d.taskRoots())
 	if err != nil {
 		fail(w, http.StatusInternalServerError, "the tasks cannot be read: %v", err)
 		return

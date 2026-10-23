@@ -93,6 +93,9 @@ type Daemon struct {
 	TokenFile string `toml:"token_file"`
 	// Repo is the checkout holding arms/, tasks/ and images/.
 	Repo string `toml:"repo"`
+	// PrivateTasks is a second tasks root outside the public repository
+	// (D105): <suite>/<task>/task.toml, every task private. Optional.
+	PrivateTasks string `toml:"private_tasks"`
 	// DockerSocket is the engine's socket; empty means the default.
 	DockerSocket string `toml:"docker_socket"`
 	// Notify says where a refusing or waiting gate is told to (050 §2).

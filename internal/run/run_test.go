@@ -202,7 +202,7 @@ func newWorld(t *testing.T) *world {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tk, err := task.Find("../../tasks", "demo/answer")
+	tk, err := task.Find(task.Roots{Public: "../../tasks"}, "demo/answer")
 	if err != nil {
 		t.Fatal(err)
 	}

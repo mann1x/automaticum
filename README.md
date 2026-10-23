@@ -151,7 +151,7 @@ Planned command shape (from [090](docs/specs/090-interfaces.md), subject to chan
 
 ```
 automaticum status
-automaticum run start --arm A --task T [-n 5] [--lane L]
+automaticum run start --arm A --task T [-n 5] [--lane L] [--capture-requests]
 automaticum run show <id>
 automaticum arm diff A B
 automaticum cell run --suite S --arm A --out DIR

@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-10-23 (revision 20).
+**Status:** current as of 2026-10-23 (revision 21).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -114,6 +114,7 @@ All dated 2026-10-12.
 | D102 | After the Gemma-4 loop batch, automaticum exports runs as conversations for omnimergekit's recovery trainer (`automaticum export conversations`): assistant turns rebuilt from their own responses, the provider recorded, split at compactions, loop spans from the detector library only; `manic_miner` runs are never training data (2026-10-23). | 110 §3.5 |
 | D103 | How much of the model's earlier reasoning goes back in the history is the arm's, as the plugin offers it: `thinking.reasoning_history` (`auto`, `all`, `last`, `none`) and `thinking.reasoning_inline`, both stated in every arm; the base states `auto` and `true`, the plugin's defaults, and the default must be `auto` in the SDK as in the plugin. The SDK's measurement under `auto` must work for opencoti and llama-server (asked of Cerebriline) (2026-10-23). | 030 §5.1, 040 |
 | D104 | The training traces of D102 are the SDK's own "Save model requests" capture (request bodies and raw response streams, the plugin's layout, written by core), opt-in per run, batch or campaign (off by default, not part of the arm's identity) and kept in the run record when on; `automaticum export conversations` hands those out with the run's metadata instead of rebuilding turns from logs (2026-10-23). | 110 §3.5 |
+| D105 | Training-pool tasks (the multi-language suite's and the converted terminal-bench ones, written by omnimergekit) live in a private tasks root outside the public repository, named in the untracked local configuration and read beside the repository's `tasks/`; each carries `private = true` and a canary string (060 §7) (2026-10-23). | 060 §7, 030 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked

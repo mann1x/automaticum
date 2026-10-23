@@ -73,7 +73,7 @@ func rig(t *testing.T, s *server) *Input {
 		t.Fatal(err)
 	}
 	arm.Model.Model = "m:1"
-	tk, err := task.Find("../../tasks", "demo/answer")
+	tk, err := task.Find(task.Roots{Public: "../../tasks"}, "demo/answer")
 	if err != nil {
 		t.Fatal(err)
 	}

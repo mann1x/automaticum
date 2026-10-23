@@ -56,7 +56,17 @@ func (p place) root() string {
 }
 
 func (p place) arms() string  { return filepath.Join(p.root(), "arms") }
-func (p place) tasks() string { return filepath.Join(p.root(), "tasks") }
+// tasks are the repository's tasks/ and the private root of the local
+// configuration, when it names one (D105).
+func (p place) tasks() task.Roots {
+	r := task.Roots{Public: filepath.Join(p.root(), "tasks")}
+	if *p.cfg != "" {
+		if l, err := config.LoadLocal(*p.cfg); err == nil {
+			r.Private = l.Daemon.PrivateTasks
+		}
+	}
+	return r
+}
 
 // parse parses flags wherever they stand among the arguments and returns the
 // arguments that are not flags.

@@ -15,7 +15,7 @@ import (
 const tasksRoot = "../../tasks"
 
 func TestLoadAll(t *testing.T) {
-	all, err := LoadAll(tasksRoot)
+	all, err := LoadAll(Roots{Public: tasksRoot})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,10 +43,10 @@ func TestLoadAll(t *testing.T) {
 	if got := mm.Files["seed/manic_miner.html"]; !strings.HasPrefix(got, "5b6559abbb62c4c4") {
 		t.Errorf("seed file changed: %s", got)
 	}
-	if tk, err := Find(tasksRoot, "manic_miner"); err != nil || tk.Name() != "custom/manic_miner" {
+	if tk, err := Find(Roots{Public: tasksRoot}, "manic_miner"); err != nil || tk.Name() != "custom/manic_miner" {
 		t.Errorf("Find: %v, %v", tk, err)
 	}
-	if _, err := Find(tasksRoot, "nope"); err == nil {
+	if _, err := Find(Roots{Public: tasksRoot}, "nope"); err == nil {
 		t.Error("Find accepted a task that does not exist")
 	}
 }
@@ -198,7 +198,7 @@ func pull(t *testing.T, e *Env, images ...string) {
 
 func TestVerifyDemo(t *testing.T) {
 	e := env(t)
-	tk, err := Find(tasksRoot, "demo/answer")
+	tk, err := Find(Roots{Public: tasksRoot}, "demo/answer")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,7 +247,7 @@ func TestVerifyDemo(t *testing.T) {
 
 func TestOracleTimeout(t *testing.T) {
 	e := env(t)
-	tk, err := Find(tasksRoot, "demo/answer")
+	tk, err := Find(Roots{Public: tasksRoot}, "demo/answer")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -269,7 +269,7 @@ func TestOracleTimeout(t *testing.T) {
 
 func TestManicMiner(t *testing.T) {
 	e := env(t)
-	tk, err := Find(tasksRoot, "custom/manic_miner")
+	tk, err := Find(Roots{Public: tasksRoot}, "custom/manic_miner")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -318,5 +318,50 @@ echo '{"ok":true,"error":null,"frames_run":400,"reached_playing":true,"game_logi
 	}
 	if r.Passed || len(r.Tampered) != 1 || r.Tampered[0] != "run_game" {
 		t.Errorf("a replaced oracle: %+v", r)
+	}
+}
+
+// The private root (D105) is read beside the repository's tasks: its tasks
+// must be private and carry a canary, and a task in both roots is refused.
+func TestPrivateRoot(t *testing.T) {
+	priv := t.TempDir()
+	// Each test task is the demo task, renamed and moved.
+	src, err := os.ReadFile(filepath.Join(tasksRoot, "demo", "answer", "task.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	write := func(suite, id, extra string) {
+		d := filepath.Join(priv, suite, id)
+		if err := os.CopyFS(d, os.DirFS(filepath.Join(tasksRoot, "demo", "answer"))); err != nil {
+			t.Fatal(err)
+		}
+		body := strings.Replace(strings.Replace(string(src), `id = "answer"`, `id = "`+id+`"`, 1), `suite = "demo"`, `suite = "`+suite+`"`, 1)
+		body = strings.Replace(body, "version = 1\n", "version = 1\n"+extra, 1)
+		if err := os.WriteFile(filepath.Join(d, "task.toml"), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	roots := Roots{Public: tasksRoot, Private: priv}
+	write("ml", "py-fix", "private = true\ncanary = \"canary-0123456789abcdef\"\n")
+	tk, err := Find(roots, "ml/py-fix")
+	if err != nil || !tk.Private || tk.Canary == "" {
+		t.Fatalf("a private task: %v %+v", err, tk)
+	}
+	if _, err := Find(roots, "custom/manic_miner"); err != nil {
+		t.Errorf("the repository's tasks are still read: %v", err)
+	}
+	write("ml", "go-fix", "")
+	if _, err := LoadAll(roots); err == nil || !strings.Contains(err.Error(), "private = true") {
+		t.Errorf("a task in the private root that does not say private: %v", err)
+	}
+	os.RemoveAll(filepath.Join(priv, "ml", "go-fix"))
+	write("ml", "rs-fix", "private = true\ncanary = \"short\"\n")
+	if _, err := LoadAll(roots); err == nil || !strings.Contains(err.Error(), "canary") {
+		t.Errorf("a private task with a short canary: %v", err)
+	}
+	os.RemoveAll(filepath.Join(priv, "ml", "rs-fix"))
+	write("custom", "manic_miner", "private = true\ncanary = \"canary-0123456789abcdef\"\n")
+	if _, err := LoadAll(roots); err == nil || !strings.Contains(err.Error(), "both") {
+		t.Errorf("a task in both roots: %v", err)
 	}
 }

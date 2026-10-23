@@ -987,3 +987,23 @@
 | 17:58 | Mail 1846 (owner via ollama: pause until 4.100.261, keep auto). Found the served Gemma-4 template reads reasoning/reasoning_content natively, gated by position (after last user msg) or preserve_thinking+tool_calls; probe's user-assistant-user shape misreads it as 'drops'. Sent 1848 | - | waiting on 4.100.261 | ~4k |
 | 18:30 | Owner: Gemma loop test restarts on SDK 4.100.262 (preserve_thinking), not .261; mails ack 1849, 1850 backup_models | - | waiting on .262 | ~2k |
 | 19:05 | SDK 4.100.262 provisioned (6ca86407deb5); Gemma arms on it (stop 1450426c58e5, shipped feae157037e0); opt-in request capture built: run start -capture-requests -> control file -> job.save_model_requests -> runner saveModelRequests -> model_requests blob; runner protocol 7 | daemon, run, runner, cmd, 110 | tests pass | ~25k |
+
+## Session: 2026-10-23 18:52
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 18:52
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:53 | Caliber doc sync: SDK 4.100.262 and stub arm in CLAUDE.md layout, capture bullet in runner-protocol rule, flag in README command shape | CLAUDE.md, .claude/rules/runner-protocol.md, README.md | updated | ~600 |
+
+## Session: 2026-10-23 18:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:28 | Deployed eaefa57 on blackswan-2 (SDK 4.100.262 reproduced offline, images); stub PASS with capture (model_requests 265 KiB); renders on 8261 OK; batch b20261023-172422-0edd50 started with -capture-requests; verified last/native/measured, preserve_thinking on wire, no <think>; mails to backup_models + ollama | - | running | ~12k |
+| 19:46 | Owner: skip the shipped arm, free gpu0 for training. Batch 0edd50 stopped, 001 aborted (4 reasoning_loop cuts in 11 turns); stop-only batch b20261023-174444-e19ff1 (10 runs, capture on) started; backup_models told | - | running | ~3k |
+| 20:30 | Mail 1857 answered (1858): owner D105 private tasks root; lane layers = base+typescript only; pool batch = shipped-style arm + -capture-requests + task [limits]; new engine -> new endpoint name | decisions.md | pending loader change | ~5k |
+| 20:45 | D105 built: task.toml private + canary; Roots{Public, Private}; local config private_tasks; daemon + CLI read both roots; TestPrivateRoot | internal/task, config, daemon, cmd, 060, example config | tests pass | ~12k |

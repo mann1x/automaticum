@@ -1,6 +1,6 @@
 # 060 — Tasks, oracles and the suite interface
 
-**Status:** draft 0.9, 2026-10-16.
+**Status:** draft 0.10, 2026-10-23.
 
 ## 1. Scope
 
@@ -125,3 +125,12 @@ interface.
 Tasks carry a canary string and a `private` flag. Export, the semantic-search
 embedder and the chat box (090 §7) must not send private task text to a cloud
 endpoint.
+
+**Decided by the owner (2026-10-23, D105):** private tasks live in a
+private tasks root outside the public repository: the daemon's local
+configuration names it (`private_tasks`), and it is read beside the
+repository's `tasks/`, in the same `<suite>/<task>/task.toml` layout. Every
+task there must say `private = true`; a private task needs a `canary` of 16
+characters or more; the same suite and id in both roots is refused. The
+training pool of omnimergekit's recovery (the multi-language suite's tasks
+and converted terminal-bench tasks) is the first such set.

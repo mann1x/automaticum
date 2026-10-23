@@ -38,6 +38,13 @@ type Task struct {
 	Fixtures      []Fixture         `toml:"fixture"`
 	// User is the scripted user (040 §6.2); nil for the default one.
 	User *User `toml:"user"`
+	// Private marks a task whose text must not leave the owner's hosts:
+	// not exported, not embedded or sent to a cloud endpoint (060 §7).
+	// Canary is a string that marks the task's text, so a model or a
+	// corpus that has seen it can be told. A private task needs one, and a
+	// task in the private root must be private (D105).
+	Private bool   `toml:"private"`
+	Canary  string `toml:"canary"`
 
 	// Dir is the task's directory. Files is every regular file under it
 	// with its sha256, and Hash is the hash of that list: the task's
@@ -146,9 +153,47 @@ func Load(dir string) (*Task, error) {
 	return &t, nil
 }
 
-// LoadAll loads every task under root (tasks/<suite>/<task>/task.toml),
-// sorted by suite and id.
-func LoadAll(root string) ([]*Task, error) {
+// Roots are the directories tasks are read from: the repository's tasks/
+// and, when the local configuration names one, the private root (D105),
+// whose every task must be private.
+type Roots struct {
+	Public  string
+	Private string
+}
+
+// LoadAll loads every task under the roots (<root>/<suite>/<task>/task.toml),
+// sorted by suite and id. The same suite and id in both roots is an error.
+func LoadAll(r Roots) ([]*Task, error) {
+	out, err := loadRoot(r.Public, false)
+	if err != nil || r.Private == "" {
+		return out, err
+	}
+	private, err := loadRoot(r.Private, true)
+	if err != nil {
+		return nil, err
+	}
+	seen := map[string]bool{}
+	for _, t := range out {
+		seen[t.Suite+"/"+t.ID] = true
+	}
+	for _, t := range private {
+		if seen[t.Suite+"/"+t.ID] {
+			return nil, fmt.Errorf("task: %s/%s is in both the repository and the private root", t.Suite, t.ID)
+		}
+	}
+	out = append(out, private...)
+	sort.Slice(out, func(i, j int) bool { return out[i].Suite+"/"+out[i].ID < out[j].Suite+"/"+out[j].ID })
+	return out, nil
+}
+
+func (r Roots) String() string {
+	if r.Private == "" {
+		return r.Public
+	}
+	return r.Public + " or " + r.Private
+}
+
+func loadRoot(root string, private bool) ([]*Task, error) {
 	paths, err := filepath.Glob(filepath.Join(root, "*", "*", "task.toml"))
 	if err != nil {
 		return nil, err
@@ -164,15 +209,18 @@ func LoadAll(root string) ([]*Task, error) {
 		if want := filepath.Join(t.Suite, t.ID); rel != want {
 			return nil, fmt.Errorf("task: %s declares %s; the directory must be %s", p, want, want)
 		}
+		if private && !t.Private {
+			return nil, fmt.Errorf("task: %s is in the private root and must say private = true", p)
+		}
 		out = append(out, t)
 	}
 	return out, nil
 }
 
-// Find loads the task with this id under root. The id may be "suite/task" or,
-// when it is unambiguous, just "task".
-func Find(root, id string) (*Task, error) {
-	all, err := LoadAll(root)
+// Find loads the task with this id under the roots. The id may be
+// "suite/task" or, when it is unambiguous, just "task".
+func Find(r Roots, id string) (*Task, error) {
+	all, err := LoadAll(r)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +232,7 @@ func Find(root, id string) (*Task, error) {
 	}
 	switch len(found) {
 	case 0:
-		return nil, fmt.Errorf("task: no task %q under %s", id, root)
+		return nil, fmt.Errorf("task: no task %q under %s", id, r)
 	case 1:
 		return found[0], nil
 	}
@@ -225,6 +273,9 @@ func (t *Task) validate() error {
 	}
 	if t.Limits.WallS < 0 || t.Limits.IdleS < 0 || t.Limits.OracleS < 0 {
 		return errors.New("limits must not be negative")
+	}
+	if t.Private && len(strings.TrimSpace(t.Canary)) < 16 {
+		return errors.New("a private task needs a canary string of 16 characters or more")
 	}
 	if t.User != nil {
 		problems := t.User.validate()

@@ -464,7 +464,7 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 		skip("the arm cannot be used: " + err.Error())
 		return false
 	}
-	tk, err := task.Find(filepath.Join(d.Repo, "tasks"), it.Task)
+	tk, err := task.Find(d.taskRoots(), it.Task)
 	if err != nil {
 		skip("the task cannot be used: " + err.Error())
 		return false
@@ -677,4 +677,14 @@ func (d *Daemon) notify(ctx context.Context, n Notification) {
 	if resp.StatusCode >= 300 {
 		d.Log.Error("the webhook refused the notification", "status", resp.StatusCode)
 	}
+}
+
+// taskRoots are the repository's tasks/ and the private root the local
+// configuration names, if any (D105).
+func (d *Daemon) taskRoots() task.Roots {
+	r := task.Roots{Public: filepath.Join(d.Repo, "tasks")}
+	if d.Local != nil {
+		r.Private = d.Local.Daemon.PrivateTasks
+	}
+	return r
 }
