@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-10-23 (revision 16).
+**Status:** current as of 2026-10-23 (revision 17).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -110,6 +110,7 @@ All dated 2026-10-12.
 | D98 | The loop test of Gemma-4 26B-A4B with omnimergekit (they serve, automaticum runs, on blackswan-2): thinking on, a context window of 256000, two guard arms (D99), 10 runs per arm, on one server (the BF16 file with Google's template and end token 106; the owner dropped the template comparison), a wall limit of 1 h and an idle limit of 15 min, SDK release 4.100.259 (D100) (2026-10-23). | 030 §5, 110 §3.4 |
 | D99 | An arm can end a run at a guard trip (the list is D100): the trip ends the run, and the run is `FAIL` with the guard in the reason, whatever the oracle says (it still runs, and its answer is kept): a guard is what signals a loop, and a stopped run does not go round again. The loop test's two arms are this stop and the guards as shipped (2026-10-23). | 030 §5.1, 040 §7.1, 020 §3 |
 | D100 | Which guard trips end a run is the arm's: `guards.stop_on` lists guards (`loop_detection`) or a guard and a phase (`nudge.non_convergence`), stated in every arm, empty for none; it replaces the true/false switch of D99. The Gemma-4 stop arm stops on the loop signals SDK 4.100.259 announces: `loop_detection` (from its first warning), `reasoning_loop` (every phase and cause), `tool_intent_overrun`, `nudge.non_convergence`, `nudge.silent_repetition`; the other nudges, the completion guards and struggle are counted only. The loop test runs on 4.100.259, the first release whose every guard announces its actions (2026-10-23). | 030 §5.1, 040 §7.1 |
+| D101 | The Gemma-4 loop arms speak to the opencoti server through the SDK's `opencoti` provider, not `openai-compatible`, with thinking on at effort `high` stated by the arm (the SDK sends it as `reasoning_budget_tokens`, half the output limit). That provider keeps the model's reasoning out of the history it sends back; the earlier runs, which re-sent it, are another arm (2026-10-23). | 030 §5.1 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked

@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-23T12:46:51.085Z
-> Files: 281 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-23T13:35:47.002Z
+> Files: 286 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -100,8 +100,8 @@
 - `stub-plan.toml` — The stub arm in plan mode, for the harness's own tests of the scripted (~52 tok)
 - `stub-sdk-4.100.251.toml` — The stub arm on SDK release 4.100.251: the same settings, another build of (~58 tok)
 - `stub-sdk-4.100.258.toml` — The stub arm on SDK release 4.100.258, for the harness's own tests of that build (~50 tok)
-- `stub-stop-sdk-4.100.258.toml` — The stub arm on 4.100.258 that stops on the reasoning-loop guard (D100) (~50 tok)
 - `stub-sdk-4.100.259.toml` — The stub arm on SDK release 4.100.259 (~50 tok)
+- `stub-stop-sdk-4.100.258.toml` — The stub arm on 4.100.258 that stops on the reasoning-loop guard (D100) (~50 tok)
 - `stub-stop-sdk-4.100.259.toml` — The stub arm on 4.100.259 that stops on the reasoning-loop guard (D100) (~50 tok)
 - `stub.toml` — An arm for the stub model server: used by the harness's own tests and for (~99 tok)
 
@@ -247,8 +247,8 @@
 - `openai_test.go` — TestOpenAIWire, TestOpenAIWireFromStub (~1191 tok)
 - `sample_test.go` — TestSample, TestDumpBlocks (~1010 tok)
 - `sampler.go` — Setting (43 fields) (~1398 tok)
-- `wire.go` — Request (108 fields) (~2712 tok)
-- `wirearm.go` — Deviation (99 fields) (~3645 tok)
+- `wire.go` — Struct: Request (~2610 tok)
+- `wirearm.go` — Struct: Deviation (~3483 tok)
 
 ## internal/legacyimport/
 

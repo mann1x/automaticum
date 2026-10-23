@@ -16,7 +16,7 @@ import (
 // WireArm is the detector that compares what was sent with the arm.
 const (
 	WireArm        = "wire_arm"
-	WireArmVersion = "2"
+	WireArmVersion = "3"
 )
 
 // The kinds of difference between the arm and the wire.
@@ -220,8 +220,14 @@ func CompareWire(arm *config.Arm, tag string, reqs []Request) []Deviation {
 		}
 		if e := arm.Thinking.Effort; e != "" {
 			raw, _ := json.Marshal(e)
+			// An OpenAI-compatible request carries the effort as a budget
+			// in tokens, which the SDK works out from the output limit.
+			asBudget := func(q *Request) bool {
+				b, ok := q.Options["think_budget_tokens"].(float64)
+				return q.OpenAI && ok && b > 0
+			}
 			add(served(Deviation{Kind: StatedNotSent, Field: "think", Arm: "thinking.effort", Stated: raw, Sent: first(agent, think)}),
-				func(q *Request) bool { v, _ := think(q); return v != e })
+				func(q *Request) bool { v, _ := think(q); return v != e && !asBudget(q) })
 		} else {
 			add(Deviation{Kind: StatedNotSent, Field: "think", Arm: "thinking.enabled", Stated: json.RawMessage("true"), Sent: first(agent, think)},
 				func(q *Request) bool { v, ok := think(q); return !ok || v == false })
@@ -246,7 +252,7 @@ func CompareWire(arm *config.Arm, tag string, reqs []Request) []Deviation {
 				return ok && string(b) == sent
 			})
 		}
-		for _, name := range []string{"think_budget", "think_budget_message"} {
+		for _, name := range []string{"think_budget", "think_budget_message", "think_budget_tokens"} {
 			name := name
 			add(Deviation{Kind: SentNotStated, Field: "options." + name, Sent: first(agent, option(name))}, func(q *Request) bool {
 				_, ok := q.Options[name]

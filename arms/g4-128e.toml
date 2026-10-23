@@ -1,34 +1,35 @@
 # The Gemma-4 26B-A4B loop test with omnimergekit (D98): what every arm of it
 # shares. Not runnable: it names no endpoint and no model.
 #
-# The owner's values of 2026-10-23: thinking on (left to the server, see
-# [thinking]), a window of 256000, a wall limit of 1 h and an idle limit of
-# 15 min, SDK release 4.100.259 (the first whose every guard announces its
-# actions). The sampler is the owner's, the one under which the model
-# loops: temperature 1.0, min_p 0, no repeat penalty (1 over 0 tokens), no
-# presence penalty; top_k 64 and top_p 0.95 as Gemma's own. The arm owns it,
-# so every request carries it and the wire shows it. (The first batches of
-# the day sent the owner's anti-loop sampler instead, passed on by
-# omnimergekit as his: those runs are another arm.) Guards and compaction
-# come from the base: all on. The two guard arms differ only in
-# guards.stop_on (D99, D100). One server: the BF16 file, end token 106,
-# Google's template (g4-128e-bf16-*).
+# The owner's values of 2026-10-23: the SDK's opencoti provider (the server
+# is opencoti, a llama-server; this provider keeps the model's reasoning out
+# of the history it sends back), thinking on at effort high, a window of
+# 256000, a wall limit of 1 h and an idle limit of 15 min, SDK release
+# 4.100.259 (the first whose every guard announces its actions). The sampler
+# is the owner's, the one under which the model loops: temperature 1.0,
+# min_p 0, no repeat penalty (1 over 0 tokens), no presence penalty; top_k 64
+# and top_p 0.95 as Gemma's own. The arm owns it, so every request carries it
+# and the wire shows it. (The first batches of the day sent the owner's
+# anti-loop sampler, then the OpenAI-compatible provider with thinking left
+# to the server: those runs are other arms.) Guards and compaction come from
+# the base: all on. The two guard arms differ only in guards.stop_on (D99,
+# D100). One server: the BF16 file, end token 106, Google's template
+# (g4-128e-bf16-*).
 template = true
 extends = "base"
 
 [model]
-provider = "openai-compatible"
+provider = "opencoti"
 context_window = 256000
 output_tokens = 0           # left to the SDK's rule
 
-# Thinking on, as the owner asked, is the server's: SDK 4.100.258 sends
-# nothing for "thinking on" to an OpenAI-compatible server (it sends
-# reasoning_budget_tokens only with an effort level, which the owner did not
-# name), and llama-server turns Gemma-4's thinking on in its template
-# settings. omnimergekit starts every server of this test with thinking on;
-# each run shows it in its thinking.blocks.
+# Thinking on at effort high, as the owner asked. The SDK sends the effort
+# to opencoti as reasoning_budget_tokens, half the output limit; the server
+# also turns Gemma-4's thinking on in its template settings.
 [thinking]
-owner = "tag"
+owner = "arm"
+enabled = true
+effort = "high"
 
 [sampler]
 owner = "arm"

@@ -207,6 +207,14 @@ func openAIRequest(q *Request, l *wireLine) {
 	if raw, ok := body["reasoning_effort"]; ok {
 		body["think"] = raw
 	}
+	// The SDK sends an effort to llama-server and opencoti as a budget in
+	// tokens, a share of the output limit (bug-029).
+	if raw, ok := body["reasoning_budget_tokens"]; ok {
+		var v any
+		json.Unmarshal(raw, &v)
+		q.Options["think_budget_tokens"] = v
+		delete(body, "reasoning_budget_tokens")
+	}
 	delete(body, "messages")
 	delete(body, "tools")
 	q.Body = body

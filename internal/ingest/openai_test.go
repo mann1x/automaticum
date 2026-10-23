@@ -87,3 +87,32 @@ func TestOpenAIWireFromStub(t *testing.T) {
 		t.Errorf("answer: %+v", q)
 	}
 }
+
+// The SDK sends a thinking effort to llama-server and opencoti as
+// reasoning_budget_tokens, a share of the output limit (bug-029): that is
+// the arm's effort sent, and the harness speaking where the tag owns
+// thinking.
+func TestOpenAIThinkingBudget(t *testing.T) {
+	req := `{"model":"g","messages":[],"tools":[{"type":"function"}],"max_tokens":96000,"reasoning_budget_tokens":48000}`
+	b, _ := json.Marshal(map[string]any{"seq": 1, "url": "http://h:8080/v1/chat/completions", "status": 200, "request_body": req,
+		"response_body": `{"choices":[{"message":{"content":"ok"},"finish_reason":"stop"}]}`})
+	reqs, err := ReadWire(strings.NewReader(string(b) + "\n"))
+	if err != nil || len(reqs) != 1 {
+		t.Fatalf("%v %+v", err, reqs)
+	}
+	if reqs[0].Options["think_budget_tokens"] != float64(48000) {
+		t.Fatalf("budget: %+v", reqs[0].Options)
+	}
+	if _, has := reqs[0].Body["reasoning_budget_tokens"]; has {
+		t.Error("reasoning_budget_tokens stayed in the body as well as in the options")
+	}
+	high := arm(t, `{"model":{"model":"g"},"sampler":{"owner":"tag"},"thinking":{"owner":"arm","enabled":true,"effort":"high"}}`)
+	if devs := CompareWire(high, "", reqs); len(devs) != 0 {
+		t.Errorf("an effort sent as a budget: %+v", devs)
+	}
+	tag := arm(t, `{"model":{"model":"g"},"sampler":{"owner":"tag"},"thinking":{"owner":"tag"}}`)
+	devs := CompareWire(tag, "", reqs)
+	if len(devs) != 1 || devs[0].Kind != SentNotStated || devs[0].Field != "options.think_budget_tokens" {
+		t.Errorf("a budget the tag owns: %+v", devs)
+	}
+}

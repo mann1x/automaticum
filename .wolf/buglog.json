@@ -486,18 +486,18 @@
       "error_message": "wire_arm: stated, not sent: thinking.effort = \"high\", sent think as nothing (OpenAI-compatible endpoint; the request carried reasoning_budget_tokens 48000)",
       "file": "internal/ingest/wirearm.go",
       "root_cause": "The wire_arm thinking check reads the Ollama 'think' field only; SDK 4.100.258's openai-compatible provider sends an effort as reasoning_budget_tokens and sends nothing for thinking on without an effort",
-      "fix": "OPEN: not fixed yet. The Gemma arms leave thinking to the server (owner tag), so they are not affected; the check must learn the OpenAI-side fields before an OpenAI arm states thinking",
+      "fix": "internal/ingest/wire.go maps an OpenAI request's reasoning_budget_tokens to options.think_budget_tokens; wire_arm (version 3) takes a positive budget on an OpenAI request as the arm's effort sent, and flags it as sent, not stated, when the tag owns thinking. Test TestOpenAIThinkingBudget.",
       "tags": [
         "wire_arm",
         "openai-compatible",
         "thinking",
-        "open"
+        "fixed"
       ],
       "related_bugs": [
         "bug-019"
       ],
       "occurrences": 1,
-      "last_seen": "2026-10-23T12:54:39+02:00"
+      "last_seen": "2026-10-23T15:38:00+02:00"
     },
     {
       "id": "bug-030",

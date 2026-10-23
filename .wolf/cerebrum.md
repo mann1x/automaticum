@@ -56,6 +56,7 @@
 - Owner reference: the D59 tag takes about 12 minutes on manic_miner in VS Code.
 
 ## Do-Not-Repeat
+- 2026-10-23: an endpoint that is an opencoti (or xollama) server gets the SDK provider of that name, never openai-compatible: the providers differ in what they send back (reasoning history, pools, sessions). Read the SDK bundle's provider list before writing an arm's model.provider.
 
 - [2026-10-23] Never take a sampler from another session's account of "the owner's config": omnimergekit's "8244" values (temp 0.7, rep 1.13/72, pres 0.25) were the owner's ANTI-loop sampler, so the Gemma loop test measured the fix. Ask the owner for the exact sampler of the condition under test, and show it before the first run. Owner's loop sampler: temp 1.0, min_p 0, rep 1 / last 0, pres 0.
 
@@ -91,3 +92,4 @@ Full list with ids is in docs/specs/decisions.md. Keep this log in step.
 - 2026-10-16 D90-D97: M5 focuses on BFCL (SWE seeded 50 from Lite, env-only image cache). BFCL and SWE run on blackswan-2 with its own daemon and its data root on the data disk, using both GPUs when free and never unloading others. SWE disk floor is 200 GB. automaticum never launches model servers.
 - 2026-10-23 D98-D99: Gemma-4 26B-A4B loop test with omnimergekit on blackswan-2: thinking on, ctx 256000, 10 runs per arm, 1h wall / 15m idle, SDK 4.100.258. Two arms: guards.stop_at_first_trip = true (first guard trip ends the run as FAIL, oracle still runs and is in the reason) vs guards as shipped. Every run counts guard_trips.<guard>.<phase>.
 - 2026-10-23 D100: which guard trips stop a run is ARM config (guards.stop_on, guard or guard.phase; owner: "this is obviously a configuration for the runs"), not runner code. Gemma stop arm: loop_detection, reasoning_loop, tool_intent_overrun, nudge.non_convergence, nudge.silent_repetition. Loop test moved to SDK 4.100.259 (every guard announces).
+- 2026-10-23 D101: Gemma loop arms use the SDK `opencoti` provider (owner: "why openai-compatible? cerebriline has opencoti provider") with thinking effort high on the arm. The opencoti provider's reasoning-history scope is `none` (openai-compatible is `all`), so it changes whether reasoning is re-sent. Check the SDK's provider list before mapping a server to openai-compatible.

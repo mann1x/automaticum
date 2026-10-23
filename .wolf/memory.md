@@ -849,3 +849,22 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 15:18 | Owner: the arm's sampler (from omnimergekit's 8244 account) was his ANTI-loop sampler; set the loop sampler temp 1.0, min_p 0, rep 1/last 0, pres 0 (top_k 64, top_p .95) in g4-128e; .259 batch stopped, 001 aborted | arms/g4-128e.toml | done | ~4k |
+
+## Session: 2026-10-23 15:18
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 15:18
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 15:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:25 | Gemma loop batch b20261023-131940-f76393 restarted on the owner's loop sampler; backup_models mailed (1825); run 001 at 5 requests, reasoning repeating | arms/g4-128e.toml | running | ~3k |
+| 15:35 | Edited internal/ingest/wire.go | expanded (+8 lines) | ~99 |
+| 15:35 | Edited internal/ingest/wirearm.go | expanded (+6 lines) | ~144 |
+| 15:35 | Edited internal/ingest/wirearm.go | inline fix | ~26 |
