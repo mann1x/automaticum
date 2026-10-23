@@ -5,7 +5,9 @@
 # is opencoti, a llama-server; this provider keeps the model's reasoning out
 # of the history it sends back), thinking on at effort high, a window of
 # 256000, a wall limit of 1 h and an idle limit of 15 min, SDK release
-# 4.100.259 (the first whose every guard announces its actions). The sampler
+# 4.100.260 (every guard announces its actions since 4.100.259; from
+# 4.100.260 "auto" prior reasoning is measured on opencoti, where it
+# resolves to the last block, D103). The sampler
 # is the owner's, the one under which the model loops: temperature 1.0,
 # min_p 0, no repeat penalty (1 over 0 tokens), no presence penalty; top_k 64
 # and top_p 0.95 as Gemma's own. The arm owns it, so every request carries it
@@ -47,4 +49,4 @@ wall_s = 3600
 idle_s = 900
 
 [harness]
-sdk_release = "4.100.259"
+sdk_release = "4.100.260"

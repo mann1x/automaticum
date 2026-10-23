@@ -924,3 +924,20 @@
 |------|--------|---------|---------|--------|
 | 16:33 | Owner: Gemma loop test waits for the SDK release with the reasoning-history probe fix; auto must resolve to 'last' on opencoti. Batch c34c78 stopped (run 001 finishes). Mails 1835 (ollama), 1836 (backup_models). Deploy 50af8e4 (protocol 6) when the lane is idle | - | waiting | ~2k |
 | 16:41 | Guard metrics split by cause (guard_trips/guard_stop.<guard>.<phase>.<cause>), analysis version 6; fixed nil-map panic in Events.Read for the detect view | internal/ingest/events.go, analyse.go, ingest_test.go, 070 | tests pass | ~8k |
+
+## Session: 2026-10-23 16:36
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 16:36
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 16:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:07 | Edited runner/session.mjs | added 1 condition(s) | ~140 |
+| 17:12 | SDK 4.100.260 provisioned locally (bundle 1e5270d503c8); Gemma arms on 4.100.260 (stop e376f21efb3d, shipped 519de2a571d1); stub-sdk-4.100.260; runner checks the reported reasoningHistory setting against the arm | runner/sdk/4.100.260, arms/g4-128e.toml, arms/stub-sdk-4.100.260.toml, runner/session.mjs | tests pass | ~10k |

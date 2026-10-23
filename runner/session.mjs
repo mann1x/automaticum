@@ -192,6 +192,14 @@ export function compareResolved(job, config, resolved, { wroteGlobalSettings = f
 		out.push(`the sampler is owned by the model tag, but the session has ${show(sampling)}`);
 	}
 
+	// How much earlier reasoning goes back (D103), where the SDK reports it
+	// (4.100.260 on): the setting must be the arm's. What "auto" resolved
+	// to is the record's, in this note, and is not compared.
+	const history = resolved.reasoningHistory;
+	if (history && typeof history === "object") {
+		differ("thinking.reasoning_history", arm.thinking.reasoning_history ?? "auto", history.setting);
+	}
+
 	const session = resolved.session ?? {};
 	for (const key of READ_BACK) differ(`session ${key}`, config[key], session[key]);
 	return out;

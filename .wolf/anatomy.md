@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-23T13:58:33.017Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-23T15:07:39.003Z
 > Files: 289 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
@@ -106,6 +106,7 @@
 - `stub-sdk-4.100.259.toml` — The stub arm on SDK release 4.100.259 (~50 tok)
 - `stub-stop-sdk-4.100.258.toml` — The stub arm on 4.100.258 that stops on the reasoning-loop guard (D100) (~50 tok)
 - `stub-stop-sdk-4.100.259.toml` — The stub arm on 4.100.259 that stops on the reasoning-loop guard (D100) (~50 tok)
+- `stub-sdk-4.100.260.toml` — The stub arm on SDK release 4.100.260 (~50 tok)
 - `stub.toml` — An arm for the stub model server: used by the harness's own tests and for (~99 tok)
 
 ## campaigns/
@@ -353,7 +354,7 @@
 - `plan.mjs` — The extension's switch_to_act_mode tool, ported from Cline 4.100.250 and (~780 tok)
 - `PROTOCOL.md` — The runner: protocol 3 (~1819 tok)
 - `runner.mjs` — The runner: one agent session for one run, inside the lane's container. (~5173 tok)
-- `session.mjs` — unsupported lists what an arm asks for that this runner cannot do. (~2618 tok)
+- `session.mjs` — unsupported lists what an arm asks for that this runner cannot do. (~2724 tok)
 - `user.mjs` — The scripted user (040 §6.2): the task's rules, played against the (~1979 tok)
 - `wire.mjs` — createWire returns a fetch that appends one JSON line per request to (~1642 tok)
 
@@ -380,6 +381,12 @@
 - `package-lock.json` — npm lock file (~52700 tok)
 - `package.json` — Node.js package manifest (~64 tok)
 - `sdk.toml` — SDK release 4.100.259, from the registry, pinned bundle 1c7c914f07c5 (~70 tok)
+
+## runner/sdk/4.100.260/
+
+- `package.json` — The SDK bundle of build 4.100.260 (~60 tok)
+- `package-lock.json` — Lockfile for 4.100.260, made in the pinned node image (~46000 tok)
+- `sdk.toml` — SDK release 4.100.260, from the registry, pinned bundle 1e5270d503c8: measured auto prior reasoning (~90 tok)
 
 ## runner/test/
 

@@ -162,3 +162,16 @@ test("how much earlier reasoning goes back is the arm's, in the provider configu
 	const tag = build(arm).config.providerConfig;
 	assert.deepEqual(tag, { providerId: arm.model.provider, modelId: arm.model.model, reasoningHistory: "last", reasoningInline: false });
 });
+
+test("the session's reported prior-reasoning setting must be the arm's (4.100.260 on)", () => {
+	const arm = stub();
+	const { config } = build(arm);
+	const job = jobOf(arm);
+	const measured = { setting: "auto", scope: "last", decidedBy: "measured", channel: "inline", inline: true };
+	assert.deepEqual(compareResolved(job, config, reportOf(config, { reasoningHistory: measured })), []);
+	// An older SDK reports nothing: nothing to compare.
+	assert.deepEqual(compareResolved(job, config, reportOf(config)), []);
+	const found = compareResolved(job, config, reportOf(config, { reasoningHistory: { ...measured, setting: "all" } }));
+	assert.equal(found.length, 1);
+	assert.match(found[0], /thinking\.reasoning_history/);
+});

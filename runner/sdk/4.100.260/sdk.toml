@@ -1,0 +1,8 @@
+# SDK release 4.100.260, from the registry: "auto" prior reasoning is
+# measured on opencoti and llama-server (the template probe goes to the
+# server root) and the session reports what it resolved to
+# (ResolvedSessionConfig.reasoningHistory, D103); defaults brought into
+# line with the plugin's.
+version = "4.100.260"
+source = "registry"
+bundle_sha256 = "1e5270d503c8d09b7f713477a16bb82fcef278ad525d586f97d88dfd469d29ff"
