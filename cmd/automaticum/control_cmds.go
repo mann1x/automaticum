@@ -197,3 +197,42 @@ func batchShow(ctx context.Context, args []string) error {
 	}
 	return nil
 }
+
+// batchLimits sets a batch's own limits for its queued runs (D107).
+func batchLimits(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("batch limits", flag.ExitOnError)
+	_, dial := addClient(fs)
+	limits := addLimits(fs)
+	rest := parse(fs, args)
+	o := limits()
+	if len(rest) != 1 || o == nil {
+		return fmt.Errorf("usage: automaticum batch limits [--wall-s S] [--idle-s S] <batch>")
+	}
+	c, err := dial()
+	if err != nil {
+		return err
+	}
+	var out daemon.BatchControl
+	if err := c.do(ctx, "POST", "/v1/batches/"+url.PathEscape(rest[0])+"/limits", o, &out); err != nil {
+		return err
+	}
+	if c.json {
+		return printJSON(out)
+	}
+	var set []string
+	if l := out.Limits; l != nil && l.WallS != nil {
+		set = append(set, "wall "+human.Seconds(float64(*l.WallS)))
+	}
+	if l := out.Limits; l != nil && l.IdleS != nil {
+		if *l.IdleS == 0 {
+			set = append(set, "no idle limit")
+		} else {
+			set = append(set, "idle "+human.Seconds(float64(*l.IdleS)))
+		}
+	}
+	fmt.Printf("%s: %s for its %d queued runs, in place of the arm's and the task's\n", out.Batch, strings.Join(set, ", "), len(out.Queued))
+	if out.InFlight != "" {
+		fmt.Printf("%s: %s\n", out.InFlight, out.Action)
+	}
+	return nil
+}

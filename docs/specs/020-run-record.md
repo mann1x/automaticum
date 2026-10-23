@@ -1,6 +1,6 @@
 # 020 — The run record, verdicts and the basis
 
-**Status:** draft 0.12, 2026-10-23.
+**Status:** draft 0.13, 2026-10-24.
 
 Nothing in this file is optional. Each item is here because its absence
 invalidated or blinded a real campaign. A value is recorded **as probed or as
@@ -29,7 +29,10 @@ sent, never as configured**.
   version or commit, image digest).
 - **Host facts:** GPU, driver, power cap, free VRAM at start.
 - **Limits in force:** wall time, idle time, requests, tokens, steps, and who
-  set each (arm, task, external harness).
+  set each (arm, task, batch, external harness). A batch's own limit (D107)
+  replaces the arm's and the task's and may be longer than both; the basis's
+  "agent settings" fact names it, so its runs never pool unseen with runs
+  under the arm's or the task's limit.
 
 ### 1.1 Where and on what the model ran
 
@@ -207,7 +210,7 @@ where they come from:
 | GPU | the GPU declared in the configuration, and the share of the model on it |
 | GPU driver and power | not recorded: needs agent mode on the endpoint's host |
 | harness build | SDK release and package hash, runner protocol, lane image, automaticum version |
-| agent settings | the hash of the arm's agent, guards, compaction, limits and protocol |
+| agent settings | the hash of the arm's agent, guards, compaction, limits and protocol; and a batch's own wall or idle limit, when one replaced the arm's and the task's (D107) |
 | task | suite, task, version and the hash of its files |
 | scorer | the oracle and its image |
 | detectors | the analysis version a run was analysed with (metric `analysis.version`), and the detector versions it means, whether they found anything or not |

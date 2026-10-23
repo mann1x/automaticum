@@ -31,7 +31,7 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   lane ls                       the lanes of this installation
   endpoint ls                   the endpoints of this installation
   status                        lanes, queue, what is running
-  run start --arm A --task T    queue runs [-n 5] [--lane L] [--dry-run]
+  run start --arm A --task T    queue runs [--task T2 ...] [--suite S ...] [-n 5] [--lane L] [--dry-run] [--wall-s S] [--idle-s S]
   run ls                        queued, running and finished runs
   run show <run>                one run's record
   run tail <run>                what a run in flight prints, as it arrives
@@ -47,6 +47,7 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   batch resume <batch>          let a paused batch go on
   batch stop <batch>            take the batch's queued runs off the queue; the run in flight finishes [--abort]
   batch retry <batch>           queue again every run of the batch that ended SKIPPED, ABORTED or INVALID [--dry-run]
+  batch limits <batch>          the batch's own wall and idle limits for its queued runs, in place of the arm's and the task's [--wall-s S] [--idle-s S]
   run invalidate <run>          mark a finished run INVALID, --reason "..."
   run identify <run>            add where and on what a run ran to its record, marked as added later
   logs <run>                    a run's raw material [--events|--wire|--runner|--oracle]
@@ -119,6 +120,7 @@ func main() {
 		"batch resume":    batchControl("resume"),
 		"batch stop":      batchControl("stop"),
 		"batch retry":     retry("batch"),
+		"batch limits":    batchLimits,
 		"run identify":    runPost("identify", "where and on what it ran is now in the record, marked as added later"),
 		"legacy import":   legacyImport,
 		"store check":     storeCheck,

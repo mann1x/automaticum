@@ -37,12 +37,15 @@ type control struct {
 	// Capture names the batches whose runs save every model request and
 	// response the SDK sends and reads (D104): opt-in, off by default.
 	Capture map[string]bool `json:"capture,omitempty"`
+	// Limits are the batches' own limits (D107), in place of the arm's and
+	// the task's, for the runs that start after they are set.
+	Limits map[string]*run.Override `json:"limits,omitempty"`
 }
 
 // loadControl reads the control file once. A missing file is an empty one.
 // It is called with d.mu held.
 func (d *Daemon) loadControl() {
-	d.ctl = control{Drained: map[string]time.Time{}, Held: map[string]time.Time{}, Retries: map[string]string{}, Canary: map[string]*CanaryRecord{}, Campaigns: map[string]*CampaignState{}, Cells: map[string]*CellSpec{}, Capture: map[string]bool{}}
+	d.ctl = control{Drained: map[string]time.Time{}, Held: map[string]time.Time{}, Retries: map[string]string{}, Canary: map[string]*CanaryRecord{}, Campaigns: map[string]*CampaignState{}, Cells: map[string]*CellSpec{}, Capture: map[string]bool{}, Limits: map[string]*run.Override{}}
 	if d.ControlFile == "" {
 		return
 	}
@@ -76,6 +79,9 @@ func (d *Daemon) loadControl() {
 	}
 	if d.ctl.Capture == nil {
 		d.ctl.Capture = map[string]bool{}
+	}
+	if d.ctl.Limits == nil {
+		d.ctl.Limits = map[string]*run.Override{}
 	}
 	if d.ctl.Cells == nil {
 		d.ctl.Cells = map[string]*CellSpec{}
@@ -170,7 +176,7 @@ func (d *Daemon) handleLane(drain bool) http.HandlerFunc {
 // BatchControl is the answer to pausing, resuming or stopping a batch.
 type BatchControl struct {
 	Batch string `json:"batch"`
-	State string `json:"state"` // paused, resumed, stopped
+	State string `json:"state"` // paused, resumed, stopped, limits set
 	// Queued are the batch's runs still waiting; Stopped those taken off
 	// the queue.
 	Queued  []string `json:"queued,omitempty"`
@@ -178,6 +184,8 @@ type BatchControl struct {
 	// InFlight is the batch's run in flight and what was done to it.
 	InFlight string `json:"in_flight,omitempty"`
 	Action   string `json:"action,omitempty"`
+	// Limits are the batch's own limits after `batch limits`.
+	Limits *run.Override `json:"limits,omitempty"`
 }
 
 // batchFlight is the batch's run in flight, if it has one.
@@ -255,6 +263,64 @@ func (d *Daemon) handleBatchPause(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d.Log.Info("batch paused", "batch", batch, "queued", len(queued), "in_flight", out.InFlight)
+	reply(w, http.StatusAccepted, out)
+}
+
+// handleBatchLimits sets a batch's own limits (D107) for its runs that have
+// not started; the run in flight keeps the limits it started with. A field
+// left out keeps what was set before.
+func (d *Daemon) handleBatchLimits(w http.ResponseWriter, r *http.Request) {
+	batch := r.PathValue("batch")
+	var req run.Override
+	dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		fail(w, http.StatusBadRequest, "the request is not understood: %v", err)
+		return
+	}
+	if err := req.Check(); err != nil {
+		fail(w, http.StatusBadRequest, "%v", err)
+		return
+	}
+	if req.Empty() {
+		fail(w, http.StatusBadRequest, "give a wall limit, an idle limit or both")
+		return
+	}
+	f := d.batchFlight(batch)
+	queued, err := d.batchQueued(r, batch, f)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, "%v", err)
+		return
+	}
+	if len(queued) == 0 {
+		fail(w, http.StatusNotFound, "batch %s has no queued run to set limits for", batch)
+		return
+	}
+	d.mu.Lock()
+	o := d.ctl.Limits[batch]
+	if o == nil {
+		o = &run.Override{}
+	}
+	merged := *o
+	if req.WallS != nil {
+		merged.WallS = req.WallS
+	}
+	if req.IdleS != nil {
+		merged.IdleS = req.IdleS
+	}
+	d.ctl.Limits[batch] = &merged
+	err = d.saveControl()
+	d.mu.Unlock()
+	if err != nil {
+		fail(w, http.StatusInternalServerError, "the control file: %v", err)
+		return
+	}
+	out := BatchControl{Batch: batch, State: "limits set", Queued: ids(queued), Limits: &merged}
+	if f != nil {
+		out.InFlight = f.runID
+		out.Action = "keeps the limits it started with"
+	}
+	d.Log.Info("batch limits set", "batch", batch, "queued", len(queued))
 	reply(w, http.StatusAccepted, out)
 }
 

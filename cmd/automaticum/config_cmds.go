@@ -55,7 +55,8 @@ func (p place) root() string {
 	return "."
 }
 
-func (p place) arms() string  { return filepath.Join(p.root(), "arms") }
+func (p place) arms() string { return filepath.Join(p.root(), "arms") }
+
 // tasks are the repository's tasks/ and the private root of the local
 // configuration, when it names one (D105).
 func (p place) tasks() task.Roots {

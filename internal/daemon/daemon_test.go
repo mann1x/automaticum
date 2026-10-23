@@ -905,6 +905,60 @@ func TestCaptureRequests(t *testing.T) {
 	}
 }
 
+// A batch's own limits (D107) reach its runs; `batch limits` changes them
+// for the queued runs only, merged with what was set, and a restarted
+// daemon still knows them.
+func TestBatchLimits(t *testing.T) {
+	g := newRig(t, false)
+	g.d.ControlFile = filepath.Join(t.TempDir(), "control.json")
+	hold := make(chan struct{})
+	g.runner.hold, g.runner.started = hold, make(chan string, 4)
+	go func() { g.d.Serve(g.ctx()); close(g.served) }()
+	wall, idle := 5400, 0
+	if code := g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Limits: &run.Override{WallS: &[]int{-1}[0]}}, nil); code != 400 {
+		t.Errorf("a negative wall limit: %d", code)
+	}
+	var resp StartResponse
+	if code := g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Count: 2, Limits: &run.Override{WallS: &wall}}, &resp); code != 202 {
+		t.Fatalf("start: %d", code)
+	}
+	first, second := resp.RunIDs[0], resp.RunIDs[1]
+	<-g.runner.started
+	var bc BatchControl
+	if code := g.call("POST", "/v1/batches/"+resp.Batch+"/limits", run.Override{IdleS: &idle}, &bc); code != 202 || bc.InFlight != first || len(bc.Queued) != 1 {
+		t.Fatalf("limits: %d %+v", code, bc)
+	}
+	if bc.Limits == nil || bc.Limits.WallS == nil || *bc.Limits.WallS != wall || bc.Limits.IdleS == nil || *bc.Limits.IdleS != 0 {
+		t.Errorf("merged limits %+v", bc.Limits)
+	}
+	close(hold)
+	g.waitFinished(first)
+	g.waitFinished(second)
+	g.runner.mu.Lock()
+	for _, r := range g.runner.reqs {
+		l := r.Limits
+		switch r.ID {
+		case first:
+			if l == nil || l.WallS == nil || *l.WallS != wall || l.IdleS != nil {
+				t.Errorf("the run in flight has %+v", l)
+			}
+		case second:
+			if l == nil || l.WallS == nil || *l.WallS != wall || l.IdleS == nil || *l.IdleS != 0 {
+				t.Errorf("the queued run has %+v", l)
+			}
+		}
+	}
+	g.runner.mu.Unlock()
+	if code := g.call("POST", "/v1/batches/"+resp.Batch+"/limits", run.Override{IdleS: &idle}, nil); code != 404 {
+		t.Errorf("limits for a batch with nothing queued: %d", code)
+	}
+	again := &Daemon{Local: g.d.Local, ControlFile: g.d.ControlFile}
+	again.init()
+	if l := again.ctl.Limits[resp.Batch]; l == nil || l.WallS == nil || *l.WallS != wall {
+		t.Errorf("a restarted daemon reads %+v", again.ctl.Limits)
+	}
+}
+
 // A drained lane finishes its run in flight and starts nothing else until
 // it is resumed, and a restarted daemon still knows it is drained.
 func TestLaneDrain(t *testing.T) {
@@ -1474,5 +1528,43 @@ func TestDropQuietUser(t *testing.T) {
 	}
 	if _, ok := groups[0].values["guard_trips.reasoning_loop.cut"]; !ok {
 		t.Error("a guard trip that happened was dropped")
+	}
+}
+
+// A batch's own limits (D107) make another basis; limits from the arm or
+// the task do not change the fact, so older runs keep their basis.
+func TestBasisBatchLimits(t *testing.T) {
+	arm := json.RawMessage(`{"name":"a","agent":{"mode":"act"},"limits":{"wall_s":3600,"idle_s":900}}`)
+	fact := func(prov string) string {
+		return basisOfRun(&store.Run{ID: "r", Arm: arm, Provenance: json.RawMessage(prov)}, nil)["agent settings"]
+	}
+	task := fact(`{"limits":{"wall":{"seconds":1500,"owner":"task"},"idle":{"seconds":600,"owner":"task"}}}`)
+	none := fact(`{}`)
+	batch := fact(`{"limits":{"wall":{"seconds":3000,"owner":"batch"},"idle":{"seconds":600,"owner":"task"}}}`)
+	if task != none {
+		t.Errorf("limits from the task changed the fact: %q against %q", task, none)
+	}
+	if batch == task || !strings.Contains(batch, "wall limit 50m 00s set by the batch") {
+		t.Errorf("a batch's wall limit: %q", batch)
+	}
+}
+
+// A batch may take whole suites: every task of each, once, each with its
+// own lane image.
+func TestStartSuites(t *testing.T) {
+	g := newRig(t, false)
+	var resp StartResponse
+	req := StartRequest{Arm: "stub", Tasks: []string{"train-sh/sh_logtriage"}, Suites: []string{"train-sh"}, Count: 2, DryRun: true}
+	if code := g.call("POST", "/v1/runs", req, &resp); code != 200 || len(resp.RunIDs) != 8 || len(resp.Images) != 4 || resp.Task != "" || resp.Image != "" {
+		t.Fatalf("start: %d %+v", code, resp)
+	}
+	if resp.Tasks[0] != "train-sh/sh_logtriage" || resp.Tasks[4] != "train-sh/sh_logtriage" {
+		t.Errorf("order: %v", resp.Tasks)
+	}
+	if img := resp.Images["train-sh/sh_user_audit"]; img != LaneImage([]string{"python"}) {
+		t.Errorf("image: %q", img)
+	}
+	if code := g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Suites: []string{"no-such"}, DryRun: true}, nil); code != 422 {
+		t.Errorf("an unknown suite: %d", code)
 	}
 }

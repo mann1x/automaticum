@@ -568,6 +568,25 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-23T21:40:35+02:00"
+    },
+    {
+      "id": "bug-034",
+      "timestamp": "2026-10-24T00:03:15+02:00",
+      "error_message": "no way to override a task's wall limit: the arm can only lower it (backup_models: TIMEOUT retries at 50 min impossible); run start takes one task only",
+      "file": "internal/run/run.go",
+      "root_cause": "run.go took lower(arm, task) for wall and idle with no batch-level override; the CLI's -task was a single string though StartRequest.Tasks existed",
+      "fix": "run.Override (Request.Limits) replaces both, owner \"batch\"; StartRequest.Limits, control.Limits, POST /v1/batches/{b}/limits, run start --wall-s/--idle-s, batch limits; campaign wall_s/idle_s/suites/capture_requests; basis names a batch limit; --task repeatable, --suite, StartRequest.Suites, StartResponse.Images. Tests TestBatchLimits, TestBatchLimitsOverride, TestBasisBatchLimits, TestStartSuites, TestLoadCampaign",
+      "tags": [
+        "limits",
+        "wall",
+        "batch",
+        "cli",
+        "design-flaw",
+        "D107"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T00:03:15+02:00"
     }
   ]
 }

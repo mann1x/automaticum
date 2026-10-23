@@ -60,6 +60,10 @@
 - Owner reference: the D59 tag takes about 12 minutes on manic_miner in VS Code.
 
 ## Do-Not-Repeat
+
+- (2026-10-24) Do not dismiss a gap you notice ("the API takes several tasks but the CLI only one; I'll leave it") as out of scope: the owner treats such gaps as design flaws to fix. Name it and fix it, or say you will after the current task.
+
+- (2026-10-23) The private-string gate must pass file names NUL-separated (`git ls-files -z | xargs -0 grep -IlniE ...`): tasks/train-sh has seed files with spaces in their names, and plain xargs splits them into grep errors. For tasks/train-sh check it with the narrower pattern of real path fragments (the disk labels and ids, the real top directories) instead of the bare top-level server directory: its made-up server paths are pinned task data.
 - 2026-10-23: an endpoint that is an opencoti (or xollama) server gets the SDK provider of that name, never openai-compatible: the providers differ in what they send back (reasoning history, pools, sessions). Read the SDK bundle's provider list before writing an arm's model.provider.
 
 - [2026-10-23] Never take a sampler from another session's account of "the owner's config": omnimergekit's "8244" values (temp 0.7, rep 1.13/72, pres 0.25) were the owner's ANTI-loop sampler, so the Gemma loop test measured the fix. Ask the owner for the exact sampler of the condition under test, and show it before the first run. Owner's loop sampler: temp 1.0, min_p 0, rep 1 / last 0, pres 0.
@@ -85,6 +89,8 @@
 ## Decision Log
 
 Full list with ids is in docs/specs/decisions.md. Keep this log in step.
+
+- 2026-10-24 D107: a batch's own wall/idle limits replace the arm's and the task's and may lengthen a run (run start --wall-s/--idle-s, campaign wall_s/idle_s, batch limits for queued runs); recorded with owner "batch", named in the basis. A batch takes several tasks and suites (--task repeated, --suite). Owner: missing override and single-task CLI were design flaws.
 
 - 2026-10-23 D106: export loop spans come from the SDK guard's cuts too, not only the detector library (widens D102); each span has source guard|detector; guard span = cut response (complete:false), reasoning field, end verdict.chars, start at the second of the trailing verdict.cycles repeats of verdict.sample.
 

@@ -33,10 +33,19 @@ type CampaignBatch struct {
 	Name  string   `toml:"name" json:"name"`
 	Arms  []string `toml:"arms" json:"arms"`
 	Tasks []string `toml:"tasks" json:"tasks"`
-	Runs  int      `toml:"runs" json:"runs"`
+	// Suites adds every task of each suite to Tasks.
+	Suites []string `toml:"suites" json:"suites,omitempty"`
+	Runs   int      `toml:"runs" json:"runs"`
 	// Order is "interleaved" (the default) or "blocks" (050 §1).
 	Order string `toml:"order" json:"order,omitempty"`
 	Lane  string `toml:"lane" json:"lane,omitempty"`
+	// WallS and IdleS are the batch's own limits (D107), in place of the
+	// arm's and the task's; IdleS 0 is no idle limit.
+	WallS *int `toml:"wall_s" json:"wall_s,omitempty"`
+	IdleS *int `toml:"idle_s" json:"idle_s,omitempty"`
+	// CaptureRequests saves every model request and response of the
+	// batch's runs (D104); off unless the file says so.
+	CaptureRequests bool `toml:"capture_requests" json:"capture_requests,omitempty"`
 	// Stop ends this batch; the campaign goes on with the next.
 	Stop CampaignStop `toml:"stop" json:"stop"`
 }
@@ -111,8 +120,14 @@ func (c *Campaign) Validate() error {
 		if len(b.Arms) == 0 {
 			bad("%s: no arms", where)
 		}
-		if len(b.Tasks) == 0 {
+		if len(b.Tasks) == 0 && len(b.Suites) == 0 {
 			bad("%s: no tasks", where)
+		}
+		if b.WallS != nil && *b.WallS <= 0 {
+			bad("%s: wall_s must be positive", where)
+		}
+		if b.IdleS != nil && *b.IdleS < 0 {
+			bad("%s: idle_s must be 0 (none) or positive", where)
 		}
 		if b.Runs < 1 {
 			bad("%s: runs must be 1 or more", where)

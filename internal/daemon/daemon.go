@@ -534,13 +534,13 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 		return false
 	}
 	d.mu.Lock()
-	capture := d.ctl.Capture[it.Batch]
+	capture, limits := d.ctl.Capture[it.Batch], d.ctl.Limits[it.Batch]
 	d.mu.Unlock()
 	det := &laneDetail{Item: it}
 	setLane("running", det)
 	log.Info("run starts", "arm", it.Arm, "task", it.Task)
 	r, err := d.Runner.Execute(ctx, run.Request{
-		ID: it.RunID, Arm: arm, Task: tk, Lane: it.Lane, Image: LaneImage(tk.Layers), Batch: it.Batch, Campaign: campaign, Gates: answers, Identity: models[arm.Model.Model], Unloaded: unloaded, Cell: cellOrNil(cellRec), CaptureRequests: capture,
+		ID: it.RunID, Arm: arm, Task: tk, Lane: it.Lane, Image: LaneImage(tk.Layers), Batch: it.Batch, Campaign: campaign, Gates: answers, Identity: models[arm.Model.Model], Unloaded: unloaded, Cell: cellOrNil(cellRec), CaptureRequests: capture, Limits: limits,
 		OnStart: func(partial *store.Run, containerID string) {
 			copy := *partial
 			det.ContainerID, det.Run = containerID, &copy

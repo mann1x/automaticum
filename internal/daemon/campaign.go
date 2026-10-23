@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/mann1x/automaticum/internal/config"
+	"github.com/mann1x/automaticum/internal/run"
 	"github.com/mann1x/automaticum/internal/store"
 )
 
@@ -136,8 +137,8 @@ func (d *Daemon) campaignStep(ctx context.Context, name string) error {
 		if at := def.Stop.At; !at.IsZero() && now.After(at) {
 			return d.setBatch(name, cur, "stopped", "its stop time "+at.Format(time.RFC3339)+" came before it started")
 		}
-		resp, _, err := d.start(ctx, StartRequest{Arms: def.Arms, Tasks: def.Tasks, Count: def.Runs, Order: def.Order, Lane: def.Lane,
-			Key: campaignKey(name, def.Name)})
+		resp, _, err := d.start(ctx, StartRequest{Arms: def.Arms, Tasks: def.Tasks, Suites: def.Suites, Count: def.Runs, Order: def.Order, Lane: def.Lane,
+			Key: campaignKey(name, def.Name), CaptureRequests: def.CaptureRequests, Limits: batchLimits(def)})
 		if err != nil {
 			d.setBatch(name, cur, "stopped", "it could not start: "+err.Error())
 			return d.endCampaign(ctx, name, "stopped", "batch "+def.Name+" could not start: "+err.Error())
@@ -290,7 +291,7 @@ func (d *Daemon) handleCampaignStart(w http.ResponseWriter, r *http.Request) {
 	}
 	// Every batch must be one the daemon would queue.
 	for _, b := range def.Batches {
-		if _, code, err := d.start(r.Context(), StartRequest{Arms: b.Arms, Tasks: b.Tasks, Count: b.Runs, Order: b.Order, Lane: b.Lane, DryRun: true}); err != nil {
+		if _, code, err := d.start(r.Context(), StartRequest{Arms: b.Arms, Tasks: b.Tasks, Suites: b.Suites, Count: b.Runs, Order: b.Order, Lane: b.Lane, Limits: batchLimits(b), DryRun: true}); err != nil {
 			fail(w, code, "campaign %s, batch %s: %v", req.Name, b.Name, err)
 			return
 		}
@@ -425,4 +426,13 @@ func (d *Daemon) handleCampaignControl(verb string) http.HandlerFunc {
 // pokeCampaigns moves the campaigns at once instead of at the next tick.
 func (d *Daemon) pokeCampaigns() {
 	go d.campaignTick(context.Background())
+}
+
+// batchLimits are a campaign batch's own limits (D107), or nil.
+func batchLimits(b config.CampaignBatch) *run.Override {
+	o := &run.Override{WallS: b.WallS, IdleS: b.IdleS}
+	if o.Empty() {
+		return nil
+	}
+	return o
 }

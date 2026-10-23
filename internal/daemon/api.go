@@ -91,8 +91,11 @@ type StartRequest struct {
 	// Tasks puts several tasks in one batch, Count runs of each arm on
 	// each, the tasks in turn within each round: a cell (065).
 	Tasks []string `json:"tasks,omitempty"`
-	Lane  string   `json:"lane,omitempty"`
-	Count int      `json:"count,omitempty"`
+	// Suites adds every task of each suite, in the order the tasks are
+	// read, after Task and Tasks; a task named twice this way runs once.
+	Suites []string `json:"suites,omitempty"`
+	Lane   string   `json:"lane,omitempty"`
+	Count  int      `json:"count,omitempty"`
 	// Key makes the command safe to repeat: a second request with the
 	// same key starts nothing and answers with what the first one made.
 	Key    string `json:"idempotency_key,omitempty"`
@@ -105,6 +108,9 @@ type StartRequest struct {
 	// and responses as the SDK sent and read them (D104). It changes
 	// nothing that is sent, so it is no part of the arm.
 	CaptureRequests bool `json:"capture_requests,omitempty"`
+	// Limits are the batch's own wall and idle limits (D107), in place of
+	// the arm's and the task's; they may lengthen a run.
+	Limits *run.Override `json:"limits,omitempty"`
 }
 
 // StartResponse says what was, or would be, queued.
@@ -119,12 +125,14 @@ type StartResponse struct {
 	ArmIDs map[string]string `json:"arm_ids,omitempty"`
 	// Order is the arm of each run, in the order they are queued; Tasks
 	// the task of each, when the batch has several.
-	Order    []string `json:"order,omitempty"`
-	Tasks    []string `json:"tasks,omitempty"`
-	Task     string   `json:"task"`
-	Image    string   `json:"image"`
-	DryRun   bool     `json:"dry_run,omitempty"`
-	Repeated bool     `json:"repeated,omitempty"` // the key had been used
+	Order []string `json:"order,omitempty"`
+	Tasks []string `json:"tasks,omitempty"`
+	Task  string   `json:"task,omitempty"`
+	Image string   `json:"image,omitempty"`
+	// Images is the lane image of each task, when the batch has several.
+	Images   map[string]string `json:"images,omitempty"`
+	DryRun   bool              `json:"dry_run,omitempty"`
+	Repeated bool              `json:"repeated,omitempty"` // the key had been used
 }
 
 // RunView is a run as the API shows it.
@@ -302,6 +310,7 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/batches/{batch}/resume", d.handleBatchResume)
 	mux.HandleFunc("POST /v1/batches/{batch}/stop", d.handleBatchStop)
 	mux.HandleFunc("POST /v1/batches/{batch}/retry", d.handleRetry)
+	mux.HandleFunc("POST /v1/batches/{batch}/limits", d.handleBatchLimits)
 	mux.HandleFunc("POST /v1/drain", func(w http.ResponseWriter, r *http.Request) {
 		d.Drain()
 		reply(w, http.StatusOK, map[string]bool{"draining": true})
@@ -434,11 +443,35 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 	if req.Task != "" {
 		taskNames = append([]string{req.Task}, taskNames...)
 	}
+	if len(req.Suites) > 0 {
+		all, err := task.LoadAll(d.taskRoots())
+		if err != nil {
+			return resp, http.StatusUnprocessableEntity, err
+		}
+		for _, s := range req.Suites {
+			n := 0
+			for _, t := range all {
+				if t.Suite != s {
+					continue
+				}
+				n++
+				if !slices.Contains(taskNames, t.Name()) {
+					taskNames = append(taskNames, t.Name())
+				}
+			}
+			if n == 0 {
+				return resp, http.StatusUnprocessableEntity, fmt.Errorf("suite %q has no tasks", s)
+			}
+		}
+	}
 	if len(names) == 0 || len(taskNames) == 0 || req.Count < 1 || req.Count*len(names)*len(taskNames) > 1000 {
 		return resp, http.StatusBadRequest, fmt.Errorf("a run needs an arm, a task and at most 1000 runs in all")
 	}
 	if req.Order != "interleaved" && req.Order != "blocks" {
 		return resp, http.StatusBadRequest, fmt.Errorf("the order is \"interleaved\" or \"blocks\", not %q", req.Order)
+	}
+	if err := req.Limits.Check(); err != nil {
+		return resp, http.StatusBadRequest, err
 	}
 	d.mu.Lock()
 	draining := d.draining
@@ -505,6 +538,14 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 		lane, ids[name] = l, a.ID
 	}
 	resp = StartResponse{Lane: lane, Lanes: cellLanes, ArmID: arm.ID, Task: tk.Name(), Image: LaneImage(tk.Layers), DryRun: req.DryRun}
+	if len(tks) > 1 {
+		// Each task runs in its own lane image; one image would describe
+		// the first task only.
+		resp.Task, resp.Image, resp.Images = "", "", map[string]string{}
+		for _, t := range tks {
+			resp.Images[t.Name()] = LaneImage(t.Layers)
+		}
+	}
 	if len(names) > 1 {
 		resp.ArmIDs = ids
 	}
@@ -618,10 +659,15 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 			return resp, http.StatusInternalServerError, err
 		}
 	}
-	if req.CaptureRequests {
+	if req.CaptureRequests || !req.Limits.Empty() {
 		// Kept with the control state, so a restarted daemon still knows.
 		d.mu.Lock()
-		d.ctl.Capture[resp.Batch] = true
+		if req.CaptureRequests {
+			d.ctl.Capture[resp.Batch] = true
+		}
+		if !req.Limits.Empty() {
+			d.ctl.Limits[resp.Batch] = req.Limits
+		}
 		err := d.saveControl()
 		d.mu.Unlock()
 		if err != nil {

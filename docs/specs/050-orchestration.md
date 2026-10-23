@@ -1,6 +1,6 @@
 # 050 — Orchestration: scheduling, gates, control
 
-**Status:** draft 0.14, 2026-10-23.
+**Status:** draft 0.15, 2026-10-24.
 
 ## 1. Scheduling
 
@@ -27,6 +27,17 @@
   it, each batch compared (070 §6): the campaign's report. Not built yet:
   gates of a campaign's own, priorities and reservations, and running one
   campaign across two hosts (agent mode, milestone 7).
+- **A batch's tasks and limits (D107, 2026-10-24).** A batch takes several
+  tasks (`run start --task A --task B`) and whole suites (`--suite
+  train-ml`, every task of it once, a task named twice runs once); each
+  round runs every arm on every task in turn, each task in its own lane
+  image. A run's wall and idle limits are the lower of the arm's and the
+  task's, unless the batch sets its own: `run start --wall-s S --idle-s S`,
+  `wall_s` and `idle_s` of a campaign batch, or `automaticum batch limits
+  <batch> --wall-s S` for the runs still queued (the run in flight keeps
+  its limits). A batch's limit replaces both and may be longer; the run
+  records it as set by the batch (020 §1). A campaign batch also takes
+  `suites` and `capture_requests` (D104).
 - Priorities, and reservations ("this lane is mine until 08:00").
 - Other things use these GPUs. A lane can be marked busy by an external signal
   and the scheduler waits. It never preempts someone else's work. One heavy job

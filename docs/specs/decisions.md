@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-10-23 (revision 23).
+**Status:** current as of 2026-10-23 (revision 24).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -116,6 +116,7 @@ All dated 2026-10-12.
 | D104 | The training traces of D102 are the SDK's own "Save model requests" capture (request bodies and raw response streams, the plugin's layout, written by core), opt-in per run, batch or campaign (off by default, not part of the arm's identity) and kept in the run record when on; `automaticum export conversations` hands those out with the run's metadata instead of rebuilding turns from logs (2026-10-23). | 110 §3.5 |
 | D105 | Training-pool tasks (the multi-language suite's and the converted terminal-bench ones, written by omnimergekit) are **public**, in the repository's `tasks/<suite>/`, and marked `training = true`, not kept private (revised by the owner the same evening; a private tasks root, `private_tasks` in the local configuration, exists for private tasks but is not used for the pool) (2026-10-23). | 060 §7, 060 §8 |
 | D106 | Widens D102: the loop spans of `automaticum export conversations` come from the SDK guard's cuts as well as the detector library, each span marked `source` `guard` or `detector`. A guard span is in the capture response the guard cut (`complete: false`, ending just before the notice), in its reasoning field: it ends at the guard's `verdict.chars` and starts at the second of the trailing `verdict.cycles` repeats of `verdict.sample`, the same "second occurrence on" as a detector span. Asked by omnimergekit: in the first 8 pool runs the guard cut 15 times and the detectors found none (2026-10-23). | 110 §3.5 |
+| D107 | A batch may set its own wall and idle limits, which replace the arm's and the task's and may be longer than both (`run start --wall-s/--idle-s`, a campaign batch's `wall_s`/`idle_s`, `batch limits` for queued runs); the run records the limit as set by the batch and the basis names it. A batch takes several tasks and whole suites (`--task` repeated, `--suite`). The owner called both gaps design flaws (2026-10-24). | 050 §1, 020 §1 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked

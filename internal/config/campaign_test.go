@@ -60,6 +60,32 @@ runs = 1
 			t.Errorf("want %q in %v", want, err)
 		}
 	}
+	write("pool", `
+[[batch]]
+name = "retry"
+arms = ["a"]
+suites = ["train-sh"]
+runs = 1
+wall_s = 3000
+idle_s = 0
+capture_requests = true
+[[batch]]
+name = "neg"
+arms = ["a"]
+tasks = ["t"]
+runs = 1
+wall_s = 0
+idle_s = -1
+`)
+	_, err = LoadCampaign(dir, "pool")
+	for _, want := range []string{"wall_s must be positive", "idle_s must be 0"} {
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("want %q in %v", want, err)
+		}
+	}
+	if err == nil || strings.Contains(err.Error(), "retry: no tasks") {
+		t.Errorf("a batch of suites has tasks: %v", err)
+	}
 	if _, err := LoadCampaign(dir, "../good"); err == nil {
 		t.Error("a path was taken for a name")
 	}

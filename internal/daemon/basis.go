@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/mann1x/automaticum/internal/config"
+	"github.com/mann1x/automaticum/internal/human"
 	"github.com/mann1x/automaticum/internal/ingest"
 	"github.com/mann1x/automaticum/internal/run"
 	"github.com/mann1x/automaticum/internal/store"
@@ -104,7 +105,13 @@ func basisOfRun(rec *store.Run, metrics map[string]float64) map[string]string {
 			Oracle  string `json:"Oracle"`
 			ImageID string `json:"ImageID"`
 		} `json:"oracle"`
-		Cell *CellRecord `json:"cell"`
+		Cell   *CellRecord `json:"cell"`
+		Limits struct {
+			Wall, Idle struct {
+				Seconds int    `json:"seconds"`
+				Owner   string `json:"owner"`
+			}
+		} `json:"limits"`
 	}
 	json.Unmarshal(rec.Provenance, &p)
 	var arm map[string]json.RawMessage
@@ -226,7 +233,17 @@ func basisOfRun(rec *store.Run, metrics map[string]float64) map[string]string {
 		set("harness build", "", "the run did not record its SDK")
 	}
 	if a := canon("agent", "guards", "compaction", "limits", "protocol"); a != "" {
-		set("agent settings", hash(a), "")
+		// A batch's own limits (D107) are not the arm's: a run under them
+		// is another basis. Limits from the arm or the task follow from
+		// the arm and the task, which the basis already holds.
+		fact := hash(a)
+		if l := p.Limits.Wall; l.Owner == "batch" {
+			fact += fmt.Sprintf(", wall limit %s set by the batch", human.Seconds(float64(l.Seconds)))
+		}
+		if l := p.Limits.Idle; l.Owner == "batch" {
+			fact += fmt.Sprintf(", idle limit %s set by the batch", human.Seconds(float64(l.Seconds)))
+		}
+		set("agent settings", fact, "")
 	} else {
 		set("agent settings", "", "the arm has none")
 	}

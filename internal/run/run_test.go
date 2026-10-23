@@ -555,3 +555,30 @@ expect_pattern = "RESULT ok"
 		t.Fatalf("%s: %s", r.Verdict, r.VerdictReason)
 	}
 }
+
+// A batch's own limits (D107) replace the arm's and the task's, may be
+// longer than both, and are recorded as the batch's.
+func TestBatchLimitsOverride(t *testing.T) {
+	w := newWorld(t)
+	wall, idle := 7200, 0
+	w.req.Limits = &Override{WallS: &wall, IdleS: &idle}
+	w.engine.runner = func(_ context.Context, s docker.Spec, out io.Writer) (docker.Result, error) {
+		var job Job
+		data, err := os.ReadFile(filepath.Join(mountOf(s, containerJob), jobFile))
+		if err != nil || json.Unmarshal(data, &job) != nil || job.WallS != wall {
+			return docker.Result{}, fmt.Errorf("job: %v %+v", err, job)
+		}
+		io.WriteString(out, `{"k":"event","event":{}}`+"\n"+endLine(OutcomeCompleted, ""))
+		return docker.Result{}, nil
+	}
+	r, p := w.run(t, context.Background())
+	if r.VerdictReason == "" || strings.HasPrefix(r.VerdictReason, "job:") {
+		t.Fatalf("%s: %s", r.Verdict, r.VerdictReason)
+	}
+	if p.Limits.Wall != (limit{wall, "batch"}) || p.Limits.Idle != (limit{0, "batch"}) {
+		t.Errorf("limits: %+v", p.Limits)
+	}
+	if err := (&Override{WallS: &idle}).Check(); err == nil {
+		t.Error("a wall limit of 0")
+	}
+}

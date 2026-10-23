@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.15, 2026-10-14.
+**Status:** draft 0.16, 2026-10-24.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -20,7 +20,7 @@ automaticum arm ls|show|diff|validate
 automaticum basis show|diff
 automaticum task ls|show|verify
 automaticum oracle verify <task>
-automaticum run start --arm A --task T [-n 5] [--lane L]
+automaticum run start --arm A --task T [--task T2 ...] [--suite S ...] [-n 5] [--lane L] [--wall-s S] [--idle-s S] [--capture-requests]
 automaticum run ls|show|tail|stop|abort|pause|resume|retry|invalidate|identify
 automaticum compare <batch> [<batch> ...]
 automaticum batch|campaign start|ls|show|pause|resume|abort
@@ -54,7 +54,12 @@ several `--arm` and `--order`; `run pause|resume|retry`; `lane
 drain|resume`; `batch show|pause|resume|stop|retry` (050 §3.3, §4); `basis show|diff` (020 §5); `cell run` (065 §3.1); `campaign start|ls|show|pause|resume|stop` (050 §1). `run retry` and
 `batch retry` have `--dry-run`. The API routes are `POST
 /v1/runs/{id}/retry`, `POST /v1/lanes/{lane}/drain|resume` and `GET /v1/basis?batch=...`, `GET /v1/batches/{batch}`, `GET /v1/batches/{batch}/cell`, `POST|GET /v1/campaigns`, `GET /v1/campaigns/{name}`, `POST /v1/campaigns/{name}/pause|resume|stop`, `POST
-/v1/batches/{batch}/pause|resume|stop|retry`.
+/v1/batches/{batch}/pause|resume|stop|retry|limits`.
+
+**Built on 2026-10-24 (D107):** `run start` takes `--task` several times and
+`--suite` (every task of a suite), and `--wall-s` and `--idle-s`, the
+batch's own limits; `batch limits <batch> [--wall-s S] [--idle-s S]` sets
+them for the batch's queued runs (`POST /v1/batches/{batch}/limits`).
 
 The API is HTTP and JSON on a loopback address. Everything that changes
 something needs the token; reading from the same host does not. A run in

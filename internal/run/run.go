@@ -158,7 +158,35 @@ type Request struct {
 	// as the SDK sent and read them (D104); they are kept as the
 	// model_requests blob.
 	CaptureRequests bool
+	// Limits is the batch's own limits, in place of the arm's and the
+	// task's (D107); nil, or a field left out, keeps the lower of the two.
+	Limits *Override
 }
+
+// Override is a batch's limits, set when it starts or while it is queued.
+// It replaces both the arm's and the task's, so it may lengthen a run.
+type Override struct {
+	WallS *int `json:"wall_s,omitempty"`
+	// IdleS of 0 means no idle limit, as in an arm.
+	IdleS *int `json:"idle_s,omitempty"`
+}
+
+// Check refuses a limit that cannot be one.
+func (o *Override) Check() error {
+	if o == nil {
+		return nil
+	}
+	if o.WallS != nil && *o.WallS <= 0 {
+		return fmt.Errorf("the wall limit must be positive, not %d", *o.WallS)
+	}
+	if o.IdleS != nil && *o.IdleS < 0 {
+		return fmt.Errorf("the idle limit must be 0 (none) or positive, not %d", *o.IdleS)
+	}
+	return nil
+}
+
+// Empty says the override sets nothing.
+func (o *Override) Empty() bool { return o == nil || (o.WallS == nil && o.IdleS == nil) }
 
 // NewID returns a run id that sorts by time.
 func NewID(now time.Time) string {
@@ -386,6 +414,14 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 
 	wall := lower(*a.Limits.WallS, t.Limits.WallS)
 	idle := lower(*a.Limits.IdleS, t.Limits.IdleS)
+	if o := req.Limits; o != nil {
+		if o.WallS != nil {
+			wall = limit{*o.WallS, "batch"}
+		}
+		if o.IdleS != nil {
+			idle = limit{*o.IdleS, "batch"}
+		}
+	}
 	p.Limits.Wall, p.Limits.Idle = wall, idle
 	if wall.Seconds == 0 {
 		facts.Skipped = "neither the arm nor the task sets a wall limit"

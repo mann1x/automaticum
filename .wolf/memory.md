@@ -1095,3 +1095,30 @@
 | 22:11 | Session end: 1 writes across 1 files (client-sessions-start-their-own-batches.md) | 0 reads | ~234 tok |
 | 23:31 | Session end: 1 writes across 1 files (client-sessions-start-their-own-batches.md) | 0 reads | ~234 tok |
 | 23:32 | D106 recorded (export loop spans from guard cuts too, source field); 110 0.20 | docs/specs/decisions.md, 110 | ok | ~2000 |
+
+## Session: 2026-10-23 23:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 23:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 23:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 23:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:56 | Edited internal/run/run.go | expanded (+28 lines) | ~304 |
+| 23:56 | Edited internal/run/run.go | expanded (+8 lines) | ~66 |
+| 23:57 | Edited internal/daemon/api.go | 5→8 lines | ~80 |
+| 23:57 | Edited internal/daemon/control.go | modified handleBatchLimits() | ~466 |
+| 23:57 | Edited internal/daemon/control.go | 9→11 lines | ~136 |
+| 23:58 | Edited internal/daemon/daemon_test.go | modified TestBatchLimits() | ~610 |
+| 00:03 | D107 built: batch wall/idle limit override (run start, campaign, batch limits), several tasks and suites per batch; tests pass | internal/run, internal/daemon, internal/config, cmd/automaticum, specs 020/050/090 | ok | ~30000 |

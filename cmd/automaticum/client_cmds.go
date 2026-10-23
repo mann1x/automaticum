@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -166,19 +167,22 @@ func runStart(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("run start", flag.ExitOnError)
 	_, dial := addClient(fs)
 	var req daemon.StartRequest
-	var arms list
+	var arms, tasks, suites list
 	fs.Var(&arms, "arm", "the arm; given several times, a batch of several arms with -n runs of each")
-	fs.StringVar(&req.Order, "order", "", "with several arms: interleaved (the default, one run of each in turn) or blocks")
-	fs.StringVar(&req.Task, "task", "", "the task")
+	fs.StringVar(&req.Order, "order", "", "with several arms or tasks: interleaved (the default, one run of each in turn) or blocks")
+	fs.Var(&tasks, "task", "the task; given several times, a batch over several tasks with -n runs of each arm on each")
+	fs.Var(&suites, "suite", "every task of a suite, in the batch with any --task; may be given several times")
 	fs.StringVar(&req.Lane, "lane", "", "the lane; the first that may use the arm's endpoint when not given")
 	fs.IntVar(&req.Count, "n", 1, "how many runs")
 	fs.StringVar(&req.Key, "idempotency-key", "", "repeating the command with the same key starts nothing new")
 	fs.BoolVar(&req.DryRun, "dry-run", false, "say what would start, start nothing")
 	fs.BoolVar(&req.CaptureRequests, "capture-requests", false, "every run saves the model requests and responses as the SDK sent and read them (large; off by default)")
-	if rest := parse(fs, args); len(rest) > 0 || len(arms) == 0 || req.Task == "" {
-		return errors.New("usage: automaticum run start --arm <arm> [--arm <arm> ...] --task <task> [-n 5] [--order interleaved|blocks] [--lane <lane>]")
+	limits := addLimits(fs)
+	if rest := parse(fs, args); len(rest) > 0 || len(arms) == 0 || len(tasks)+len(suites) == 0 {
+		return errors.New("usage: automaticum run start --arm <arm> [--arm <arm> ...] --task <task> [--task <task> ...] [--suite <suite> ...] [-n 5] [--order interleaved|blocks] [--lane <lane>] [--wall-s S] [--idle-s S]")
 	}
-	req.Arms = arms
+	req.Arms, req.Tasks, req.Suites = arms, tasks, suites
+	req.Limits = limits()
 	c, err := dial()
 	if err != nil {
 		return err
@@ -197,7 +201,19 @@ func runStart(ctx context.Context, args []string) error {
 	case resp.Repeated:
 		what = "already made by this key; nothing new was started"
 	}
-	fmt.Printf("%d %s on %s: arm %s, task %s, image %s, batch %s\n", len(resp.RunIDs), what, resp.Lane, strings.Join(arms, ", "), resp.Task, resp.Image, resp.Batch)
+	if len(resp.Images) == 0 {
+		fmt.Printf("%d %s on %s: arm %s, task %s, image %s, batch %s\n", len(resp.RunIDs), what, resp.Lane, strings.Join(arms, ", "), resp.Task, resp.Image, resp.Batch)
+	} else {
+		fmt.Printf("%d %s on %s: arm %s, %d tasks, batch %s\n", len(resp.RunIDs), what, resp.Lane, strings.Join(arms, ", "), len(resp.Images), resp.Batch)
+		names := make([]string, 0, len(resp.Images))
+		for n := range resp.Images {
+			names = append(names, n)
+		}
+		sort.Strings(names)
+		for _, n := range names {
+			fmt.Printf("  %-32s %s\n", n, resp.Images[n])
+		}
+	}
 	for i, id := range resp.RunIDs {
 		if i < len(resp.Order) {
 			fmt.Printf("%s  %s\n", id, resp.Order[i])
@@ -847,5 +863,25 @@ func printInference(r daemon.RunView) {
 			fmt.Fprintf(w, "  %s\t%s\t%s\t%s\t%s\t%s\t%s\n", s.Name, s.Effective, s.Source, dash(s.Stated), dash(s.Sent), dash(s.Tag), s.Note)
 		}
 		w.Flush()
+	}
+}
+
+// addLimits adds --wall-s and --idle-s, a batch's own limits (D107), and
+// returns what was given: nil when neither was.
+func addLimits(fs *flag.FlagSet) func() *run.Override {
+	wall := fs.Int("wall-s", -1, "the batch's wall limit in seconds, in place of the arm's and the task's (it may lengthen a run)")
+	idle := fs.Int("idle-s", -1, "the batch's idle limit in seconds, 0 for none, in place of the arm's and the task's")
+	return func() *run.Override {
+		var o run.Override
+		if *wall >= 0 {
+			o.WallS = wall
+		}
+		if *idle >= 0 {
+			o.IdleS = idle
+		}
+		if o.Empty() {
+			return nil
+		}
+		return &o
 	}
 }
