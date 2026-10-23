@@ -953,3 +953,24 @@
 |------|--------|---------|---------|--------|
 | 17:33 | Deployed 6897da6 on blackswan-2 (SDK 4.100.260 reproduced offline, images rebuilt); stub PASS; Gemma batch b20261023-152641-6d0eb5 started; verified reasoningHistory auto->last/inline/measured ('template drops reasoning'); mails 1839-ish to ollama + backup_models | - | running | ~15k |
 | 17:40 | D104: training traces = SDK 'Save model requests' capture (requests + raw responses, core writer), not exporters from logs; 110 §3.5 revised; mails: ack 1841 (ollama), 1842 (backup_models) | docs/specs/110, decisions.md | planned | ~4k |
+
+## Session: 2026-10-23 17:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 17:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 17:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 17:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:50 | last-inline malformed prompt on Gemma-4 template reproduced (mail 1844/1845); owner: stop batch 6d0eb5, wait for SDK inlining fix; 003 aborted; 001 FAIL (reasoning_loop cut 3 + aborted 1), 002 FAIL stopped at reasoning_loop cut; capture made opt-in (110 §3.5, D104) | docs/specs/110, decisions | waiting on SDK | ~6k |

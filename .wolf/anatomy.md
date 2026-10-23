@@ -1,14 +1,14 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-23T15:07:39.003Z
-> Files: 289 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-23T16:00:00.733Z
+> Files: 294 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~3843 tok)
-- `CLAUDE.md` — automaticum (~3668 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~6039 tok)
+- `CLAUDE.md` — automaticum (~3842 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
 - `LICENSE` — Project license (~3029 tok)
@@ -19,10 +19,10 @@
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~57952 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~72371 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~0 tok)
-- `score-history.jsonl` (~988 tok)
+- `score-history.jsonl` (~1279 tok)
 
 ## .caliber/backups/2026-10-12T20-16-19-461Z/
 
@@ -34,14 +34,14 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~96686 tok)
+- `fingerprint.json` — Declares usage (~97505 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` (~26853 tok)
+- `current-session.jsonl` (~3798 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~41187 tok)
-- `state.json` (~41 tok)
+- `roi-stats.json` (~51235 tok)
+- `state.json` (~40 tok)
 
 ## .claude/
 
@@ -55,11 +55,11 @@
 
 ## .claude/rules/
 
-- `endpoint-probe.md` — Endpoint probe and gate conventions (~420 tok)
+- `endpoint-probe.md` — Endpoint probe and gate conventions (~391 tok)
 - `openwolf.md` — OpenWolf protocol (~207 tok)
-- `runner-protocol.md` — Runner protocol conventions (~560 tok)
+- `runner-protocol.md` — Runner protocol conventions (~1076 tok)
 - `spec-conventions.md` — Spec conventions (~375 tok)
-- `wire-arm.md` — Wire detector conventions: ReadWire option names, CompareWire, WireArmVersion bump (~520 tok)
+- `wire-arm.md` — Wire detector conventions (~452 tok)
 - `wolf-hooks.md` — Hook conventions (~250 tok)
 
 ## .claude/skills/add-wolf-hook/
@@ -73,6 +73,10 @@
 ## .claude/skills/find-skills/
 
 - `SKILL.md` — Find Skills (~593 tok)
+
+## .claude/skills/learned-new-host-install/
+
+- `SKILL.md` — Installing automaticum on a fresh host (~1437 tok)
 
 ## .claude/skills/log-wolf-bug/
 
@@ -92,21 +96,21 @@
 
 ## arms/
 
-- `base.toml` — The settings every arm here shares. It is not runnable by itself: it names (~422 tok)
-- `g4-128e-bf16-shipped.toml` — Gemma-4 128e BF16, end token 106, Google template; guards as shipped (~80 tok)
-- `g4-128e-bf16-stop.toml` — The same, stopping on the loop signals (guards.stop_on, D100) (~150 tok)
-- `g4-128e.toml` — Template for the Gemma-4 26B-A4B loop test (D98): ctx 256000, thinking left to the server, owner 8244 sampler, 1h/15m, SDK 4.100.258 (~120 tok)
+- `base.toml` — The settings every arm here shares. It is not runnable by itself: it names (~549 tok)
+- `g4-128e-bf16-shipped.toml` — Gemma-4 26B-A4B (128 experts) BF16, end token 106, Google's chat template (~74 tok)
+- `g4-128e-bf16-stop.toml` — Gemma-4 26B-A4B (128 experts) BF16, end token 106, Google's chat template (~200 tok)
+- `g4-128e.toml` — The Gemma-4 26B-A4B loop test with omnimergekit (D98): what every arm of it (~542 tok)
 - `omnimerge-v4-mtp-27b-high-sdk-4.100.251.toml` — OmniMerge v4 against the base model (owner, 2026-10-13): the same (~118 tok)
 - `qwen36-mtp-27b-high-sdk-4.100.251.toml` — The owner's first real arm (D55, D59) on SDK release 4.100.251: the same (~124 tok)
 - `qwen36-mtp-27b-high.toml` — First real arm of milestone 2 (decisions D55 and D59). Every value here is (~220 tok)
-- `stub-plan-sdk-4.100.258.toml` — The stub arm in plan mode on SDK release 4.100.258 (~50 tok)
+- `stub-plan-sdk-4.100.258.toml` — The stub arm in plan mode on SDK release 4.100.258, for the tests of the (~53 tok)
 - `stub-plan.toml` — The stub arm in plan mode, for the harness's own tests of the scripted (~52 tok)
 - `stub-sdk-4.100.251.toml` — The stub arm on SDK release 4.100.251: the same settings, another build of (~58 tok)
-- `stub-sdk-4.100.258.toml` — The stub arm on SDK release 4.100.258, for the harness's own tests of that build (~50 tok)
-- `stub-sdk-4.100.259.toml` — The stub arm on SDK release 4.100.259 (~50 tok)
-- `stub-stop-sdk-4.100.258.toml` — The stub arm on 4.100.258 that stops on the reasoning-loop guard (D100) (~50 tok)
-- `stub-stop-sdk-4.100.259.toml` — The stub arm on 4.100.259 that stops on the reasoning-loop guard (D100) (~50 tok)
-- `stub-sdk-4.100.260.toml` — The stub arm on SDK release 4.100.260 (~50 tok)
+- `stub-sdk-4.100.258.toml` — The stub arm on SDK release 4.100.258: the same settings, another build of (~53 tok)
+- `stub-sdk-4.100.259.toml` — The stub arm on SDK release 4.100.259, for the harness's own tests of that (~40 tok)
+- `stub-sdk-4.100.260.toml` — The stub arm on SDK release 4.100.260, for the harness's own tests of that (~40 tok)
+- `stub-stop-sdk-4.100.258.toml` — The stub arm on SDK release 4.100.258 that ends a run at the first trip of (~66 tok)
+- `stub-stop-sdk-4.100.259.toml` — The stub arm on SDK release 4.100.259 that ends a run at the first trip of (~64 tok)
 - `stub.toml` — An arm for the stub model server: used by the harness's own tests and for (~99 tok)
 
 ## campaigns/
@@ -117,7 +121,7 @@
 
 - `campaign_cmds.go` (~1452 tok)
 - `cell_cmds.go` — exitCode: names (~2996 tok)
-- `client_cmds.go` — client (136 fields) (~7747 tok)
+- `client_cmds.go` — client (135 fields) (~7772 tok)
 - `compare_cmds.go` — Declares list (~3430 tok)
 - `config_cmds_test.go` — TestParseInterspersed, TestCellTasks (~370 tok)
 - `config_cmds.go` — place (119 fields) (~3088 tok)
@@ -135,28 +139,28 @@
 
 ## docs/local/
 
-- `hosts.local.md` — Local mapping (untracked) (~497 tok)
+- `hosts.local.md` — Local mapping (untracked) (~540 tok)
 
 ## docs/specs/
 
 - `000-overview.md` — 000 — Overview, vocabulary and map of the spec set (~2073 tok)
 - `010-architecture.md` — 010 — Architecture (~1615 tok)
-- `020-run-record.md` — 020 — The run record, verdicts and the basis (~3330 tok)
-- `030-configuration.md` — 030 — Configuration (~2663 tok)
-- `040-runner.md` — 040 — The runner (~8489 tok)
-- `050-orchestration.md` — 050 — Orchestration: scheduling, gates, control (~4189 tok)
+- `020-run-record.md` — 020 — The run record, verdicts and the basis (~3433 tok)
+- `030-configuration.md` — 030 — Configuration (~3085 tok)
+- `040-runner.md` — 040 — The runner (~8629 tok)
+- `050-orchestration.md` — 050 — Orchestration: scheduling, gates, control (~4267 tok)
 - `060-tasks-and-suites.md` — 060 — Tasks, oracles and the suite interface (~1491 tok)
 - `061-suite-bfcl.md` — 061 — Suite: BFCL (Berkeley Function-Calling Leaderboard) (~551 tok)
 - `062-suite-swe-bench.md` — 062 — Suite: SWE-bench and SWE-bench-style sets (~610 tok)
 - `063-suite-multi-language.md` — 063 — Suite: our own multi-language agentic suite (~536 tok)
 - `064-engine-adapters.md` — 064 — Engine adapters: Cerebriline as the engine of an external harness (~962 tok)
 - `065-cell-contract.md` — 065 — The cell contract and exports (~3390 tok)
-- `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~7013 tok)
+- `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~7191 tok)
 - `080-store.md` — 080 — The store (~4404 tok)
 - `090-interfaces.md` — 090 — Interfaces (~2257 tok)
 - `100-legacy-import.md` — 100 — Import of the old harness's corpus (~3426 tok)
-- `110-acceptance-and-roadmap.md` — 110 — Acceptance and roadmap (~5610 tok)
-- `decisions.md` — Decisions and open questions (~5873 tok)
+- `110-acceptance-and-roadmap.md` — 110 — Acceptance and roadmap (~6609 tok)
+- `decisions.md` — Decisions and open questions (~6658 tok)
 
 ## docs/specs/archive/
 
@@ -178,11 +182,11 @@
 
 ## examples/systemd/
 
-- `automaticumd.service` — The daemon as a systemd service (restart on failure, after Docker and the data disk); <root> is the installation's directory (~190 tok)
+- `automaticumd.service` — The daemon as a systemd service: restarted on failure, started after the (~173 tok)
 
 ## images/base/
 
-- `Dockerfile` — Docker container definition (~242 tok)
+- `Dockerfile` — Docker container definition (~247 tok)
 
 ## images/layers/typescript/
 
@@ -190,12 +194,12 @@
 
 ## internal/config/
 
-- `arm.go` — loads automaticum's configuration: arms, lanes, endpoints (~7474 tok)
+- `arm.go` — loads automaticum's configuration: arms, lanes, endpoints (~8276 tok)
 - `campaign_test.go` — TestLoadCampaign (~413 tok)
 - `campaign.go` — Campaign (38 fields); methods: Validate (~1275 tok)
 - `cell_test.go` — TestArmForCell, TestCellEndpoint (~782 tok)
 - `cell.go` — CallerValues (41 fields); methods: ForCell (~1530 tok)
-- `config_test.go` — TestRepositoryArms, TestArmValidation, TestNothingIsDefaulted, TestExtendsAndIdentity + 3 more (~3694 tok)
+- `config_test.go` — TestRepositoryArms, TestArmValidation, TestStopOnIdentity, TestReasoningHistory + 3 more (~4450 tok)
 - `local.go` — Local (96 fields); methods: Endpoint, MayUse, AddCellEndpoint, Token (~2943 tok)
 - `model_test.go` — TestModels (~532 tok)
 - `model.go` — ModelIdentity (25 fields); methods: Missing (~755 tok)
@@ -208,9 +212,9 @@
 - `campaign.go` — CampaignState (114 fields) (~3730 tok)
 - `canary.go` — CanaryRecord (36 fields); methods: Error, Is (~1597 tok)
 - `cell.go` — CellResult (97 fields) (~4032 tok)
-- `compare.go` — CompareView (99 fields) (~4233 tok)
+- `compare.go` — CompareView (97 fields) (~4257 tok)
 - `control.go` — control (100 fields) (~4996 tok)
-- `daemon_test.go` — memState (126 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~14826 tok)
+- `daemon_test.go` — memState (126 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~14912 tok)
 - `daemon.go` — is automaticumd without its main: the queue, one worker (~5715 tok)
 - `modec_test.go` — TestModeCCell, TestModeCBasis (~1727 tok)
 - `modec.go` — CellSpec (69 fields) (~2251 tok)
@@ -231,7 +235,7 @@
 ## internal/gate/
 
 - `gate_test.go` — server (40 fields); methods: ImageInspect, Check, Path (~2872 tok)
-- `gate.go` — holds the gates: what must hold before a run starts (spec (~4463 tok)
+- `gate.go` — holds the gates: what must hold before a run starts (spec (~4507 tok)
 
 ## internal/human/
 
@@ -240,19 +244,19 @@
 
 ## internal/ingest/
 
-- `analyse.go` — Interface: Blobs (53 methods) (~5099 tok)
+- `analyse.go` — Interface: Blobs (58 methods) (~5258 tok)
 - `canary_test.go` — TestCanary (~680 tok)
 - `canary.go` — CanaryVerdict (14 fields) (~698 tok)
 - `cap_test.go` — TestCapHits, TestFailedRequestFinish (~586 tok)
 - `cap.go` — CapHit is the finding that a request of the agent's loop was ended by its (~460 tok)
 - `detectors.go` — Firing (23 fields) (~1014 tok)
-- `events.go` — turns a run's stored raw material into what is queried: (~3163 tok)
-- `ingest_test.go` — TestReadEvents, TestReadWire, TestCompareWireClean, TestCompareWire + 2 more (~9394 tok)
-- `openai_test.go` — TestOpenAIWire, TestOpenAIWireFromStub (~1191 tok)
+- `events.go` — turns a run's stored raw material into what is queried: (~3545 tok)
+- `ingest_test.go` — TestReadEvents, TestReadWire, TestCompareWireClean, TestCompareWire + 2 more (~9964 tok)
+- `openai_test.go` — TestOpenAIWire, TestOpenAIWireFromStub, TestOpenAIThinkingBudget (~1625 tok)
 - `sample_test.go` — TestSample, TestDumpBlocks (~1010 tok)
 - `sampler.go` — Setting (43 fields) (~1398 tok)
-- `wire.go` — Struct: Request (~2610 tok)
-- `wirearm.go` — Struct: Deviation (~3483 tok)
+- `wire.go` — Request (110 fields) (~2797 tok)
+- `wirearm.go` — Deviation (96 fields) (~3732 tok)
 
 ## internal/legacyimport/
 
@@ -275,13 +279,13 @@
 ## internal/run/
 
 - `identity_test.go` — m (37 fields) (~1878 tok)
-- `probe.go` — Identity (128 fields); methods: Changed (~3766 tok)
-- `props_test.go` — TestProps (~559 tok)
-- `props.go` — Props (39 fields) (~1186 tok)
-- `protocol.go` — executes one run: an arm on a task, once, on a lane. It (~1885 tok)
-- `run_test.go` — fakeState (74 fields); methods: UpsertRun, AddBlobRefs, Put, Check (~6304 tok)
-- `run.go` — Interface: Engine (7 methods) (~8822 tok)
-- `verdict.go` — Facts (20 fields) (~588 tok)
+- `probe.go` — Identity (126 fields); methods: Changed (~4244 tok)
+- `props_test.go` — TestProps, TestProbeLlamaServer (~1470 tok)
+- `props.go` — Props (51 fields) (~1519 tok)
+- `protocol.go` — executes one run: an arm on a task, once, on a lane. It (~1981 tok)
+- `run_test.go` — fakeState (73 fields); methods: UpsertRun, AddBlobRefs, Put, Check (~6559 tok)
+- `run.go` — Interface: Engine (7 methods) (~8842 tok)
+- `verdict.go` — Facts (24 fields) (~707 tok)
 
 ## internal/sdk/
 
@@ -330,7 +334,7 @@
 ## internal/stubmodel/
 
 - `stubmodel_test.go` — TestChatFollowsTheScript, TestProbesAndErrors, TestOpenAICompatible (~2075 tok)
-- `stubmodel.go` — is a model server that plays a script. It speaks enough (~3467 tok)
+- `stubmodel.go` — is a model server that plays a script. It speaks enough (~3497 tok)
 
 ## internal/task/
 
@@ -342,7 +346,7 @@
 
 ## models/
 
-- `gemma-4-26b-a4b-it-bf16-eos106.toml` — Gemma-4 26B-A4B instruct, 128 experts, BF16, Google template, end token 106 (owner, 2026-10-23) (~100 tok)
+- `gemma-4-26b-a4b-it-bf16-eos106.toml` — What this model is, in the owner's words (030 §4.1), as named on (~118 tok)
 - `omnimerge-v4-mtp_tb-27b-q4km-128k.toml` — What this tag is, in the owner's words (030 §4.1), as named on 2026-10-13. (~83 tok)
 - `qwen36-base-mtp_tb-27b-q4km-128k.toml` — What this tag is, in the owner's words (030 §4.1), as named on 2026-10-13: (~67 tok)
 - `stub.toml` — The scripted stub model server of the harness's own tests. Not a model. (~44 tok)
@@ -352,8 +356,8 @@
 - `guards.mjs` — Guard actions as the SDK announces them: a "notice" event whose metadata (~761 tok)
 - `package.json` — Node.js package manifest (~103 tok)
 - `plan.mjs` — The extension's switch_to_act_mode tool, ported from Cline 4.100.250 and (~780 tok)
-- `PROTOCOL.md` — The runner: protocol 3 (~1819 tok)
-- `runner.mjs` — The runner: one agent session for one run, inside the lane's container. (~5173 tok)
+- `PROTOCOL.md` — The runner: protocol 6 (~2385 tok)
+- `runner.mjs` — The runner: one agent session for one run, inside the lane's container. (~5408 tok)
 - `session.mjs` — unsupported lists what an arm asks for that this runner cannot do. (~2724 tok)
 - `user.mjs` — The scripted user (040 §6.2): the task's rules, played against the (~1979 tok)
 - `wire.mjs` — createWire returns a fetch that appends one JSON line per request to (~1642 tok)
@@ -372,28 +376,28 @@
 
 ## runner/sdk/4.100.258/
 
-- `package-lock.json` — npm lock file (~52700 tok)
+- `package-lock.json` — npm lock file (~52617 tok)
 - `package.json` — Node.js package manifest (~64 tok)
-- `sdk.toml` — SDK release 4.100.258, from the registry, pinned bundle d87eeff0bbcb (~70 tok)
+- `sdk.toml` — SDK release 4.100.258, from the registry: the newest release on (~91 tok)
 
 ## runner/sdk/4.100.259/
 
-- `package-lock.json` — npm lock file (~52700 tok)
+- `package-lock.json` — npm lock file (~52617 tok)
 - `package.json` — Node.js package manifest (~64 tok)
-- `sdk.toml` — SDK release 4.100.259, from the registry, pinned bundle 1c7c914f07c5 (~70 tok)
+- `sdk.toml` — SDK release 4.100.259, from the registry: every guard announces its action (~91 tok)
 
 ## runner/sdk/4.100.260/
 
-- `package.json` — The SDK bundle of build 4.100.260 (~60 tok)
-- `package-lock.json` — Lockfile for 4.100.260, made in the pinned node image (~46000 tok)
-- `sdk.toml` — SDK release 4.100.260, from the registry, pinned bundle 1e5270d503c8: measured auto prior reasoning (~90 tok)
+- `package-lock.json` — npm lock file (~52617 tok)
+- `package.json` — Node.js package manifest (~64 tok)
+- `sdk.toml` — SDK release 4.100.260, from the registry: "auto" prior reasoning is (~122 tok)
 
 ## runner/test/
 
 - `arm-stub.json` (~287 tok)
 - `guards.test.mjs` — Declares notice (~753 tok)
 - `plan.test.mjs` — createTool as the SDK's: it hands back what it was given. (~415 tok)
-- `session.test.mjs` — stub: reportOf (~1906 tok)
+- `session.test.mjs` — stub: reportOf (~2306 tok)
 - `user.test.mjs` — Declares categories (~2112 tok)
 - `wire.test.mjs` — Declares serve (~1352 tok)
 

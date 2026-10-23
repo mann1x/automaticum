@@ -383,9 +383,14 @@ plugin's, the same for every host.
   the reasoning is whole as generated; the file writer is in core, with a
   `ClineCoreOptions` switch. 4.100.260 has the request half only
   (`Llms.setModelRequestCapture`).
-- The runner turns the switch on in every run; the capture is kept in the
-  run record as a blob, with the run's verdict, arm, provider, sampler,
-  template and the resolved prior-reasoning scope beside it.
+- **Opt-in (the owner, 2026-10-23):** the capture is off by default and
+  is switched on for a run, batch or campaign when traces are wanted; full
+  model requests can be very large and are mostly not needed. It changes
+  nothing that is sent, so it is not part of an arm's identity. When on,
+  the capture is kept in the run record as a blob, with the run's verdict,
+  arm, provider, sampler, served template hash and the resolved
+  prior-reasoning scope beside it; each response says whether the server
+  or a guard cut it, so a cut turn is scored only up to the cut.
 - `automaticum export conversations --batch <id> [--run <id>] --out <dir>`
   hands out those files and that metadata; it does not rebuild turns.
   Loop spans (character offsets of the repeats, the second occurrence on)
