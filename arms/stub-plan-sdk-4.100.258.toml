@@ -1,0 +1,6 @@
+# The stub arm in plan mode on SDK release 4.100.258, for the tests of the
+# plan event and the mode switches on that build.
+extends = "stub-plan"
+
+[harness]
+sdk_release = "4.100.258"

@@ -1,0 +1,6 @@
+# SDK release 4.100.258, from the registry: the newest release on
+# 2026-10-23, with the fixes since 4.100.251 (among them the shared
+# switch_to_act_mode and finishToolCalls, from 4.100.253).
+version = "4.100.258"
+source = "registry"
+bundle_sha256 = "d87eeff0bbcb98b46016cbcbe395f0d820397de8d58574303d41b0024b017d5e"

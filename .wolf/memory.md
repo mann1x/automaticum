@@ -746,3 +746,24 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 12:03 | blackswan-2 install (M5 step 0, owner request): data root on its data disk, repo clone at HEAD, binaries, SDK 250/251 reproduced offline, lane images, all 7 oracles proven, systemd service; demo/answer PASS on both SDKs. bug-027 Docker API min 1.44 fixed by negotiating the version. 110 §3.4, examples/systemd | internal/docker/docker.go, docs/specs/110, examples/systemd/automaticumd.service | done | ~25k |
+
+## Session: 2026-10-23 12:10
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 12:10
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 12:11
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 12:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:24 | SDK 4.100.258 provisioned (newest, owner request): lockfile in pinned Node image, sdk add pinned bundle d87eeff0bbcb; zod 4.4.3 pinned upstream (4.6.7 only nested under SAP prompt-registry); stub arms stub-sdk-4.100.258 and stub-plan-sdk-4.100.258; all 6 demos PASS on .258 | runner/sdk/4.100.258/, arms/ | done | ~8k |

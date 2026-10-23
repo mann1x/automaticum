@@ -95,6 +95,8 @@
 - `qwen36-mtp-27b-high.toml` — First real arm of milestone 2 (decisions D55 and D59). Every value here is (~220 tok)
 - `stub-plan.toml` — The stub arm in plan mode, for the harness's own tests of the scripted (~52 tok)
 - `stub-sdk-4.100.251.toml` — The stub arm on SDK release 4.100.251: the same settings, another build of (~58 tok)
+- `stub-sdk-4.100.258.toml` — The stub arm on SDK release 4.100.258, for the harness's own tests of that build (~50 tok)
+- `stub-plan-sdk-4.100.258.toml` — The stub arm in plan mode on SDK release 4.100.258 (~50 tok)
 - `stub.toml` — An arm for the stub model server: used by the harness's own tests and for (~99 tok)
 
 ## campaigns/
@@ -355,6 +357,12 @@
 - `package-lock.json` — npm lock file (~52402 tok)
 - `package.json` — Node.js package manifest (~64 tok)
 - `sdk.toml` — SDK release 4.100.251, from the registry: the patched Ollama provider (~74 tok)
+
+## runner/sdk/4.100.258/
+
+- `package-lock.json` — npm lock file (~52700 tok)
+- `package.json` — Node.js package manifest (~64 tok)
+- `sdk.toml` — SDK release 4.100.258, from the registry, pinned bundle d87eeff0bbcb (~70 tok)
 
 ## runner/test/
 
