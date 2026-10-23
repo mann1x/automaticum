@@ -1,6 +1,6 @@
 # 110 — Acceptance and roadmap
 
-**Status:** draft 0.18, 2026-10-23. The milestone order in §3 was approved by the owner
+**Status:** draft 0.19, 2026-10-23. The milestone order in §3 was approved by the owner
 on 2026-10-12. Milestone 1 has been carried out: the store, the importer and
 the spike's measurements exist (080 §7.4, 100 §7), and the owner has decided
 the questions it raised (D46 to D51). Milestone 2 was planned and approved on
@@ -367,31 +367,29 @@ nothing for "thinking on" (only an effort level is sent, as
 starts with it on; `thinking.blocks` shows it per run.
 
 
-### 3.5 Milestone 5, next after the loop batch: runs exported as conversations (D102)
+### 3.5 Milestone 5, next after the loop batch: runs exported as conversations (D102, D104)
 
 **Decided by the owner (2026-10-23):** after the Gemma-4 loop batch,
-automaticum gets `automaticum export conversations --batch <id> [--run <id>]
---out <file>`, for omnimergekit's recovery trainer. The format was agreed with
-omnimergekit:
+automaticum gives omnimergekit's recovery trainer the runs' model requests
+as training traces (D102). **Revised the same day (D104):** the traces are
+the SDK's own "Save model requests" capture, the plugin's switch, not an
+export automaticum rebuilds from its logs. Reasoning scope, inlined
+`<think>` blocks and compaction all reshape what is sent, so only the
+capture taken at the point of sending is faithful, and its layout is the
+plugin's, the same for every host.
 
-- one JSON row per run: `id`, `messages` (OpenAI chat form), `tools` (as sent
-  on the wire), `verdict`, `arm`, `endpoint`, `provider`, `sampler`,
-  `template_sha` and, optionally, the run's findings;
-- the system and user messages and the tool results come from the requests;
-  each assistant message is rebuilt from the response to its own request,
-  verbatim: `reasoning_content`, `content` and `tool_calls` (arguments as
-  received). The request history is not used for assistant turns, because
-  a provider that keeps reasoning out of the history it sends back (the
-  `opencoti` provider, D101) leaves it out there;
-- `provider` says whether the history the model was shown carried its
-  earlier reasoning, so the trainer can rebuild that context;
-- a run compacted during its course is split at the compaction, and
-  `compacted_at` lists the turns;
-- each assistant message carries `loop_spans`: `field` (`reasoning_content`,
-  `content` or `tool_call:<index>:<argument>`), character offsets `start` and
-  `end` into that field covering the repeats only (the second occurrence on),
-  and the `detector`. Only the detectors, units and thresholds of the
-  detector library (070) are used.
-
-`manic_miner` runs are the held-out gate and are never exported as training
-data; the training pool is the multi-language suite (063) once it has tasks.
+- The SDK release that carries it (after 4.100.260) saves the exact body
+  of every generation request and, beside it, the raw response stream, so
+  the reasoning is whole as generated; the file writer is in core, with a
+  `ClineCoreOptions` switch. 4.100.260 has the request half only
+  (`Llms.setModelRequestCapture`).
+- The runner turns the switch on in every run; the capture is kept in the
+  run record as a blob, with the run's verdict, arm, provider, sampler,
+  template and the resolved prior-reasoning scope beside it.
+- `automaticum export conversations --batch <id> [--run <id>] --out <dir>`
+  hands out those files and that metadata; it does not rebuild turns.
+  Loop spans (character offsets of the repeats, the second occurrence on)
+  come from the detector library (070) only, as agreed with omnimergekit.
+- `manic_miner` runs are the held-out gate and are never exported as
+  training data; the training pool is the multi-language suite (063) once
+  it has tasks.

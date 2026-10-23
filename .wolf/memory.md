@@ -941,3 +941,15 @@
 |------|--------|---------|---------|--------|
 | 17:07 | Edited runner/session.mjs | added 1 condition(s) | ~140 |
 | 17:12 | SDK 4.100.260 provisioned locally (bundle 1e5270d503c8); Gemma arms on 4.100.260 (stop e376f21efb3d, shipped 519de2a571d1); stub-sdk-4.100.260; runner checks the reported reasoningHistory setting against the arm | runner/sdk/4.100.260, arms/g4-128e.toml, arms/stub-sdk-4.100.260.toml, runner/session.mjs | tests pass | ~10k |
+
+## Session: 2026-10-23 17:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 17:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:33 | Deployed 6897da6 on blackswan-2 (SDK 4.100.260 reproduced offline, images rebuilt); stub PASS; Gemma batch b20261023-152641-6d0eb5 started; verified reasoningHistory auto->last/inline/measured ('template drops reasoning'); mails 1839-ish to ollama + backup_models | - | running | ~15k |
+| 17:40 | D104: training traces = SDK 'Save model requests' capture (requests + raw responses, core writer), not exporters from logs; 110 §3.5 revised; mails: ack 1841 (ollama), 1842 (backup_models) | docs/specs/110, decisions.md | planned | ~4k |
