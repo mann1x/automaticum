@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.14, 2026-10-14.
+**Status:** draft 0.15, 2026-10-23.
 
 ## 1. Rules
 
@@ -155,6 +155,14 @@ validation. There is no built-in "evaluation" or "product" profile.
 A reasoning-loop guard or a compaction that hides a loop makes a different arm.
 The basis records each setting, and reports show which runs had a guard fire.
 For a test of what the model does, the arm states them off.
+
+**Decided by the owner (2026-10-23):** `guards.stop_at_first_trip` is stated
+too (D99). When true, the first trip of any guard the SDK announces ends the
+run, and the run is `FAIL` with the guard in its reason; the oracle still
+runs and its answer is kept. When false the guards act as the SDK ships them.
+A false value is left out of the resolved arm, so arms resolved before the
+field existed keep their identity. Every run counts its guards' trips
+(`guard_trips.<guard>.<phase>`, 070).
 
 ### 5.2 Extending and resolving
 

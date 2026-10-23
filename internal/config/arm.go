@@ -141,6 +141,10 @@ type Guards struct {
 	StaleReadRewrites   Switch        `toml:"stale_read_rewrites" json:"stale_read_rewrites"`
 	// EditVerification is off, nudge or require.
 	EditVerification string `toml:"edit_verification" json:"edit_verification"`
+	// StopAtFirstTrip ends the run at the first trip of any guard, as a
+	// failed run (D99). Stated in every arm; false is left out of the
+	// resolved arm, so the arms from before it keep their identity.
+	StopAtFirstTrip *bool `toml:"stop_at_first_trip" json:"stop_at_first_trip,omitempty"`
 }
 
 // Switch is a guard that is on, with the SDK's own parameters, or off.
@@ -553,6 +557,7 @@ func (a *Arm) Validate() []string {
 	need(gd.StrongNudges.Enabled != nil, "guards.strong_nudges.enabled")
 	need(gd.ToolIntent.Enabled != nil, "guards.tool_intent.enabled")
 	need(gd.StaleReadRewrites.Enabled != nil, "guards.stale_read_rewrites.enabled")
+	need(gd.StopAtFirstTrip != nil, "guards.stop_at_first_trip")
 	switch gd.EditVerification {
 	case "off", "nudge", "require":
 	case "":
@@ -610,6 +615,11 @@ func on(b *bool) bool { return b != nil && *b }
 // Resolved returns the arm as canonical JSON: what a run stores and what the
 // runner is given. Keys are in a fixed order.
 func (a *Arm) Resolved() []byte {
+	if s := a.Guards.StopAtFirstTrip; s != nil && !*s {
+		c := *a
+		c.Guards.StopAtFirstTrip = nil
+		a = &c
+	}
 	b, err := json.Marshal(a)
 	if err != nil {
 		panic(err) // the struct holds only plain values

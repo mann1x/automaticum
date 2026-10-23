@@ -50,7 +50,7 @@ const SessionFork = "session_fork"
 // analysis records it as the metric analysis.version: the basis (020 §5)
 // says from it which detectors a run was analysed with, whether or not
 // they found anything.
-const AnalysisVersion = 4
+const AnalysisVersion = 5
 
 // Versions are the versions of the detectors this analysis applies:
 // ingest's own and the detector library's.
@@ -97,7 +97,7 @@ func Run(ctx context.Context, st store.State, blobs Blobs, runID string) (*Resul
 	if err != nil {
 		return nil, err
 	}
-	ev, reqs := &Events{Notices: map[string]int{}}, []Request(nil)
+	ev, reqs := &Events{Notices: map[string]int{}, GuardTrips: map[string]int{}}, []Request(nil)
 	for _, ref := range refs {
 		if ref.Kind != "events" && (ref.Kind != "wire" || r.Imported) {
 			continue
@@ -225,6 +225,15 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 	m("user.forks", float64(len(ev.Forks)))
 	m("user.mode_switches", float64(ev.ModeSwitches))
 	m("mode_switches.by_agent", float64(ev.AgentModeSwitches))
+	trips := 0
+	for _, key := range sortedKeys(ev.GuardTrips) {
+		m("guard_trips."+key, float64(ev.GuardTrips[key]))
+		trips += ev.GuardTrips[key]
+	}
+	m("guard_trips", float64(trips))
+	if ev.GuardStop != "" {
+		m("guard_stop."+ev.GuardStop, 1)
+	}
 	m("events.lines", float64(ev.Lines))
 	if ev.BadLines > 0 {
 		m("events.unreadable_lines", float64(ev.BadLines))

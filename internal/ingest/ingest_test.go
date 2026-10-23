@@ -672,3 +672,24 @@ func TestScriptedUserLines(t *testing.T) {
 		t.Errorf("fork: %+v", f)
 	}
 }
+
+// The guards' trips the runner noted (protocol 4) are counted by guard and
+// phase, and the trip that stopped the run is kept (D99).
+func TestGuardTrips(t *testing.T) {
+	ev, err := ReadEvents(strings.NewReader(strings.Join([]string{
+		`{"t":"2026-10-23T10:00:00Z","k":"runner","note":"guard_trip","guard":"reasoning_loop","phase":"cut","iteration":4,"message":"m"}`,
+		`{"t":"2026-10-23T10:00:01Z","k":"runner","note":"guard_trip","guard":"reasoning_loop","phase":"cut","iteration":5,"message":"m"}`,
+		`{"t":"2026-10-23T10:00:02Z","k":"runner","note":"guard_trip","guard":"loop_detection","phase":"","iteration":null,"message":""}`,
+		`{"t":"2026-10-23T10:00:02Z","k":"runner","note":"guard_stop","guard":"reasoning_loop","phase":"cut","iteration":4,"message":"m"}`,
+	}, "\n")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]int{"reasoning_loop.cut": 2, "loop_detection": 1}
+	if len(ev.GuardTrips) != len(want) || ev.GuardTrips["reasoning_loop.cut"] != 2 || ev.GuardTrips["loop_detection"] != 1 {
+		t.Errorf("trips %v, want %v", ev.GuardTrips, want)
+	}
+	if ev.GuardStop != "reasoning_loop.cut" {
+		t.Errorf("stop %q", ev.GuardStop)
+	}
+}

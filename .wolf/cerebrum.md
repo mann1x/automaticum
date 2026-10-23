@@ -55,6 +55,8 @@
 
 ## Do-Not-Repeat
 
+- [2026-10-23] In SDK 4.100.258 only reasoning_loop (cut/aborted/removed) and tool_intent_overrun (cut) announce a trip (notice metadata.kind/phase). Tool-call loop detection puts its soft warning in the tool result text and a hard one in the mistake tracker: no event. Never match guard sentences; ask the SDK for a notice. A new arm field whose false value must not change arm identity is dropped from Resolved() when false.
+
 - [2026-10-23] Docker 29.1 refuses Engine API versions below 1.44; never pin one API version for every engine. The client now takes the engine's MinAPIVersion when newer than v1.41 (bug-027). A fresh host also needs the pinned node/debian images pulled before `sdk verify` and `oracle verify`, and `task build custom/manic_miner` before its verify.
 
 - [2026-10-16] A `;`-chained commit after the private-string check pushed a hit. Gate the commit on the check, and include `\bbs2\b` in the pattern.
@@ -81,3 +83,4 @@ Full list with ids is in docs/specs/decisions.md. Keep this log in step.
 - 2026-10-14 D84-D86: canary on the first 5 requests, with control tokens from the tokenizer. A reload after a pause keeps the verdict. Checkpoint restore and fork are recorded and metrics restart there.
 - 2026-10-16 D87-D89: workspaces are git by default. Zero user.* metrics are hidden. An agent error before any answered request is ABORTED.
 - 2026-10-16 D90-D97: M5 focuses on BFCL (SWE seeded 50 from Lite, env-only image cache). BFCL and SWE run on blackswan-2 with its own daemon and its data root on the data disk, using both GPUs when free and never unloading others. SWE disk floor is 200 GB. automaticum never launches model servers.
+- 2026-10-23 D98-D99: Gemma-4 26B-A4B loop test with omnimergekit on blackswan-2: thinking on, ctx 256000, 10 runs per arm, 1h wall / 15m idle, SDK 4.100.258. Two arms: guards.stop_at_first_trip = true (first guard trip ends the run as FAIL, oracle still runs and is in the reason) vs guards as shipped. Every run counts guard_trips.<guard>.<phase>.

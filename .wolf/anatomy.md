@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-23T10:00:00.937Z
-> Files: 268 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-23T10:36:18.247Z
+> Files: 275 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -93,10 +93,11 @@
 - `omnimerge-v4-mtp-27b-high-sdk-4.100.251.toml` — OmniMerge v4 against the base model (owner, 2026-10-13): the same (~118 tok)
 - `qwen36-mtp-27b-high-sdk-4.100.251.toml` — The owner's first real arm (D55, D59) on SDK release 4.100.251: the same (~124 tok)
 - `qwen36-mtp-27b-high.toml` — First real arm of milestone 2 (decisions D55 and D59). Every value here is (~220 tok)
+- `stub-plan-sdk-4.100.258.toml` — The stub arm in plan mode on SDK release 4.100.258 (~50 tok)
+- `stub-stop-sdk-4.100.258.toml` — The stub arm on 4.100.258 that ends a run at the first guard trip (D99) (~50 tok)
 - `stub-plan.toml` — The stub arm in plan mode, for the harness's own tests of the scripted (~52 tok)
 - `stub-sdk-4.100.251.toml` — The stub arm on SDK release 4.100.251: the same settings, another build of (~58 tok)
 - `stub-sdk-4.100.258.toml` — The stub arm on SDK release 4.100.258, for the harness's own tests of that build (~50 tok)
-- `stub-plan-sdk-4.100.258.toml` — The stub arm in plan mode on SDK release 4.100.258 (~50 tok)
 - `stub.toml` — An arm for the stub model server: used by the harness's own tests and for (~99 tok)
 
 ## campaigns/
@@ -338,6 +339,7 @@
 
 ## runner/
 
+- `guards.mjs` — Guard trips as the SDK announces them: a "notice" event whose metadata (~478 tok)
 - `package.json` — Node.js package manifest (~103 tok)
 - `plan.mjs` — The extension's switch_to_act_mode tool, ported from Cline 4.100.250 and (~780 tok)
 - `PROTOCOL.md` — The runner: protocol 3 (~1819 tok)
@@ -371,6 +373,7 @@
 - `session.test.mjs` — stub: reportOf (~1906 tok)
 - `user.test.mjs` — Declares categories (~2112 tok)
 - `wire.test.mjs` — Declares serve (~1352 tok)
+- `guards.test.mjs` — Tests of guardTrip: a guard notice is a trip, other notices are not (~500 tok)
 
 ## spike/001-store/
 

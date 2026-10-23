@@ -1,4 +1,4 @@
-# The runner: protocol 3
+# The runner: protocol 4
 
 The runner is a Node program that runs **one** agent session for one run,
 inside the lane's container, and exits. The harness (`internal/run`) writes
@@ -23,6 +23,11 @@ the mode, answer a plan, and restore a checkpoint's messages, which forks
 the session (D86). The job may ask for the workspace to be a git
 repository (`workspace_git`). A stage-1 runner would play such a script
 wrongly, so the number went up.
+
+**Protocol 4 (2026-10-23):** guard trips. The runner notes every trip of a
+guard the SDK announces (`guard_trip`), and an arm with
+`guards.stop_at_first_trip` ends the run at the first one (D99) with the
+outcome `guard_stop`. A protocol 3 harness would not know that outcome.
 
 ## In
 
@@ -85,12 +90,14 @@ One JSON object per line, each with a time `t` and a kind `k`.
 | `usage`, `iterations`, `requests`, `questions_answered` | counts |
 | `agent_requests_answered`, `agent_error` | how many of the agent's requests (chat requests that offer tools) the server answered with a 2xx, and the agent's last error when it ended in error: none answered and an error end is `ABORTED` (D89) |
 | `user` | with a script: `approvals`, `denials`, `questions`, `actions` |
+| `guard_stop` | with the outcome `guard_stop`: the trip that ended the run (`guard`, `phase`, `iteration`, `message`) |
 
 | outcome | the harness's verdict | exit code |
 |---|---|---|
 | `refused`: never started (other SDK release, arm asks for what this protocol cannot do) | `SKIPPED` | 3 |
 | `invalid`: the session is not the arm | `INVALID` | 4 |
 | `wall_limit` | `TIMEOUT` unless the oracle passes | 5 |
+| `guard_stop`: the arm stops at the first guard trip, and a guard tripped | `FAIL`; the oracle still runs and what it said is in the reason (D99) | 6 |
 | `error` | `ABORTED` | 1 |
 | `completed` | the oracle decides, unless the agent ended in error with no request answered: `ABORTED` | 0 |
 | no last line at all | `ABORTED` | any |
@@ -119,7 +126,21 @@ session to act mode and sends the extension's continuation sentence, as
 the extension does when the session goes idle. A session whose arm starts
 in plan mode is interactive for this.
 
-## What protocol 3 does not do
+## Guard trips
+
+A guard's action is a `notice` event of the SDK whose `metadata.kind` names
+the guard and `metadata.phase` what it did (`guards.mjs` lists the kinds).
+In 4.100.258 these are `reasoning_loop` (`cut`, `aborted`, `removed`) and
+`tool_intent_overrun` (`cut`). The tool-call loop guard, the
+reasoning-repetition nudge and the other guards announce nothing yet; they
+are asked of the SDK (mail of 2026-10-23) and counted once they do. Every
+trip is a `guard_trip` note (`guard`, `phase`, `iteration`, `message`); with
+`guards.stop_at_first_trip` the first is also a `guard_stop` note, the
+session is aborted, and the last line's outcome is `guard_stop`. The no-tool-
+call nudge (`kind: "nudge"`) is the runtime's, not a guard's, and is not a
+trip.
+
+## What protocol 4 does not do
 
 Escalation, sub-agents and teams, MCP approvals (no arm starts an MCP
 server), the emulation of editor behaviour (diagnostics after edits,

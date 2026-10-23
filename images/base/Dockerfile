@@ -13,7 +13,7 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/automaticum/runner
-COPY runner/package.json runner/runner.mjs runner/plan.mjs runner/session.mjs runner/user.mjs runner/wire.mjs ./
+COPY runner/package.json runner/runner.mjs runner/guards.mjs runner/plan.mjs runner/session.mjs runner/user.mjs runner/wire.mjs ./
 # Where the SDK bundle is mounted.
 RUN mkdir node_modules
 

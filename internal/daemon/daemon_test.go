@@ -1426,7 +1426,7 @@ runs = 1
 // zero in every run of every group, and kept, zeros too, when one is not.
 func TestDropQuietUser(t *testing.T) {
 	groups := []CompareGroup{
-		{values: map[string][]float64{"user.actions": {0, 0}, "user.denials": {0, 1}, "turns": {0, 0}}},
+		{values: map[string][]float64{"user.actions": {0, 0}, "user.denials": {0, 1}, "turns": {0, 0}, "guard_trips": {0, 0}, "guard_trips.reasoning_loop.cut": {0, 2}}},
 		{values: map[string][]float64{"user.actions": {0}, "user.denials": {0}}},
 	}
 	dropQuietUser(groups)
@@ -1438,5 +1438,11 @@ func TestDropQuietUser(t *testing.T) {
 	}
 	if _, ok := groups[0].values["turns"]; !ok {
 		t.Error("a metric not of the user was dropped")
+	}
+	if _, ok := groups[0].values["guard_trips"]; ok {
+		t.Error("guard_trips is zero everywhere and stayed")
+	}
+	if _, ok := groups[0].values["guard_trips.reasoning_loop.cut"]; !ok {
+		t.Error("a guard trip that happened was dropped")
 	}
 }

@@ -533,6 +533,8 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		}
 	case end.Outcome == OutcomeWallLimit:
 		facts.Limit, facts.LimitOwner, facts.LimitBy = "wall", wall.Owner, "runner"
+	case end.Outcome == OutcomeGuardStop:
+		facts.GuardStop = end.Reason
 	case end.Outcome == OutcomeError:
 		facts.Aborted = "the runner failed: " + end.Reason
 	case end.Outcome != OutcomeCompleted:

@@ -41,6 +41,9 @@ func TestDecide(t *testing.T) {
 		{"integrity outranks the oracle", Facts{Invalid: []string{"x"}, OracleRan: true, OraclePassed: true}, store.Invalid},
 		{"integrity outranks an abort", Facts{Invalid: []string{"x"}, Aborted: "crash"}, store.Invalid},
 		{"never started", Facts{Skipped: "no image", Invalid: []string{"x"}, Aborted: "y"}, store.Skipped},
+		{"a guard stop fails a run the oracle passed", Facts{OracleRan: true, OraclePassed: true, GuardStop: "the first guard trip: reasoning_loop (cut)"}, store.Fail},
+		{"a guard stop still needs the oracle's answer", Facts{GuardStop: "the first guard trip: reasoning_loop (cut)"}, store.Aborted},
+		{"integrity outranks a guard stop", Facts{Invalid: []string{"x"}, OracleRan: true, GuardStop: "g"}, store.Invalid},
 	}
 	for _, c := range cases {
 		if got, reason := Decide(c.f); got != c.want || reason == "" {
@@ -281,6 +284,11 @@ func TestVerdicts(t *testing.T) {
 			io.WriteString(out, event+endLine(OutcomeWallLimit, ""))
 			return docker.Result{}, nil
 		}, store.Pass, "wall limit had fired"},
+		{"fail at the first guard trip, the oracle passing", nil, func(_ context.Context, s docker.Spec, out io.Writer) (docker.Result, error) {
+			fix(s)
+			io.WriteString(out, event+endLine(OutcomeGuardStop, `,"reason":"the first guard trip: reasoning_loop (cut) at turn 3","guard_stop":{"guard":"reasoning_loop","phase":"cut","iteration":3}`))
+			return docker.Result{}, nil
+		}, store.Fail, "stopped at the first guard trip: reasoning_loop (cut) at turn 3; the oracle said pass"},
 		{"timeout by the runner's limit", nil, func(_ context.Context, s docker.Spec, out io.Writer) (docker.Result, error) {
 			io.WriteString(out, event+endLine(OutcomeWallLimit, ""))
 			return docker.Result{}, nil

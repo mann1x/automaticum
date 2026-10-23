@@ -263,7 +263,7 @@ func dropQuietUser(groups []CompareGroup) {
 
 // quietWhenZero says whether a metric is left out where it is zero (D88).
 func quietWhenZero(name string) bool {
-	return strings.HasPrefix(name, "user.") || strings.HasPrefix(name, "mode_switches.")
+	return strings.HasPrefix(name, "user.") || strings.HasPrefix(name, "mode_switches.") || strings.HasPrefix(name, "guard_trips") || strings.HasPrefix(name, "guard_stop.")
 }
 
 // counter says whether a metric counts events, so that a run without it

@@ -24,6 +24,9 @@ type Facts struct {
 	// OraclePassed is that answer.
 	OracleRan    bool
 	OraclePassed bool
+	// GuardStop is the guard trip that ended the run, for an arm that stops
+	// at the first one (D99).
+	GuardStop string
 }
 
 // Decide applies the verdict rules and returns the verdict with its reason.
@@ -43,6 +46,14 @@ func Decide(f Facts) (store.Verdict, string) {
 		return store.Aborted, f.Aborted
 	case !f.OracleRan:
 		return store.Aborted, "the oracle gave no answer"
+	case f.GuardStop != "":
+		// The arm stops a run at its first guard trip and counts it as
+		// failed (D99); what the oracle said is kept beside it.
+		said := "no"
+		if f.OraclePassed {
+			said = "pass"
+		}
+		return store.Fail, fmt.Sprintf("stopped at %s; the oracle said %s", f.GuardStop, said)
 	case f.OraclePassed:
 		if f.Limit != "" {
 			return store.Pass, fmt.Sprintf("oracle passed; the %s limit had fired (%s)", f.Limit, limitWho(f))

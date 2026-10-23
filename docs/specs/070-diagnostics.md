@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.17, 2026-10-16.
+**Status:** draft 0.18, 2026-10-23.
 
 ## 1. The rule: no custom script
 
@@ -58,6 +58,10 @@ method is recorded.
   group, `run show` a zero one. The same rule hides
   `mode_switches.by_agent` (the agent's `switch_to_act_mode`, 040 §6.2)
   where zero.
+- **Guard trips** (analysis version 5, D99): `guard_trips` and
+  `guard_trips.<guard>.<phase>` count the trips the runner noted, and
+  `guard_stop.<guard>.<phase>` is 1 on a run an arm stopped at its first
+  trip. Hidden where zero, by the same rule.
 
 ### 2.1 Per cell
 

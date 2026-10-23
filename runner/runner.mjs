@@ -17,12 +17,13 @@ import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BUNDLED_SKILLS_ON_BY_DEFAULT, buildConfig, compareResolved, derivedFromArm, unsupported } from "./session.mjs";
 import { ACT_MODE_CONTINUATION_PROMPT, createSwitchToActModeTool, withSwitchTool } from "./plan.mjs";
+import { guardTrip } from "./guards.mjs";
 import { createUser } from "./user.mjs";
 import { createWire, describe } from "./wire.mjs";
 
-const PROTOCOL = 3;
+const PROTOCOL = 4;
 const SDK_PACKAGE = "@cerebriline/sdk";
-const EXIT = { completed: 0, error: 1, refused: 3, invalid: 4, wall_limit: 5 };
+const EXIT = { completed: 0, error: 1, refused: 3, invalid: 4, wall_limit: 5, guard_stop: 6 };
 
 // An Error inside an event serialises to {} unless it is described.
 const plain = (_key, value) => (value instanceof Error ? describe(value) : typeof value === "bigint" ? String(value) : value);
@@ -287,6 +288,10 @@ async function main() {
 
 	// agentError is the last error the agent reported, for the last line.
 	let agentError = null;
+	// guardStop is the first guard trip, when the arm stops the run there
+	// (D99); every trip is noted either way.
+	let guardStop = null;
+	const stopAtTrip = arm.guards.stop_at_first_trip === true;
 	let unsubscribe = () => {};
 	const follow = (id) => {
 		unsubscribe();
@@ -298,6 +303,15 @@ async function main() {
 					if (event?.type !== "agent_event" || (event.payload.teamRole ?? "lead") !== "lead") return;
 					if (inner?.type === "iteration_start") user.iteration();
 					if (inner?.type === "error") agentError = describe(inner.error).message;
+					const trip = guardTrip(inner);
+					if (trip) {
+						note("guard_trip", trip);
+						if (stopAtTrip && guardStop === null) {
+							guardStop = trip;
+							note("guard_stop", trip);
+							core.abort(session.id, "the first guard trip").catch((err) => note("abort_failed", { error: describe(err) }));
+						}
+					}
 				},
 				{ sessionId: id },
 			) ?? (() => {});
@@ -381,7 +395,7 @@ async function main() {
 		// it when the session goes idle, before anything else: the session in
 		// act mode, continued without a word from the user.
 		let last = started?.result;
-		while (!wallFired) {
+		while (!wallFired && guardStop === null) {
 			let say;
 			if (session.switchQueued) {
 				session.switchQueued = false;
@@ -426,6 +440,10 @@ async function main() {
 	};
 	if (problems !== null && problems.length > 0) end("invalid", { ...fields, reason: "the session is not the arm", problems });
 	if (problems === null && !failure) end("invalid", { ...fields, reason: fields.read_back, problems: [fields.read_back] });
+	if (guardStop !== null) {
+		const at = guardStop.iteration === null ? "" : ` at turn ${guardStop.iteration}`;
+		end("guard_stop", { ...fields, reason: `the first guard trip: ${guardStop.guard}${guardStop.phase ? " (" + guardStop.phase + ")" : ""}${at}`, guard_stop: guardStop });
+	}
 	if (wallFired) end("wall_limit", { ...fields, reason: `the wall limit of ${job.wall_s} s` });
 	if (failure) end("error", { ...fields, reason: describe(failure).message, error: describe(failure) });
 	end("completed", fields);

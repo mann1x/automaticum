@@ -36,6 +36,11 @@ type Events struct {
 	// Notices counts the SDK's notices by reason; a notice without a reason
 	// is counted under its type and message.
 	Notices map[string]int
+	// GuardTrips counts the guards' trips the runner noted, by guard and
+	// phase ("reasoning_loop.cut"); GuardStop is the trip that ended the
+	// run, for an arm that stops at the first one (D99).
+	GuardTrips map[string]int
+	GuardStop  string
 	// FirstTokenMS is the time to the first token of the first request.
 	FirstTokenMS float64
 	// Tokens by kind, as the SDK split them, and how it split.
@@ -89,6 +94,9 @@ type eventLine struct {
 	Note    string             `json:"note"`
 	Event   json.RawMessage    `json:"event"`
 	Derived map[string]float64 `json:"derived"`
+	// A runner's guard_trip or guard_stop note (protocol 4).
+	Guard string `json:"guard"`
+	Phase string `json:"phase"`
 	// A scripted user's line (040 §6.2): the event it answered, the rule
 	// (0 for the default) and what it did.
 	On       string `json:"on"`
@@ -147,7 +155,7 @@ type scan struct {
 
 // ReadEvents reads a run's event stream: the JSON lines the runner printed.
 func ReadEvents(r io.Reader) (*Events, error) {
-	ev := &Events{Notices: map[string]int{}}
+	ev := &Events{Notices: map[string]int{}, GuardTrips: map[string]int{}}
 	return ev, ev.Read(r)
 }
 
@@ -198,6 +206,17 @@ func (ev *Events) line(line []byte, sc *scan) {
 			ev.UserFailed++
 		case "fork":
 			ev.Forks = append(ev.Forks, Fork{T: l.T, From: l.From, To: l.To, Checkpoint: l.Checkpoint, Workspace: l.Workspace, Restarted: l.Restarted})
+		case "guard_trip":
+			key := l.Guard
+			if l.Phase != "" {
+				key += "." + l.Phase
+			}
+			ev.GuardTrips[key]++
+		case "guard_stop":
+			ev.GuardStop = l.Guard
+			if l.Phase != "" {
+				ev.GuardStop += "." + l.Phase
+			}
 		case "mode_switched":
 			if l.Source == "agent" {
 				ev.AgentModeSwitches++

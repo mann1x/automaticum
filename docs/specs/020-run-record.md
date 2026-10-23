@@ -1,6 +1,6 @@
 # 020 — The run record, verdicts and the basis
 
-**Status:** draft 0.11, 2026-10-16.
+**Status:** draft 0.12, 2026-10-23.
 
 Nothing in this file is optional. Each item is here because its absence
 invalidated or blinded a real campaign. A value is recorded **as probed or as
@@ -97,7 +97,7 @@ beside it:
 | verdict | meaning |
 |---|---|
 | `PASS` | the oracle passed. Outranks the clock. |
-| `FAIL` | the oracle ran and said no. Nothing else. |
+| `FAIL` | the oracle ran and said no; or an arm that stops at the first guard trip was stopped there (D99). Nothing else. |
 | `TIMEOUT` | a limit ended it: an outer kill, the agent's own limit exiting 0 near the cap, or an external harness's limit. Which one is recorded. |
 | `ABORTED` | no verdict could be produced: crash, out of memory, operator kill, empty event stream, tampered oracle, scorer error, an agent that ended in error before the server answered any of its requests (D89). |
 | `INVALID` | the run finished but a gate or an integrity check says its result must not be counted (wrong build, setting not applied, model not GPU-resident, endpoint changed mid-run). |
@@ -120,6 +120,11 @@ Rules:
   `ABORTED`, with the agent's error in the reason. An agent that ended in
   error after the model answered is still judged by the oracle. A runner
   that does not count (before 2026-10-16) keeps the old rule.
+- **Decided by the owner (2026-10-23), D99:** an arm with
+  `guards.stop_at_first_trip` ends a run at the first guard trip, and that
+  run is `FAIL`, with the guard and its phase in the reason. The oracle still
+  runs (it needs an answer, or the run is `ABORTED`), and what it said is in
+  the reason, so a pass after a trip is not lost.
 - **Secondary outcome**, separate from the verdict: how the agent ended
   (`completed`, `aborted`, `max_iterations`, `stopped`, `mistake_limit`) and
   whether it claimed success. "Claimed success, oracle says no" is a finding.
