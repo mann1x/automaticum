@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-23T10:36:18.247Z
-> Files: 275 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-23T12:46:51.085Z
+> Files: 281 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -90,18 +90,20 @@
 ## arms/
 
 - `base.toml` — The settings every arm here shares. It is not runnable by itself: it names (~422 tok)
+- `g4-128e-bf16-shipped.toml` — Gemma-4 128e BF16, end token 106, Google template; guards as shipped (~80 tok)
+- `g4-128e-bf16-stop.toml` — The same, stopping on the loop signals (guards.stop_on, D100) (~150 tok)
+- `g4-128e.toml` — Template for the Gemma-4 26B-A4B loop test (D98): ctx 256000, thinking left to the server, owner 8244 sampler, 1h/15m, SDK 4.100.258 (~120 tok)
 - `omnimerge-v4-mtp-27b-high-sdk-4.100.251.toml` — OmniMerge v4 against the base model (owner, 2026-10-13): the same (~118 tok)
 - `qwen36-mtp-27b-high-sdk-4.100.251.toml` — The owner's first real arm (D55, D59) on SDK release 4.100.251: the same (~124 tok)
 - `qwen36-mtp-27b-high.toml` — First real arm of milestone 2 (decisions D55 and D59). Every value here is (~220 tok)
 - `stub-plan-sdk-4.100.258.toml` — The stub arm in plan mode on SDK release 4.100.258 (~50 tok)
-- `stub-stop-sdk-4.100.258.toml` — The stub arm on 4.100.258 that ends a run at the first guard trip (D99) (~50 tok)
 - `stub-plan.toml` — The stub arm in plan mode, for the harness's own tests of the scripted (~52 tok)
 - `stub-sdk-4.100.251.toml` — The stub arm on SDK release 4.100.251: the same settings, another build of (~58 tok)
 - `stub-sdk-4.100.258.toml` — The stub arm on SDK release 4.100.258, for the harness's own tests of that build (~50 tok)
+- `stub-stop-sdk-4.100.258.toml` — The stub arm on 4.100.258 that stops on the reasoning-loop guard (D100) (~50 tok)
+- `stub-sdk-4.100.259.toml` — The stub arm on SDK release 4.100.259 (~50 tok)
+- `stub-stop-sdk-4.100.259.toml` — The stub arm on 4.100.259 that stops on the reasoning-loop guard (D100) (~50 tok)
 - `stub.toml` — An arm for the stub model server: used by the harness's own tests and for (~99 tok)
-- `g4-128e.toml` — Template for the Gemma-4 26B-A4B loop test (D98): ctx 256000, thinking left to the server, owner 8244 sampler, 1h/15m, SDK 4.100.258 (~120 tok)
-- `g4-128e-bf16-shipped.toml` — Gemma-4 128e BF16, end token 106, Google template; guards as shipped (~80 tok)
-- `g4-128e-bf16-stop.toml` — The same, stopping at the first guard trip (D99) (~80 tok)
 
 ## campaigns/
 
@@ -336,14 +338,14 @@
 
 ## models/
 
+- `gemma-4-26b-a4b-it-bf16-eos106.toml` — Gemma-4 26B-A4B instruct, 128 experts, BF16, Google template, end token 106 (owner, 2026-10-23) (~100 tok)
 - `omnimerge-v4-mtp_tb-27b-q4km-128k.toml` — What this tag is, in the owner's words (030 §4.1), as named on 2026-10-13. (~83 tok)
 - `qwen36-base-mtp_tb-27b-q4km-128k.toml` — What this tag is, in the owner's words (030 §4.1), as named on 2026-10-13: (~67 tok)
 - `stub.toml` — The scripted stub model server of the harness's own tests. Not a model. (~44 tok)
-- `gemma-4-26b-a4b-it-bf16-eos106.toml` — Gemma-4 26B-A4B instruct, 128 experts, BF16, Google template, end token 106 (owner, 2026-10-23) (~100 tok)
 
 ## runner/
 
-- `guards.mjs` — Guard trips as the SDK announces them: a "notice" event whose metadata (~478 tok)
+- `guards.mjs` — Guard actions as the SDK announces them: a "notice" event whose metadata (~761 tok)
 - `package.json` — Node.js package manifest (~103 tok)
 - `plan.mjs` — The extension's switch_to_act_mode tool, ported from Cline 4.100.250 and (~780 tok)
 - `PROTOCOL.md` — The runner: protocol 3 (~1819 tok)
@@ -370,14 +372,20 @@
 - `package.json` — Node.js package manifest (~64 tok)
 - `sdk.toml` — SDK release 4.100.258, from the registry, pinned bundle d87eeff0bbcb (~70 tok)
 
+## runner/sdk/4.100.259/
+
+- `package-lock.json` — npm lock file (~52700 tok)
+- `package.json` — Node.js package manifest (~64 tok)
+- `sdk.toml` — SDK release 4.100.259, from the registry, pinned bundle 1c7c914f07c5 (~70 tok)
+
 ## runner/test/
 
 - `arm-stub.json` (~287 tok)
+- `guards.test.mjs` — Declares notice (~753 tok)
 - `plan.test.mjs` — createTool as the SDK's: it hands back what it was given. (~415 tok)
 - `session.test.mjs` — stub: reportOf (~1906 tok)
 - `user.test.mjs` — Declares categories (~2112 tok)
 - `wire.test.mjs` — Declares serve (~1352 tok)
-- `guards.test.mjs` — Tests of guardTrip: a guard notice is a trip, other notices are not (~500 tok)
 
 ## spike/001-store/
 

@@ -156,13 +156,17 @@ A reasoning-loop guard or a compaction that hides a loop makes a different arm.
 The basis records each setting, and reports show which runs had a guard fire.
 For a test of what the model does, the arm states them off.
 
-**Decided by the owner (2026-10-23):** `guards.stop_at_first_trip` is stated
-too (D99). When true, the first trip of any guard the SDK announces ends the
-run, and the run is `FAIL` with the guard in its reason; the oracle still
-runs and its answer is kept. When false the guards act as the SDK ships them.
-A false value is left out of the resolved arm, so arms resolved before the
-field existed keep their identity. Every run counts its guards' trips
-(`guard_trips.<guard>.<phase>`, 070).
+**Decided by the owner (2026-10-23):** `guards.stop_on` is stated too (D99,
+D100): the guard trips that end the run, each a guard (`loop_detection`) or a
+guard and a phase (`nudge.non_convergence`; a nudge's phase is which nudge).
+The first trip it names ends the run, and the run is `FAIL` with the guard in
+its reason; the oracle still runs and its answer is kept. An empty list
+stops nothing: the guards act as the SDK ships them. A name the SDK does not
+announce is refused (the guards and phases of 4.100.259 are in
+`internal/config/arm.go`, `guardPhases`). An empty list is left out of the
+resolved arm, so arms resolved before the field existed keep their
+identity. Every run counts its guards' trips (`guard_trips.<guard>.<phase>`,
+070).
 
 ### 5.2 Extending and resolving
 

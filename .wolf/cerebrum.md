@@ -6,6 +6,8 @@
 
 ## User Preferences
 
+- [2026-10-23] Run behaviour the owner chooses (which guards stop a run, thresholds, sets) goes in the arm as configuration, never hard-coded in the runner or harness.
+
 - When the owner lists setup steps, do them in the order given.
 - GitHub repos go under the `mann1x` account.
 - The repo is public. Tracked files use only the neutral host names, with no nicknames, private paths or addresses. The mapping is in docs/local/hosts.local.md (untracked).
@@ -55,6 +57,8 @@
 
 ## Do-Not-Repeat
 
+- [2026-10-23] A batch id is not the run ids' prefix (runs 20261023-110717-819b65-NNN belonged to batch b20261023-110717-524ef9). Read the batch from `run show -json <run>` (field `batch`) before `batch pause`. First runs on a new llama-server: check /props chat_format and reasoning_format; "Content-only"/"none" means no tool calls or reasoning will be parsed, so pause and tell the server owner.
+
 - [2026-10-23] In SDK 4.100.258 only reasoning_loop (cut/aborted/removed) and tool_intent_overrun (cut) announce a trip (notice metadata.kind/phase). Tool-call loop detection puts its soft warning in the tool result text and a hard one in the mistake tracker: no event. Never match guard sentences; ask the SDK for a notice. A new arm field whose false value must not change arm identity is dropped from Resolved() when false.
 
 - [2026-10-23] Docker 29.1 refuses Engine API versions below 1.44; never pin one API version for every engine. The client now takes the engine's MinAPIVersion when newer than v1.41 (bug-027). A fresh host also needs the pinned node/debian images pulled before `sdk verify` and `oracle verify`, and `task build custom/manic_miner` before its verify.
@@ -84,3 +88,4 @@ Full list with ids is in docs/specs/decisions.md. Keep this log in step.
 - 2026-10-16 D87-D89: workspaces are git by default. Zero user.* metrics are hidden. An agent error before any answered request is ABORTED.
 - 2026-10-16 D90-D97: M5 focuses on BFCL (SWE seeded 50 from Lite, env-only image cache). BFCL and SWE run on blackswan-2 with its own daemon and its data root on the data disk, using both GPUs when free and never unloading others. SWE disk floor is 200 GB. automaticum never launches model servers.
 - 2026-10-23 D98-D99: Gemma-4 26B-A4B loop test with omnimergekit on blackswan-2: thinking on, ctx 256000, 10 runs per arm, 1h wall / 15m idle, SDK 4.100.258. Two arms: guards.stop_at_first_trip = true (first guard trip ends the run as FAIL, oracle still runs and is in the reason) vs guards as shipped. Every run counts guard_trips.<guard>.<phase>.
+- 2026-10-23 D100: which guard trips stop a run is ARM config (guards.stop_on, guard or guard.phase; owner: "this is obviously a configuration for the runs"), not runner code. Gemma stop arm: loop_detection, reasoning_loop, tool_intent_overrun, nudge.non_convergence, nudge.silent_repetition. Loop test moved to SDK 4.100.259 (every guard announces).

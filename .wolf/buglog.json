@@ -498,6 +498,23 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-10-23T12:54:39+02:00"
+    },
+    {
+      "id": "bug-030",
+      "timestamp": "2026-10-23T13:43:33+02:00",
+      "error_message": "the canary stopped the batch: <run 002>#2: ended by length; <run 002>#3: ended by length (on resume, after runs 001 and 002 had been marked INVALID)",
+      "file": "internal/daemon/canary.go",
+      "root_cause": "The canary judges the batch's first requests whatever became of their runs; requests of runs an operator later marked INVALID (here: the base model served by mistake) still count, so a resumed batch is stopped on evidence already set aside",
+      "fix": "OPEN: worked around by a fresh batch (b20261023-114320-60b8e5) and run 003 marked INVALID with the reason. The canary should leave out requests of runs marked INVALID and judge the next ones",
+      "tags": [
+        "canary",
+        "batch",
+        "invalidate",
+        "open"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-23T13:43:33+02:00"
     }
   ]
 }

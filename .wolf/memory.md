@@ -816,3 +816,20 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 13:02 | Scope narrowed by owner (mail 1812): one endpoint g4-128e-bf16 (BF16, Google template, eos 106, port 8261), arms g4-128e-bf16-{shipped,stop}; q4 arms and models removed | arms/, models/, specs | done | ~5k |
+
+## Session: 2026-10-23 13:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 13:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:11 | bm-889 batch b20261023-110717-524ef9 started on blackswan-2, paused after run 001 FAIL in 16s: server 8261 chat_format Content-only, reasoning_format none, no tool calls or reasoning; lane kept, server not unloaded; mail 1816 to backup_models | blackswan-2 | paused | ~10k |
+| 13:43 | bm-889: instruct model up (mail 1819); old batch resumed, canary stopped it on the INVALID base-model runs' requests (bug-030, open); 003 INVALID; fresh batch b20261023-114320-60b8e5 (10 per arm) started | blackswan-2 | running | ~5k |
+| 14:46 | Created runner/guards.mjs | — | ~836 |
+| 14:46 | Created runner/test/guards.test.mjs | — | ~609 |
+| 14:46 | Created runner/guards.mjs | — | ~761 |
+| 14:46 | Created runner/test/guards.test.mjs | — | ~753 |
+| 14:50 | D100: guards.stop_on arm list replaces stop_at_first_trip (owner: run config, not static); runner protocol 5 (guards.mjs table of 4.100.259, stopsOn); SDK 4.100.259 provisioned+pinned (1c7c914f07c5); Gemma arms on .259, stop arm = loop signals; stub: reasoning_loop and loop_detection soft stop, shipped counts trips; .258 batch stopped | runner/, internal/config, arms/, specs | done | ~30k |

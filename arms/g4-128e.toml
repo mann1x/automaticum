@@ -3,13 +3,14 @@
 #
 # The owner's values of 2026-10-23: thinking on (left to the server, see
 # [thinking]), a window of 256000, a wall
-# limit of 1 h and an idle limit of 15 min, SDK release 4.100.258. The
+# limit of 1 h and an idle limit of 15 min, SDK release 4.100.259 (the
+# first whose every guard announces its actions). The
 # sampler is the owner's serving configuration for this model (the 8244
 # start script: temperature 0.7, top_p 0.95, top_k 64, repeat penalty 1.13
 # over the last 72, presence penalty 0.25), owned by the arm so that every
 # request carries it and the wire shows it. Guards and compaction come from
-# the base: all on. The two guard arms of each server differ only in
-# guards.stop_at_first_trip (D99). The owner narrowed the test to one
+# the base: all on. The two guard arms differ only in guards.stop_on
+# (D99, D100). The owner narrowed the test to one
 # server (the BF16 file, end token 106, Google's template): g4-128e-bf16-*.
 template = true
 extends = "base"
@@ -43,4 +44,4 @@ wall_s = 3600
 idle_s = 900
 
 [harness]
-sdk_release = "4.100.258"
+sdk_release = "4.100.259"

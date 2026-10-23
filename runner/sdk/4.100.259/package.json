@@ -1,0 +1,9 @@
+{
+  "name": "automaticum-runner",
+  "private": true,
+  "version": "0.1.0",
+  "description": "The SDK bundle of one build: what `automaticum sdk add` installs.",
+  "dependencies": {
+    "@cerebriline/sdk": "4.100.259"
+  }
+}

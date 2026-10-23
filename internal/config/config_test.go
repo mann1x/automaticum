@@ -109,6 +109,9 @@ func TestArmValidation(t *testing.T) {
 		{"protocol static without limits", good + "[protocol]\nmode = \"static\"\n", "protocol.max_changes"},
 		{"bad release", good + "[harness]\nsdk_release = \"main\"\n", "harness.sdk_release"},
 		{"no wall limit", good + "[limits]\nwall_s = 0\n", "limits.wall_s must be positive"},
+		{"stop on loop signals", good + "[guards]\nstop_on = [\"loop_detection\", \"nudge.non_convergence\", \"reasoning_loop.removed\"]\n", ""},
+		{"stop on an unknown guard", good + "[guards]\nstop_on = [\"loop_detect\"]\n", "names no guard that announces"},
+		{"stop on an unknown phase", good + "[guards]\nstop_on = [\"nudge.no_tools\"]\n", "nudge announces no_tool_call"},
 	}
 	for _, c := range cases {
 		_, err := LoadArm(arms(t, map[string]string{"a": c.body}), "a")
@@ -121,6 +124,26 @@ func TestArmValidation(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), c.want) {
 			t.Errorf("%s: want a refusal containing %q, got %v", c.name, c.want, err)
 		}
+	}
+}
+
+// An empty stop_on is left out of the resolved arm, so an arm keeps the
+// identity it had before the field existed (D100); a list is in it.
+func TestStopOnIdentity(t *testing.T) {
+	dir := arms(t, map[string]string{"a": good, "b": good + "[guards]\nstop_on = [\"loop_detection\"]\n"})
+	a, err := LoadArm(dir, "a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(a.Resolved()), "stop_on") {
+		t.Errorf("an empty stop_on is in the resolved arm: %s", a.Resolved())
+	}
+	b, err := LoadArm(dir, "b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b.Resolved()), `"stop_on":["loop_detection"]`) || a.ID == b.ID {
+		t.Errorf("stop_on is not part of the arm: %s", b.Resolved())
 	}
 }
 

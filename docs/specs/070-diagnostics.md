@@ -60,8 +60,8 @@ method is recorded.
   where zero.
 - **Guard trips** (analysis version 5, D99): `guard_trips` and
   `guard_trips.<guard>.<phase>` count the trips the runner noted, and
-  `guard_stop.<guard>.<phase>` is 1 on a run an arm stopped at its first
-  trip. Hidden where zero, by the same rule.
+  `guard_stop.<guard>.<phase>` is 1 on a run its arm's `guards.stop_on`
+  stopped (D100). A nudge's phase is which nudge it was. Hidden where zero, by the same rule.
 
 ### 2.1 Per cell
 

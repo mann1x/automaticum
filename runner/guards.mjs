@@ -1,42 +1,63 @@
-// Guard trips as the SDK announces them: a "notice" event whose metadata
-// names the guard (kind) and what it did (phase). Read from the published
-// bundle of 4.100.258; the SDK's own names are kept.
+// Guard actions as the SDK announces them: a "notice" event whose metadata
+// names the guard (kind) and what it did (phase). The table is Cerebriline's
+// for 4.100.259 (mail of 2026-10-23), checked against the published bundle;
+// 4.100.258 sends only the reasoning_loop, tool_intent_overrun and nudge
+// notices of it.
 //
-// An arm with guards.stop_at_first_trip ends the run at the first trip
-// (owner, 2026-10-23, D99): a guard is what signals a loop, and a run that
-// is stopped there does not go round again.
+// Every action is a trip and is counted. Which trips end the run is the
+// arm's: guards.stop_on lists them (D100), and an empty list stops nothing.
 
-// GUARD_KINDS are the notice kinds that are a guard's action, with what the
-// SDK does there.
-//   reasoning_loop       the reasoning-loop guard: "cut" (the stream is cut
-//                        and the request made again), "aborted" (the streak
-//                        of cuts ended the run), "removed" (a repeated passage
-//                        taken out of the reasoning after the turn)
-//   tool_intent_overrun  the tool-intent guard: "cut"
-// The tool-call loop guard (loop_detection), the reasoning-repetition nudge,
-// the tool-argument loop guard, strong nudges, the stale-read guard and edit
-// verification announce nothing in 4.100.258: they are asked of the SDK
-// under these names, and counted once it sends them.
+// GUARD_KINDS are the notice kinds that are a guard's action. The same
+// list is in internal/config (guardKinds), which checks an arm's stop_on.
+//   loop_detection       the same tool call over and over: "soft" (first
+//                        warning), "hard" (last warning), "stopped"
+//   reasoning_loop       "cut" (the stream cut and the request made again),
+//                        "aborted" (the streak of cuts ended the run),
+//                        "removed" (a repeated passage taken out after the
+//                        turn); metadata.cause is reasoning_loop, answer_loop
+//                        or argument_loop
+//   tool_intent_overrun  "cut"
+//   nudge                the phase is which nudge: no_tool_call,
+//                        unparsed_tool_call, announced_intent,
+//                        non_convergence, silent_repetition
+//   edit_verification, checklist_close_out, team_obligation
+//                        the completion guards: "nudge"
+//   struggle             "nudge", "offer"
+// The stale-read rewrite announces nothing: it changes nothing the model is
+// told.
 export const GUARD_KINDS = new Set([
+	"loop_detection",
 	"reasoning_loop",
 	"tool_intent_overrun",
-	"loop_detection",
-	"reasoning_repetition",
-	"tool_argument_loop",
-	"strong_nudge",
-	"stale_read_rewrite",
+	"nudge",
 	"edit_verification",
+	"checklist_close_out",
+	"team_obligation",
+	"struggle",
 ]);
 
-// guardTrip returns the trip an agent event announces, or null.
+// guardTrip returns the trip an agent event announces, or null. A nudge's
+// phase is which nudge it was.
 export function guardTrip(event) {
 	if (event?.type !== "notice") return null;
 	const m = event.metadata;
 	if (!m || !GUARD_KINDS.has(m.kind)) return null;
-	return {
+	const phase = m.kind === "nudge" ? (typeof m.nudge === "string" ? m.nudge : "") : typeof m.phase === "string" ? m.phase : "";
+	const trip = {
 		guard: m.kind,
-		phase: typeof m.phase === "string" ? m.phase : "",
+		phase,
 		iteration: Number.isInteger(m.iteration) ? m.iteration : null,
 		message: typeof event.message === "string" ? event.message : "",
 	};
+	if (typeof m.cause === "string") trip.cause = m.cause;
+	if (typeof m.toolName === "string") trip.tool = m.toolName;
+	return trip;
+}
+
+// stopsOn says whether a trip is one the arm's stop_on list names: a
+// selector is a guard ("loop_detection", any phase) or a guard and a phase
+// ("nudge.non_convergence").
+export function stopsOn(selectors, trip) {
+	if (!Array.isArray(selectors) || trip === null) return false;
+	return selectors.some((s) => s === trip.guard || s === `${trip.guard}.${trip.phase}`);
 }

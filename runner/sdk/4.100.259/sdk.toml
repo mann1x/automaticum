@@ -1,0 +1,6 @@
+# SDK release 4.100.259, from the registry: every guard announces its action
+# as a status notice (metadata kind and phase), the tool-call loop guard
+# included, which 4.100.258 did not (D99).
+version = "4.100.259"
+source = "registry"
+bundle_sha256 = "1c7c914f07c5ab971f840ca310c9c7f8bdcb40ffbc84f788b09ab5a17f95b55c"

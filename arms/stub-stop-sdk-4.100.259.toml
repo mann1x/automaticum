@@ -1,0 +1,6 @@
+# The stub arm on SDK release 4.100.259 that ends a run at the first trip of
+# the reasoning-loop guard (D100), for the harness's own tests of the stop.
+extends = "stub-sdk-4.100.259"
+
+[guards]
+stop_on = ["reasoning_loop"]

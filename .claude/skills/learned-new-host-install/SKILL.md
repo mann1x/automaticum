@@ -26,3 +26,18 @@ Used to stand up a self-contained automaticum install on a new main host (D93/D9
 ## Updating an existing install
 
 Check out a newer commit in `repo` and copy that commit's binaries, with the lane idle and the queue empty. Never kill the sshd. Record the install facts in `docs/local/hosts.local.md` (untracked) and the roadmap spec, with neutral names only in tracked files.
+
+
+## Updating an existing install (new binaries, new commit, new endpoints)
+
+Used on blackswan-2 on 2026-10-23 to roll out protocol 4 and 5 binaries and the Gemma-4 endpoints.
+
+1. Commit and push first: the host's `<install>/repo/` is a plain checkout the daemon reads arms from. `git fetch -q && git checkout -q <commit>` there; `git log --oneline -1` to confirm.
+2. Claim the host's build resource before building images there: `claude-hooks-res acquire <host>/build:shared -r "<why>" --ttl 1h`; release it with `claude-hooks-res release --claim <id>` when the image build is done.
+3. Copy the binaries without touching the running ones: `scp bin/automaticum bin/automaticumd <host>:<install>/bin/.new/`.
+4. `systemctl stop automaticumd`; wait until `systemctl is-active -q automaticumd` fails; move the two binaries from `bin/.new/` into `bin/`; `rmdir bin/.new`.
+5. With `AUTOMATICUM_CONFIG=<install>/config` exported, run `../bin/automaticum image build` from `<install>/repo/` (the lane images must match the runner protocol of the new binary).
+6. `systemctl start automaticumd`, then poll `curl -sf http://127.0.0.1:7411/v1/status` before the first command.
+7. Endpoints live in `<config>/endpoints/<name>.toml` (`kind`, `base_url`, `host`, `capacity`, and a comment describing the server: build, template sha, flags, model file sha); lanes in `<config>/lanes/<lane>.toml` with `endpoints = [...]` listing every endpoint the lane may use. Any change there needs `systemctl restart automaticumd`.
+8. Validate: `../bin/automaticum status`, `arm validate <arm>` for each arm, and `doctor -all -arm <arm> -task <task>` before the first batch on a new endpoint. Expect the milestone-7 gates (`gpu_ownership`, `server_log_level`, `free`, `gpu_residency`, `expert`) as `unchecked`.
+9. Prove the runner on the stub there once: `stub serve --script ../work/stub/<script>.json --listen 172.17.0.1:7412`, then `run start -arm stub-stop-sdk-<v> -task demo/answer -lane <lane>` and wait for `finished`.

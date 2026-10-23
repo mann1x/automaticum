@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -141,10 +142,27 @@ type Guards struct {
 	StaleReadRewrites   Switch        `toml:"stale_read_rewrites" json:"stale_read_rewrites"`
 	// EditVerification is off, nudge or require.
 	EditVerification string `toml:"edit_verification" json:"edit_verification"`
-	// StopAtFirstTrip ends the run at the first trip of any guard, as a
-	// failed run (D99). Stated in every arm; false is left out of the
-	// resolved arm, so the arms from before it keep their identity.
-	StopAtFirstTrip *bool `toml:"stop_at_first_trip" json:"stop_at_first_trip,omitempty"`
+	// StopOn lists the guard trips that end the run, as a failed run (D99,
+	// D100): a guard ("loop_detection") or a guard and a phase
+	// ("nudge.non_convergence"). Stated in every arm; an empty list stops
+	// nothing and is left out of the resolved arm, so the arms from before
+	// it keep their identity.
+	StopOn *[]string `toml:"stop_on" json:"stop_on,omitempty"`
+}
+
+// guardPhases are the guards that announce their actions and the phases
+// they announce, as SDK 4.100.259 sends them (Cerebriline's table of
+// 2026-10-23); runner/guards.mjs counts the same kinds. A nudge's phase is
+// which nudge it was.
+var guardPhases = map[string][]string{
+	"loop_detection":      {"soft", "hard", "stopped"},
+	"reasoning_loop":      {"cut", "aborted", "removed"},
+	"tool_intent_overrun": {"cut"},
+	"nudge":               {"no_tool_call", "unparsed_tool_call", "announced_intent", "non_convergence", "silent_repetition"},
+	"edit_verification":   {"nudge"},
+	"checklist_close_out": {"nudge"},
+	"team_obligation":     {"nudge"},
+	"struggle":            {"nudge", "offer"},
 }
 
 // Switch is a guard that is on, with the SDK's own parameters, or off.
@@ -557,7 +575,19 @@ func (a *Arm) Validate() []string {
 	need(gd.StrongNudges.Enabled != nil, "guards.strong_nudges.enabled")
 	need(gd.ToolIntent.Enabled != nil, "guards.tool_intent.enabled")
 	need(gd.StaleReadRewrites.Enabled != nil, "guards.stale_read_rewrites.enabled")
-	need(gd.StopAtFirstTrip != nil, "guards.stop_at_first_trip")
+	need(gd.StopOn != nil, "guards.stop_on")
+	if gd.StopOn != nil {
+		for _, sel := range *gd.StopOn {
+			guard, phase, hasPhase := strings.Cut(sel, ".")
+			phases, known := guardPhases[guard]
+			switch {
+			case !known:
+				bad("guards.stop_on: %q names no guard that announces its actions", sel)
+			case hasPhase && !slices.Contains(phases, phase):
+				bad("guards.stop_on: %q: %s announces %s", sel, guard, strings.Join(phases, ", "))
+			}
+		}
+	}
 	switch gd.EditVerification {
 	case "off", "nudge", "require":
 	case "":
@@ -615,9 +645,9 @@ func on(b *bool) bool { return b != nil && *b }
 // Resolved returns the arm as canonical JSON: what a run stores and what the
 // runner is given. Keys are in a fixed order.
 func (a *Arm) Resolved() []byte {
-	if s := a.Guards.StopAtFirstTrip; s != nil && !*s {
+	if s := a.Guards.StopOn; s != nil && len(*s) == 0 {
 		c := *a
-		c.Guards.StopAtFirstTrip = nil
+		c.Guards.StopOn = nil
 		a = &c
 	}
 	b, err := json.Marshal(a)

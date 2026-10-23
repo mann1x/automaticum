@@ -1,6 +1,6 @@
 # 040 — The runner
 
-**Status:** draft 1.6, 2026-10-23. Facts about the SDK in this file were read
+**Status:** draft 1.7, 2026-10-23. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
 running it. The parity table in §6 was checked row by row by the Cerebriline
 session on 2026-10-13 against its main branch (release 4.100.249 plus requests
@@ -460,13 +460,14 @@ The runner never runs the oracle and never sees it (060 §3).
 - The wall limit is enforced twice: by the runner, which stops the agent and
   still writes its `end` line, and by the harness, which kills the container a
   grace period later. The record says which of the two fired.
-- **Guard trips (protocol 4, 2026-10-23):** the runner notes every guard
-  trip the SDK announces as a notice (`guard_trip`: guard, phase, turn). An
-  arm with `guards.stop_at_first_trip` (D99) is stopped at the first: the
-  runner aborts the session and ends with the outcome `guard_stop`, which the
-  harness makes `FAIL` after running the oracle. In SDK 4.100.258 only the
-  reasoning-loop and tool-intent guards announce their trips; the others are
-  asked of Cerebriline (runner/PROTOCOL.md).
+- **Guard trips (protocols 4 and 5, 2026-10-23):** the runner notes every
+  guard action the SDK announces as a notice (`guard_trip`: guard, phase,
+  turn, and the cause or tool when there is one). The first trip the arm's
+  `guards.stop_on` names (D100) stops the run: the runner aborts the session
+  and ends with the outcome `guard_stop`, which the harness makes `FAIL` after
+  running the oracle. From SDK 4.100.259 every guard announces its actions;
+  4.100.258 announced only the reasoning-loop and tool-intent guards and the
+  nudges (runner/PROTOCOL.md).
 
 ## 8. Requests to Cerebriline
 

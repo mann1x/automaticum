@@ -1,4 +1,4 @@
-# The runner: protocol 4
+# The runner: protocol 5
 
 The runner is a Node program that runs **one** agent session for one run,
 inside the lane's container, and exits. The harness (`internal/run`) writes
@@ -28,6 +28,11 @@ wrongly, so the number went up.
 guard the SDK announces (`guard_trip`), and an arm with
 `guards.stop_at_first_trip` ends the run at the first one (D99) with the
 outcome `guard_stop`. A protocol 3 harness would not know that outcome.
+
+**Protocol 5 (2026-10-23):** the arm says which trips stop the run:
+`guards.stop_on` lists guards or guard.phase pairs (D100), in place of the
+true/false `stop_at_first_trip`. A protocol 4 runner would not read the list
+and would stop nothing.
 
 ## In
 
@@ -97,7 +102,7 @@ One JSON object per line, each with a time `t` and a kind `k`.
 | `refused`: never started (other SDK release, arm asks for what this protocol cannot do) | `SKIPPED` | 3 |
 | `invalid`: the session is not the arm | `INVALID` | 4 |
 | `wall_limit` | `TIMEOUT` unless the oracle passes | 5 |
-| `guard_stop`: the arm stops at the first guard trip, and a guard tripped | `FAIL`; the oracle still runs and what it said is in the reason (D99) | 6 |
+| `guard_stop`: a guard tripped that the arm's `guards.stop_on` names | `FAIL`; the oracle still runs and what it said is in the reason (D99, D100) | 6 |
 | `error` | `ABORTED` | 1 |
 | `completed` | the oracle decides, unless the agent ended in error with no request answered: `ABORTED` | 0 |
 | no last line at all | `ABORTED` | any |
@@ -129,18 +134,21 @@ in plan mode is interactive for this.
 ## Guard trips
 
 A guard's action is a `notice` event of the SDK whose `metadata.kind` names
-the guard and `metadata.phase` what it did (`guards.mjs` lists the kinds).
-In 4.100.258 these are `reasoning_loop` (`cut`, `aborted`, `removed`) and
-`tool_intent_overrun` (`cut`). The tool-call loop guard, the
-reasoning-repetition nudge and the other guards announce nothing yet; they
-are asked of the SDK (mail of 2026-10-23) and counted once they do. Every
-trip is a `guard_trip` note (`guard`, `phase`, `iteration`, `message`); with
-`guards.stop_at_first_trip` the first is also a `guard_stop` note, the
-session is aborted, and the last line's outcome is `guard_stop`. The no-tool-
-call nudge (`kind: "nudge"`) is the runtime's, not a guard's, and is not a
-trip.
+the guard and `metadata.phase` what it did; for a `nudge`, the phase is
+`metadata.nudge`, which nudge it was (`guards.mjs` has the table). From
+4.100.259 every guard announces its actions: `loop_detection` (`soft`,
+`hard`, `stopped`), `reasoning_loop` (`cut`, `aborted`, `removed`, with a
+`cause`), `tool_intent_overrun` (`cut`), `nudge` (`no_tool_call`,
+`unparsed_tool_call`, `announced_intent`, `non_convergence`,
+`silent_repetition`), the completion guards `edit_verification`,
+`checklist_close_out` and `team_obligation` (`nudge`), and `struggle`
+(`nudge`, `offer`). 4.100.258 announced only `reasoning_loop`,
+`tool_intent_overrun` and `nudge`. Every action is a `guard_trip` note
+(`guard`, `phase`, `iteration`, `message`, and `cause` or `tool`). The first
+trip the arm's `guards.stop_on` names is also a `guard_stop` note, the
+session is aborted, and the last line's outcome is `guard_stop`.
 
-## What protocol 4 does not do
+## What protocol 5 does not do
 
 Escalation, sub-agents and teams, MCP approvals (no arm starts an MCP
 server), the emulation of editor behaviour (diagnostics after edits,

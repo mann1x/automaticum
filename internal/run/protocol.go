@@ -15,7 +15,7 @@ import (
 
 // Protocol is the version of the contract between the harness and the
 // runner: the job file in, JSON lines out. See runner/PROTOCOL.md.
-const Protocol = 4
+const Protocol = 5
 
 // Paths inside the lane's container.
 const (
@@ -90,8 +90,8 @@ type End struct {
 	// its questions the scripted user answered.
 	Iterations *int `json:"iterations"`
 	Questions  int  `json:"questions_answered"`
-	// GuardStop is the guard trip that ended the run, when the arm stops
-	// at the first one (protocol 4, D99).
+	// GuardStop is the guard trip that ended the run, one the arm's
+	// guards.stop_on names (protocol 4, D99; the list since protocol 5, D100).
 	GuardStop json.RawMessage `json:"guard_stop,omitempty"`
 }
 
@@ -102,8 +102,8 @@ const (
 	OutcomeInvalid   = "invalid"
 	OutcomeWallLimit = "wall_limit"
 	OutcomeError     = "error"
-	// OutcomeGuardStop: the arm ends the run at the first guard trip, and
-	// one tripped (protocol 4).
+	// OutcomeGuardStop: a guard tripped that the arm's guards.stop_on names
+	// (protocol 4).
 	OutcomeGuardStop = "guard_stop"
 )
 

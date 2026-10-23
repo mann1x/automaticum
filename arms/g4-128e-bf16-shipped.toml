@@ -1,5 +1,5 @@
 # Gemma-4 26B-A4B (128 experts) BF16, end token 106, Google's chat template
-# from the file; guards as shipped (D98).
+# from the file; guards as shipped: no trip ends the run (D98).
 extends = "g4-128e"
 endpoint = "g4-128e-bf16"
 
@@ -7,4 +7,4 @@ endpoint = "g4-128e-bf16"
 model = "gemma-4-26b-a4b-it-bf16-eos106"
 
 [guards]
-stop_at_first_trip = false
+stop_on = []

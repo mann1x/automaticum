@@ -1,5 +1,8 @@
 # Gemma-4 26B-A4B (128 experts) BF16, end token 106, Google's chat template
-# from the file; the run stops at the first guard trip (D99).
+# from the file; the first loop signal ends the run as failed (D99, D100):
+# the owner's choice of 2026-10-23 among the guards SDK 4.100.259 announces.
+# Counted and not stopping: the no-tool-call, unparsed-tool-call and
+# announced-intent nudges, the completion guards, struggle.
 extends = "g4-128e"
 endpoint = "g4-128e-bf16"
 
@@ -7,4 +10,10 @@ endpoint = "g4-128e-bf16"
 model = "gemma-4-26b-a4b-it-bf16-eos106"
 
 [guards]
-stop_at_first_trip = true
+stop_on = [
+    "loop_detection",          # from its first warning (soft)
+    "reasoning_loop",          # cut, aborted or removed; every cause
+    "tool_intent_overrun",
+    "nudge.non_convergence",
+    "nudge.silent_repetition",
+]

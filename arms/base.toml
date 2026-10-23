@@ -29,7 +29,7 @@ teams = false
 
 [guards]
 edit_verification = "nudge" # extension
-stop_at_first_trip = false  # a guard's trip does not end the run (D99)
+stop_on = []                # no guard's trip ends the run (D99, D100)
 
 [guards.loop_detection]
 enabled = true

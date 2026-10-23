@@ -1,6 +1,7 @@
-# The stub arm on SDK release 4.100.258 that ends a run at the first guard
-# trip (D99), for the harness's own tests of the stop.
+# The stub arm on SDK release 4.100.258 that ends a run at the first trip of
+# the reasoning-loop guard (D99, D100), for the harness's own tests of the
+# stop.
 extends = "stub-sdk-4.100.258"
 
 [guards]
-stop_at_first_trip = true
+stop_on = ["reasoning_loop"]

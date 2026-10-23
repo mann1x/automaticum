@@ -17,11 +17,11 @@ import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BUNDLED_SKILLS_ON_BY_DEFAULT, buildConfig, compareResolved, derivedFromArm, unsupported } from "./session.mjs";
 import { ACT_MODE_CONTINUATION_PROMPT, createSwitchToActModeTool, withSwitchTool } from "./plan.mjs";
-import { guardTrip } from "./guards.mjs";
+import { guardTrip, stopsOn } from "./guards.mjs";
 import { createUser } from "./user.mjs";
 import { createWire, describe } from "./wire.mjs";
 
-const PROTOCOL = 4;
+const PROTOCOL = 5;
 const SDK_PACKAGE = "@cerebriline/sdk";
 const EXIT = { completed: 0, error: 1, refused: 3, invalid: 4, wall_limit: 5, guard_stop: 6 };
 
@@ -288,10 +288,10 @@ async function main() {
 
 	// agentError is the last error the agent reported, for the last line.
 	let agentError = null;
-	// guardStop is the first guard trip, when the arm stops the run there
-	// (D99); every trip is noted either way.
+	// guardStop is the first trip of a guard the arm's stop_on names (D100);
+	// every trip is noted either way.
 	let guardStop = null;
-	const stopAtTrip = arm.guards.stop_at_first_trip === true;
+	const stopOn = arm.guards.stop_on ?? [];
 	let unsubscribe = () => {};
 	const follow = (id) => {
 		unsubscribe();
@@ -306,7 +306,7 @@ async function main() {
 					const trip = guardTrip(inner);
 					if (trip) {
 						note("guard_trip", trip);
-						if (stopAtTrip && guardStop === null) {
+						if (guardStop === null && stopsOn(stopOn, trip)) {
 							guardStop = trip;
 							note("guard_stop", trip);
 							core.abort(session.id, "the first guard trip").catch((err) => note("abort_failed", { error: describe(err) }));
