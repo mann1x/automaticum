@@ -1,9 +1,0 @@
-# Gemma-4 26B-A4B (128 experts) Q4_K_M with end token 106, vendor template; guards as shipped (D98).
-extends = "g4-128e"
-endpoint = "g4-128e-q4-tpla-eos106"
-
-[model]
-model = "gemma-4-26b-a4b-it-q4km-eos106"
-
-[guards]
-stop_at_first_trip = false

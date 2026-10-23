@@ -9,7 +9,8 @@
 # over the last 72, presence penalty 0.25), owned by the arm so that every
 # request carries it and the wire shows it. Guards and compaction come from
 # the base: all on. The two guard arms of each server differ only in
-# guards.stop_at_first_trip (D99).
+# guards.stop_at_first_trip (D99). The owner narrowed the test to one
+# server (the BF16 file, end token 106, Google's template): g4-128e-bf16-*.
 template = true
 extends = "base"
 

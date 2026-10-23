@@ -1,0 +1,8 @@
+# What this model is, in the owner's words (030 §4.1), as named on
+# 2026-10-23: the original Gemma-4 26B-A4B instruct model, 128 experts,
+# unpruned, in BF16 (ggml-org's conversion), with Google's current chat
+# template embedded and the end-of-sequence token set to 106.
+tag = "gemma-4-26b-a4b-it-bf16-eos106"
+family = "Gemma 4"
+size = "26B-A4B"
+variant = "instruct, 128 experts, unpruned, BF16, end token 106"

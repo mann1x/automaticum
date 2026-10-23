@@ -1,7 +1,0 @@
-# What this model is, in the owner's words (030 §4.1), as named on
-# 2026-10-23: the original Gemma-4 26B-A4B instruct model, 128 experts,
-# unpruned, quantized to Q4_K_M, with its stock end-of-turn token.
-tag = "gemma-4-26b-a4b-it-q4km"
-family = "Gemma 4"
-size = "26B-A4B"
-variant = "instruct, 128 experts, unpruned"

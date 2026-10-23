@@ -100,12 +100,8 @@
 - `stub-sdk-4.100.258.toml` — The stub arm on SDK release 4.100.258, for the harness's own tests of that build (~50 tok)
 - `stub.toml` — An arm for the stub model server: used by the harness's own tests and for (~99 tok)
 - `g4-128e.toml` — Template for the Gemma-4 26B-A4B loop test (D98): ctx 256000, thinking left to the server, owner 8244 sampler, 1h/15m, SDK 4.100.258 (~120 tok)
-- `g4-128e-q4-tpla-shipped.toml` — Gemma-4 128e Q4_K_M, stock end token, vendor template; guards as shipped (~120 tok)
-- `g4-128e-q4-tpla-stop.toml` — The same, stopping at the first guard trip (D99) (~120 tok)
-- `g4-128e-q4-tpla-eos106-shipped.toml` — Gemma-4 128e Q4_K_M end token 106, vendor template; guards as shipped (~120 tok)
-- `g4-128e-q4-tpla-eos106-stop.toml` — The same, stopping at the first guard trip (~120 tok)
-- `g4-128e-q4-tplb-eos106-shipped.toml` — Gemma-4 128e Q4_K_M end token 106, no thinking re-injection template; guards as shipped (~120 tok)
-- `g4-128e-q4-tplb-eos106-stop.toml` — The same, stopping at the first guard trip (~120 tok)
+- `g4-128e-bf16-shipped.toml` — Gemma-4 128e BF16, end token 106, Google template; guards as shipped (~80 tok)
+- `g4-128e-bf16-stop.toml` — The same, stopping at the first guard trip (D99) (~80 tok)
 
 ## campaigns/
 
@@ -343,8 +339,7 @@
 - `omnimerge-v4-mtp_tb-27b-q4km-128k.toml` — What this tag is, in the owner's words (030 §4.1), as named on 2026-10-13. (~83 tok)
 - `qwen36-base-mtp_tb-27b-q4km-128k.toml` — What this tag is, in the owner's words (030 §4.1), as named on 2026-10-13: (~67 tok)
 - `stub.toml` — The scripted stub model server of the harness's own tests. Not a model. (~44 tok)
-- `gemma-4-26b-a4b-it-q4km.toml` — Gemma-4 26B-A4B instruct, 128 experts, unpruned, Q4_K_M (owner, 2026-10-23) (~90 tok)
-- `gemma-4-26b-a4b-it-q4km-eos106.toml` — The same file with end token rewritten 1 to 106 (~100 tok)
+- `gemma-4-26b-a4b-it-bf16-eos106.toml` — Gemma-4 26B-A4B instruct, 128 experts, BF16, Google template, end token 106 (owner, 2026-10-23) (~100 tok)
 
 ## runner/
 

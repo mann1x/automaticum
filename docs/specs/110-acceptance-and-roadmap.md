@@ -359,9 +359,9 @@ SDK release 4.100.258 provisioned there and here (pinned bundle, reproduced
 offline on both), the runner at protocol 4 with the stop at the first guard
 trip (D99), and the probe of a llama-server endpoint reading `/props` (050
 §3), so that each run records the template and the weights file of the
-server it ran on. Each server configuration of the test (template, end
-token) is its own endpoint on its own port, and each has its two guard arms
-(`arms/g4-128e-*`). With SDK 4.100.258 an OpenAI-compatible request carries
+server it ran on. The owner then narrowed the test to one server: the
+BF16 file with Google's chat template and end token 106, with its two
+guard arms (`arms/g4-128e-bf16-*`), 10 runs each. With SDK 4.100.258 an OpenAI-compatible request carries
 nothing for "thinking on" (only an effort level is sent, as
 `reasoning_budget_tokens`), so these arms leave thinking to the server, which
 starts with it on; `thinking.blocks` shows it per run.

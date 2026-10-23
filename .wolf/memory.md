@@ -800,3 +800,19 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 12:54 | Ready for bm-889: llama-server /props probe (template sha, caps, sampler, n_ctx, model path, eos) with unchecked when caps absent (bug-028); 6 Gemma arms + template + 2 catalogue entries; thinking left to server (SDK sends nothing for thinking on to OpenAI-compatible; bug-029 wire_arm gap open); 050/110 updated | internal/run/{probe,props}.go, internal/gate, internal/stubmodel, arms/g4-*, models/gemma-* | done | ~30k |
+
+## Session: 2026-10-23 12:54
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 12:54
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 12:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:02 | Scope narrowed by owner (mail 1812): one endpoint g4-128e-bf16 (BF16, Google template, eos 106, port 8261), arms g4-128e-bf16-{shipped,stop}; q4 arms and models removed | arms/, models/, specs | done | ~5k |
