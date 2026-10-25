@@ -79,6 +79,8 @@
 
 ## Do-Not-Repeat
 
+- (2026-10-25) When the owner gives a model a "description", don't rewrite the catalogue's family and size (those are the owner's earlier words, and on Ollama-API endpoints they're read from the weights, D80). Record the description in `notes`, and ask before changing any other field.
+
 - (2026-10-25) An oracle proof is kept per installation. After deploying a new or changed task to a lane host, run `automaticum oracle verify <suite>/<task>` there too, not only on linux-gpu-1 (bug-038).
 
 - (2026-10-24) The private-string gate must fail closed:

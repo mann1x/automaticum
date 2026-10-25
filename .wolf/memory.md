@@ -1281,3 +1281,14 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 07:20 | Owner: model description "Google Gemma-4 A4B 26B" -> models/gemma-4-26b-a4b-it-bf16-eos106.toml family/size. Surveyed long-horizon held-out candidates (Terminal-Bench 2.0: 89 Harbor tasks with expert/junior time estimates, canary GUID, verifier downloads uv/pytest; LHTB: tests hidden; SWE-bench Pro public 731; Commit0; BFCL v4 not long-horizon) | models/ | report to owner | ~15k |
+
+## Session: 2026-10-25 06:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 06:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 07:30 | Owner questioned the family/size change: reverted 07674a0's family/size (owner's 2026-10-23 words), description now in notes. D80 queries family/size only via Ollama-API endpoints; llama.cpp endpoints need them stated | models/gemma-4-26b-a4b-it-bf16-eos106.toml | ok | ~2k |

@@ -1,10 +1,12 @@
 # What this model is, in the owner's words (030 §4.1), as named on
 # 2026-10-23: the original Gemma-4 26B-A4B instruct model, 128 experts,
 # unpruned, in BF16 (ggml-org's conversion), with Google's current chat
-# template embedded and the end-of-sequence token set to 106. Family and
-# size as the owner described the model on 2026-10-25: "Google Gemma-4 A4B
-# 26B".
+# template embedded and the end-of-sequence token set to 106. On its
+# llama.cpp endpoint the server does not say what the weights file calls the
+# model, so family and size are stated here (D80 reads them only through an
+# Ollama-API endpoint).
 tag = "gemma-4-26b-a4b-it-bf16-eos106"
-family = "Google Gemma-4"
-size = "A4B 26B"
+family = "Gemma 4"
+size = "26B-A4B"
 variant = "instruct, 128 experts, unpruned, BF16, end token 106"
+notes = "Google Gemma-4 A4B 26B (the owner's description, 2026-10-25)"
