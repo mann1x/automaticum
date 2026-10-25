@@ -1,4 +1,4 @@
-# The runner: protocol 8
+# The runner: protocol 9
 
 The runner is a Node program that runs **one** agent session for one run,
 inside the lane's container, and exits. The harness (`internal/run`) writes
@@ -56,6 +56,16 @@ with it; an SDK before 4.100.261 writes nothing.
 resolved arm, and so of the job, when it is the SDK's 3), and the runner
 answers the SDK's `onReasoningLoopLimitReached` from `stop_on` (D108; see
 "Guard trips"). A protocol 7 runner would ignore both, so the number went up.
+
+**Protocol 9 (2026-10-25):** the runner and what it runs on live under its
+own prefix, `/opt/automaticum`, kept off the PATH of the agent's commands
+(D113). The harness starts it as `/opt/automaticum/bin/node`; in the base
+image that is a link to the image's Node. A lane layer on a task's own
+image (066) brings Node and ripgrep there, and the runner makes the SDK's
+own calls of `rg` find it (`tools.mjs`, before the SDK is imported), while
+the agent's shell finds only the image's tools; its `prepared` note says
+which were found (`private_tools`). An older image has no
+`/opt/automaticum/bin/node`, so the number went up.
 
 ## In
 
@@ -186,7 +196,7 @@ configuration; 4.100.266 does). From 4.100.266 the notice also says the
 limit that applied (`maxConsecutiveTrips`): one other than the arm's is a
 breach too.
 
-## What protocol 8 does not do
+## What protocol 9 does not do
 
 Escalation, sub-agents and teams, MCP approvals (no arm starts an MCP
 server), the emulation of editor behaviour (diagnostics after edits,

@@ -1,6 +1,6 @@
 # 060 — Tasks, oracles and the suite interface
 
-**Status:** draft 0.12, 2026-10-25.
+**Status:** draft 0.13, 2026-10-25.
 
 ## 1. Scope
 
@@ -53,6 +53,20 @@ Needed beyond the old harness:
   agent never has it (withheld tests, §4). An oracle may name `writable`
   paths besides `/tmp`, each an empty tmpfs open to its user, for tests that
   use absolute paths of their own harness (066). From 2026-10-25.
+- **Who runs it (decided by the owner, 2026-10-25, D110).** The agent's
+  container and the oracle's run as the lane's user, uid 1000. A task that
+  needs root says `run_as = "root"`, an oracle that does says it in its own
+  table; either then runs as root with the engine's default capabilities.
+- **What reaches the oracle (D111).** The workspace, and nothing else of the
+  agent's container unless the task names it: `[workspace] collect` lists
+  absolute directories that are copied out once the agent's container stops,
+  stored with the run and given to the oracle at the same paths, as a copy it
+  may write. A fixture's file may then be at an absolute path under one of
+  them, laid over what the oracle's image has there. A task is not left out
+  because its tests read elsewhere: it declares where.
+- **Resources (D112).** `[limits] cpus` and `memory_mb` are the task's own:
+  its containers, the agent's and the oracle's, get them, never more than the
+  lane has, and the run records what its container had.
 
 ### 3.1 Periodic oracle sampling
 

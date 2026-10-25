@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-25T06:47:29.138Z
-> Files: 506 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-25T09:00:01.828Z
+> Files: 513 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../root/.claude/plans/
 
@@ -132,7 +132,6 @@
 
 ## cmd/automaticum/
 
-- `suite_cmds.go` — `automaticum suite import tbench2 -source -commit <task>...`: checks the checkout's HEAD and cleanliness, runs the importer (~700 tok)
 - `campaign_cmds.go` (~1452 tok)
 - `cell_cmds.go` — exitCode: names (~2996 tok)
 - `client_cmds.go` — client (133 fields) (~8217 tok)
@@ -147,6 +146,7 @@
 - `store_cgo.go` — go:build cgo (~1850 tok)
 - `store_nocgo.go` — go:build !cgo (~128 tok)
 - `stub_cmds.go` (~419 tok)
+- `suite_cmds.go` — `automaticum suite import tbench2 -source -commit <task>...`: checks the checkout's HEAD and cleanliness, runs the importer (~700 tok)
 
 ## cmd/automaticumd/
 
@@ -223,6 +223,10 @@
 ## images/layers/rust/
 
 - `Dockerfile` — Docker container definition (~206 tok)
+
+## images/layers/tb2-*/
+
+- `Dockerfile` — written by `suite import tbench2`: the TB2 task's image by digest + Node, runner, static rg under /opt/automaticum (D113); /app → /workspace (~250 tok)
 
 ## images/layers/typescript/
 
@@ -384,22 +388,13 @@
 ## internal/suite/tbench2/
 
 - `import.go` — Importer.Import: pins the image by digest, copies /app out as the seed, vendors pytest wheels with pip in the image, pins the verifier (Env.Pin), gold fixture from solve.sh, keeps a task only if Verify holds (~3900 tok)
-- `tbench2_test.go` — TestRead, TestReadRefuses, TestTaskTOML, TestPromptString, TestTaskTOMLNeedsDigest (~1940 tok)
+- `tbench2_test.go` — TestRead, TestReadRefuses, TestTaskTOML, TestDeclared, TestReadConfig, TestDistribution, TestPromptString, TestTaskTOMLNeedsDigest (~3000 tok)
 - `tbench2.go` — imports tasks of Terminal-Bench 2.0 as the held-out suite (~3882 tok)
 
 ## internal/suite/tbench2/verifier/
 
-- `main.py` — the tbench2 verifier zipapp's entry: copies /w into /app, tests into /tests, runs pytest with the task's arguments (~520 tok)
 - `build.py` — builds verify.pyz deterministically from oracle/ (main.py, tests/, wheels/ unpacked under site/) (~410 tok)
-
-## tasks/tbench2/
-
-- `LICENSE` — Terminal-Bench 2.0's Apache-2.0 licence, kept with the imported tasks
-- `circuit-fibsqrt/`, `feal-linear-cryptanalysis/`, `schemelike-metacircular-eval/` — imported TB2 tasks (066), written by `suite import tbench2`: `task.toml` · `NOTES.md` · `seed/` · `fixtures/gold/` · `oracle/` (`main.py` · `build.py` · `requirements.txt` · `tests/` · `wheels/`); never edit by hand
-
-## images/layers/tb2-*/
-
-- `Dockerfile` — written by `suite import tbench2`: the TB2 task's image by digest + Node, runner, git, ripgrep, uid 1000; /app → /workspace (~250 tok)
+- `main.py` — the tbench2 verifier zipapp's entry: copies /w into /app, tests into /tests, runs pytest with the task's arguments (~520 tok)
 
 ## internal/task/
 
@@ -421,9 +416,10 @@
 - `guards.mjs` — Guard actions as the SDK announces them: a "notice" event whose metadata (~1320 tok)
 - `package.json` — Node.js package manifest (~103 tok)
 - `plan.mjs` — The extension's switch_to_act_mode tool, ported from Cline 4.100.250 and (~780 tok)
-- `PROTOCOL.md` — The runner: protocol 8 (~2837 tok)
+- `PROTOCOL.md` — The runner: protocol 9 (~3000 tok)
 - `runner.mjs` — The runner: one agent session for one run, inside the lane's container. (~5750 tok)
 - `session.mjs` — unsupported lists what an arm asks for that this runner cannot do. (~2876 tok)
+- `tools.mjs` — The runner's own tools (D113). In a lane layer on a task's own image the (~501 tok)
 - `user.mjs` — The scripted user (040 §6.2): the task's rules, played against the (~1979 tok)
 - `wire.mjs` — createWire returns a fetch that appends one JSON line per request to (~1642 tok)
 
@@ -475,6 +471,7 @@
 - `guards.test.mjs` — Declares notice (~1283 tok)
 - `plan.test.mjs` — createTool as the SDK's: it hands back what it was given. (~415 tok)
 - `session.test.mjs` — stub: reportOf (~2499 tok)
+- `tools.test.mjs` — Declares dir (~450 tok)
 - `user.test.mjs` — Declares categories (~2112 tok)
 - `wire.test.mjs` — Declares serve (~1352 tok)
 
@@ -625,6 +622,10 @@
 ## tasks/demo/scripted/seed/
 
 - `answer.txt` (~5 tok)
+
+## tasks/tbench2/
+
+- `import.toml` — hand-written import config of tbench2 (066 §3.1): the subset and per-task run_as / oracle_run_as / writable / collect / why (~357 tok)
 
 ## tasks/train-game/space_invaders/
 

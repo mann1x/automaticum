@@ -18,6 +18,9 @@
 - (2026-10-23) The client session (for example backup_models) starts its own batches. automaticum prepares the installation, the arm and the endpoint, and hands over the exact commands. It does not start the batch, and it does not ask the owner for a go on the client's behalf.
 
 ## Key Learnings
+- The SDK (4.100.266) spawns `rg` by bare name with no env (PATH lookup from process.env) and the agent's shell via `{...process.env, ...e.env}`; there is no ClineCore option for the main session's shell env, so the runner keeps tools off the agent's PATH by patching node:child_process (spawn/spawnSync/execFile/execFileSync, keeping execFile's promisify.custom) + `syncBuiltinESMExports()` before importing the SDK (runner/tools.mjs).
+- Docker's archive API (GET /containers/{id}/archive) works on a stopped container before removal; entries are prefixed with the base name of the path; extract with Go 1.25 `os.Root` (MkdirAll/Symlink/Link/Chmod) so links in the archive cannot escape.
+- With CapDrop ALL even uid 0 cannot chroot, chown or apt-get; `run_as = "root"` therefore means uid 0 plus docker.DefaultCapabilities (the engine's 14 defaults).
 
 - (2026-10-25) The SDK's reasoning-loop guard ends a run by itself after `reasoningLoopDetection.maxConsecutiveTrips` consecutive cut turns (default 3; a clean turn resets it), unless the host answers `onReasoningLoopLimitReached` with `{action: "continue"}`. The arm's `stop_on` never sees that decision, because the runner passes `{}`. Whether an arm states it is the owner's call.
 - (2026-10-25) The export (`internal/export`) gives spans in code points. The SDK guard's `verdict.chars` counts UTF-16 units, so convert it. The guard's lines are split on "\n", trimmed, with blanks dropped, and a last line with no "\n" is not yet a line (`detect.CycleStart`). The capture blob is a tar of `run-<id>/<stem>.json` and `<stem>.response.json`, and a response body is the raw SSE stream.
@@ -82,6 +85,8 @@
 - **The SDK core spawns `rg`** (file listing, after an `rg --version` check) **and `git`** (checkpoints, with GIT_INDEX_FILE). A lane image foreign to the base needs both (2026-10-25).
 
 ## Do-Not-Repeat
+- 2026-10-25: when the owner says a task class "must declare" something (root, extra dirs), build a declaration in config, not a heuristic that guesses from the solution; and never recommend "leave such tasks out" again for a capability gap — the owner wants the tool to grow to fit the task (O25/O26 answers).
+- 2026-10-25: in hand-written TOML generators, a top-level key written after any `[table]` header lands inside that table (tbench2 `run_as` became `labels.run_as`); write top-level keys before the first table.
 
 - (2026-10-25) When the owner gives a model a "description", don't rewrite the catalogue's family and size (those are the owner's earlier words, and on Ollama-API endpoints they're read from the weights, D80). Record the description in `notes`, and ask before changing any other field.
 
@@ -133,3 +138,4 @@ The full list is in docs/specs/decisions.md; keep this log in step with it.
 - 2026-10-23 Gemma loop batch: waits for the SDK's reasoningHistory probe fix. Before restarting, render a tool turn and a nudge turn on /apply-template, with request capture ON.
 - 2026-10-24 D107: a batch's own wall/idle limits override the arm's and the task's. A batch takes several tasks and suites.
 - 2026-10-25 (D109): the owner chose to import Terminal-Bench 2.0 as a new external suite, `tbench2`, held out. Built as ordinary tasks by `automaticum suite import tbench2` (066). The subset is circuit-fibsqrt, feal-linear-cryptanalysis and schemelike-metacircular-eval: path-tracing (chroot) and polyglot-rust-c (no Python) were swapped out of the approved plan, and regex-chess (GPL dependency) was held back. O24 to O28 are open.
+- 2026-10-25 D110-D114 (the owner answered O24-O28): D110 a task or oracle may `run_as = "root"` (default stays uid 1000; root gets Docker's default caps) — "these tasks need root for a reason, there's a reason why we use docker images"; D111 only /app reaches the oracle unless the task declares `[workspace] collect` paths — never leave a task out for that; D112 a task's `[limits] cpus/memory_mb` apply to agent and oracle containers, capped by the lane (owner picked "task limits apply"); D113 runner + Node + static rg under /opt/automaticum, off the agent's PATH, protocol 9; D114 vendor whatever a task needs, GPL included. tbench2 declarations live in hand-written tasks/tbench2/import.toml.

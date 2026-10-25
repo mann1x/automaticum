@@ -9,7 +9,7 @@ paths:
 
 # Runner protocol conventions
 
-- `const Protocol` in `internal/run/protocol.go` must equal `const PROTOCOL` in `runner/runner.mjs` (currently 8). Bump both together and describe the change in `runner/PROTOCOL.md` under its dated protocol entry.
+- `const Protocol` in `internal/run/protocol.go` must equal `const PROTOCOL` in `runner/runner.mjs` (currently 9). Bump both together and describe the change in `runner/PROTOCOL.md` under its dated protocol entry.
 - The lane image copies runner modules one by one: a new `runner/*.mjs` (for example `runner/guards.mjs`) must be added to the `COPY runner/...` line in `images/base/Dockerfile`, then `./bin/automaticum image build` before an end-to-end run.
 - Every runner module has a test in `runner/test/<name>.test.mjs` (Node test runner); `runner/test/guards.test.mjs` pairs with `runner/guards.mjs`.
 - A new field on the runner's last line (`End` in `internal/run/protocol.go`) that a harness rule depends on is a pointer or `json.RawMessage` with `omitempty`, so `nil` means an older runner did not report it and the old rule still holds. Add `run_test.go` rows for the new value, the old value and the field missing.

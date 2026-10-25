@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-10-25 (revision 27).
+**Status:** current as of 2026-10-25 (revision 28).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -118,7 +118,12 @@ All dated 2026-10-12.
 | D106 | Widens D102: the loop spans of `automaticum export conversations` come from the SDK guard's cuts as well as the detector library, each span marked `source` `guard` or `detector`. A guard span is in the capture response the guard cut (`complete: false`, ending just before the notice), in its reasoning field: it ends at the guard's `verdict.chars` and starts at the second of the trailing `verdict.cycles` repeats of `verdict.sample`, the same "second occurrence on" as a detector span. Asked by omnimergekit: in the first 8 pool runs the guard cut 15 times and the detectors found none (2026-10-23). | 110 §3.5 |
 | D107 | A batch may set its own wall and idle limits, which replace the arm's and the task's and may be longer than both (`run start --wall-s/--idle-s`, a campaign batch's `wall_s`/`idle_s`, `batch limits` for queued runs); the run records the limit as set by the batch and the basis names it. A batch takes several tasks and whole suites (`--task` repeated, `--suite`). The owner called both gaps design flaws (2026-10-24). | 050 §1, 020 §1 |
 | D108 | The arm's `stop_on` alone decides whether the SDK's reasoning-loop limit ends a run: every arm states `guards.reasoning_loop.max_consecutive_trips` (the base the SDK's 3, which leaves the arm's identity as it was), and the runner answers the SDK's `onReasoningLoopLimitReached` with `stop` only when `stop_on` names `reasoning_loop.aborted` (or the whole guard), `continue` otherwise (protocol 8). An SDK release that ends the run anyway makes the run `INVALID`; the releases to 4.100.262 do (X9) (2026-10-25; closes O23). | 030 §5.1, 040 §7.1 |
-| D109 | Terminal-Bench 2.0 is imported as a new external suite, `tbench2`, held out beside `manic_miner`: never trained on, never exported (2026-10-25). Which tasks, and how faithfully, is in 066; O24 to O28 are open. | 066, 060 §5 |
+| D109 | Terminal-Bench 2.0 is imported as a new external suite, `tbench2`, held out beside `manic_miner`: never trained on, never exported (2026-10-25). Which tasks, and how faithfully, is in 066; O24 to O28 were closed the same day by D110 to D114. | 066, 060 §5 |
+| D110 | A task may run as root: the lane's user (uid 1000) stays the default, and a task or one of its oracles that needs root says `run_as = "root"`, and gets the engine's default capabilities as well (CHOWN, SETUID, SYS_CHROOT and the rest), as the task's image would under the source's own harness. "These tasks need root for a reason; there's a reason why we use docker images." For `tbench2` the import config declares it per task (2026-10-25; closes O25). | 060 §3, 066 §3.1 |
+| D111 | Only the workspace reaches the oracle, unless the task declares more: `[workspace] collect` names directories of the agent's container that are copied out once it stops, stored with the run (`collected`) and given to the oracle at the same paths; a task is never left out because its tests read elsewhere (2026-10-25; closes O26). | 060 §3, 020 §1, 066 §3.1 |
+| D112 | A task's own CPU and memory limits apply to its containers, the agent's and the oracle's, never more than the lane has (`[limits] cpus`, `memory_mb`); the run records what its container had. `tbench2` tasks carry the source's (1 CPU, 2048 MB) (2026-10-25; closes O27). | 060 §3, 050 §4, 066 §3 |
+| D113 | The runner and what it runs on live under its own prefix, `/opt/automaticum`, on no PATH: the harness starts `/opt/automaticum/bin/node`, and a lane layer on a task's own image adds Node, the runner and a static ripgrep there and nothing else, the SDK's own `rg` calls being routed to it; the agent's commands find only the image's tools (protocol 9) (2026-10-25; closes O24). | 064 §3.2, 040 §1, 066 §3 |
+| D114 | What a task needs may be vendored into the repository whatever its licence, copyleft included (`regex-chess`'s `chess`, GPL-3.0); a package with no wheel is built into a wheel once at import from its source distribution, pinned by hash (2026-10-25; closes O28). | 066 §3, 060 §4 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked
@@ -147,15 +152,12 @@ Each of these waits for a measurement or for the planning of its milestone.
 | O1 | How the native agent on Windows and macOS meets "a host runs only the Go application", given the runner needs Node. | 010 §4 | milestone 7 (D35) |
 | O5 | Which published C/C++ SWE-bench-style set, at which version; the order of languages after it. | 062 §6 | milestone 5 |
 | O6 | Which external harnesses need the offline event path. | 064 §3.2 | milestone 5, per harness |
-| O24 | Whether what an imported Terminal-Bench task's lane layer adds (Node and the runner, git and ripgrep for the SDK's tools, uid 1000) moves under a private prefix kept off the agent's PATH, as 064 §3.2 says ("changes nothing else"); today Node is in `/usr/local/bin` and git and ripgrep are packages of the image. Recommendation: move them, with the runner keeping its prefix off the PATH it gives the agent's commands (a protocol bump). | 066 §3, 064 §3.2 | the owner |
-| O25 | The agent of a `tbench2` run is uid 1000, the source's root. Recommendation: keep uid 1000 and leave out tasks whose solution needs root. | 066 §4 | the owner |
-| O26 | Only `/app` reaches a `tbench2` verifier, not the rest of the agent's container. Recommendation: accept it and leave out tasks whose tests read elsewhere. | 066 §4 | the owner |
-| O27 | A `tbench2` task's CPU and memory limits are labels, not applied. Recommendation: record only; apply per lane if a result is ever set beside the source's leaderboard. | 066 §4 | the owner |
-| O28 | Whether a verifier package under a copyleft licence (`regex-chess`'s `chess`, GPL-3.0) may be vendored into this Apache-2.0 repository, so the task can be imported. | 066 §2 | the owner |
+| O29 | How a `tbench2` verifier gets large binary packages (`path-tracing`'s numpy and pillow, 23 MB of wheels, over the import's 8 MB a task): vendored into the repository, or downloaded when the verifier is built, by the hashes `oracle/requirements.txt` pins (an artefact build with the network). Recommendation: download at build time; the repository keeps only what PyPI does not publish (wheels built from source). | 066 §5 | the owner |
 
 Closed since the first revision: O2 (D32), O4 (D30), O7 (S4, then D34), O9
 (D31), O10 (D42), O11 (D33), O12 (D28), O13 (D29), O14 (D46), O8 (D47), O15
-(D48), O16 (D49), O17 (D50), O18 (D51), O3 (D57), O22 (D84), O23 (D108).
+(D48), O16 (D49), O17 (D50), O18 (D51), O3 (D57), O22 (D84), O23 (D108), O24 (D113), O25 (D110), O26
+(D111), O27 (D112), O28 (D114).
 
 ## 4. External dependencies
 

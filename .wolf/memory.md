@@ -1325,3 +1325,35 @@
 | 07:45 | Local daemon restarted idle on the new build; stub runs circuit-fibsqrt FAIL (seed), schemelike PASS (gold through /app) | bin/, lane-1 | pass | ~2000 |
 | 07:55 | Spec 066; 060/064/000/090/110 edits; decisions rev 27 (D109, X10, O24-O28, D105 stale copy fixed); CLAUDE.md, task-loader rule, buglog 039-041, cerebrum | docs/specs, .wolf, .claude/rules | done | ~5000 |
 | 07:51 | Session end: 8 writes across 7 files (functional-mapping-elephant.md, task.go, exec.go, tbench2.go, import.go) | 0 reads | ~14776 tok |
+
+## Session: 2026-10-25 07:59
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 07:59
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 08:00
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 08:01
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 08:57
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:55 | Created runner/tools.mjs | — | ~501 |
+| 09:55 | Created runner/test/tools.test.mjs | — | ~450 |
+| 10:00 | Created tasks/tbench2/import.toml | — | ~357 |
+| 10:10 | Session end: 3 writes across 3 files (tools.mjs, tools.test.mjs, import.toml) | 2 reads | ~9183 tok |
+| 10:40 | O24-O28 answered by the owner → D110-D114: task/oracle run_as root (default caps), [workspace] collect (CopyOut via os.Root), [limits] cpus/memory_mb capped by lane, runner prefix /opt/automaticum + static rg (protocol 9, runner/tools.mjs), GPL vendoring; tbench2 import.toml declarations; seed files >1 MiB as seed=true artefacts from the image; pip from python:<ver>-slim when the image has none | internal/{task,run,docker,suite/tbench2}, runner/, images/base, specs 020/040/060/064/066, decisions rev 28 | make test ok; base rebuilt; circuit/feal/schemelike/regex-chess re-imported (gold 3/3); stub probe 20261025-093213-63c2b6: agent PATH image-only, rg/git/node none, SDK search via private rg | ~250k |
+| 10:40 | path-tracing held: numpy+pillow wheels 23 MB > the importer's 8 MB repo cap; asked the owner (fetch pinned wheels at build time vs vendor) | tasks/tbench2/import.toml | open | ~5k |
+| 10:44 | Session end: 3 writes across 3 files (tools.mjs, tools.test.mjs, import.toml) | 2 reads | ~9183 tok |

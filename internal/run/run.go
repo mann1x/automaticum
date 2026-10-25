@@ -267,6 +267,13 @@ type provenance struct {
 		OOMKilled bool   `json:"oom_killed"`
 		TimedOut  bool   `json:"timed_out"`
 		User      string `json:"user"`
+		// Capabilities are what the container was given: none, or the
+		// engine's defaults for a task that runs as root (D110).
+		Capabilities []string `json:"capabilities,omitempty"`
+		// The CPUs and memory it had: the lane's, or the task's where it
+		// asks for less (D112).
+		CPUs        float64 `json:"cpus,omitempty"`
+		MemoryBytes int64   `json:"memory_bytes,omitempty"`
 	} `json:"container"`
 	Stream struct {
 		Lines    int `json:"lines"`
@@ -351,10 +358,10 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		defer mu.Unlock()
 		refs = append(refs, store.BlobRef{RunID: r.ID, Kind: kind, Name: name, Hash: h, Size: n})
 	}
-	putTree := func(kind, dir string) {
+	putTree := func(kind, name, dir string) {
 		pr, pw := io.Pipe()
 		go func() { pw.CloseWithError(tarTree(dir, pw)) }()
-		put(kind, "", pr)
+		put(kind, name, pr)
 		pr.Close()
 	}
 
@@ -388,7 +395,10 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		return finish()
 	}
 	r.Harness = a.Harness.SDKRelease
-	p.Container.User = lane.User
+	user, caps := task.As(t.RunAs, lane.User)
+	nanoCPUs, memory := task.Resources(t.Limits, lane.CPUs, int64(lane.MemoryGB*(1<<30)))
+	p.Container.User, p.Container.Capabilities = user, caps
+	p.Container.CPUs, p.Container.MemoryBytes = float64(nanoCPUs)/1e9, memory
 	key, err := x.Local.APIKey(endpoint)
 	if err != nil {
 		facts.Skipped = "the endpoint's key cannot be read"
@@ -430,7 +440,17 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 
 	// The workspace, the job and the place for what the runner writes.
 	ws, jobDir, out := filepath.Join(dir, "workspace"), filepath.Join(dir, "job"), filepath.Join(dir, "out")
-	for _, d := range []string{ws, jobDir, out} {
+	// What the task collects of the agent's container besides the
+	// workspace (D111), copied out once it stops.
+	collected := map[string]string{}
+	for i, c := range t.Workspace.Collect {
+		collected[c] = filepath.Join(dir, "collect", strconv.Itoa(i))
+	}
+	dirs := []string{ws, jobDir, out}
+	for _, d := range collected {
+		dirs = append(dirs, d)
+	}
+	for _, d := range dirs {
 		if err := os.MkdirAll(d, 0o755); err != nil {
 			facts.Skipped = "the run's directory cannot be made: " + err.Error()
 			return finish()
@@ -455,11 +475,11 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		facts.Skipped = "the job cannot be written: " + err.Error()
 		return finish()
 	}
-	if err := own(lane.User, ws, out); err != nil {
+	if err := own(user, ws, out); err != nil {
 		facts.Skipped = "the workspace cannot be handed to the lane's user: " + err.Error()
 		return finish()
 	}
-	putTree("workspace_before", ws)
+	putTree("workspace_before", "", ws)
 
 	// The run itself.
 	rctx, cancel := context.WithCancelCause(ctx)
@@ -479,7 +499,7 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		grace = 2 * time.Minute
 	}
 	spec := docker.Spec{
-		Name: "automaticum-" + r.ID, Image: req.Image, Cmd: RunnerCommand, WorkDir: containerWorkspace, User: lane.User,
+		Name: "automaticum-" + r.ID, Image: req.Image, Cmd: RunnerCommand, WorkDir: containerWorkspace, User: user, CapAdd: caps,
 		Mounts: []docker.Mount{
 			{Source: ws, Target: containerWorkspace},
 			{Source: jobDir, Target: containerJob, ReadOnly: true},
@@ -490,8 +510,9 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		// exec: the agent's own builds and tests (go test, cargo test, a
 		// task's run_tests checker) put programs in /tmp and run them.
 		Tmpfs:       map[string]string{"/tmp": "exec"},
-		MemoryBytes: int64(lane.MemoryGB * (1 << 30)), NanoCPUs: int64(lane.CPUs * 1e9), PidsLimit: lane.Pids,
-		Labels: map[string]string{"automaticum": "run", "automaticum.run": r.ID, "automaticum.lane": req.Lane},
+		MemoryBytes: memory, NanoCPUs: nanoCPUs, PidsLimit: lane.Pids,
+		Collect: collected,
+		Labels:  map[string]string{"automaticum": "run", "automaticum.run": r.ID, "automaticum.lane": req.Lane},
 		// Time held is not the run's time: the outer limit moves by it,
 		// and does not fall while the run is being held.
 		Extra: func() time.Duration {
@@ -545,7 +566,10 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		}
 		p.Workspace.Added, p.Workspace.Removed, p.Workspace.Changed = manifestDiff(manifest, after)
 	}
-	putTree("workspace_after", ws)
+	putTree("workspace_after", "", ws)
+	for _, c := range t.Workspace.Collect {
+		putTree("collected", c, collected[c])
+	}
 	x.collectOut(out, put, note)
 
 	// What ended it.
@@ -563,6 +587,8 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		facts.Aborted = "the container engine failed: " + runErr.Error()
 	case res.OOMKilled:
 		facts.Aborted = "the lane's container ran out of memory"
+	case res.CollectErr != nil:
+		facts.Aborted = "what the task collects of the agent's container could not be copied: " + res.CollectErr.Error()
 	case res.TimedOut:
 		facts.Limit, facts.LimitOwner, facts.LimitBy = "wall", wall.Owner, "harness"
 	case end == nil:
@@ -623,7 +649,7 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 	// A daemon that is stopping does not wait for an oracle: the run is
 	// ABORTED either way.
 	if o := t.PrimaryOracle(); o != nil && !errors.Is(cause, ErrDaemonStop) {
-		or, err := x.Tasks.RunOracle(octx, t, o, ws)
+		or, err := x.Tasks.RunOracle(octx, t, o, ws, collected)
 		// The output is stored as a blob, not twice.
 		brief := or
 		brief.Output = ""
@@ -670,6 +696,13 @@ func (x *Executor) before(ctx context.Context, req Request, p *provenance) (*con
 	}
 	if t.PrimaryOracle() == nil {
 		return nil, nil, "the task has no primary oracle"
+	}
+	for _, c := range t.Workspace.Collect {
+		for _, own := range []string{containerWorkspace, containerJob, containerOut, RunnerPrefix} {
+			if c == own || strings.HasPrefix(c, own+"/") || strings.HasPrefix(own, c+"/") {
+				return nil, nil, fmt.Sprintf("the task collects %s, and %s is the lane's own", c, own)
+			}
+		}
 	}
 	// A scripted user that restores a checkpoint needs the arm's
 	// checkpoints: without them the restore would fail inside the run.

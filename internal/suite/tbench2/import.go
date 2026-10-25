@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -36,16 +37,24 @@ type Importer struct {
 	Source string    // the source's checkout, at Commit
 	Commit string
 	Repo   string // the repository the task and its layer are written to
+	// Config is the import config: a task is imported only if it is there.
+	Config *Config
 	// Repeats is how often Verify judges each fixture; zero means 3.
 	Repeats int
 	Log     io.Writer
 }
 
+// laneUser is who an agent or test that is not declared root runs as.
+const laneUser = "1000:1000"
+
 // Limits on what an import puts in the repository, which is public.
 const (
-	maxSeed  = 4 << 20
-	maxGold  = 4 << 20
-	maxWheel = 8 << 20
+	maxSeed = 4 << 20
+	// maxSeedFile is the largest file of the image's /app kept in seed/; a
+	// larger one is taken from the image when the task is built (SeedFile).
+	maxSeedFile = 1 << 20
+	maxGold     = 4 << 20
+	maxWheel    = 8 << 20
 )
 
 // Result is what became of one task.
@@ -64,6 +73,11 @@ func (im *Importer) Import(ctx context.Context, name string) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
+	d, ok := im.Config.Task[name]
+	if !ok {
+		return nil, fmt.Errorf("tbench2: %s is not in %s; a task is declared there before it is imported", name, ConfigFile)
+	}
+	s.Declared = d
 	p := &Pins{Commit: im.Commit}
 	if p.Image, err = im.pin(ctx, s.Image); err != nil {
 		return nil, err
@@ -82,18 +96,22 @@ func (im *Importer) Import(ctx context.Context, name string) (*Result, error) {
 	}
 
 	im.logf("%s: seed from %s\n", name, p.Image)
-	if err := im.seed(ctx, p.Image, filepath.Join(dir, "seed")); err != nil {
+	large := filepath.Join(stage, "large")
+	if p.SeedFiles, err = im.seed(ctx, p.Image, filepath.Join(dir, "seed"), large); err != nil {
 		return nil, fmt.Errorf("tbench2: %s: seed: %w", name, err)
 	}
 	if err := im.oracleFiles(s, dir); err != nil {
 		return nil, fmt.Errorf("tbench2: %s: %w", name, err)
 	}
 	im.logf("%s: wheels for pytest %s %s\n", name, s.Pytest, strings.Join(s.Packages, " "))
-	if p.Wheels, err = im.wheels(ctx, s, p.Image, dir); err != nil {
+	if p.PipImage, err = im.pipImage(ctx, p.Image); err != nil {
+		return nil, fmt.Errorf("tbench2: %s: %w", name, err)
+	}
+	if p.Wheels, err = im.wheels(ctx, s, p.PipImage, dir); err != nil {
 		return nil, fmt.Errorf("tbench2: %s: wheels: %w", name, err)
 	}
 	im.logf("%s: gold from solution/solve.sh\n", name)
-	if p.Gold, err = im.gold(ctx, s, p.Image, dir); err != nil {
+	if p.Gold, err = im.gold(ctx, s, p.Image, dir, large); err != nil {
 		return nil, fmt.Errorf("tbench2: %s: gold: %w", name, err)
 	}
 
@@ -110,7 +128,7 @@ func (im *Importer) Import(ctx context.Context, name string) (*Result, error) {
 	if err != nil {
 		return nil, fmt.Errorf("tbench2: %s: the written task: %w", name, err)
 	}
-	if p.Verifier, err = im.Env.Pin(ctx, t, &t.Artefacts[0], im.Log); err != nil {
+	if p.Verifier, err = im.Env.Pin(ctx, t, t.Artefact(verifierArtefact), im.Log); err != nil {
 		return nil, err
 	}
 	if err := im.writeTask(s, p, dir, inputs); err != nil {
@@ -195,34 +213,73 @@ func (im *Importer) pin(ctx context.Context, tag string) (string, error) {
 	return "", fmt.Errorf("tbench2: %s has no digest from its registry (%v)", tag, img.RepoDigests)
 }
 
-// run runs a command in the image as root, with the task's files bound
-// where the command expects them.
-func (im *Importer) run(ctx context.Context, image string, cmd []string, mounts []docker.Mount, network string, timeout time.Duration) error {
+// run runs a container of the import to its end: as root with the
+// engine's default capabilities, or as the lane's user, as the task
+// declares (task.As). A command that fails is an error with its output.
+func (im *Importer) run(ctx context.Context, sp docker.Spec, as string, timeout time.Duration) (docker.Result, error) {
 	var out tail
-	r, err := im.Engine.Run(ctx, docker.Spec{
-		Image: image, Cmd: cmd, User: "0:0", Network: network, WorkDir: "/app", Mounts: mounts,
-		Tmpfs: map[string]string{"/tmp": "exec"}, Labels: map[string]string{"automaticum": "tbench2-import"},
-	}, timeout, &out, &out, nil)
+	sp.User, sp.CapAdd = task.As(as, laneUser)
+	if sp.WorkDir == "" {
+		sp.WorkDir = "/app"
+	}
+	sp.Tmpfs = map[string]string{"/tmp": "exec"}
+	sp.Labels = map[string]string{"automaticum": "tbench2-import"}
+	r, err := im.Engine.Run(ctx, sp, timeout, &out, &out, nil)
+	if err == nil {
+		err = r.CollectErr
+	}
 	if err != nil {
-		return err
+		return r, err
 	}
 	if r.TimedOut || r.ExitCode != 0 {
-		return fmt.Errorf("%s: exit %d (timed out: %v): %s", strings.Join(cmd, " "), r.ExitCode, r.TimedOut, out.String())
+		return r, fmt.Errorf("%s: exit %d (timed out: %v): %s", strings.Join(sp.Cmd, " "), r.ExitCode, r.TimedOut, out.String())
 	}
-	return nil
+	return r, nil
 }
 
-// seed copies the image's /app out.
-func (im *Importer) seed(ctx context.Context, image, dst string) error {
+// seed copies the image's /app out. A file larger than maxSeedFile is
+// moved to large, at the same path, and returned: the task takes it from the
+// image (SeedFile) instead of the repository.
+func (im *Importer) seed(ctx context.Context, image, dst, large string) ([]SeedFile, error) {
 	if err := os.MkdirAll(dst, 0o777); err != nil {
-		return err
+		return nil, err
 	}
 	os.Chmod(dst, 0o777)
-	if err := im.run(ctx, image, []string{"sh", "-c", "cp -R /app/. /seed/"}, []docker.Mount{{Source: dst, Target: "/seed"}}, "none", 5*time.Minute); err != nil {
-		return err
+	if _, err := im.run(ctx, docker.Spec{Image: image, Cmd: []string{"sh", "-c", "cp -R /app/. /seed/"},
+		Mounts: []docker.Mount{{Source: dst, Target: "/seed"}}, Network: "none"}, task.Root, 5*time.Minute); err != nil {
+		return nil, err
 	}
 	os.Chmod(dst, 0o755)
-	return checkTree(dst, maxSeed)
+	var files []SeedFile
+	err := filepath.WalkDir(dst, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || !d.Type().IsRegular() {
+			return err
+		}
+		info, err := d.Info()
+		if err != nil || info.Size() <= maxSeedFile {
+			return err
+		}
+		rel, _ := filepath.Rel(dst, p)
+		sum, err := task.HashFile(p)
+		if err != nil {
+			return err
+		}
+		mode := "0644"
+		if info.Mode()&0o111 != 0 {
+			mode = "0755"
+		}
+		files = append(files, SeedFile{Path: filepath.ToSlash(rel), SHA256: sum, Mode: mode})
+		to := filepath.Join(large, rel)
+		if err := os.MkdirAll(filepath.Dir(to), 0o755); err != nil {
+			return err
+		}
+		return os.Rename(p, to)
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(files, func(i, j int) bool { return files[i].Path < files[j].Path })
+	return files, checkTree(dst, maxSeed)
 }
 
 // oracleFiles writes the verifier's sources: the source's tests without
@@ -257,114 +314,278 @@ func (im *Importer) oracleFiles(s *Source, dir string) error {
 	return nil
 }
 
-// wheels downloads pytest and the tests' packages as wheels, in the image
-// the verifier runs in, so they are the ones its Python takes. An earlier
-// import's oracle/requirements.txt pins them by hash, so importing again
+// pipImage is the image pip runs in for a task's image: that image, if its
+// Python has pip, so the packages are the ones its Python takes; otherwise
+// the official image of the same Python version, whose choice of wheels
+// that Python takes too.
+func (im *Importer) pipImage(ctx context.Context, image string) (string, error) {
+	if _, err := im.run(ctx, docker.Spec{Image: image, Cmd: []string{"python3", "-m", "pip", "--version"}, Network: "none"}, task.Root, 2*time.Minute); err == nil {
+		return image, nil
+	}
+	var out tail
+	r, err := im.Engine.Run(ctx, docker.Spec{Image: image, Network: "none", WorkDir: "/",
+		Cmd: []string{"python3", "-c", "import sys; print('%d.%d' % sys.version_info[:2])"}}, 2*time.Minute, &out, io.Discard, nil)
+	version := strings.TrimSpace(out.String())
+	if err != nil || r.ExitCode != 0 || !versionRE.MatchString(version) {
+		return "", fmt.Errorf("the image has no pip, and its Python version cannot be read (%v, %q)", err, version)
+	}
+	pi := "python:" + version + "-slim"
+	if err := im.Engine.ImagePull(ctx, pi, im.Log); err != nil {
+		return "", err
+	}
+	im.logf("the image's Python %s has no pip: packages are chosen by %s\n", version, pi)
+	return pi, nil
+}
+
+var versionRE = regexp.MustCompile(`^3\.[0-9]+$`)
+
+// wheels downloads pytest and the tests' packages, with pip in image (the
+// verifier's own, or one of the same Python: pipImage), so they are the
+// ones its Python takes: wheels where
+// the package has them, and a source distribution where it has none, which
+// is built into a wheel once (D114): the wheel is kept, and built.txt
+// names the source distribution by hash. An earlier import's oracle/requirements.txt pins what was downloaded
+// by hash and its oracle/built.txt what was built, so importing again
 // gives the same files.
 func (im *Importer) wheels(ctx context.Context, s *Source, image, dir string) ([]Wheel, error) {
-	wd := filepath.Join(dir, "oracle", "wheels")
-	if err := os.MkdirAll(wd, 0o777); err != nil {
-		return nil, err
-	}
-	os.Chmod(wd, 0o777)
-	args := []string{"pip", "download", "--disable-pip-version-check", "--no-cache-dir", "--only-binary=:all:", "--dest", "/wheels"}
-	mounts := []docker.Mount{{Source: wd, Target: "/wheels"}}
-	earlier := filepath.Join(im.Repo, "tasks", Suite, s.Name, "oracle", "requirements.txt")
-	if _, err := os.Stat(earlier); err == nil {
-		args = append(args, "--no-deps", "--require-hashes", "-r", "/pins/requirements.txt")
-		mounts = append(mounts, docker.Mount{Source: filepath.Dir(earlier), Target: "/pins", ReadOnly: true})
-	} else {
-		args = append(append(args, "pytest=="+s.Pytest), s.Packages...)
-	}
-	if err := im.run(ctx, image, args, mounts, "", 10*time.Minute); err != nil {
-		return nil, err
-	}
-	os.Chmod(wd, 0o755)
-	entries, err := os.ReadDir(wd)
+	od := filepath.Join(dir, "oracle")
+	dl, err := os.MkdirTemp(im.Env.Scratch, "tbench2-dl-")
 	if err != nil {
 		return nil, err
 	}
+	defer os.RemoveAll(dl)
+	os.Chmod(dl, 0o777)
+	args := []string{"python3", "-m", "pip", "download", "--disable-pip-version-check", "--no-cache-dir", "--prefer-binary", "--dest", "/dl"}
+	mounts := []docker.Mount{{Source: dl, Target: "/dl"}}
+	earlier := filepath.Join(im.Repo, "tasks", Suite, s.Name, "oracle")
+	if _, err := os.Stat(filepath.Join(earlier, "requirements.txt")); err == nil {
+		args = append(args, "--no-deps", "--require-hashes", "-r", "/pins/requirements.txt")
+		mounts = append(mounts, docker.Mount{Source: earlier, Target: "/pins", ReadOnly: true})
+	} else {
+		args = append(append(args, "pytest=="+s.Pytest), s.Packages...)
+	}
+	if _, err := im.run(ctx, docker.Spec{Image: image, Cmd: args, Mounts: mounts}, task.Root, 10*time.Minute); err != nil {
+		return nil, err
+	}
+	entries, err := os.ReadDir(dl)
+	if err != nil {
+		return nil, err
+	}
+	built := readBuilt(filepath.Join(earlier, "built.txt"))
 	var ws []Wheel
-	var req strings.Builder
+	var req, record strings.Builder
 	var total int64
 	for _, e := range entries {
-		info, err := e.Info()
+		if !e.Type().IsRegular() {
+			return nil, fmt.Errorf("pip left %s, which is no file", e.Name())
+		}
+		src := filepath.Join(dl, e.Name())
+		sum, err := task.HashFile(src)
 		if err != nil {
 			return nil, err
 		}
-		if !e.Type().IsRegular() || !strings.HasSuffix(e.Name(), ".whl") {
-			return nil, fmt.Errorf("pip left %s, which is no wheel", e.Name())
+		name, version, kind := distribution(e.Name())
+		if kind == "" {
+			return nil, fmt.Errorf("pip left %s, which is neither a wheel nor a source distribution", e.Name())
 		}
+		fmt.Fprintf(&req, "%s==%s --hash=sha256:%s\n", name, version, sum)
+		w := Wheel{File: e.Name(), SHA256: sum}
+		if kind == "sdist" {
+			if w, err = im.build(ctx, image, src, sum, built[sum], filepath.Join(earlier, "wheels"), filepath.Join(od, "wheels")); err != nil {
+				return nil, fmt.Errorf("building %s: %w", e.Name(), err)
+			}
+			fmt.Fprintf(&record, "%s %s %s %s\n", w.File, w.SHA256, e.Name(), sum)
+		} else if err := copyFile(src, filepath.Join(od, "wheels", e.Name())); err != nil {
+			return nil, err
+		}
+		info, _ := e.Info()
 		total += info.Size()
-		sum, err := task.HashFile(filepath.Join(wd, e.Name()))
-		if err != nil {
-			return nil, err
-		}
-		ws = append(ws, Wheel{File: e.Name(), SHA256: sum})
-		parts := strings.SplitN(e.Name(), "-", 3)
-		fmt.Fprintf(&req, "%s==%s --hash=sha256:%s\n", parts[0], parts[1], sum)
+		ws = append(ws, w)
 	}
 	if total > maxWheel {
-		return nil, fmt.Errorf("the wheels are %d bytes, more than the %d a public repository should carry", total, maxWheel)
+		return nil, fmt.Errorf("the packages are %d bytes, more than the %d a public repository should carry", total, maxWheel)
 	}
 	if len(ws) == 0 {
 		return nil, errors.New("pip downloaded nothing")
 	}
 	sort.Slice(ws, func(i, j int) bool { return ws[i].File < ws[j].File })
-	return ws, os.WriteFile(filepath.Join(dir, "oracle", "requirements.txt"), []byte(req.String()), 0o644)
+	if record.Len() > 0 {
+		if err := os.WriteFile(filepath.Join(od, "built.txt"), []byte(record.String()), 0o644); err != nil {
+			return nil, err
+		}
+	}
+	return ws, os.WriteFile(filepath.Join(od, "requirements.txt"), []byte(req.String()), 0o644)
 }
 
-// gold runs solve.sh on a copy of the seed, as root in the image as the
-// source does, and keeps what it wrote as the gold fixture's files.
-func (im *Importer) gold(ctx context.Context, s *Source, image, dir string) (map[string]string, error) {
-	seed := filepath.Join(dir, "seed")
+// distribution reads a package file's name: its project, version and
+// whether it is a wheel or a source distribution ("" if neither).
+func distribution(file string) (name, version, kind string) {
+	switch {
+	case strings.HasSuffix(file, ".whl"):
+		parts := strings.SplitN(file, "-", 3)
+		if len(parts) == 3 {
+			return parts[0], parts[1], "wheel"
+		}
+	case strings.HasSuffix(file, ".tar.gz"), strings.HasSuffix(file, ".zip"):
+		base := strings.TrimSuffix(strings.TrimSuffix(file, ".tar.gz"), ".zip")
+		if i := strings.LastIndex(base, "-"); i > 0 {
+			return base[:i], base[i+1:], "sdist"
+		}
+	}
+	return "", "", ""
+}
+
+// builtWheel is one line of oracle/built.txt.
+type builtWheel struct{ file, sha256 string }
+
+// readBuilt reads an earlier import's built.txt: by the source
+// distribution's hash, the wheel built from it.
+func readBuilt(p string) map[string]builtWheel {
+	out := map[string]builtWheel{}
+	b, err := os.ReadFile(p)
+	if err != nil {
+		return out
+	}
+	for _, l := range strings.Split(string(b), "\n") {
+		if f := strings.Fields(l); len(f) == 4 {
+			out[f[3]] = builtWheel{f[0], f[1]}
+		}
+	}
+	return out
+}
+
+// build makes a wheel of the source distribution sdist, in the image, or
+// takes the one an earlier import built from the same file.
+func (im *Importer) build(ctx context.Context, image, sdist, sum string, before builtWheel, earlierDir, dst string) (Wheel, error) {
+	if before.file != "" {
+		if got, err := task.HashFile(filepath.Join(earlierDir, before.file)); err == nil && got == before.sha256 {
+			return Wheel{File: before.file, SHA256: got, Built: filepath.Base(sdist)}, copyFile(filepath.Join(earlierDir, before.file), filepath.Join(dst, before.file))
+		}
+	}
+	out, err := os.MkdirTemp(im.Env.Scratch, "tbench2-wheel-")
+	if err != nil {
+		return Wheel{}, err
+	}
+	defer os.RemoveAll(out)
+	os.Chmod(out, 0o777)
+	_, err = im.run(ctx, docker.Spec{Image: image,
+		Cmd: []string{"python3", "-m", "pip", "wheel", "--disable-pip-version-check", "--no-cache-dir", "--no-deps", "--wheel-dir", "/out", "/sdist/" + filepath.Base(sdist)},
+		// The times in the wheel are fixed, so the same build gives the same file.
+		Env:    []string{"SOURCE_DATE_EPOCH=315532800"},
+		Mounts: []docker.Mount{{Source: filepath.Dir(sdist), Target: "/sdist", ReadOnly: true}, {Source: out, Target: "/out"}},
+	}, task.Root, 10*time.Minute)
+	if err != nil {
+		return Wheel{}, err
+	}
+	entries, err := os.ReadDir(out)
+	if err != nil {
+		return Wheel{}, err
+	}
+	if len(entries) != 1 || !strings.HasSuffix(entries[0].Name(), ".whl") {
+		return Wheel{}, fmt.Errorf("pip wheel left %d files", len(entries))
+	}
+	f := entries[0].Name()
+	got, err := task.HashFile(filepath.Join(out, f))
+	if err != nil {
+		return Wheel{}, err
+	}
+	return Wheel{File: f, SHA256: got, Built: filepath.Base(sdist)}, copyFile(filepath.Join(out, f), filepath.Join(dst, f))
+}
+
+// gold runs solve.sh on a copy of the seed, in the image as the agent
+// will run (as the lane's user, or as root if the task declares it), and
+// keeps what it wrote as the gold fixture's files: in /app, and in the
+// task's collect paths, against what the image has there.
+func (im *Importer) gold(ctx context.Context, s *Source, image, dir, large string) (map[string]string, error) {
 	work, err := os.MkdirTemp(im.Env.Scratch, "tbench2-gold-")
 	if err != nil {
 		return nil, err
 	}
 	defer os.RemoveAll(work)
-	if err := os.CopyFS(filepath.Join(work, "app"), os.DirFS(seed)); err != nil {
-		return nil, err
+	// The workspace as the agent gets it: the seed and its large files.
+	app, start := filepath.Join(work, "app"), filepath.Join(work, "start")
+	for _, d := range []string{app, start} {
+		if err := os.CopyFS(d, os.DirFS(filepath.Join(dir, "seed"))); err != nil {
+			return nil, err
+		}
+		if _, err := os.Stat(large); err == nil {
+			if err := os.CopyFS(d, os.DirFS(large)); err != nil {
+				return nil, err
+			}
+		}
 	}
-	err = im.run(ctx, image, []string{"bash", "/solution/solve.sh"}, []docker.Mount{
-		{Source: filepath.Join(work, "app"), Target: "/app"},
-		{Source: filepath.Join(s.Dir, "solution"), Target: "/solution", ReadOnly: true},
-	}, "none", time.Duration(s.AgentTimeoutS)*time.Second)
-	if err != nil {
-		return nil, err
+	if s.Declared.RunAs != task.Root {
+		if err := ownTree(app, 1000, 1000); err != nil {
+			return nil, err
+		}
 	}
-	before, err := task.ReadManifest(seed)
-	if err != nil {
-		return nil, err
+	collect := s.Declared.Collect
+	before, after := map[string]string{}, map[string]string{}
+	for i, c := range collect {
+		before[c], after[c] = filepath.Join(work, fmt.Sprintf("before-%d", i)), filepath.Join(work, fmt.Sprintf("after-%d", i))
+		for _, d := range []string{before[c], after[c]} {
+			if err := os.Mkdir(d, 0o755); err != nil {
+				return nil, err
+			}
+		}
 	}
-	after, err := task.ReadManifest(filepath.Join(work, "app"))
+	if len(collect) > 0 {
+		if _, err := im.run(ctx, docker.Spec{Image: image, Cmd: []string{"/bin/sh", "-c", ":"}, Network: "none", Collect: before}, task.Root, 5*time.Minute); err != nil {
+			return nil, err
+		}
+	}
+	_, err = im.run(ctx, docker.Spec{Image: image, Cmd: []string{"bash", "/solution/solve.sh"}, Network: "none", Collect: after,
+		Mounts: []docker.Mount{
+			{Source: app, Target: "/app"},
+			{Source: filepath.Join(s.Dir, "solution"), Target: "/solution", ReadOnly: true},
+		}}, s.Declared.RunAs, time.Duration(s.AgentTimeoutS)*time.Second)
 	if err != nil {
 		return nil, err
 	}
 	gold := map[string]string{}
 	var total int64
-	for p, sum := range after {
-		if before[p] == sum {
-			continue
-		}
-		if strings.HasPrefix(sum, "link:") {
-			return nil, fmt.Errorf("solve.sh made %s a link", p)
-		}
-		src := filepath.Join(work, "app", filepath.FromSlash(p))
-		info, err := os.Stat(src)
+	keep := func(beforeDir, afterDir, at, fixture string) error {
+		b, err := task.ReadManifest(beforeDir)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		total += info.Size()
-		rel := path.Join("fixtures", "gold", p)
-		if err := copyFile(src, filepath.Join(dir, filepath.FromSlash(rel))); err != nil {
-			return nil, err
+		a, err := task.ReadManifest(afterDir)
+		if err != nil {
+			return err
 		}
-		gold[p] = rel
+		for p, sum := range a {
+			if b[p] == sum {
+				continue
+			}
+			key := path.Join(at, p)
+			if strings.HasPrefix(sum, "link:") || sum == "special" {
+				return fmt.Errorf("solve.sh made %s a link or a special file", key)
+			}
+			src := filepath.Join(afterDir, filepath.FromSlash(p))
+			info, err := os.Stat(src)
+			if err != nil {
+				return err
+			}
+			total += info.Size()
+			rel := path.Join("fixtures", fixture, p)
+			if err := copyFile(src, filepath.Join(dir, filepath.FromSlash(rel))); err != nil {
+				return err
+			}
+			gold[key] = rel
+		}
+		for p := range b {
+			if _, ok := a[p]; !ok {
+				return fmt.Errorf("solve.sh removed %s, which a fixture cannot say", path.Join(at, p))
+			}
+		}
+		return nil
 	}
-	for p := range before {
-		if _, ok := after[p]; !ok {
-			return nil, fmt.Errorf("solve.sh removed %s, which a fixture cannot say", p)
+	if err := keep(start, app, "", "gold"); err != nil {
+		return nil, err
+	}
+	for _, c := range collect {
+		if err := keep(before[c], after[c], c, path.Join("gold-root", c)); err != nil {
+			return nil, err
 		}
 	}
 	if len(gold) == 0 {
@@ -374,6 +595,30 @@ func (im *Importer) gold(ctx context.Context, s *Source, image, dir string) (map
 		return nil, fmt.Errorf("the gold fixture is %d bytes, more than %d", total, maxGold)
 	}
 	return gold, nil
+}
+
+// ownTree gives dir and what is under it to uid:gid, so the lane's user
+// can write it; a harness that may not chown opens it to everyone instead.
+func ownTree(dir string, uid, gid int) error {
+	return filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if os.Getuid() == 0 {
+			return os.Lchown(p, uid, gid)
+		}
+		if d.Type()&fs.ModeSymlink != 0 {
+			return nil
+		}
+		if d.IsDir() {
+			return os.Chmod(p, 0o777)
+		}
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+		return os.Chmod(p, info.Mode().Perm()|0o666)
+	})
 }
 
 func (im *Importer) writeTask(s *Source, p *Pins, dir string, inputs []string) error {

@@ -13,12 +13,17 @@
 //     by the oracle with the same pytest and packages pinned and vendored,
 //     with no network (the source fetches them when it verifies);
 //   - solution/solve.sh, run once at import, gives the gold fixture.
+//
+// What the source does not say, the import config (tasks/tbench2/import.toml,
+// Config) declares per task: that the agent or the tests run as root, and
+// the paths besides /app the tests read or write (066 §3.1).
 package tbench2
 
 import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -26,6 +31,8 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+
+	"github.com/mann1x/automaticum/internal/task"
 )
 
 // Suite is the suite imported tasks go in.
@@ -57,6 +64,67 @@ type Source struct {
 	Pytest     string
 	PytestArgs []string
 	Packages   []string
+
+	// Declared is what the import config says of the task.
+	Declared Declared
+}
+
+// Declared is what the import config states of one task, beyond the
+// source's files: the source runs agent and tests as root in one container,
+// and only what a task declares here is carried over (D110, D111).
+type Declared struct {
+	// RunAs and OracleRunAs are "root" for an agent or tests that need it;
+	// left out, they run as the lane's user.
+	RunAs       string `toml:"run_as"`
+	OracleRunAs string `toml:"oracle_run_as"`
+	// Writable are paths the tests write besides /app and /tests.
+	Writable []string `toml:"writable"`
+	// Collect are directories of the agent's container, besides /app,
+	// that the tests read.
+	Collect []string `toml:"collect"`
+	// Why says why, for NOTES.md.
+	Why string `toml:"why"`
+}
+
+// Config is the import config: the subset, and what each task declares.
+type Config struct {
+	Task map[string]Declared `toml:"task"`
+}
+
+// ConfigFile is where the import config is, in the repository.
+var ConfigFile = filepath.Join("tasks", Suite, "import.toml")
+
+// ReadConfig reads the import config of the repository.
+func ReadConfig(repo string) (*Config, error) {
+	var c Config
+	md, err := toml.DecodeFile(filepath.Join(repo, ConfigFile), &c)
+	if err != nil {
+		return nil, fmt.Errorf("tbench2: %s: %w", ConfigFile, err)
+	}
+	if u := md.Undecoded(); len(u) > 0 {
+		return nil, fmt.Errorf("tbench2: %s: unknown keys %v", ConfigFile, u)
+	}
+	for name, d := range c.Task {
+		if !nameRE.MatchString(name) {
+			return nil, fmt.Errorf("tbench2: %s: %q is not a task name", ConfigFile, name)
+		}
+		for _, r := range []string{d.RunAs, d.OracleRunAs} {
+			if r != "" && r != task.Root {
+				return nil, fmt.Errorf("tbench2: %s: task %s: run_as must be %q or left out", ConfigFile, name, task.Root)
+			}
+		}
+	}
+	return &c, nil
+}
+
+// Names are the tasks of the config, in order.
+func (c *Config) Names() []string {
+	var out []string
+	for n := range c.Task {
+		out = append(out, n)
+	}
+	sort.Strings(out)
+	return out
 }
 
 type sourceFile struct {
@@ -202,6 +270,9 @@ func Read(root, name string) (*Source, error) {
 type Wheel struct {
 	File   string // the wheel's file name, under oracle/wheels/
 	SHA256 string
+	// Built names the source distribution the wheel was built from, for a
+	// package with no wheel of its own (oracle/built.txt pins it).
+	Built string
 }
 
 // Pins is what the import established outside the source's files.
@@ -214,7 +285,24 @@ type Pins struct {
 	// Gold maps the workspace paths solve.sh wrote to the files of the
 	// gold fixture.
 	Gold map[string]string
+	// SeedFiles are the files of the image's /app too large for seed/.
+	SeedFiles []SeedFile
+	// PipImage is the image pip chose the packages in: Image, or the
+	// official image of its Python when its own has no pip.
+	PipImage string
 }
+
+// SeedFile is a file of the seed taken from the image when the task is
+// built, not kept in the repository: an artefact that copies it out of the
+// image, pinned by its hash and installed as part of the seed (066 §3).
+type SeedFile struct {
+	Path   string // in /app
+	SHA256 string
+	Mode   string
+}
+
+// verifierArtefact is the name of the verifier's artefact.
+const verifierArtefact = "verifier"
 
 // minutes is a source estimate as hours, minutes and seconds.
 func minutes(m float64) string { return (time.Duration(m * float64(time.Minute))).String() }
@@ -240,6 +328,11 @@ func TaskTOML(s *Source, p *Pins, inputs []string) (string, error) {
 	w("layers = [%s]\n", quote(Layer(s.Name)))
 	w("default_answer = %s\n\n", quote("Use your own judgement and continue."))
 	w("prompt = %s\n\n", promptString(s.Instruction))
+	d := s.Declared
+	if d.RunAs != "" {
+		w("# Declared in %s: %s\n", filepath.ToSlash(ConfigFile), oneLine(d.Why))
+		w("run_as = %s\n\n", quote(d.RunAs))
+	}
 
 	w("[labels]\n")
 	labels := map[string]string{
@@ -266,14 +359,35 @@ func TaskTOML(s *Source, p *Pins, inputs []string) (string, error) {
 		w("%s = %s\n", k, quote(labels[k]))
 	}
 
-	w("\n[limits]\n")
+	w("\n# The source's limits, for the agent's container and the oracle's.\n[limits]\n")
 	w("wall_s = %d\n", int(s.AgentTimeoutS))
 	w("oracle_s = %d\n", int(s.VerifierTimeoutS))
+	if s.CPUs > 0 {
+		w("cpus = %d.0\n", s.CPUs)
+	}
+	if s.MemoryMB > 0 {
+		w("memory_mb = %d\n", s.MemoryMB)
+	}
 
 	w("\n[workspace]\nseed = \"seed\"\n")
 	w("# The source's /app is no repository.\ngit = false\n")
+	if len(d.Collect) > 0 {
+		w("collect = [%s]\n", quoteAll(d.Collect))
+	}
+	for i, f := range p.SeedFiles {
+		w("\n# /app/%s is too large for the repository: taken from the image.\n", f.Path)
+		w("[[workspace.install]]\nartefact = \"seed-%d\"\npath = %s\nmode = %s\nseed = true\n", i+1, quote(f.Path), quote(f.Mode))
+	}
 
-	w("\n[[artefact]]\nname = \"verifier\"\n")
+	for i, f := range p.SeedFiles {
+		w("\n[[artefact]]\nname = \"seed-%d\"\n", i+1)
+		w("image = %s\n", quote(p.Image))
+		w("command = [\"cp\", %s, %s]\n", quote("/app/"+f.Path), quote("/out/"+path.Base(f.Path)))
+		w("output = %s\n", quote(path.Base(f.Path)))
+		w("sha256 = %s\n", quote(f.SHA256))
+	}
+
+	w("\n[[artefact]]\nname = %s\n", quote(verifierArtefact))
 	w("image = %s\n", quote(p.Image))
 	w("inputs = [%s]\n", quoteAll(inputs))
 	w("command = [\"python3\", \"/task/oracle/build.py\", \"/task/oracle\", \"/out/%s\"]\n", verifierFile)
@@ -286,7 +400,10 @@ func TaskTOML(s *Source, p *Pins, inputs []string) (string, error) {
 	w("image = %s\n", quote(p.Image))
 	w("# The source's own pytest arguments, after the verifier.\n")
 	w("command = [%s]\n", quoteAll(append([]string{"python3", "/oracle/" + verifierFile}, s.PytestArgs...)))
-	w("writable = [\"/app\", \"/tests\"]\n")
+	w("writable = [%s]\n", quoteAll(append([]string{"/app", "/tests"}, d.Writable...)))
+	if d.OracleRunAs != "" {
+		w("run_as = %s\n", quote(d.OracleRunAs))
+	}
 	w("expect_exit = 0\n")
 	w("timeout_s = %d\n", int(s.VerifierTimeoutS))
 
@@ -307,30 +424,25 @@ func TaskTOML(s *Source, p *Pins, inputs []string) (string, error) {
 }
 
 // LaneDockerfile is the imported task's lane layer: the task's image by
-// digest with what the runner needs added, as the cpp layer adds Node and
-// the runner (064 §3.2), and /app made the workspace. Nothing else of the
-// base's tools is added: the agent finds the task's environment as the
-// source made it, but for these (066 §4).
+// digest with the runner added under its own prefix, off the agent's PATH
+// (064 §3.2, D113), and /app made the workspace. Nothing else of the image
+// changes: the agent finds the task's environment as the source made it.
 func LaneDockerfile(s *Source, p *Pins) string {
 	return fmt.Sprintf(`# Lane layer of tbench2/%[1]s, written by `+"`automaticum suite import tbench2`"+`
 # from Terminal-Bench 2.0 commit %[2]s (066 §3): the task's own image
-# (%[3]s, pinned by digest) with what the runner needs added (064 §3.2) and
-# nothing else: Node and the runner from the base, git and ripgrep (the SDK's
-# tools call them), and the lane's user, uid 1000. /app, where the task
-# works, is made the workspace.
+# (%[3]s, pinned by digest) with the runner added (064 §3.2) under its own
+# prefix, /opt/automaticum, which is on no PATH (D113): Node and the runner,
+# and a static ripgrep that only the SDK's own search finds. /app, where the
+# task works, is made the workspace; nothing else of the image changes.
 # Built by `+"`automaticum image build %[4]s`"+`; rebuild the base first.
 FROM automaticum-lane:base AS lane
 FROM %[5]s
 
-RUN apt-get update \
- && apt-get install -y --no-install-recommends git ripgrep \
- && rm -rf /var/lib/apt/lists/* \
- && if ! getent passwd 1000 >/dev/null; then \
-      groupadd --gid 1000 node && useradd --uid 1000 --gid node --shell /bin/bash --create-home node; \
-    fi
-COPY --from=lane /usr/local/bin/node /usr/local/bin/
-COPY --from=lane /opt/automaticum /opt/automaticum
-RUN rm -rf /app && ln -s /workspace /app && node --version
+COPY --from=lane /usr/local/bin/node /opt/automaticum/bin/node
+COPY --from=lane /opt/automaticum/tools/rg /opt/automaticum/bin/rg
+COPY --from=lane /opt/automaticum/runner /opt/automaticum/runner
+RUN ["/opt/automaticum/bin/node", "--version"]
+RUN rm -rf /app && ln -s /workspace /app
 WORKDIR /workspace
 `, s.Name, p.Commit, s.Image, Layer(s.Name), p.Image)
 }
@@ -340,13 +452,26 @@ WORKDIR /workspace
 func Notes(s *Source, p *Pins) string {
 	var wheels []string
 	for _, w := range p.Wheels {
-		wheels = append(wheels, "`"+w.File+"`")
+		f := "`" + w.File + "`"
+		if w.Built != "" {
+			f += " (built from `" + w.Built + "`, which `oracle/built.txt` pins)"
+		}
+		wheels = append(wheels, f)
 	}
 	pk := "none"
 	if len(s.Packages) > 0 {
 		pk = "`" + strings.Join(s.Packages, "`, `") + "`"
 	}
-	return fmt.Sprintf(`# tbench2/%[1]s
+	d := s.Declared
+	agent, tests := "the lane's user, uid 1000", "the lane's user"
+	if d.RunAs == task.Root {
+		agent = "root, with the engine's default capabilities"
+	}
+	if d.OracleRunAs == task.Root {
+		tests = "root, with the engine's default capabilities"
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, `# tbench2/%[1]s
 
 Terminal-Bench 2.0's task `+"`terminal-bench/%[1]s`"+` (Apache-2.0, see
 `+"`../LICENSE`"+`), imported from commit `+"`%[2]s`"+` by
@@ -360,14 +485,38 @@ Terminal-Bench 2.0's task `+"`terminal-bench/%[1]s`"+` (Apache-2.0, see
   `+"`tests/test.sh`"+` fetches uv, Python and these at verify time. Its report
   plugin (`+"`%[10]s`"+`) is left out: the exit code is the verdict. Vendored:
   %[11]s.
-- Gold fixture: what `+"`solution/solve.sh`"+` wrote, run once as root in the image.
-
-Differences from the source's own harness (066 §4): the agent runs as uid
-1000, not root; only `+"`/app`"+` reaches the verifier, not the rest of the
-container; the source's CPU and memory limits are labels, the lane's own hold.
+- Gold fixture: what `+"`solution/solve.sh`"+` wrote, run once in the image as the
+  agent runs.
+- Limits: the source's, %[12]d CPU and %[13]d MB, for the agent's container
+  and the oracle's (never more than the lane has).
+- The agent runs as %[14]s; the tests as %[15]s.
 `, s.Name, p.Commit, minutes(s.ExpertMin), minutes(s.JuniorMin), (time.Duration(s.AgentTimeoutS) * time.Second).String(),
-		s.Image, p.Image, s.Pytest, pk, reportPlugin, strings.Join(wheels, ", "))
+		s.Image, p.Image, s.Pytest, pk, reportPlugin, strings.Join(wheels, ", "), s.CPUs, s.MemoryMB, agent, tests)
+	if p.PipImage != "" && p.PipImage != p.Image {
+		fmt.Fprintf(&b, "- The image's Python has no pip: its packages were chosen by pip in `%s`, the same Python version.\n", p.PipImage)
+	}
+	for _, f := range p.SeedFiles {
+		fmt.Fprintf(&b, "- `/app/%s` (%s) is too large for the repository: the task takes it from the image when it is built.\n", f.Path, f.SHA256[:12])
+	}
+	if len(d.Writable) > 0 {
+		fmt.Fprintf(&b, "- The tests also write `%s`.\n", strings.Join(d.Writable, "`, `"))
+	}
+	if len(d.Collect) > 0 {
+		fmt.Fprintf(&b, "- Besides `/app`, the tests get `%s` of the agent's container.\n", strings.Join(d.Collect, "`, `"))
+	}
+	if d.Why != "" {
+		fmt.Fprintf(&b, "\nDeclared in `%s` (066 §3.1): %s\n", filepath.ToSlash(ConfigFile), oneLine(d.Why))
+	}
+	b.WriteString(`
+Differences from the source's own harness (066 §4): only ` + "`/app`" + ` and what is
+declared reach the verifier, not the rest of the container; the verifier is
+offline, with its packages pinned.
+`)
+	return b.String()
 }
+
+// oneLine is s with its runs of white space made one space.
+func oneLine(s string) string { return strings.Join(strings.Fields(s), " ") }
 
 // quote is a TOML basic string.
 func quote(s string) string {

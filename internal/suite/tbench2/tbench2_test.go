@@ -126,7 +126,11 @@ var pins = Pins{
 // written writes what an import writes of the task, and loads it.
 func written(t *testing.T, s *Source) *task.Task {
 	t.Helper()
-	dir := filepath.Join(t.TempDir(), Suite, s.Name)
+	return writtenWith(t, s, &pins, filepath.Join(t.TempDir(), Suite, s.Name))
+}
+
+func writtenWith(t *testing.T, s *Source, pins *Pins, dir string) *task.Task {
+	t.Helper()
 	for p, v := range map[string]string{
 		"seed/in.txt":                                 "x\n",
 		"fixtures/gold/out.txt":                       "hello\n",
@@ -142,16 +146,16 @@ func written(t *testing.T, s *Source) *task.Task {
 	if err != nil {
 		t.Fatal(err)
 	}
-	text, err := TaskTOML(s, &pins, inputs)
+	text, err := TaskTOML(s, pins, inputs)
 	if err != nil {
 		t.Fatal(err)
 	}
-	again, _ := TaskTOML(s, &pins, inputs)
+	again, _ := TaskTOML(s, pins, inputs)
 	if again != text {
 		t.Error("the same task gave another task.toml")
 	}
 	os.WriteFile(filepath.Join(dir, "task.toml"), []byte(text), 0o644)
-	os.WriteFile(filepath.Join(dir, "NOTES.md"), []byte(Notes(s, &pins)), 0o644)
+	os.WriteFile(filepath.Join(dir, "NOTES.md"), []byte(Notes(s, pins)), 0o644)
 	tk, err := task.Load(dir)
 	if err != nil {
 		t.Fatalf("%v\n%s", err, text)
@@ -194,16 +198,90 @@ func TestTaskTOML(t *testing.T) {
 	if again := written(t, s); again.Hash != tk.Hash {
 		t.Error("the same import gave another task hash")
 	}
+	if tk.Limits.CPUs != 1 || tk.Limits.MemoryMB != 2048 || tk.RunAs != "" || o.RunAs != "" || len(tk.Workspace.Collect) != 0 {
+		t.Errorf("limits %+v, run_as %q and %q, collect %v", tk.Limits, tk.RunAs, o.RunAs, tk.Workspace.Collect)
+	}
 	df := LaneDockerfile(s, &pins)
-	for _, want := range []string{"FROM automaticum-lane:base AS lane\n", "FROM " + pins.Image + "\n", "ln -s /workspace /app", "COPY --from=lane /opt/automaticum /opt/automaticum", "install -y --no-install-recommends git ripgrep \\\n", "WORKDIR /workspace\n"} {
+	for _, want := range []string{"FROM automaticum-lane:base AS lane\n", "FROM " + pins.Image + "\n", "ln -s /workspace /app",
+		"COPY --from=lane /usr/local/bin/node /opt/automaticum/bin/node\n", "COPY --from=lane /opt/automaticum/tools/rg /opt/automaticum/bin/rg\n",
+		"COPY --from=lane /opt/automaticum/runner /opt/automaticum/runner\n", "WORKDIR /workspace\n"} {
 		if !strings.Contains(df, want) {
 			t.Errorf("the lane layer lacks %q", want)
 		}
 	}
-	// Only what the runner needs: not the base's other tools, nor npm.
-	for _, not := range []string{"curl", "procps", "node_modules /usr/local/lib/node_modules"} {
+	// Under the runner's prefix and nothing else (D113): no packages, no
+	// user, nothing on the PATH.
+	for _, not := range []string{"apt-get", "useradd", "/usr/local/bin/\n", "curl", "git"} {
 		if strings.Contains(df, not) {
 			t.Errorf("the lane layer adds %q", not)
+		}
+	}
+}
+
+func TestDeclared(t *testing.T) {
+	s, err := Read(source(t, nil), "tiny-task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.Declared = Declared{RunAs: "root", OracleRunAs: "root", Writable: []string{"/jail"}, Collect: []string{"/usr/local/bin"}, Why: "it\n  installs"}
+	p := pins
+	p.Gold = map[string]string{"out.txt": "fixtures/gold/out.txt", "/usr/local/bin/tool": "fixtures/gold-root/usr/local/bin/tool"}
+	p.SeedFiles = []SeedFile{{Path: "data/image.ppm", SHA256: strings.Repeat("12", 32), Mode: "0644"}}
+	dir := filepath.Join(t.TempDir(), Suite, s.Name)
+	os.MkdirAll(filepath.Join(dir, "fixtures/gold-root/usr/local/bin"), 0o755)
+	os.WriteFile(filepath.Join(dir, "fixtures/gold-root/usr/local/bin/tool"), []byte("x"), 0o755)
+	tk := writtenWith(t, s, &p, dir)
+	o := tk.PrimaryOracle()
+	if tk.RunAs != "root" || o.RunAs != "root" || strings.Join(o.Writable, " ") != "/app /tests /jail" || strings.Join(tk.Workspace.Collect, " ") != "/usr/local/bin" {
+		t.Errorf("run_as %q and %q, writable %v, collect %v", tk.RunAs, o.RunAs, o.Writable, tk.Workspace.Collect)
+	}
+	if in := tk.Workspace.Install; len(in) != 1 || !in[0].Seed || in[0].Path != "data/image.ppm" || tk.Artefact(in[0].Artefact).Output != "image.ppm" ||
+		strings.Join(tk.Artefact(in[0].Artefact).Command, " ") != "cp /app/data/image.ppm /out/image.ppm" || tk.Installed("verifier") {
+		t.Errorf("the large seed file: %+v %+v", in, tk.Artefacts)
+	}
+	if tk.Fixtures[0].Files["/usr/local/bin/tool"] == "" {
+		t.Errorf("gold %v", tk.Fixtures[0].Files)
+	}
+	n := Notes(s, &p)
+	for _, want := range []string{"The agent runs as root", "tests as root", "also write `/jail`", "get `/usr/local/bin`", "it installs", "`/app/data/image.ppm` (121212121212)"} {
+		if !strings.Contains(n, want) {
+			t.Errorf("NOTES.md lacks %q:\n%s", want, n)
+		}
+	}
+}
+
+func TestReadConfig(t *testing.T) {
+	repo := t.TempDir()
+	write := func(text string) {
+		os.MkdirAll(filepath.Join(repo, "tasks", Suite), 0o755)
+		os.WriteFile(filepath.Join(repo, ConfigFile), []byte(text), 0o644)
+	}
+	write("[task.b]\n[task.a]\noracle_run_as = \"root\"\nwritable = [\"/jail\"]\n")
+	c, err := ReadConfig(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(c.Names(), " ") != "a b" || c.Task["a"].OracleRunAs != "root" {
+		t.Errorf("%+v", c)
+	}
+	for _, bad := range []string{"[task.a]\nrun_as = \"admin\"\n", "[task.a]\nrunas = \"root\"\n", "[task.A]\n"} {
+		write(bad)
+		if _, err := ReadConfig(repo); err == nil {
+			t.Errorf("%q was read", bad)
+		}
+	}
+}
+
+func TestDistribution(t *testing.T) {
+	for file, want := range map[string][3]string{
+		"chess-1.11.2.tar.gz":           {"chess", "1.11.2", "sdist"},
+		"pytest-8.4.1-py3-none-any.whl": {"pytest", "8.4.1", "wheel"},
+		"python_chess-1.999.zip":        {"python_chess", "1.999", "sdist"},
+		"README.txt":                    {"", "", ""},
+	} {
+		n, v, k := distribution(file)
+		if [3]string{n, v, k} != want {
+			t.Errorf("%s: %s %s %s", file, n, v, k)
 		}
 	}
 }

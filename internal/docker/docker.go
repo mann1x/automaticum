@@ -1,6 +1,7 @@
 // Package docker is a small client for the Docker Engine API over the local
 // socket. It has what a lane needs and no more: pull, build and inspect an
-// image; create, start, follow, wait for, kill and remove a container.
+// image; create, start, follow, wait for, kill and remove a container, and
+// copy paths out of one that has stopped.
 //
 // automaticum never runs the docker command and never stops a container by
 // name: every container is addressed by the id the engine returned when it
@@ -8,6 +9,7 @@
 package docker
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"encoding/binary"
@@ -18,6 +20,8 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -314,6 +318,22 @@ type Spec struct {
 	// ReadOnlyRoot mounts the container's root filesystem read-only.
 	ReadOnlyRoot bool
 	Labels       map[string]string
+	// CapAdd gives the container these capabilities; it has none
+	// otherwise. DefaultCapabilities are the engine's own defaults, what a
+	// task that runs as root is given (D110).
+	CapAdd []string
+	// Collect maps container paths to host directories: once the
+	// container has stopped, and before it is removed, each path is
+	// copied into its directory (CopyOut). Result.CollectErr says what
+	// could not be copied.
+	Collect map[string]string
+}
+
+// DefaultCapabilities are the capabilities the engine gives a container
+// unless told otherwise.
+var DefaultCapabilities = []string{
+	"AUDIT_WRITE", "CHOWN", "DAC_OVERRIDE", "FOWNER", "FSETID", "KILL", "MKNOD",
+	"NET_BIND_SERVICE", "NET_RAW", "SETFCAP", "SETGID", "SETPCAP", "SETUID", "SYS_CHROOT",
 }
 
 // Create makes a container and returns its id. It is not started.
@@ -329,14 +349,16 @@ func (c *Client) Create(ctx context.Context, s Spec) (string, error) {
 		ReadonlyRootfs bool              `json:",omitempty"`
 		Init           bool
 		CapDrop        []string
+		CapAdd         []string `json:",omitempty"`
 		SecurityOpt    []string
 	}
 	hc := hostConfig{
 		Tmpfs: s.Tmpfs, NetworkMode: s.Network, Memory: s.MemoryBytes, MemorySwap: s.MemoryBytes,
 		NanoCpus: s.NanoCPUs, PidsLimit: s.PidsLimit, ReadonlyRootfs: s.ReadOnlyRoot,
 		// An init process reaps what the agent's commands leave behind, and
-		// a container has no use for any capability or for gaining privileges.
-		Init: true, CapDrop: []string{"ALL"}, SecurityOpt: []string{"no-new-privileges"},
+		// a container has no use for any capability it is not given, or
+		// for gaining privileges.
+		Init: true, CapDrop: []string{"ALL"}, CapAdd: s.CapAdd, SecurityOpt: []string{"no-new-privileges"},
 	}
 	for _, m := range s.Mounts {
 		b := m.Source + ":" + m.Target
@@ -390,6 +412,100 @@ func (c *Client) Remove(ctx context.Context, id string) error {
 		return nil
 	}
 	return err
+}
+
+// CopyOut copies the directory p of a container into the existing host
+// directory dst: what is under p is under dst. Files, directories and links
+// are copied, links as links; nothing is written outside dst, whatever the
+// links say. A p the container does not have leaves dst empty.
+func (c *Client) CopyOut(ctx context.Context, id, p, dst string) error {
+	resp, err := c.do(ctx, c.stream, "GET", "/containers/"+id+"/archive", url.Values{"path": {p}}, nil, "")
+	if IsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return untar(resp.Body, path.Base(p), dst)
+}
+
+// untar writes the archive of the directory named top into dst.
+func untar(r io.Reader, top, dst string) error {
+	root, err := os.OpenRoot(dst)
+	if err != nil {
+		return err
+	}
+	defer root.Close()
+	tr := tar.NewReader(r)
+	for {
+		h, err := tr.Next()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		name := path.Clean(h.Name)
+		if name == top {
+			if h.Typeflag != tar.TypeDir {
+				return fmt.Errorf("docker: %s is not a directory", top)
+			}
+			continue
+		}
+		rel, ok := strings.CutPrefix(name, top+"/")
+		if !ok || rel == "" || strings.HasPrefix(rel, "../") || path.IsAbs(rel) {
+			return fmt.Errorf("docker: the archive of %s holds %q", top, h.Name)
+		}
+		mode := os.FileMode(h.Mode).Perm()
+		switch h.Typeflag {
+		case tar.TypeDir:
+			if err := root.MkdirAll(rel, 0o755); err != nil {
+				return err
+			}
+			if err := root.Chmod(rel, mode|0o700); err != nil {
+				return err
+			}
+		case tar.TypeSymlink:
+			if err := root.MkdirAll(path.Dir(rel), 0o755); err != nil {
+				return err
+			}
+			if err := root.Symlink(h.Linkname, rel); err != nil {
+				return err
+			}
+		case tar.TypeReg:
+			if err := root.MkdirAll(path.Dir(rel), 0o755); err != nil {
+				return err
+			}
+			f, err := root.OpenFile(rel, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
+			if err != nil {
+				return err
+			}
+			_, err = io.Copy(f, tr)
+			if cerr := f.Close(); err == nil {
+				err = cerr
+			}
+			if err != nil {
+				return err
+			}
+			if err := root.Chmod(rel, mode); err != nil {
+				return err
+			}
+		case tar.TypeLink:
+			old, ok := strings.CutPrefix(path.Clean(h.Linkname), top+"/")
+			if !ok || strings.HasPrefix(old, "../") {
+				return fmt.Errorf("docker: the archive of %s links %q to %q", top, h.Name, h.Linkname)
+			}
+			if err := root.MkdirAll(path.Dir(rel), 0o755); err != nil {
+				return err
+			}
+			if err := root.Link(old, rel); err != nil {
+				return err
+			}
+		default:
+			// Devices, fifos: not files a test reads.
+		}
+	}
 }
 
 // State is a container's state as the engine reports it.
@@ -483,6 +599,8 @@ type Result struct {
 	ImageID   string
 	Started   time.Time
 	Ended     time.Time
+	// CollectErr says which of Spec.Collect could not be copied out.
+	CollectErr error
 }
 
 // Run creates a container, starts it, copies its output to stdout and stderr
@@ -572,6 +690,13 @@ wait:
 	defer cancel()
 	if st, image, err := c.Inspect(ictx, id); err == nil {
 		res.OOMKilled, res.ImageID = st.OOMKilled, image
+	}
+	for p, dst := range s.Collect {
+		cctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+		if err := c.CopyOut(cctx, id, p, dst); err != nil {
+			res.CollectErr = errors.Join(res.CollectErr, fmt.Errorf("%s: %w", p, err))
+		}
+		cancel()
 	}
 	res.ExitCode = w.code
 	if ctxErr != nil {

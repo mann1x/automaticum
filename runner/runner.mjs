@@ -18,10 +18,11 @@ import { fileURLToPath } from "node:url";
 import { BUNDLED_SKILLS_ON_BY_DEFAULT, buildConfig, compareResolved, derivedFromArm, unsupported } from "./session.mjs";
 import { ACT_MODE_CONTINUATION_PROMPT, createSwitchToActModeTool, withSwitchTool } from "./plan.mjs";
 import { guardTrip, limitBreach, reasoningLimitAnswer, stopsOn } from "./guards.mjs";
+import { privateTools } from "./tools.mjs";
 import { createUser } from "./user.mjs";
 import { createWire, describe } from "./wire.mjs";
 
-const PROTOCOL = 8;
+const PROTOCOL = 9;
 const SDK_PACKAGE = "@cerebriline/sdk";
 const EXIT = { completed: 0, error: 1, refused: 3, invalid: 4, wall_limit: 5, guard_stop: 6 };
 
@@ -107,6 +108,9 @@ async function main() {
 	mkdirSync(dataDir, { recursive: true });
 
 	const wire = createWire({ file: join(job.out, "wire.jsonl") });
+	// The runner's own tools, off the agent's PATH (D113), found by the SDK
+	// that is imported next.
+	const tools = privateTools(join(dirname(fileURLToPath(import.meta.url)), "..", "bin"));
 	const sdk = await import(SDK_PACKAGE);
 	// The scripted user (040 §6.2). Its actions need the session, which is
 	// made below; they are only ever taken once it runs.
@@ -197,6 +201,7 @@ async function main() {
 	note("prepared", {
 		sdk: sdkFound,
 		node: process.version,
+		private_tools: Object.keys(tools),
 		bundled_skills_switched_off: switchedOff,
 		prompt_template: template.rendered ? { name: template.rendered.name, source: template.rendered.source, overlaid: template.rendered.overlaid } : null,
 		prompt_template_errors: template.errors?.length ?? 0,

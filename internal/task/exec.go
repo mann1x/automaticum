@@ -42,6 +42,30 @@ func (e *Env) user() string {
 	return e.User
 }
 
+// As returns the user a container runs as and the capabilities it has,
+// for a run_as of a task or an oracle: the lane's user and none, or root
+// and the engine's defaults (D110).
+func As(runAs, laneUser string) (string, []string) {
+	if runAs == Root {
+		return "0:0", docker.DefaultCapabilities
+	}
+	return laneUser, nil
+}
+
+// Resources are the limits a task's container gets, given the lane's
+// (zero: none): the task's own where it sets them, never more than the
+// lane's (D112).
+func Resources(l Limits, laneCPUs float64, laneMemoryBytes int64) (nanoCPUs, memoryBytes int64) {
+	cpus, mem := laneCPUs, laneMemoryBytes
+	if l.CPUs > 0 && (cpus == 0 || l.CPUs < cpus) {
+		cpus = l.CPUs
+	}
+	if m := int64(l.MemoryMB) << 20; m > 0 && (mem == 0 || m < mem) {
+		mem = m
+	}
+	return int64(cpus * 1e9), mem
+}
+
 // ErrArtefactChanged means a build gave another result than the task pins.
 var ErrArtefactChanged = errors.New("task: built artefact does not match its pinned sha256")
 
@@ -252,8 +276,10 @@ const maxOracleOutput = 4 << 20
 // RunOracle runs an oracle on the files of workspace. It works on a copy:
 // the workspace is not touched, and the oracle's artefact is installed from
 // the harness's own copy over whatever the agent left. The container has no
-// network and a read-only root.
-func (e *Env) RunOracle(ctx context.Context, t *Task, o *Oracle, workspace string) (OracleResult, error) {
+// network and a read-only root. collected maps each of the task's collect
+// paths to a directory with what the agent's container had there; a copy
+// of each is at its path in the oracle's container.
+func (e *Env) RunOracle(ctx context.Context, t *Task, o *Oracle, workspace string, collected map[string]string) (OracleResult, error) {
 	res := OracleResult{Oracle: o.Name, Command: o.Command}
 	if err := os.MkdirAll(e.Scratch, 0o755); err != nil {
 		return res, err
@@ -271,12 +297,30 @@ func (e *Env) RunOracle(ctx context.Context, t *Task, o *Oracle, workspace strin
 	}
 	// What did the agent do to its copies of the installed artefacts?
 	for _, in := range t.Workspace.Install {
+		if in.Seed {
+			continue
+		}
 		a := t.Artefact(in.Artefact)
 		if sum, err := HashFile(filepath.Join(tmp, in.Path)); err != nil || sum != a.SHA256 {
 			res.Tampered = append(res.Tampered, in.Path)
 		}
 	}
 	mounts := []docker.Mount{{Source: tmp, Target: "/w", ReadOnly: true}}
+	for i, c := range t.Workspace.Collect {
+		src, ok := collected[c]
+		if !ok {
+			return res, fmt.Errorf("task: the oracle of %s needs %s of the agent's container, and it was not collected", t.Name(), c)
+		}
+		dir := filepath.Join(filepath.Dir(tmp), filepath.Base(tmp)+fmt.Sprintf(".collect-%d", i))
+		if err := os.Mkdir(dir, 0o755); err != nil {
+			return res, err
+		}
+		defer os.RemoveAll(dir)
+		if err := copyTree(src, dir); err != nil {
+			return res, err
+		}
+		mounts = append(mounts, docker.Mount{Source: dir, Target: c})
+	}
 	if o.Artefact != "" {
 		a := t.Artefact(o.Artefact)
 		if t.Installed(o.Artefact) {
@@ -311,10 +355,13 @@ func (e *Env) RunOracle(ctx context.Context, t *Task, o *Oracle, workspace strin
 	var out limitedBuffer
 	out.max = maxOracleOutput
 	start := time.Now()
+	user, caps := As(o.RunAs, e.user())
+	cpus, mem := Resources(t.Limits, 0, 0)
 	r, err := e.Exec.Run(ctx, docker.Spec{
-		Image: o.Image, Cmd: o.Command, User: e.user(), Network: "none", WorkDir: "/w", ReadOnlyRoot: true,
-		Mounts: mounts,
-		Tmpfs:  tmpfs,
+		Image: o.Image, Cmd: o.Command, User: user, CapAdd: caps, Network: "none", WorkDir: "/w", ReadOnlyRoot: true,
+		Mounts:   mounts,
+		Tmpfs:    tmpfs,
+		NanoCPUs: cpus, MemoryBytes: mem,
 		Labels: map[string]string{"automaticum": "oracle"},
 	}, timeout, &out, &out, nil)
 	res.Duration = time.Since(start)
@@ -365,11 +412,21 @@ func (e *Env) Verify(ctx context.Context, t *Task, repeats int) ([]FixtureResult
 		fr := FixtureResult{Fixture: f.Name, Expect: f.Expect, OK: true}
 		err = func() error {
 			defer os.RemoveAll(ws)
+			for i := range t.Workspace.Collect {
+				defer os.RemoveAll(fmt.Sprintf("%s.collect-%d", ws, i))
+			}
 			if _, err := e.PrepareWorkspace(t, ws); err != nil {
+				return err
+			}
+			collected, err := e.imageCollect(ctx, t, o, ws)
+			if err != nil {
 				return err
 			}
 			for dst, src := range f.Files {
 				p := filepath.Join(ws, dst)
+				if c := t.Collected(dst); c != "" {
+					p = filepath.Join(collected[c], filepath.FromSlash(dst[len(c):]))
+				}
 				if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 					return err
 				}
@@ -379,7 +436,7 @@ func (e *Env) Verify(ctx context.Context, t *Task, repeats int) ([]FixtureResult
 				}
 			}
 			for i := 0; i < repeats; i++ {
-				r, err := e.RunOracle(ctx, t, o, ws)
+				r, err := e.RunOracle(ctx, t, o, ws, collected)
 				if err != nil {
 					return err
 				}
@@ -394,6 +451,35 @@ func (e *Env) Verify(ctx context.Context, t *Task, repeats int) ([]FixtureResult
 			return nil, err
 		}
 		out = append(out, fr)
+	}
+	return out, nil
+}
+
+// imageCollect gives a fixture the task's collect paths as the oracle's
+// image has them, in directories beside the workspace ws (ws.collect-N,
+// for the caller to remove): the fixture's files are laid over them.
+func (e *Env) imageCollect(ctx context.Context, t *Task, o *Oracle, ws string) (map[string]string, error) {
+	if len(t.Workspace.Collect) == 0 {
+		return nil, nil
+	}
+	out := map[string]string{}
+	spec := docker.Spec{
+		Image: o.Image, Cmd: []string{"/bin/sh", "-c", ":"}, User: e.user(), Network: "none",
+		Collect: map[string]string{}, Labels: map[string]string{"automaticum": "fixture"},
+	}
+	for i, c := range t.Workspace.Collect {
+		dir := fmt.Sprintf("%s.collect-%d", ws, i)
+		if err := os.Mkdir(dir, 0o755); err != nil {
+			return nil, err
+		}
+		out[c], spec.Collect[c] = dir, dir
+	}
+	r, err := e.Exec.Run(ctx, spec, 5*time.Minute, io.Discard, io.Discard, nil)
+	if err == nil {
+		err = r.CollectErr
+	}
+	if err != nil {
+		return nil, fmt.Errorf("task: the collect paths of %s from %s: %w", t.Name(), o.Image, err)
 	}
 	return out, nil
 }

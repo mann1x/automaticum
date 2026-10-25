@@ -1,6 +1,6 @@
 # 020 — The run record, verdicts and the basis
 
-**Status:** draft 0.13, 2026-10-24.
+**Status:** draft 0.14, 2026-10-25.
 
 Nothing in this file is optional. Each item is here because its absence
 invalidated or blinded a real campaign. A value is recorded **as probed or as
@@ -87,6 +87,9 @@ milestone 4.
   with the log level verified before the run.
 - Workspace before and after, and a diff. Optionally a snapshot per transaction
   or compaction.
+- What the task collects of the agent's container besides the workspace
+  (060 §3), one `collected` blob per path, named by it; and who the container
+  ran as, its capabilities, CPUs and memory (D110, D112). From 2026-10-25.
 - For every oracle: command, output, exit code, duration.
 - The runner's stdout and stderr, exit code and signal.
 - Enough to **re-run the scorer without the model**: the final workspace or

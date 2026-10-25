@@ -1,6 +1,6 @@
 # 064 — Engine adapters: Cerebriline as the engine of an external harness
 
-**Status:** draft 0.6, 2026-10-25.
+**Status:** draft 0.7, 2026-10-25.
 
 ## 1. Why
 
@@ -63,8 +63,9 @@ Requirements:
 
 Terminal-Bench 2.0 does not need the adapter at run time: its tasks are
 imported as ordinary tasks (066), and the runner is added to each task's image
-when its lane layer is built, so events take the lane's usual path. Whether
-what that layer adds sits under a private prefix is O24 (2026-10-25).
+when its lane layer is built, so events take the lane's usual path. What that
+layer adds sits under the runner's own prefix, off the agent's PATH (D113,
+040 §1), so the task's environment is otherwise the image's (2026-10-25).
 
 ### 3.3 Solver inside a Python framework
 

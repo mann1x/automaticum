@@ -164,8 +164,14 @@ func (e *fakeEngine) Run(ctx context.Context, s docker.Spec, _ time.Duration, st
 		}
 		return res, err
 	}
-	// The oracle of the demo task.
+	// The oracle of the demo task; one that collects /opt/tool wants 42
+	// there too.
 	data, _ := os.ReadFile(filepath.Join(mountOf(s, "/w"), "answer.txt"))
+	if tool := mountOf(s, "/opt/tool"); tool != "" {
+		if b, _ := os.ReadFile(filepath.Join(tool, "answer")); !strings.Contains(string(b), "42") {
+			data = nil
+		}
+	}
 	if strings.Contains(string(data), "is 42.") {
 		fmt.Fprintln(stdout, "RESULT ok")
 	} else {
@@ -580,5 +586,66 @@ func TestBatchLimitsOverride(t *testing.T) {
 	}
 	if err := (&Override{WallS: &idle}).Check(); err == nil {
 		t.Error("a wall limit of 0")
+	}
+}
+
+// A task that runs as root, sets its own limits and collects a directory
+// of the agent's container (D110, D111, D112).
+func TestRootLimitsCollect(t *testing.T) {
+	event := `{"k":"event","event":{"type":"agent_event"}}` + "\n"
+	setup := func(t *testing.T, w *world, collect string) {
+		tk := *w.req.Task
+		tk.RunAs = task.Root
+		tk.Limits.CPUs, tk.Limits.MemoryMB = 1, 256
+		tk.Workspace.Collect = []string{collect}
+		w.req.Task = &tk
+	}
+	w := newWorld(t)
+	setup(t, w, "/opt/tool")
+	w.engine.runner = func(_ context.Context, s docker.Spec, out io.Writer) (docker.Result, error) {
+		fix(s)
+		os.WriteFile(filepath.Join(s.Collect["/opt/tool"], "answer"), []byte("42\n"), 0o644)
+		io.WriteString(out, event+endLine(OutcomeCompleted, ""))
+		return docker.Result{}, nil
+	}
+	r, p := w.run(t, context.Background())
+	if r.Verdict != store.Pass {
+		t.Fatalf("%s: %s %v", r.Verdict, r.VerdictReason, p.Errors)
+	}
+	lane, oracle := w.engine.specs[0], w.engine.specs[1]
+	if lane.User != "0:0" || len(lane.CapAdd) != len(docker.DefaultCapabilities) || lane.NanoCPUs != 1e9 || lane.MemoryBytes != 256<<20 {
+		t.Errorf("the agent's container: user %s, caps %v, %d CPUs, %d bytes", lane.User, lane.CapAdd, lane.NanoCPUs, lane.MemoryBytes)
+	}
+	if p.Container.User != "0:0" || len(p.Container.Capabilities) == 0 || p.Container.CPUs != 1 || p.Container.MemoryBytes != 256<<20 {
+		t.Errorf("the record: %+v", p.Container)
+	}
+	if oracle.User == "0:0" || oracle.CapAdd != nil || oracle.NanoCPUs != 1e9 || mountOf(oracle, "/opt/tool") == "" {
+		t.Errorf("the oracle: user %s, caps %v, %d CPUs, mounts %v", oracle.User, oracle.CapAdd, oracle.NanoCPUs, oracle.Mounts)
+	}
+	found := false
+	for _, ref := range w.state.refs {
+		found = found || (ref.Kind == "collected" && ref.Name == "/opt/tool")
+	}
+	if !found {
+		t.Errorf("no collected blob: %v", w.kinds())
+	}
+
+	// What could not be copied out: the oracle would judge a part.
+	w = newWorld(t)
+	setup(t, w, "/opt/tool")
+	w.engine.runner = func(_ context.Context, s docker.Spec, out io.Writer) (docker.Result, error) {
+		fix(s)
+		io.WriteString(out, event+endLine(OutcomeCompleted, ""))
+		return docker.Result{CollectErr: errors.New("/opt/tool: broken archive")}, nil
+	}
+	if r, _ := w.run(t, context.Background()); r.Verdict != store.Aborted || !strings.Contains(r.VerdictReason, "could not be copied") {
+		t.Errorf("%s: %s", r.Verdict, r.VerdictReason)
+	}
+
+	// The lane's own paths are not the task's to collect.
+	w = newWorld(t)
+	setup(t, w, "/workspace/sub")
+	if r, _ := w.run(t, context.Background()); r.Verdict != store.Skipped || !strings.Contains(r.VerdictReason, "lane's own") {
+		t.Errorf("%s: %s", r.Verdict, r.VerdictReason)
 	}
 }

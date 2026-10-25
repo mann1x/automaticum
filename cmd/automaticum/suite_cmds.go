@@ -15,10 +15,12 @@ import (
 )
 
 // suiteImport imports tasks of an external suite from a checkout of its
-// source at a pinned commit (066). The only suite so far is tbench2.
+// source at a pinned commit (066). The only suite so far is tbench2. The
+// tasks are the ones named, or with none named every task of the import
+// config (tasks/tbench2/import.toml), which declares each.
 func suiteImport(ctx context.Context, args []string) error {
 	if len(args) == 0 || args[0] != tbench2.Suite {
-		return errors.New("usage: automaticum suite import tbench2 -source DIR -commit SHA <task>...")
+		return errors.New("usage: automaticum suite import tbench2 -source DIR -commit SHA [<task>...]")
 	}
 	fs := flag.NewFlagSet("suite import", flag.ExitOnError)
 	p := addPlace(fs)
@@ -26,8 +28,15 @@ func suiteImport(ctx context.Context, args []string) error {
 	commit := fs.String("commit", "", "the commit the checkout must be at")
 	repeats := fs.Int("repeats", 3, "how many times the oracle judges each fixture before a task is kept")
 	names := parse(fs, args[1:])
-	if *source == "" || *commit == "" || len(names) == 0 {
-		return errors.New("usage: automaticum suite import tbench2 -source DIR -commit SHA <task>...")
+	if *source == "" || *commit == "" {
+		return errors.New("usage: automaticum suite import tbench2 -source DIR -commit SHA [<task>...]")
+	}
+	cfg, err := tbench2.ReadConfig(p.root())
+	if err != nil {
+		return err
+	}
+	if len(names) == 0 {
+		names = cfg.Names()
 	}
 	head, err := exec.CommandContext(ctx, "git", "-C", *source, "rev-parse", "HEAD").Output()
 	if err != nil {
@@ -49,7 +58,7 @@ func suiteImport(ctx context.Context, args []string) error {
 	}
 	im := &tbench2.Importer{
 		Engine: docker.New(l.Daemon.DockerSocket), Env: env, Source: *source, Commit: *commit,
-		Repo: p.root(), Repeats: *repeats, Log: os.Stderr,
+		Repo: p.root(), Config: cfg, Repeats: *repeats, Log: os.Stderr,
 	}
 	failed := 0
 	for _, name := range names {

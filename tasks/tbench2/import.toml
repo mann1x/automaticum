@@ -1,0 +1,33 @@
+# The import config of tbench2 (066 §3.1), read by
+# `automaticum suite import tbench2`: the subset, one table per task, and
+# what each declares beyond the source's own files. Everything else under
+# tasks/tbench2/ is written by the import; this file is written by hand.
+#
+# The source runs the agent and the tests as root in one container. Here
+# both run as the lane's user, uid 1000, and the tests get only /app of what
+# the agent left, unless the task declares otherwise (D110, D111):
+#
+#   run_as = "root"          the agent runs as root, with the engine's
+#                            default capabilities
+#   oracle_run_as = "root"   the tests do
+#   writable = [...]         paths the tests write besides /app and /tests
+#   collect = [...]          directories of the agent's container, besides
+#                            /app, that the tests read
+#   why = "..."              why, for the task's NOTES.md
+#
+# A declaration is proved like everything else: the task is kept only if
+# the oracle passes the gold fixture and fails the seed.
+
+[task.circuit-fibsqrt]
+
+[task.feal-linear-cryptanalysis]
+
+# Not imported yet: its tests need numpy and pillow, 23 MB of wheels (O29).
+[task.path-tracing]
+oracle_run_as = "root"
+writable = ["/jail"]
+why = "its tests run the agent's program in a chroot at /jail, which needs root and the chroot capability"
+
+[task.regex-chess]
+
+[task.schemelike-metacircular-eval]

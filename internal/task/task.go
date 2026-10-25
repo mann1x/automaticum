@@ -51,6 +51,10 @@ type Task struct {
 	// gate. Training tasks are public, in the repository's tasks/, in a
 	// suite whose name starts with "train-".
 	Training bool `toml:"training"`
+	// RunAs is who the agent's container runs as: "" for the lane's user,
+	// uid 1000 by default, or "root" for a task that needs root, which
+	// then has the engine's default capabilities too (D110).
+	RunAs string `toml:"run_as"`
 
 	// Dir is the task's directory. Files is every regular file under it
 	// with its sha256, and Hash is the hash of that list: the task's
@@ -60,11 +64,15 @@ type Task struct {
 	Hash  string            `toml:"-"`
 }
 
-// Limits are the task's own limits, in seconds. Zero means the task sets none.
+// Limits are the task's own limits: times in seconds, and the CPUs and
+// memory its containers get, the agent's and the oracle's, never more than
+// the lane has (D112). Zero means the task sets none.
 type Limits struct {
-	WallS   int `toml:"wall_s"`
-	IdleS   int `toml:"idle_s"`
-	OracleS int `toml:"oracle_s"`
+	WallS    int     `toml:"wall_s"`
+	IdleS    int     `toml:"idle_s"`
+	OracleS  int     `toml:"oracle_s"`
+	CPUs     float64 `toml:"cpus"`
+	MemoryMB int     `toml:"memory_mb"`
 }
 
 // Workspace says what the agent starts from.
@@ -78,6 +86,11 @@ type Workspace struct {
 	// workspace that is not a repository has none. Every workspace is one
 	// unless the task says git = false (owner, D87); read it with GitRepo.
 	Git *bool `toml:"git"`
+	// Collect names directories of the agent's container, outside the
+	// workspace, that the oracle also gets: copied out once the agent's
+	// container stops, each is at the same path in the oracle's (D111).
+	// Only the workspace reaches the oracle otherwise.
+	Collect []string `toml:"collect"`
 }
 
 // GitRepo says whether the workspace is made a git repository: yes unless
@@ -89,13 +102,17 @@ type Install struct {
 	Artefact string `toml:"artefact"`
 	Path     string `toml:"path"`
 	Mode     string `toml:"mode"` // octal, e.g. "0555"
+	// Seed makes the artefact part of the seed, a file too large for the
+	// repository taken from an image (066 §3): the agent's copy is the
+	// oracle's, as any file of the workspace, never checked or put back.
+	Seed bool `toml:"seed"`
 }
 
 // Artefact is something built from the task's files before the task can run.
 type Artefact struct {
 	Name    string   `toml:"name"`
 	Image   string   `toml:"image"`   // pinned by digest
-	Inputs  []string `toml:"inputs"`  // task files the build reads
+	Inputs  []string `toml:"inputs"`  // task files the build reads; none for one built from its image alone
 	Command []string `toml:"command"` // the task is at /task, the output directory at /out
 	Output  string   `toml:"output"`  // file name under /out
 	SHA256  string   `toml:"sha256"`  // the pinned result
@@ -117,6 +134,9 @@ type Oracle struct {
 	// tmpfs: the root is read-only, and an imported suite's tests use the
 	// absolute paths of their own harness (066).
 	Writable []string `toml:"writable"`
+	// RunAs is who the oracle runs as: "" for the lane's user, or "root",
+	// with the engine's default capabilities (D110).
+	RunAs string `toml:"run_as"`
 	// Exactly one expectation: a pattern the output must match, or an exit
 	// code. A program that exits 0 either way is judged by its pattern.
 	ExpectPattern string `toml:"expect_pattern"`
@@ -126,11 +146,13 @@ type Oracle struct {
 	pattern *regexp.Regexp
 }
 
-// Fixture is a workspace state with a known answer.
+// Fixture is a workspace state with a known answer. A file's path is in
+// the workspace, or absolute under one of the task's collect paths, laid
+// over what the oracle's image has there.
 type Fixture struct {
 	Name   string            `toml:"name"`
 	Expect string            `toml:"expect"` // "pass" or "fail"
-	Files  map[string]string `toml:"files"`  // workspace path -> task file
+	Files  map[string]string `toml:"files"`  // path -> task file
 }
 
 var nameRE = regexp.MustCompile(`^[a-z0-9][a-z0-9_.-]*$`)
@@ -284,8 +306,23 @@ func (t *Task) validate() error {
 	if strings.TrimSpace(t.Prompt) == "" {
 		return errors.New("prompt is empty")
 	}
-	if t.Limits.WallS < 0 || t.Limits.IdleS < 0 || t.Limits.OracleS < 0 {
+	if t.Limits.WallS < 0 || t.Limits.IdleS < 0 || t.Limits.OracleS < 0 || t.Limits.CPUs < 0 || t.Limits.MemoryMB < 0 {
 		return errors.New("limits must not be negative")
+	}
+	if t.RunAs != "" && t.RunAs != Root {
+		return fmt.Errorf("run_as must be %q or left out, not %q", Root, t.RunAs)
+	}
+	seen := map[string]bool{}
+	for _, p := range t.Workspace.Collect {
+		if !path.IsAbs(p) || path.Clean(p) != p || p == "/" || seen[p] || reservedOraclePath(p) || systemPath(p) {
+			return fmt.Errorf("workspace.collect: %q must be absolute, clean, given once, and not /, /w, /tmp, /oracle, /proc, /sys, /dev or under them", p)
+		}
+		for q := range seen {
+			if under(p, q) || under(q, p) {
+				return fmt.Errorf("workspace.collect: %s and %s overlap", p, q)
+			}
+		}
+		seen[p] = true
 	}
 	// A training task lives in a train-* suite, and a train-* suite holds
 	// only training tasks, so one can never be taken for an eval (D105).
@@ -322,8 +359,8 @@ func (t *Task) validate() error {
 			return fmt.Errorf("artefact %q: name missing, malformed or repeated", a.Name)
 		case !strings.Contains(a.Image, "@sha256:"):
 			return fmt.Errorf("artefact %s: image must be pinned by digest", a.Name)
-		case len(a.Command) == 0 || len(a.Inputs) == 0:
-			return fmt.Errorf("artefact %s: command and inputs are required", a.Name)
+		case len(a.Command) == 0:
+			return fmt.Errorf("artefact %s: command is required", a.Name)
 		case rel(a.Output) != nil || strings.Contains(a.Output, "/"):
 			return fmt.Errorf("artefact %s: output must be a file name", a.Name)
 		case !shaRE.MatchString(a.SHA256):
@@ -361,6 +398,8 @@ func (t *Task) validate() error {
 			return fmt.Errorf("oracle %s: give exactly one of expect_pattern and expect_exit", o.Name)
 		case o.Artefact != "" && !arts[o.Artefact]:
 			return fmt.Errorf("oracle %s: no artefact %q", o.Name, o.Artefact)
+		case o.Artefact != "" && t.seedInstall(o.Artefact):
+			return fmt.Errorf("oracle %s: artefact %s is part of the seed, which the agent may change", o.Name, o.Artefact)
 		case o.TimeoutS < 0:
 			return fmt.Errorf("oracle %s: timeout must not be negative", o.Name)
 		}
@@ -369,7 +408,15 @@ func (t *Task) validate() error {
 			if !path.IsAbs(p) || path.Clean(p) != p || p == "/" || seen[p] || reservedOraclePath(p) {
 				return fmt.Errorf("oracle %s: writable path %q must be absolute, clean, given once, and not /, /w, /tmp, /oracle or under them", o.Name, p)
 			}
+			for _, c := range t.Workspace.Collect {
+				if under(p, c) || under(c, p) {
+					return fmt.Errorf("oracle %s: writable path %s overlaps the collected %s", o.Name, p, c)
+				}
+			}
 			seen[p] = true
+		}
+		if o.RunAs != "" && o.RunAs != Root {
+			return fmt.Errorf("oracle %s: run_as must be %q or left out, not %q", o.Name, Root, o.RunAs)
 		}
 		if o.ExpectPattern != "" {
 			re, err := regexp.Compile(o.ExpectPattern)
@@ -400,7 +447,11 @@ func (t *Task) validate() error {
 			return fmt.Errorf("fixture %s: no files, so it is the seed, which cannot be expected to pass", f.Name)
 		}
 		for dst, src := range f.Files {
-			if err := rel(dst); err != nil {
+			if path.IsAbs(dst) {
+				if t.Collected(dst) == "" || path.Clean(dst) != dst {
+					return fmt.Errorf("fixture %s: %s is under no collect path of the workspace", f.Name, dst)
+				}
+			} else if err := rel(dst); err != nil {
 				return fmt.Errorf("fixture %s: %w", f.Name, err)
 			}
 			if err := t.file(src); err != nil {
@@ -466,14 +517,54 @@ func (t *Task) Installed(name string) bool {
 	return false
 }
 
+// seedInstall says whether the workspace installs the artefact as part of
+// the seed.
+func (t *Task) seedInstall(name string) bool {
+	for _, in := range t.Workspace.Install {
+		if in.Artefact == name && in.Seed {
+			return true
+		}
+	}
+	return false
+}
+
 // OracleArtefactDir is where an oracle's own artefact is mounted.
 const OracleArtefactDir = "/oracle"
+
+// Root is the run_as of a task or an oracle that runs as root.
+const Root = "root"
+
+// Collected returns the collect path p is, or is under; "" if none.
+func (t *Task) Collected(p string) string {
+	for _, c := range t.Workspace.Collect {
+		if under(p, c) {
+			return c
+		}
+	}
+	return ""
+}
+
+// under says whether p is dir or under it.
+func under(p, dir string) bool {
+	return p == dir || strings.HasPrefix(p, dir+"/")
+}
+
+// systemPath says whether p is, or is under, what the engine makes of a
+// container's own: not files the agent leaves.
+func systemPath(p string) bool {
+	for _, r := range []string{"/proc", "/sys", "/dev"} {
+		if under(p, r) {
+			return true
+		}
+	}
+	return false
+}
 
 // reservedOraclePath says whether p is, or is under, a path the oracle's
 // container already mounts.
 func reservedOraclePath(p string) bool {
 	for _, r := range []string{"/w", "/tmp", OracleArtefactDir} {
-		if p == r || strings.HasPrefix(p, r+"/") {
+		if under(p, r) {
 			return true
 		}
 	}

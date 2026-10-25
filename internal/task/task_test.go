@@ -237,7 +237,7 @@ func TestVerifyDemo(t *testing.T) {
 	if _, err := e.PrepareWorkspace(tk, ws); err == nil {
 		t.Error("a workspace that is not empty was accepted")
 	}
-	r, err := e.RunOracle(context.Background(), tk, tk.PrimaryOracle(), ws)
+	r, err := e.RunOracle(context.Background(), tk, tk.PrimaryOracle(), ws, nil)
 	if err != nil || r.Passed || r.Err != "" || !strings.Contains(r.Output, "RESULT wrong") {
 		t.Fatalf("oracle on the seed: %+v, %v", r, err)
 	}
@@ -259,7 +259,7 @@ func TestOracleTimeout(t *testing.T) {
 	os.MkdirAll(ws, 0o755)
 	slow := *tk.PrimaryOracle()
 	slow.Command, slow.TimeoutS = []string{"sh", "-c", "echo RESULT ok; sleep 60"}, 2
-	r, err := e.RunOracle(context.Background(), tk, &slow, ws)
+	r, err := e.RunOracle(context.Background(), tk, &slow, ws, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -314,7 +314,7 @@ echo '{"ok":true,"error":null,"frames_run":400,"reached_playing":true,"game_logi
 	if err := os.WriteFile(filepath.Join(ws, "run_game"), []byte(fake), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	r, err := e.RunOracle(ctx, tk, tk.PrimaryOracle(), ws)
+	r, err := e.RunOracle(ctx, tk, tk.PrimaryOracle(), ws, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -497,5 +497,197 @@ func TestOracleOwnArtefact(t *testing.T) {
 	}
 	if _, ok := m["tests.txt"]; ok || len(m) != 1 {
 		t.Errorf("the oracle's own artefact is in the workspace: %v", m)
+	}
+}
+
+// run_as, the task's limits and its collect paths are validated (D110,
+// D111, D112).
+func TestRunAsCollectLimits(t *testing.T) {
+	fixture := func(path string) string {
+		return "[[fixture]]\nname = \"f\"\nexpect = \"pass\"\n[fixture.files]\n\"" + path + "\" = \"task.toml\"\n"
+	}
+	good := map[string]string{
+		"root agent":        "run_as = \"root\"\n" + minimal,
+		"root oracle":       minimal + "run_as = \"root\"\n",
+		"limits":            minimal + "[limits]\ncpus = 1.5\nmemory_mb = 2048\n",
+		"collect":           minimal + "[workspace]\ncollect = [\"/usr/local/bin\", \"/etc/tool\"]\n",
+		"collected fixture": minimal + "[workspace]\ncollect = [\"/usr/local\"]\n" + fixture("/usr/local/bin/tool"),
+	}
+	for name, body := range good {
+		if _, err := Load(write(t, body, map[string]string{})); err != nil {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	bad := map[string]string{
+		"agent as someone":      "run_as = \"admin\"\n" + minimal,
+		"oracle as someone":     minimal + "run_as = \"1000\"\n",
+		"negative cpus":         minimal + "[limits]\ncpus = -1.0\n",
+		"negative memory":       minimal + "[limits]\nmemory_mb = -1\n",
+		"relative collect":      minimal + "[workspace]\ncollect = [\"usr\"]\n",
+		"collect /":             minimal + "[workspace]\ncollect = [\"/\"]\n",
+		"collect /tmp":          minimal + "[workspace]\ncollect = [\"/tmp/x\"]\n",
+		"collect /proc":         minimal + "[workspace]\ncollect = [\"/proc\"]\n",
+		"collect unclean":       minimal + "[workspace]\ncollect = [\"/usr/\"]\n",
+		"collect twice":         minimal + "[workspace]\ncollect = [\"/usr\", \"/usr\"]\n",
+		"collect overlaps":      minimal + "[workspace]\ncollect = [\"/usr\", \"/usr/lib\"]\n",
+		"writable over collect": strings.Replace(minimal, "expect_exit = 0", "expect_exit = 0\nwritable = [\"/usr/lib\"]", 1) + "[workspace]\ncollect = [\"/usr\"]\n",
+		"fixture outside":       minimal + "[workspace]\ncollect = [\"/usr/local\"]\n" + fixture("/etc/tool"),
+		"fixture absolute":      minimal + fixture("/usr/local/bin/tool"),
+	}
+	for name, body := range bad {
+		if _, err := Load(write(t, body, map[string]string{})); err == nil {
+			t.Errorf("%s: accepted", name)
+		}
+	}
+}
+
+// A task's own limits hold where they are under the lane's (D112).
+func TestResources(t *testing.T) {
+	const gb = int64(1) << 30
+	for _, c := range []struct {
+		l         Limits
+		cpus      float64
+		mem       int64
+		wantNano  int64
+		wantBytes int64
+	}{
+		{Limits{}, 4, 8 * gb, 4e9, 8 * gb},
+		{Limits{CPUs: 1, MemoryMB: 2048}, 4, 8 * gb, 1e9, 2 * gb},
+		{Limits{CPUs: 8, MemoryMB: 16384}, 4, 8 * gb, 4e9, 8 * gb},
+		{Limits{CPUs: 1, MemoryMB: 2048}, 0, 0, 1e9, 2 * gb},
+		{Limits{}, 0, 0, 0, 0},
+	} {
+		n, b := Resources(c.l, c.cpus, c.mem)
+		if n != c.wantNano || b != c.wantBytes {
+			t.Errorf("%+v on %v CPUs and %d bytes: %d, %d", c.l, c.cpus, c.mem, n, b)
+		}
+	}
+	if u, caps := As(Root, "1000:1000"); u != "0:0" || len(caps) == 0 {
+		t.Errorf("root: %s %v", u, caps)
+	}
+	if u, caps := As("", "1000:1000"); u != "1000:1000" || caps != nil {
+		t.Errorf("lane user: %s %v", u, caps)
+	}
+}
+
+// An oracle that runs as root has the engine's capabilities, and gets a
+// collected directory at its path: for a fixture, what the image has there
+// with the fixture's files laid over it.
+func TestOracleCollectAsRoot(t *testing.T) {
+	e := env(t)
+	body := `id = "collect"
+suite = "demo"
+version = 1
+prompt = "Write 42 to /opt/tool/answer."
+[limits]
+oracle_s = 30
+cpus = 1.0
+memory_mb = 256
+[workspace]
+git = false
+collect = ["/opt/tool", "/etc/apt"]
+[[oracle]]
+name = "check"
+primary = true
+image = "debian@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587"
+run_as = "root"
+command = ["sh", "-c", "test \"$(id -u)\" = 0 && chroot / true && test -d /etc/apt/apt.conf.d && grep -q 42 /opt/tool/answer && touch /opt/tool/written && echo RESULT ok || echo RESULT wrong"]
+expect_pattern = 'RESULT ok'
+[[fixture]]
+name = "good"
+expect = "pass"
+[fixture.files]
+"/opt/tool/answer" = "good.txt"
+[[fixture]]
+name = "none"
+expect = "fail"
+`
+	tk, err := Load(write(t, body, map[string]string{"good.txt": "42\n"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pull(t, e, tk.PrimaryOracle().Image)
+	os.MkdirAll(e.Scratch, 0o755)
+	results, err := e.Verify(context.Background(), tk, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range results {
+		if !r.OK {
+			t.Errorf("fixture %s: %+v", r.Fixture, r.Runs)
+		}
+	}
+	// As a run hands them over: what the agent's container had.
+	ws, tool, apt := t.TempDir(), t.TempDir(), t.TempDir()
+	os.Chmod(ws, 0o755)
+	os.MkdirAll(filepath.Join(apt, "apt.conf.d"), 0o755)
+	os.WriteFile(filepath.Join(tool, "answer"), []byte("42\n"), 0o644)
+	r, err := e.RunOracle(context.Background(), tk, tk.PrimaryOracle(), ws, map[string]string{"/opt/tool": tool, "/etc/apt": apt})
+	if err != nil || !r.Passed {
+		t.Fatalf("%v: %+v", err, r)
+	}
+	if _, err := os.Stat(filepath.Join(tool, "written")); err == nil {
+		t.Error("the oracle wrote the collected directory itself, not a copy")
+	}
+	if _, err := e.RunOracle(context.Background(), tk, tk.PrimaryOracle(), ws, map[string]string{"/opt/tool": tool}); err == nil {
+		t.Error("an oracle ran without a collect path")
+	}
+}
+
+// A file of the seed taken from an image is the agent's, as the rest of
+// the workspace: the oracle sees what the agent made of it, and a change is
+// no tampering (066 §3).
+func TestSeedInstall(t *testing.T) {
+	e := env(t)
+	body := `id = "seedfile"
+suite = "demo"
+version = 1
+prompt = "Delete v."
+[workspace]
+git = false
+[[workspace.install]]
+artefact = "v"
+path = "v"
+seed = true
+[[artefact]]
+name = "v"
+image = "debian@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587"
+command = ["cp", "/etc/debian_version", "/out/v"]
+output = "v"
+sha256 = "0e6ef511d8279cbe816b3596bdda9302016f5e29f6d16814b84ea7cbc12b3ffe"
+[[oracle]]
+name = "check"
+primary = true
+image = "debian@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587"
+command = ["sh", "-c", "test ! -e /w/v && echo RESULT ok || echo RESULT wrong"]
+expect_pattern = 'RESULT ok'
+`
+	tk, err := Load(write(t, body, map[string]string{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pull(t, e, tk.PrimaryOracle().Image)
+	os.MkdirAll(e.Scratch, 0o755)
+	if err := e.BuildAll(context.Background(), tk, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	ws := t.TempDir()
+	os.Chmod(ws, 0o755)
+	m, err := e.PrepareWorkspace(tk, ws)
+	if err != nil || m["v"] != tk.Artefacts[0].SHA256 {
+		t.Fatalf("the seed file: %v %v", m, err)
+	}
+	r, err := e.RunOracle(context.Background(), tk, tk.PrimaryOracle(), ws, nil)
+	if err != nil || r.Passed {
+		t.Fatalf("with the file: %v %+v", err, r)
+	}
+	os.Remove(filepath.Join(ws, "v"))
+	r, err = e.RunOracle(context.Background(), tk, tk.PrimaryOracle(), ws, nil)
+	if err != nil || !r.Passed || len(r.Tampered) > 0 {
+		t.Fatalf("without it: %v %+v", err, r)
+	}
+	bad := strings.Replace(body, `command = ["sh"`, "artefact = \"v\"\ncommand = [\"sh\"", 1)
+	if _, err := Load(write(t, bad, map[string]string{})); err == nil {
+		t.Error("an oracle's artefact that is part of the seed was accepted")
 	}
 }

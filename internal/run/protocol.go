@@ -15,7 +15,7 @@ import (
 
 // Protocol is the version of the contract between the harness and the
 // runner: the job file in, JSON lines out. See runner/PROTOCOL.md.
-const Protocol = 8
+const Protocol = 9
 
 // Paths inside the lane's container.
 const (
@@ -23,10 +23,14 @@ const (
 	containerJob       = "/job"
 	containerOut       = "/out"
 	jobFile            = "job.json"
+	// RunnerPrefix holds the runner and what it runs on, kept off the PATH
+	// of the agent's commands (D113): bin/node, and in a layer on a task's
+	// own image bin/rg too.
+	RunnerPrefix = "/opt/automaticum"
 )
 
 // RunnerCommand starts the runner in a lane image.
-var RunnerCommand = []string{"node", "/opt/automaticum/runner/runner.mjs", containerJob + "/" + jobFile}
+var RunnerCommand = []string{RunnerPrefix + "/bin/node", RunnerPrefix + "/runner/runner.mjs", containerJob + "/" + jobFile}
 
 // Job is what the runner is given.
 type Job struct {

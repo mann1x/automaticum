@@ -1,6 +1,6 @@
 # 040 — The runner
 
-**Status:** draft 1.8, 2026-10-25. Facts about the SDK in this file were read
+**Status:** draft 1.9, 2026-10-25. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
 running it. The parity table in §6 was checked row by row by the Cerebriline
 session on 2026-10-13 against its main branch (release 4.100.249 plus requests
@@ -18,6 +18,14 @@ the wire.
 It runs under **Node** (22 or later), never Bun: Bun's `fetch` returned empty
 worker bodies in live harnesses. The SDK needs no native addon; its sandbox is
 a separate binary that the lane image ships.
+
+**Decided by the owner (2026-10-25, D113):** the runner and what it runs on
+live under its own prefix, `/opt/automaticum`, which is on no PATH: the
+harness starts `/opt/automaticum/bin/node` (protocol 9). A lane layer on a
+task's own image (066) adds Node, the runner and a static ripgrep there and
+nothing else; the runner routes the SDK's own calls of `rg` to it before the
+SDK is imported, and the agent's commands, which go through the shell, find
+only the image's tools.
 
 ## 2. Why not the CLI
 

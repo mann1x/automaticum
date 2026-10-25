@@ -40,9 +40,12 @@ source_memory_mb = "2048"
 source_task = "terminal-bench/circuit-fibsqrt"
 tags = "software-engineering"
 
+# The source's limits, for the agent's container and the oracle's.
 [limits]
 wall_s = 3600
 oracle_s = 3600
+cpus = 1.0
+memory_mb = 2048
 
 [workspace]
 seed = "seed"
