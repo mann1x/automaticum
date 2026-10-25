@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.16, 2026-10-24.
+**Status:** draft 0.17, 2026-10-25.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -60,6 +60,14 @@ drain|resume`; `batch show|pause|resume|stop|retry` (050 §3.3, §4); `basis sho
 `--suite` (every task of a suite), and `--wall-s` and `--idle-s`, the
 batch's own limits; `batch limits <batch> [--wall-s S] [--idle-s S]` sets
 them for the batch's queued runs (`POST /v1/batches/{batch}/limits`).
+
+**Built on 2026-10-25 (D102, D104, D106):** `export conversations --out
+<dir> [--batch B ...] [--run R ...]` writes each run's export into
+`<dir>/<run>/`; `--batch` also takes a pattern (`'k-pool-*'`). The route is
+`GET /v1/runs/{id}/export`, a tar of `meta.json`, `spans.jsonl` and the
+capture's files; it refuses a run of a task that is not a training task
+(403), an INVALID run (422) and a run without a capture (404), and the
+command names each one it passes over (110 §3.5).
 
 The API is HTTP and JSON on a loopback address. Everything that changes
 something needs the token; reading from the same host does not. A run in

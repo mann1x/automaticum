@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.19, 2026-10-23.
+**Status:** draft 0.20, 2026-10-25.
 
 ## 1. The rule: no custom script
 
@@ -250,6 +250,15 @@ detector always reads with the release's defaults, so that runs compare.
   (6, and 4 for a call the tool refused in advance) and the repeated pair
   of call and result (3, and 6 for writing tools). Both need each call's
   result.
+
+- `detect.Spans(text, hit)` (2026-10-25, for the export of 110 §3.5) says
+  where a hit's repeats stand in its block, the first occurrence left out:
+  a short unit or a letter run from its second unit to the end of the run,
+  every later occurrence of a repeated sentence or paragraph, a reasoning
+  loop's cycle from its second repeat (`CycleStart`, lines read as the
+  SDK's guard reads them) or, for low uniqueness, from the first line of
+  the window that repeats an earlier one. A runaway has no span. No
+  detector's answer changes, so `Version` stays.
 
 Not built: near-duplicate rounds, edit oscillation, re-read loop.
 

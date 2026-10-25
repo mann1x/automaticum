@@ -283,6 +283,7 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/runs/{id}", d.handleRun)
 	mux.HandleFunc("GET /v1/runs/{id}/stream", d.handleStream)
 	mux.HandleFunc("GET /v1/runs/{id}/blobs/{kind}", d.handleBlob)
+	mux.HandleFunc("GET /v1/runs/{id}/export", d.handleExport)
 	mux.HandleFunc("POST /v1/runs/{id}/stop", d.handleStop)
 	mux.HandleFunc("POST /v1/runs/{id}/abort", d.handleAbort)
 	mux.HandleFunc("POST /v1/runs/{id}/pause", d.handlePause)
@@ -768,28 +769,36 @@ func (d *Daemon) handleRun(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusInternalServerError, "%v", err)
 		return
 	}
-	v := view(rec, true)
-	d.retryLinks(&v)
-	refs, err := d.State.BlobRefs(ctx, id)
+	v, err := d.fullView(ctx, rec)
 	if err != nil {
 		fail(w, http.StatusInternalServerError, "%v", err)
 		return
+	}
+	reply(w, http.StatusOK, v)
+}
+
+// fullView is a finished run as `run show` sees it: the record, its blobs,
+// metrics and findings, and the settings that were in effect.
+func (d *Daemon) fullView(ctx context.Context, rec *store.Run) (RunView, error) {
+	v := view(rec, true)
+	d.retryLinks(&v)
+	refs, err := d.State.BlobRefs(ctx, rec.ID)
+	if err != nil {
+		return v, err
 	}
 	for _, ref := range refs {
 		v.Blobs = append(v.Blobs, BlobView{Kind: ref.Kind, Name: ref.Name, Hash: string(ref.Hash), Size: ref.Size})
 	}
-	metrics, err := d.State.Metrics(ctx, id)
+	metrics, err := d.State.Metrics(ctx, rec.ID)
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "%v", err)
-		return
+		return v, err
 	}
 	for _, m := range metrics {
 		v.Metrics = append(v.Metrics, MetricView{Name: m.Name, Value: m.Value})
 	}
-	findings, err := d.State.Findings(ctx, id)
+	findings, err := d.State.Findings(ctx, rec.ID)
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "%v", err)
-		return
+		return v, err
 	}
 	for _, f := range findings {
 		v.Findings = append(v.Findings, FindingView{Detector: f.Detector, Version: f.DetectorVersion, Severity: f.Severity,
@@ -817,7 +826,7 @@ func (d *Daemon) handleRun(w http.ResponseWriter, r *http.Request) {
 			v.Settings = ingest.InEffect(&arm, tag, findings, served)
 		}
 	}
-	reply(w, http.StatusOK, v)
+	return v, nil
 }
 
 // handleReanalyse starts deriving metrics, tool calls and findings again

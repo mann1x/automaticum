@@ -1,6 +1,6 @@
 # 110 — Acceptance and roadmap
 
-**Status:** draft 0.20, 2026-10-23. The milestone order in §3 was approved by the owner
+**Status:** draft 0.21, 2026-10-25. The milestone order in §3 was approved by the owner
 on 2026-10-12. Milestone 1 has been carried out: the store, the importer and
 the spike's measurements exist (080 §7.4, 100 §7), and the owner has decided
 the questions it raised (D46 to D51). Milestone 2 was planned and approved on
@@ -409,6 +409,24 @@ plugin's, the same for every host.
   of the trailing `verdict.cycles` repeats of `verdict.sample` to
   `verdict.chars`. The runner's `guard_trip` note does not carry the
   verdict; the SDK's notice in the event log does.
+  **Built (2026-10-25):** `automaticum export conversations --out <dir>
+  --batch <id|pattern> [--run <id>]` (090 §1), from the daemon's
+  `GET /v1/runs/{id}/export`. `<dir>/<run>/` holds the capture's files as
+  the SDK wrote them (`<stem>.json`, `<stem>.response.json`), `meta.json`
+  (the run as `run show` gives it: verdict, resolved arm, provenance with
+  the served template, the settings in effect; the capture's stems; every
+  guard cut with the response it is in) and `spans.jsonl`. A span's
+  `start` and `end` are Unicode code points in the field's text, the
+  stream's deltas joined (`reasoning_content`, `content`), the end not
+  included; each line also says in `detail` which guard verdict or
+  detector found it. Guard spans are placed as above, the guard's
+  `chars` (UTF-16, as JavaScript counts) turned into code points, and the
+  trailing repeats checked line for line as the guard reads lines; a cut
+  whose response is not found, or whose verdict does not match, is named
+  in `meta.json` (`unplaced`) and gets no span. Detector spans come from
+  `detect.Spans` (070 §3.2) over every response. Only runs of training
+  tasks (`training = true`, D105) are exported, never an INVALID run.
+  On the 39 pool runs on `blackswan-2` all 106 guard cuts were placed.
 - `manic_miner` runs are the held-out gate and are never exported as
   training data; the training pool is the multi-language suite (063) once
   it has tasks.

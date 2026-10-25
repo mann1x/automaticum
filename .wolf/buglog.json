@@ -587,6 +587,40 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-24T00:03:15+02:00"
+    },
+    {
+      "id": "bug-035",
+      "timestamp": "2026-10-25T05:30:00Z",
+      "error_message": "Mail 1879: arm g4-128e-bf16-c13-shipped says stop_on = [] ('no trip ends the run') but 5 pool runs end agent_end=aborted after the SDK's 'Ending the run after 3 turns cut for this'",
+      "file": "runner/session.mjs",
+      "root_cause": "The SDK's reasoning-loop guard has its own end-of-run rule: reasoningLoopDetection.maxConsecutiveTrips (default 3, consecutive cut turns; a clean turn resets the streak), and the host may answer onReasoningLoopLimitReached with {action:'continue'}. The runner passes reasoningLoopDetection: {} (the SDK's own numbers) and no hook, so automaticum's stop_on never sees that decision.",
+      "fix": "Not fixed: reported to backup_models and the owner; whether the arm states max_consecutive_trips / continues past the limit is the owner's (arm values come from the owner).",
+      "tags": [
+        "sdk",
+        "guards",
+        "reasoning_loop",
+        "stop_on",
+        "arm"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-25T05:30:00Z"
+    },
+    {
+      "id": "bug-036",
+      "timestamp": "2026-10-25T05:30:00Z",
+      "error_message": "TestSpansShortUnit: spans [{9 45}], want [{10 46}]",
+      "file": "internal/detect/spans_test.go",
+      "root_cause": "The test assumed the unit 'abc ' but the short-unit detector takes the leftmost repeating unit, ' abc' from the space after 'intro'.",
+      "fix": "Test expectation corrected; Spans was right.",
+      "tags": [
+        "test",
+        "detect",
+        "spans"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-25T05:30:00Z"
     }
   ]
 }

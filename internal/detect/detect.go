@@ -160,12 +160,22 @@ func charRun(r []rune, _ string, o Options) *Hit {
 // sentence: the same sentence, exactly, several times within one block
 // (070 §3.1).
 func sentence(_ []rune, text string, _ Options) *Hit {
+	best, n, share := repeatedSentence(text)
+	if n >= sentenceCount && (share >= sentenceShare || n >= sentenceAlways) {
+		off := strings.Index(text, best)
+		return &Hit{Detector: SentenceRepeat, Count: n, Share: share, Unit: cut(best), Offset: len([]rune(text[:max(off, 0)]))}
+	}
+	return nil
+}
+
+// repeatedSentence is the sentence a block repeats most, how often, and
+// its share of the qualifying sentences; n is 0 when there are too few.
+func repeatedSentence(text string) (best string, n int, share float64) {
 	units := Sentences(text)
 	if len(units) < sentenceCount {
-		return nil
+		return "", 0, 0
 	}
 	count := map[string]int{}
-	best := ""
 	for _, u := range units {
 		count[u]++
 		// The first unit to reach the highest count wins a tie.
@@ -173,13 +183,8 @@ func sentence(_ []rune, text string, _ Options) *Hit {
 			best = u
 		}
 	}
-	n := count[best]
-	share := float64(n) / float64(len(units))
-	if n >= sentenceCount && (share >= sentenceShare || n >= sentenceAlways) {
-		off := strings.Index(text, best)
-		return &Hit{Detector: SentenceRepeat, Count: n, Share: share, Unit: cut(best), Offset: len([]rune(text[:max(off, 0)]))}
-	}
-	return nil
+	n = count[best]
+	return best, n, float64(n) / float64(len(units))
 }
 
 // Sentences splits a block into the units the sentence detector compares:

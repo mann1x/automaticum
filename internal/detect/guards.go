@@ -69,6 +69,16 @@ func reasoningRepetition(r []rune, text string, _ Options) *Hit {
 	if len(r) < repetitionMinChars {
 		return nil
 	}
+	sample, most, share := repeatedParagraph(text)
+	if most < repetitionMaxRepeat || share < repetitionDuplicateFrac {
+		return nil
+	}
+	return &Hit{Detector: ReasoningRepetition, Count: most, Share: share, Unit: cut(sample), Offset: len([]rune(text[:strings.Index(text, sample)]))}
+}
+
+// repeatedParagraph is the paragraph a block repeats most, how often, and
+// the share of the counted paragraphs that repeat an earlier one.
+func repeatedParagraph(text string) (sample string, most int, share float64) {
 	counts, order, total := map[string]int{}, []string{}, 0
 	for _, p := range paragraphs.Split(text, -1) {
 		p = strings.TrimSpace(p)
@@ -82,20 +92,16 @@ func reasoningRepetition(r []rune, text string, _ Options) *Hit {
 		total++
 	}
 	if total == 0 {
-		return nil
+		return "", 0, 0
 	}
-	duplicates, most, sample := 0, 0, ""
+	duplicates := 0
 	for _, p := range order {
 		duplicates += counts[p] - 1
 		if counts[p] > most {
 			most, sample = counts[p], p
 		}
 	}
-	share := float64(duplicates) / float64(total)
-	if most < repetitionMaxRepeat || share < repetitionDuplicateFrac {
-		return nil
-	}
-	return &Hit{Detector: ReasoningRepetition, Count: most, Share: share, Unit: cut(sample), Offset: len([]rune(text[:strings.Index(text, sample)]))}
+	return sample, most, float64(duplicates) / float64(total)
 }
 
 func reasoningLoop(r []rune, _ string, _ Options) *Hit {

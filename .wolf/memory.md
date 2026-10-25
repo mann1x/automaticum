@@ -703,7 +703,7 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-10-16 07:44
-> Consolidated session (1 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-16 07:47
 > Consolidated session (0 actions)
@@ -712,9 +712,7 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-10-18 03:00
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-19 04:00
 
@@ -1122,3 +1120,55 @@
 | 23:57 | Edited internal/daemon/control.go | 9→11 lines | ~136 |
 | 23:58 | Edited internal/daemon/daemon_test.go | modified TestBatchLimits() | ~610 |
 | 00:03 | D107 built: batch wall/idle limit override (run start, campaign, batch limits), several tasks and suites per batch; tests pass | internal/run, internal/daemon, internal/config, cmd/automaticum, specs 020/050/090 | ok | ~30000 |
+
+## Session: 2026-10-23 00:03
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 00:04
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 00:04
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-23 00:05
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:13 | owner: leave the leaked private path fragment in b2ead6a history as is (no rewrite) | - | ok | ~100 |
+| 00:14 | feedback draft on the b2ead6a path leak; gate rule: fail closed on grep errors | .wolf/cerebrum.md | ok | ~800 |
+| 05:59 | 9bed476 deployed on blackswan-2 at 03:47Z after the pool (34/34: 24 PASS, 4 FAIL, 6 TIMEOUT); retry batch dry-run ok; confirmed to backup_models (1878) | blackswan-2 | ok | ~1500 |
+
+## Session: 2026-10-24 06:54
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 03:00
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 04:43
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 04:43
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 04:43
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 04:49 | Created internal/detect/spans.go | — | ~1063 |
+| 04:50 | Created internal/export/export.go | — | ~2469 |
+| 04:51 | Created internal/daemon/export.go | — | ~1422 |
+| 06:40 | Mail 1879/1881/1916 read. sh_logtriage v2 verified (3 fixtures x3) and committed b981cfe. Built `automaticum export conversations` (internal/export, detect.Spans, GET /v1/runs/{id}/export, export_cmds.go); probe on the 39 pool runs on blackswan-2: 106/106 guard cuts placed; specs 070/090/110 | internal/export, internal/detect/spans.go, internal/daemon/export.go, cmd/automaticum/export_cmds.go | tests pass | ~60k |
