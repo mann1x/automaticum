@@ -41,7 +41,7 @@ export function unsupported(arm) {
  * buildConfig returns { config, localRuntime, toolPolicies } for
  * ClineCore.start, from the job alone.
  */
-export function buildConfig(job, { systemPrompt, fetch, onConfigResolved }) {
+export function buildConfig(job, { systemPrompt, fetch, onConfigResolved, onReasoningLoopLimitReached }) {
 	const arm = job.arm;
 	const config = {
 		sessionId: job.session_id,
@@ -68,8 +68,14 @@ export function buildConfig(job, { systemPrompt, fetch, onConfigResolved }) {
 			loopDetection: arm.guards.loop_detection.enabled
 				? { softThreshold: arm.guards.loop_detection.soft, hardThreshold: arm.guards.loop_detection.hard }
 				: false,
-			// An empty object is "on, with the SDK's own numbers".
-			reasoningLoopDetection: arm.guards.reasoning_loop.enabled ? {} : false,
+			// An empty object is "on, with the SDK's own numbers"; the limit
+			// of cut turns is the arm's when it states one other than the
+			// SDK's (D108).
+			reasoningLoopDetection: arm.guards.reasoning_loop.enabled
+				? arm.guards.reasoning_loop.max_consecutive_trips !== undefined
+					? { maxConsecutiveTrips: arm.guards.reasoning_loop.max_consecutive_trips }
+					: {}
+				: false,
 			reasoningRepetition: arm.guards.reasoning_repetition.enabled ? {} : false,
 		},
 		taskProgress: arm.agent.task_progress.enabled
@@ -93,6 +99,10 @@ export function buildConfig(job, { systemPrompt, fetch, onConfigResolved }) {
 			: { enabled: false },
 		fetch,
 		onConfigResolved,
+		// What the run does at the reasoning-loop limit is the arm's stop_on
+		// (D108). An SDK release whose core does not pass this on ends the
+		// run anyway; the runner then finds the run invalid (limitBreach).
+		...(onReasoningLoopLimitReached ? { onReasoningLoopLimitReached } : {}),
 	};
 	if (job.endpoint.api_key) config.apiKey = job.endpoint.api_key;
 	if (arm.agent.max_iterations > 0) config.maxIterations = arm.agent.max_iterations;

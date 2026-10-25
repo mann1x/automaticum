@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-10-25 (revision 25).
+**Status:** current as of 2026-10-25 (revision 26).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -117,6 +117,7 @@ All dated 2026-10-12.
 | D105 | Training-pool tasks (the multi-language suite's and the converted terminal-bench ones, written by omnimergekit) are **public**, in the repository's `tasks/<suite>/`, and marked `training = true`, not kept private (revised by the owner the same evening; a private tasks root, `private_tasks` in the local configuration, exists for private tasks but is not used for the pool) (2026-10-23). | 060 §7, 060 §8 |
 | D106 | Widens D102: the loop spans of `automaticum export conversations` come from the SDK guard's cuts as well as the detector library, each span marked `source` `guard` or `detector`. A guard span is in the capture response the guard cut (`complete: false`, ending just before the notice), in its reasoning field: it ends at the guard's `verdict.chars` and starts at the second of the trailing `verdict.cycles` repeats of `verdict.sample`, the same "second occurrence on" as a detector span. Asked by omnimergekit: in the first 8 pool runs the guard cut 15 times and the detectors found none (2026-10-23). | 110 §3.5 |
 | D107 | A batch may set its own wall and idle limits, which replace the arm's and the task's and may be longer than both (`run start --wall-s/--idle-s`, a campaign batch's `wall_s`/`idle_s`, `batch limits` for queued runs); the run records the limit as set by the batch and the basis names it. A batch takes several tasks and whole suites (`--task` repeated, `--suite`). The owner called both gaps design flaws (2026-10-24). | 050 §1, 020 §1 |
+| D108 | The arm's `stop_on` alone decides whether the SDK's reasoning-loop limit ends a run: every arm states `guards.reasoning_loop.max_consecutive_trips` (the base the SDK's 3, which leaves the arm's identity as it was), and the runner answers the SDK's `onReasoningLoopLimitReached` with `stop` only when `stop_on` names `reasoning_loop.aborted` (or the whole guard), `continue` otherwise (protocol 8). An SDK release that ends the run anyway makes the run `INVALID`; the releases to 4.100.262 do (X9) (2026-10-25; closes O23). | 030 §5.1, 040 §7.1 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked
@@ -145,11 +146,10 @@ Each of these waits for a measurement or for the planning of its milestone.
 | O1 | How the native agent on Windows and macOS meets "a host runs only the Go application", given the runner needs Node. | 010 §4 | milestone 7 (D35) |
 | O5 | Which published C/C++ SWE-bench-style set, at which version; the order of languages after it. | 062 §6 | milestone 5 |
 | O6 | Which external harnesses need the offline event path. | 064 §3.2 | milestone 5, per harness |
-| O23 | Whether an arm states the SDK reasoning-loop guard's limit of consecutive cut turns (3 in the SDK, which then ends the run whatever `stop_on` says), and whether `stop_on` alone decides that the run ends (2026-10-25). | 030 §5.1 | the owner |
 
 Closed since the first revision: O2 (D32), O4 (D30), O7 (S4, then D34), O9
 (D31), O10 (D42), O11 (D33), O12 (D28), O13 (D29), O14 (D46), O8 (D47), O15
-(D48), O16 (D49), O17 (D50), O18 (D51), O3 (D57), O22 (D84).
+(D48), O16 (D49), O17 (D50), O18 (D51), O3 (D57), O22 (D84), O23 (D108).
 
 ## 4. External dependencies
 
@@ -166,6 +166,7 @@ Requests to the Cerebriline SDK (040 §8). The owner approved the work on
 | X6 | Confirmation of the extension-parity inventory. | done 2026-10-13 for 040 §6: 11 rows confirmed, 2 corrected, 6 added. §6.1 checked the same day: 4 rows hold with details the emulation must copy, 2 behaviours added (040 §6.1.1) | §6.2 rests on a source read |
 | X7 | Release 4.100.250 of the SDK, which carries X1 to X3 and which every milestone 2 run must use (D54). | released and used: the lane images install it and every run records it | none |
 | X8 | An SDK release whose published packages carry the patched Ollama provider library, so that a thinking effort level and the sampler options the stock library does not name reach the wire (110 §3.1). | released as 4.100.251 on 2026-10-13 and provisioned here beside 4.100.250; not yet run against a real model | the `wire_arm` findings of the first real run on it are the check (D63) |
+| X9 | An SDK release whose core passes the host's `onReasoningLoopLimitReached` on to the agent, as it does `onConsecutiveMistakeLimitReached` (D108); asked 2026-10-25. | asked | until then a run the SDK ends at the reasoning-loop limit against the arm is `INVALID` |
 
 ## 5. Not adopted
 

@@ -47,6 +47,10 @@ hard = 5
 
 [guards.reasoning_loop]
 enabled = true
+# Turns cut one after another before the SDK asks whether the run ends; 3 is
+# the SDK's own number. The answer is stop_on's alone (D108): the run goes on
+# unless stop_on names reasoning_loop or reasoning_loop.aborted.
+max_consecutive_trips = 3
 
 [guards.reasoning_repetition]
 enabled = true

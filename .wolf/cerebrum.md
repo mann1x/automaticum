@@ -103,6 +103,8 @@
 
 ## Decision Log
 
+- (2026-10-25) D108 (closes O23): the arm's stop_on alone decides whether the SDK's reasoning-loop limit ends a run. Every arm states guards.reasoning_loop.max_consecutive_trips; the base has the SDK's 3, which is dropped from Resolved() so arm ids stay the same. The runner answers onReasoningLoopLimitReached with stop only when stop_on names reasoning_loop.aborted (protocol 8). SDK core up to 4.100.262 does not forward the host's hook (X9, asked in mail 1925), so a run the SDK ends against the arm is INVALID (guard_limit_breach).
+
 The full list is in docs/specs/decisions.md; keep this log in step with it.
 
 - 2026-10-12: Go daemon on the hosts, Node only in lanes. Docker lanes, TOML config, agent mode for remote hosts. Verdicts are PASS/FAIL/TIMEOUT/ABORTED/INVALID/SKIPPED.

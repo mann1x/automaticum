@@ -168,17 +168,19 @@ resolved arm, so arms resolved before the field existed keep their
 identity. Every run counts its guards' trips (`guard_trips.<guard>.<phase>`,
 070).
 
-**Open (O23, found 2026-10-25):** the SDK's reasoning-loop guard ends a
-run by itself after `reasoningLoopDetection.maxConsecutiveTrips` turns cut
-one after another (3 in the SDK; a turn that is not cut starts the count
-again), unless the host answers `onReasoningLoopLimitReached` with
-`continue`. The runner passes `{}` and no answer, so an arm with
-`stop_on = []` still has its runs ended there (`reasoning_loop.aborted`: 5
-of the 39 pool runs), and the basis does not say so. Recommendation: every
-arm states `guards.reasoning_loop.max_consecutive_trips` (the base the SDK's
-3), and the runner answers `continue` unless `stop_on` names
-`reasoning_loop.aborted`, so that `stop_on` alone decides what ends a run.
-The owner decides.
+**Decided by the owner (2026-10-25, D108; was O23):** the SDK's
+reasoning-loop guard asks the host, after
+`reasoningLoopDetection.maxConsecutiveTrips` turns cut one after another (3
+in the SDK; a turn that is not cut starts the count again), whether the
+run ends (`onReasoningLoopLimitReached`). Every arm states
+`guards.reasoning_loop.max_consecutive_trips` (the base the SDK's 3, which
+is left out of the resolved arm, so the arms from before keep their
+identity; any other number is part of it), and `stop_on` alone gives the
+answer: the run ends only when it names `reasoning_loop.aborted` (or the
+whole guard). Before D108 the runner gave no answer and the SDK ended the
+run whatever `stop_on` said (5 of the 39 pool runs). The SDK releases to
+4.100.262 do not pass the host's answer on (X9): until one does, a run the
+SDK ends at the limit against the arm is `INVALID` (040 §7.1).
 
 **Decided by the owner (2026-10-23):** how much of the model's earlier
 reasoning goes back in the history is stated in every arm (D103), as the

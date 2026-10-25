@@ -143,7 +143,7 @@ type SubAgents struct {
 // Every one is stated (spec 030 section 5.1): there is no default.
 type Guards struct {
 	LoopDetection       LoopDetection `toml:"loop_detection" json:"loop_detection"`
-	ReasoningLoop       Switch        `toml:"reasoning_loop" json:"reasoning_loop"`
+	ReasoningLoop       ReasoningLoop `toml:"reasoning_loop" json:"reasoning_loop"`
 	ReasoningRepetition Switch        `toml:"reasoning_repetition" json:"reasoning_repetition"`
 	StrongNudges        Switch        `toml:"strong_nudges" json:"strong_nudges"`
 	ToolIntent          Switch        `toml:"tool_intent" json:"tool_intent"`
@@ -177,6 +177,21 @@ var guardPhases = map[string][]string{
 type Switch struct {
 	Enabled *bool `toml:"enabled" json:"enabled"`
 }
+
+// ReasoningLoop is the SDK's reasoning-loop guard. It cuts a turn whose
+// reasoning has collapsed; after MaxConsecutiveTrips turns cut one after
+// another the SDK asks the host whether the run ends, and the runner answers
+// from stop_on alone (D108): the run ends only if stop_on names
+// reasoning_loop or reasoning_loop.aborted.
+type ReasoningLoop struct {
+	Enabled             *bool `toml:"enabled" json:"enabled"`
+	MaxConsecutiveTrips *int  `toml:"max_consecutive_trips" json:"max_consecutive_trips,omitempty"`
+}
+
+// sdkReasoningLoopTrips is the SDK's own maxConsecutiveTrips (gt in
+// @cerebriline/agents, 4.100.250 to 4.100.262): stated, it is left out of
+// the resolved arm, so the arms from before the field keep their identity.
+const sdkReasoningLoopTrips = 3
 
 // LoopDetection is the repeated-tool-call guard.
 type LoopDetection struct {
@@ -585,6 +600,14 @@ func (a *Arm) Validate() []string {
 		bad("guards.loop_detection is off: soft and hard must not be stated")
 	}
 	need(gd.ReasoningLoop.Enabled != nil, "guards.reasoning_loop.enabled")
+	if on(gd.ReasoningLoop.Enabled) {
+		need(gd.ReasoningLoop.MaxConsecutiveTrips != nil, "guards.reasoning_loop.max_consecutive_trips")
+		if n := gd.ReasoningLoop.MaxConsecutiveTrips; n != nil && *n < 1 {
+			bad("guards.reasoning_loop.max_consecutive_trips must be 1 or more")
+		}
+	} else if gd.ReasoningLoop.MaxConsecutiveTrips != nil {
+		bad("guards.reasoning_loop is off: max_consecutive_trips must not be stated")
+	}
 	need(gd.ReasoningRepetition.Enabled != nil, "guards.reasoning_repetition.enabled")
 	need(gd.StrongNudges.Enabled != nil, "guards.strong_nudges.enabled")
 	need(gd.ToolIntent.Enabled != nil, "guards.tool_intent.enabled")
@@ -662,6 +685,12 @@ func (a *Arm) Resolved() []byte {
 	if s := a.Guards.StopOn; s != nil && len(*s) == 0 {
 		c := *a
 		c.Guards.StopOn = nil
+		a = &c
+	}
+	// 3 is the SDK's own limit of turns cut for a reasoning loop (D108).
+	if n := a.Guards.ReasoningLoop.MaxConsecutiveTrips; n != nil && *n == sdkReasoningLoopTrips {
+		c := *a
+		c.Guards.ReasoningLoop.MaxConsecutiveTrips = nil
 		a = &c
 	}
 	// "auto" with inlining is what the SDK does when it is told nothing.

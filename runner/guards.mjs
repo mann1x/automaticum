@@ -61,3 +61,33 @@ export function stopsOn(selectors, trip) {
 	if (!Array.isArray(selectors) || trip === null) return false;
 	return selectors.some((s) => s === trip.guard || s === `${trip.guard}.${trip.phase}`);
 }
+
+// The reasoning-loop limit (D108). After guards.reasoning_loop
+// .max_consecutive_trips turns cut one after another (absent: the SDK's own
+// number, 3), the SDK asks the host whether the run ends; the answer is the
+// arm's stop_on alone: stop only if it names reasoning_loop.aborted (or the
+// whole guard, which has stopped the run at its first cut already).
+const LIMIT_TRIP = { guard: "reasoning_loop", phase: "aborted" };
+
+export function reasoningLimitAnswer(selectors) {
+	return stopsOn(selectors, LIMIT_TRIP) ? "stop" : "continue";
+}
+
+// limitBreach says why a run the SDK ended at the reasoning-loop limit is not
+// the arm's, or null when it is: the arm would have gone on (an SDK release
+// that does not pass the host's answer on ends it anyway), or the SDK ended
+// it after another number of cut turns than the arm states.
+export function limitBreach(arm, event) {
+	const m = event?.type === "notice" ? event.metadata : null;
+	if (!m || m.kind !== "reasoning_loop" || m.phase !== "aborted") return null;
+	const n = Number.isInteger(m.consecutiveTrips) ? m.consecutiveTrips : null;
+	const cut = n === null ? "at its limit" : `after ${n} turns cut one after another`;
+	if (reasoningLimitAnswer(arm.guards.stop_on ?? []) === "continue") {
+		return `the SDK ended the run for a reasoning loop ${cut}, where the arm goes on (stop_on does not name reasoning_loop.aborted, D108): this SDK release does not take the host's answer`;
+	}
+	const max = arm.guards.reasoning_loop.max_consecutive_trips;
+	if (max !== undefined && n !== null && n !== max) {
+		return `the SDK ended the run for a reasoning loop ${cut}; the arm's limit is ${max}`;
+	}
+	return null;
+}

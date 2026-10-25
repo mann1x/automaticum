@@ -175,3 +175,14 @@ test("the session's reported prior-reasoning setting must be the arm's (4.100.26
 	assert.equal(found.length, 1);
 	assert.match(found[0], /thinking\.reasoning_history/);
 });
+
+test("the reasoning-loop limit: the arm's when stated, the SDK's when left out; the host's answer passed on (D108)", () => {
+	const arm = stub();
+	arm.guards.reasoning_loop = { enabled: true, max_consecutive_trips: 5 };
+	const answer = () => ({ action: "continue" });
+	const { config } = buildConfig(jobOf(arm), { systemPrompt: "SP", fetch: () => {}, onConfigResolved: () => {}, onReasoningLoopLimitReached: answer });
+	assert.deepEqual(config.execution.reasoningLoopDetection, { maxConsecutiveTrips: 5 });
+	assert.equal(config.onReasoningLoopLimitReached, answer);
+	assert.deepEqual(build(stub()).config.execution.reasoningLoopDetection, {});
+	assert.equal("onReasoningLoopLimitReached" in build(stub()).config, false);
+});

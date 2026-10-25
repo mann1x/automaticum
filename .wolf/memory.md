@@ -1188,3 +1188,14 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 07:10 | Deployed 6d6cb48 on blackswan-2 (idle). Exported the 39 pool runs to the g4_recovery pool_export dir (1.3 GB, 0 passed over; manic_miner refusal checked); real guard spans spot-checked; mail 1923 to backup_models (export, v2 deployed, SDK 3-cut answer). Open O23 recorded (030, decisions rev 25) | docs/specs/030-configuration.md, decisions.md | ok | ~6k |
+
+## Session: 2026-10-25 05:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 05:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 07:40 | Owner: go with O23 recommendation -> D108. guards.reasoning_loop.max_consecutive_trips (base 3, dropped from Resolved, ids unchanged), runner hook + limitBreach backstop, protocol 8; X9 asked of Cerebriline (mail 1925): core 4.100.250-262 never forwards a host's onReasoningLoopLimitReached | internal/config/arm.go, arms/base.toml, runner/guards.mjs, session.mjs, runner.mjs, PROTOCOL.md, specs 030/040/decisions | tests pass | ~25k |

@@ -110,6 +110,9 @@ func TestArmValidation(t *testing.T) {
 		{"bad release", good + "[harness]\nsdk_release = \"main\"\n", "harness.sdk_release"},
 		{"no wall limit", good + "[limits]\nwall_s = 0\n", "limits.wall_s must be positive"},
 		{"stop on loop signals", good + "[guards]\nstop_on = [\"loop_detection\", \"nudge.non_convergence\", \"reasoning_loop.removed\"]\n", ""},
+		{"reasoning loop without its limit", good + "[guards.reasoning_loop]\nenabled = true\n", ""}, // the parent states it
+		{"reasoning loop limit zero", good + "[guards.reasoning_loop]\nmax_consecutive_trips = 0\n", "max_consecutive_trips must be 1 or more"},
+		{"reasoning loop off with a limit", good + "[guards.reasoning_loop]\nenabled = false\nmax_consecutive_trips = 5\n", "max_consecutive_trips must not be stated"},
 		{"stop on an unknown guard", good + "[guards]\nstop_on = [\"loop_detect\"]\n", "names no guard that announces"},
 		{"stop on an unknown phase", good + "[guards]\nstop_on = [\"nudge.no_tools\"]\n", "nudge announces no_tool_call"},
 	}
@@ -144,6 +147,29 @@ func TestStopOnIdentity(t *testing.T) {
 	}
 	if !strings.Contains(string(b.Resolved()), `"stop_on":["loop_detection"]`) || a.ID == b.ID {
 		t.Errorf("stop_on is not part of the arm: %s", b.Resolved())
+	}
+}
+
+// The reasoning-loop limit is stated in every arm (D108). The SDK's own 3
+// leaves the arm's identity as it was; any other number is part of it.
+func TestReasoningLoopLimitIdentity(t *testing.T) {
+	dir := arms(t, map[string]string{"a": good, "b": good + "[guards.reasoning_loop]\nmax_consecutive_trips = 5\n"})
+	a, err := LoadArm(dir, "a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := a.Guards.ReasoningLoop.MaxConsecutiveTrips; n == nil || *n != 3 {
+		t.Fatalf("the base does not state the SDK's 3: %v", n)
+	}
+	if strings.Contains(string(a.Resolved()), "max_consecutive_trips") {
+		t.Errorf("the SDK's own limit is in the resolved arm: %s", a.Resolved())
+	}
+	b, err := LoadArm(dir, "b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b.Resolved()), `"max_consecutive_trips":5`) || a.ID == b.ID {
+		t.Errorf("another limit is not part of the arm: %s", b.Resolved())
 	}
 }
 

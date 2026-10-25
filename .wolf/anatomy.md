@@ -387,7 +387,7 @@
 
 ## runner/
 
-- `guards.mjs` — Guard actions as the SDK announces them: a "notice" event whose metadata (~761 tok)
+- `guards.mjs` — Guard actions as the SDK announces them: a "notice" event whose metadata; reasoningLimitAnswer (stop_on decides, D108) and limitBreach (SDK ended at the limit against the arm -> invalid) (~1200 tok)
 - `package.json` — Node.js package manifest (~103 tok)
 - `plan.mjs` — The extension's switch_to_act_mode tool, ported from Cline 4.100.250 and (~780 tok)
 - `PROTOCOL.md` — The runner: protocol 7 (~2503 tok)

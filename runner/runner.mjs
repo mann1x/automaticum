@@ -17,11 +17,11 @@ import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BUNDLED_SKILLS_ON_BY_DEFAULT, buildConfig, compareResolved, derivedFromArm, unsupported } from "./session.mjs";
 import { ACT_MODE_CONTINUATION_PROMPT, createSwitchToActModeTool, withSwitchTool } from "./plan.mjs";
-import { guardTrip, stopsOn } from "./guards.mjs";
+import { guardTrip, limitBreach, reasoningLimitAnswer, stopsOn } from "./guards.mjs";
 import { createUser } from "./user.mjs";
 import { createWire, describe } from "./wire.mjs";
 
-const PROTOCOL = 7;
+const PROTOCOL = 8;
 const SDK_PACKAGE = "@cerebriline/sdk";
 const EXIT = { completed: 0, error: 1, refused: 3, invalid: 4, wall_limit: 5, guard_stop: 6 };
 
@@ -260,6 +260,9 @@ async function main() {
 	// started again in another mode, or forked, is built and read back the
 	// same way, for its own id and mode.
 	let problems = null;
+	// limitProblems are the reasoning-loop limits the SDK applied against
+	// the arm (D108): each makes the run invalid.
+	const limitProblems = [];
 	const startInput = (id, mode) => {
 		const own = { ...job, session_id: id, arm: { ...arm, agent: { ...arm.agent, mode } } };
 		const built = buildConfig(own, {
@@ -270,6 +273,11 @@ async function main() {
 				const found = compareResolved(own, built.config, resolved, { wroteGlobalSettings: switchedOff.length > 0 });
 				problems = [...(problems ?? []), ...found];
 				if (found.length > 0) throw new Error("the session is not the arm: " + found.join("; "));
+			},
+			onReasoningLoopLimitReached: (context) => {
+				const action = reasoningLimitAnswer(arm.guards.stop_on ?? []);
+				note("guard_limit", { guard: "reasoning_loop", iteration: context?.iteration ?? null, consecutive_trips: context?.consecutiveTrips ?? null, max_consecutive_trips: context?.maxConsecutiveTrips ?? null, answer: action });
+				return { action };
 			},
 		});
 		const prior = hooks?.beforeModel;
@@ -309,6 +317,11 @@ async function main() {
 					if (event?.type !== "agent_event" || (event.payload.teamRole ?? "lead") !== "lead") return;
 					if (inner?.type === "iteration_start") user.iteration();
 					if (inner?.type === "error") agentError = describe(inner.error).message;
+					const breach = limitBreach(arm, inner);
+					if (breach) {
+						limitProblems.push(breach);
+						note("guard_limit_breach", { reason: breach });
+					}
 					const trip = guardTrip(inner);
 					if (trip) {
 						note("guard_trip", trip);
@@ -445,6 +458,7 @@ async function main() {
 		iterations: result?.iterations ?? null,
 	};
 	if (problems !== null && problems.length > 0) end("invalid", { ...fields, reason: "the session is not the arm", problems });
+	if (limitProblems.length > 0) end("invalid", { ...fields, reason: "the session is not the arm", problems: limitProblems });
 	if (problems === null && !failure) end("invalid", { ...fields, reason: fields.read_back, problems: [fields.read_back] });
 	if (guardStop !== null) {
 		const at = guardStop.iteration === null ? "" : ` at turn ${guardStop.iteration}`;

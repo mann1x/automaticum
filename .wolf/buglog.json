@@ -594,7 +594,7 @@
       "error_message": "Mail 1879: arm g4-128e-bf16-c13-shipped says stop_on = [] ('no trip ends the run') but 5 pool runs end agent_end=aborted after the SDK's 'Ending the run after 3 turns cut for this'",
       "file": "runner/session.mjs",
       "root_cause": "The SDK's reasoning-loop guard has its own end-of-run rule: reasoningLoopDetection.maxConsecutiveTrips (default 3, consecutive cut turns; a clean turn resets the streak), and the host may answer onReasoningLoopLimitReached with {action:'continue'}. The runner passes reasoningLoopDetection: {} (the SDK's own numbers) and no hook, so automaticum's stop_on never sees that decision.",
-      "fix": "Not fixed: reported to backup_models and the owner; whether the arm states max_consecutive_trips / continues past the limit is the owner's (arm values come from the owner).",
+      "fix": "D108 (owner, 2026-10-25): arm states guards.reasoning_loop.max_consecutive_trips (base 3); runner answers onReasoningLoopLimitReached from stop_on (protocol 8); limitBreach makes a run INVALID when the SDK ends it against the arm. SDK core must forward the hook (X9, asked).",
       "tags": [
         "sdk",
         "guards",
@@ -604,7 +604,7 @@
       ],
       "related_bugs": [],
       "occurrences": 1,
-      "last_seen": "2026-10-25T05:30:00Z"
+      "last_seen": "2026-10-25T06:00:00Z"
     },
     {
       "id": "bug-036",

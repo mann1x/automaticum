@@ -1,4 +1,4 @@
-# The runner: protocol 7
+# The runner: protocol 8
 
 The runner is a Node program that runs **one** agent session for one run,
 inside the lane's container, and exits. The harness (`internal/run`) writes
@@ -49,6 +49,13 @@ one per response under `requests/` in its output directory, as the plugin's
 "Save model requests" does, and notes `capture`. The harness keeps the
 directory as the `model_requests` blob. Off unless the batch was started
 with it; an SDK before 4.100.261 writes nothing.
+
+**Protocol 8 (2026-10-25):** the arm's
+`guards.reasoning_loop.max_consecutive_trips` goes to the SDK as
+`execution.reasoningLoopDetection.maxConsecutiveTrips` (left out of the
+resolved arm, and so of the job, when it is the SDK's 3), and the runner
+answers the SDK's `onReasoningLoopLimitReached` from `stop_on` (D108; see
+"Guard trips"). A protocol 7 runner would ignore both, so the number went up.
 
 ## In
 
@@ -164,7 +171,20 @@ the guard and `metadata.phase` what it did; for a `nudge`, the phase is
 trip the arm's `guards.stop_on` names is also a `guard_stop` note, the
 session is aborted, and the last line's outcome is `guard_stop`.
 
-## What protocol 7 does not do
+The reasoning-loop limit (protocol 8, D108): after
+`guards.reasoning_loop.max_consecutive_trips` turns cut one after another
+(absent from the job's arm: the SDK's own number, 3), the SDK asks the host
+through `onReasoningLoopLimitReached`. The runner answers `stop` only when
+`stop_on` names `reasoning_loop.aborted`, `continue` otherwise, with no
+guidance, and notes each answer as `guard_limit` (`iteration`,
+`consecutive_trips`, `max_consecutive_trips`, `answer`). A `reasoning_loop`
+notice with phase `aborted` where the arm goes on, or after another number
+of cut turns than the arm states, is a `guard_limit_breach` note and makes
+the last line `invalid`: the SDK release did not take the host's answer
+(the releases to 4.100.262 do not pass it on from the session's
+configuration).
+
+## What protocol 8 does not do
 
 Escalation, sub-agents and teams, MCP approvals (no arm starts an MCP
 server), the emulation of editor behaviour (diagnostics after edits,

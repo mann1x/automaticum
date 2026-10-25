@@ -15,7 +15,7 @@ import (
 
 // Protocol is the version of the contract between the harness and the
 // runner: the job file in, JSON lines out. See runner/PROTOCOL.md.
-const Protocol = 7
+const Protocol = 8
 
 // Paths inside the lane's container.
 const (

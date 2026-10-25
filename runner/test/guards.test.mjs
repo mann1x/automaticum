@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { guardTrip, stopsOn } from "../guards.mjs";
+import { guardTrip, limitBreach, reasoningLimitAnswer, stopsOn } from "../guards.mjs";
 
 const notice = (metadata, message = "") => ({ type: "notice", noticeType: "status", message, metadata });
 
@@ -43,4 +43,25 @@ test("other notices and events are not trips", () => {
 	assert.equal(guardTrip({ type: "notice", message: "context-breakdown" }), null);
 	assert.equal(guardTrip({ type: "content_start", metadata: { kind: "reasoning_loop" } }), null);
 	assert.equal(guardTrip(undefined), null);
+});
+
+test("the reasoning-loop limit is answered from stop_on alone (D108)", () => {
+	assert.equal(reasoningLimitAnswer([]), "continue");
+	assert.equal(reasoningLimitAnswer(["loop_detection"]), "continue");
+	assert.equal(reasoningLimitAnswer(["reasoning_loop.aborted"]), "stop");
+	assert.equal(reasoningLimitAnswer(["reasoning_loop"]), "stop");
+	assert.equal(reasoningLimitAnswer(undefined), "continue");
+});
+
+test("the SDK ending a run at the reasoning-loop limit against the arm is a breach", () => {
+	const arm = (stop_on, max) => ({ guards: { stop_on, reasoning_loop: { enabled: true, ...(max !== undefined ? { max_consecutive_trips: max } : {}) } } });
+	const aborted = (n) => ({ type: "notice", metadata: { kind: "reasoning_loop", phase: "aborted", consecutiveTrips: n } });
+	assert.match(limitBreach(arm([]), aborted(3)), /where the arm goes on/);
+	assert.equal(limitBreach(arm(["reasoning_loop.aborted"]), aborted(3)), null);
+	assert.equal(limitBreach(arm(["reasoning_loop.aborted"], 3), aborted(3)), null);
+	assert.match(limitBreach(arm(["reasoning_loop.aborted"], 5), aborted(3)), /the arm's limit is 5/);
+	// A cut is not the limit; other notices are not either.
+	assert.equal(limitBreach(arm([]), { type: "notice", metadata: { kind: "reasoning_loop", phase: "cut", consecutiveTrips: 4 } }), null);
+	assert.equal(limitBreach(arm([]), { type: "notice", metadata: { kind: "loop_detection", phase: "stopped" } }), null);
+	assert.equal(limitBreach(arm([]), null), null);
 });
