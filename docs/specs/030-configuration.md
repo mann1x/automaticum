@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.16, 2026-10-23.
+**Status:** draft 0.17, 2026-10-25.
 
 ## 1. Rules
 
@@ -167,6 +167,18 @@ announce is refused (the guards and phases of 4.100.259 are in
 resolved arm, so arms resolved before the field existed keep their
 identity. Every run counts its guards' trips (`guard_trips.<guard>.<phase>`,
 070).
+
+**Open (O23, found 2026-10-25):** the SDK's reasoning-loop guard ends a
+run by itself after `reasoningLoopDetection.maxConsecutiveTrips` turns cut
+one after another (3 in the SDK; a turn that is not cut starts the count
+again), unless the host answers `onReasoningLoopLimitReached` with
+`continue`. The runner passes `{}` and no answer, so an arm with
+`stop_on = []` still has its runs ended there (`reasoning_loop.aborted`: 5
+of the 39 pool runs), and the basis does not say so. Recommendation: every
+arm states `guards.reasoning_loop.max_consecutive_trips` (the base the SDK's
+3), and the runner answers `continue` unless `stop_on` names
+`reasoning_loop.aborted`, so that `stop_on` alone decides what ends a run.
+The owner decides.
 
 **Decided by the owner (2026-10-23):** how much of the model's earlier
 reasoning goes back in the history is stated in every arm (D103), as the
