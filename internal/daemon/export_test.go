@@ -96,7 +96,7 @@ func TestExport(t *testing.T) {
 		json.Unmarshal([]byte(l), &s)
 		if s.Source == "guard" {
 			guard = true
-			if s.Request != stem || s.Field != "reasoning_content" || s.Start != len("Start.\n"+block) || s.End != len(reasoning) {
+			if s.Request != stem || s.Field != "reasoning" || s.Start != len("Start.\n"+block) || s.End != len(reasoning) {
 				t.Errorf("guard span: %s", l)
 			}
 		}

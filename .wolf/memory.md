@@ -1199,3 +1199,20 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 07:40 | Owner: go with O23 recommendation -> D108. guards.reasoning_loop.max_consecutive_trips (base 3, dropped from Resolved, ids unchanged), runner hook + limitBreach backstop, protocol 8; X9 asked of Cerebriline (mail 1925): core 4.100.250-262 never forwards a host's onReasoningLoopLimitReached | internal/config/arm.go, arms/base.toml, runner/guards.mjs, session.mjs, runner.mjs, PROTOCOL.md, specs 030/040/decisions | tests pass | ~25k |
+
+## Session: 2026-10-25 05:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 05:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 05:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 08:05 | Deployed 4d04213 on blackswan-2 (build claim held, lane drained, 7 lane images rebuilt, protocol 8; stub smoke PASS 20261025-042053-7f6566). Mail 1927 to backup_models: on 4.100.262 a 3-cut SDK end is INVALID under stop_on=[]; options (a) wait for X9, (b) arm with stop_on reasoning_loop.aborted (owner's call) | blackswan-2 | ok | ~5k |
+| 08:30 | Mail 1926: omk reader layout. Export CLI now writes conversations/<run>/ (capture only), loop_spans.jsonl (request = <run>/<stem>.json), manifest.jsonl, runs/<run>.json; span field reasoning|content. bug-037 (flaky TestCampaign) logged open | cmd/automaticum/export_cmds.go, internal/export/export.go, specs 090/110 | tests pass | ~8k |

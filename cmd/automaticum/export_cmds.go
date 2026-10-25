@@ -2,7 +2,9 @@ package main
 
 import (
 	"archive/tar"
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -17,17 +19,21 @@ import (
 )
 
 // exportConversations writes runs' captured model requests out as training
-// traces (110 §3.5, D102, D104, D106): <out>/<run>/ holds the capture's
-// files as the SDK wrote them, meta.json and spans.jsonl. A run the daemon
-// will not export (not a training task, INVALID, no capture) is named and
-// passed over.
+// traces (110 §3.5, D102, D104, D106), in the layout omnimergekit's reader
+// takes: under <out>/conversations/ only the capture, <run>/<stem>.json and
+// <stem>.response.json, as the SDK wrote them; beside it loop_spans.jsonl
+// (every span, its request named by its path under conversations/),
+// manifest.jsonl (one line per run: id, batch, task, verdict) and
+// runs/<run>.json (the run as `run show` gives it, and its guard cuts). A
+// run the daemon will not export (not a training task, INVALID, no capture)
+// is named and passed over.
 func exportConversations(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("export conversations", flag.ExitOnError)
 	_, dial := addClient(fs)
 	var batches, runs list
 	fs.Var(&batches, "batch", "a batch, or a pattern such as 'k-pool-*'; give it several times for several")
 	fs.Var(&runs, "run", "a run; give it several times for several")
-	out := fs.String("out", "", "the directory to write into; a run's directory in it must not exist yet")
+	out := fs.String("out", "", "the directory to write into; a run already in it is refused")
 	parse(fs, args)
 	if *out == "" || len(batches)+len(runs) == 0 {
 		return errors.New("usage: automaticum export conversations --out <dir> [--batch B|GLOB ...] [--run R ...]")
@@ -43,16 +49,29 @@ func exportConversations(ctx context.Context, args []string) error {
 	if len(ids) == 0 {
 		return errors.New("no finished run matches")
 	}
-	if err := os.MkdirAll(*out, 0o755); err != nil {
+	for _, d := range []string{"conversations", "runs", ".partial"} {
+		if err := os.MkdirAll(filepath.Join(*out, d), 0o755); err != nil {
+			return err
+		}
+	}
+	for _, id := range ids {
+		if _, err := os.Stat(filepath.Join(*out, "conversations", id)); err == nil {
+			return fmt.Errorf("run %s is already in %s; export into another directory", id, *out)
+		}
+	}
+	spansF, err := os.OpenFile(filepath.Join(*out, "loop_spans.jsonl"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
 		return err
 	}
+	defer spansF.Close()
+	manifestF, err := os.OpenFile(filepath.Join(*out, "manifest.jsonl"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
+	}
+	defer manifestF.Close()
 	done, passed := 0, 0
 	for _, id := range ids {
-		dir := filepath.Join(*out, id)
-		if _, err := os.Stat(dir); err == nil {
-			return fmt.Errorf("%s exists; export into another directory or move it away", dir)
-		}
-		files, spans, err := exportRun(ctx, c, id, dir)
+		x, err := exportRun(ctx, c, id, *out)
 		if err != nil {
 			var refused *refusal
 			if errors.As(err, &refused) {
@@ -62,11 +81,39 @@ func exportConversations(ctx context.Context, args []string) error {
 			}
 			return fmt.Errorf("run %s: %w", id, err)
 		}
-		fmt.Printf("%s  %d files, %d spans\n", id, files, spans)
+		// The run's lines go in only once its files are all in place.
+		if _, err := spansF.Write(x.spans); err != nil {
+			return err
+		}
+		line, _ := json.Marshal(x.manifest)
+		if _, err := manifestF.Write(append(line, '\n')); err != nil {
+			return err
+		}
+		fmt.Printf("%s  %d requests, %d spans\n", id, x.manifest.Requests, x.manifest.Spans)
 		done++
 	}
+	os.Remove(filepath.Join(*out, ".partial"))
 	fmt.Printf("%d runs exported into %s, %d passed over\n", done, *out, passed)
 	return nil
+}
+
+// manifestLine is one run of manifest.jsonl.
+type manifestLine struct {
+	Run           string `json:"run"`
+	Batch         string `json:"batch"`
+	Task          string `json:"task"`
+	TaskVersion   int    `json:"task_version"`
+	Verdict       string `json:"verdict"`
+	VerdictReason string `json:"verdict_reason"`
+	AgentEnd      string `json:"agent_end"`
+	ArmID         string `json:"arm_id"`
+	Model         string `json:"model"`
+	Endpoint      string `json:"endpoint"`
+	SDKRelease    string `json:"sdk_release"`
+	Requests      int    `json:"requests"`
+	Spans         int    `json:"spans"`
+	// Meta is the run's whole record, under the export's directory.
+	Meta string `json:"meta"`
 }
 
 // exportRuns is the finished runs the flags name, oldest first.
@@ -107,23 +154,34 @@ type refusal struct{ msg string }
 
 func (r *refusal) Error() string { return r.msg }
 
-// exportRun writes one run's export into dir, through a directory beside it
-// that is renamed only once the whole tar has arrived.
-func exportRun(ctx context.Context, c *client, id, dir string) (files, spans int, err error) {
+// exported is one run's export once its files are in place: its lines of
+// loop_spans.jsonl and of manifest.jsonl.
+type exported struct {
+	spans    []byte
+	manifest manifestLine
+}
+
+// exportRun writes one run's capture into <out>/conversations/<run>/,
+// through <out>/.partial/<run>, renamed only once the whole tar has
+// arrived, and its record into <out>/runs/<run>.json.
+func exportRun(ctx context.Context, c *client, id, out string) (*exported, error) {
 	resp, err := c.open(ctx, "GET", "/v1/runs/"+url.PathEscape(id)+"/export", nil)
 	if err != nil {
 		if strings.Contains(err.Error(), "daemon does not answer") {
-			return 0, 0, err
+			return nil, err
 		}
-		return 0, 0, &refusal{err.Error()}
+		return nil, &refusal{err.Error()}
 	}
 	defer resp.Body.Close()
-	part := dir + ".partial"
+	dir := filepath.Join(out, "conversations", id)
+	// Outside conversations/, which a reader globs whole.
+	part := filepath.Join(out, ".partial", id)
 	os.RemoveAll(part)
 	if err := os.MkdirAll(part, 0o755); err != nil {
-		return 0, 0, err
+		return nil, err
 	}
 	defer os.RemoveAll(part)
+	var meta, spans []byte
 	tr := tar.NewReader(resp.Body)
 	for {
 		h, err := tr.Next()
@@ -131,31 +189,55 @@ func exportRun(ctx context.Context, c *client, id, dir string) (files, spans int
 			break
 		}
 		if err != nil {
-			return 0, 0, fmt.Errorf("the export was cut short: %v", err)
+			return nil, fmt.Errorf("the export was cut short: %v", err)
 		}
 		name := path.Base(h.Name)
 		if h.Typeflag != tar.TypeReg || name == "." || name == ".." {
 			continue
 		}
-		f, err := os.Create(filepath.Join(part, name))
+		b, err := io.ReadAll(tr)
 		if err != nil {
-			return 0, 0, err
+			return nil, fmt.Errorf("the export was cut short: %v", err)
 		}
-		_, err = io.Copy(f, tr)
-		if cerr := f.Close(); err == nil {
-			err = cerr
+		switch name {
+		case "meta.json":
+			meta = b
+		case "spans.jsonl":
+			spans = b
+		default:
+			if err := os.WriteFile(filepath.Join(part, name), b, 0o644); err != nil {
+				return nil, err
+			}
 		}
-		if err != nil {
-			return 0, 0, err
-		}
-		if name == "spans.jsonl" {
-			b, _ := os.ReadFile(filepath.Join(part, name))
-			spans = strings.Count(string(b), "\n")
-		}
-		files++
 	}
-	if files == 0 {
-		return 0, 0, errors.New("the export was empty")
+	var m daemon.ExportMeta
+	if err := json.Unmarshal(meta, &m); err != nil {
+		return nil, fmt.Errorf("the export has no readable meta.json: %v", err)
 	}
-	return files, spans, os.Rename(part, dir)
+	// A span names its request by its path under conversations/.
+	var lines bytes.Buffer
+	n := 0
+	for _, l := range strings.Split(strings.TrimSpace(string(spans)), "\n") {
+		if l == "" {
+			continue
+		}
+		var s map[string]any
+		if err := json.Unmarshal([]byte(l), &s); err != nil {
+			return nil, fmt.Errorf("spans.jsonl: %v", err)
+		}
+		s["request"] = id + "/" + fmt.Sprint(s["request"]) + ".json"
+		b, _ := json.Marshal(s)
+		lines.Write(append(b, '\n'))
+		n++
+	}
+	if err := os.WriteFile(filepath.Join(out, "runs", id+".json"), meta, 0o644); err != nil {
+		return nil, err
+	}
+	if err := os.Rename(part, dir); err != nil {
+		return nil, err
+	}
+	v := m.Run
+	return &exported{spans: lines.Bytes(), manifest: manifestLine{Run: v.ID, Batch: v.Batch, Task: v.Task, TaskVersion: v.TaskVersion,
+		Verdict: v.Verdict, VerdictReason: v.VerdictReason, AgentEnd: v.AgentEnd, ArmID: v.ArmID, Model: v.Model, Endpoint: v.Endpoint,
+		SDKRelease: v.SDKRelease, Requests: len(m.Requests), Spans: n, Meta: "runs/" + id + ".json"}}, nil
 }

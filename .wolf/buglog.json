@@ -621,6 +621,23 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-25T05:30:00Z"
+    },
+    {
+      "id": "bug-037",
+      "timestamp": "2026-10-25T04:25:00Z",
+      "error_message": "TestCampaign (internal/daemon) failed once under make test: a run of batch k-c1-second has Campaign \"\" (want c1); passes 5/5 on rerun",
+      "file": "internal/daemon/daemon_test.go",
+      "root_cause": "Not found yet: likely a race between the run record being written and the campaign name being attached (pre-existing; seen while testing the export layout, which does not touch campaigns)",
+      "fix": "OPEN: not fixed; rerun passed",
+      "tags": [
+        "flaky",
+        "test",
+        "campaign",
+        "race"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-25T04:25:00Z"
     }
   ]
 }

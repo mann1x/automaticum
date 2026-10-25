@@ -130,7 +130,7 @@
 - `config_cmds_test.go` — TestParseInterspersed, TestCellTasks (~370 tok)
 - `config_cmds.go` — place (121 fields) (~3164 tok)
 - `control_cmds.go` (~2001 tok)
-- `export_cmds.go` — export conversations: --batch (pattern) / --run, writes <out>/<run>/ via .partial then rename (~1300 tok)
+- `export_cmds.go` — export conversations: --batch (pattern) / --run; omk reader layout: <out>/conversations/<run>/ (capture only), loop_spans.jsonl, manifest.jsonl, runs/<run>.json; via <out>/.partial/<run> then rename (~2200 tok)
 - `image_cmds.go` (~1096 tok)
 - `main.go` — Command automaticum is the command line of automaticum. (~2298 tok)
 - `sdk_cmds.go` — SDKEnv (~1197 tok)

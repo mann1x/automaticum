@@ -164,13 +164,15 @@ func readCut(l []byte) (Cut, bool) {
 		Kind: m.Verdict.Kind, Period: m.Verdict.Period, Cycles: m.Verdict.Cycles, Chars: m.Verdict.Chars}, true
 }
 
-// Line is one loop span, one JSON line of the export's spans.jsonl (D106).
+// Line is one loop span, one JSON line of the export's spans (D106).
 type Line struct {
 	Request string `json:"request"`
-	Field   string `json:"field"`
-	Start   int    `json:"start"`
-	End     int    `json:"end"`
-	Source  string `json:"source"` // guard or detector
+	// Field is the message field the span is in: reasoning or content,
+	// whichever key the stream gave it (reasoning_content or reasoning).
+	Field  string `json:"field"`
+	Start  int    `json:"start"`
+	End    int    `json:"end"`
+	Source string `json:"source"` // guard or detector
 	// Detail is which guard verdict or detector found it.
 	Detail string `json:"detail"`
 }
@@ -208,7 +210,7 @@ func Spans(resps []Response, cuts []Cut) ([]Line, []Cut) {
 					detail += ":" + h.Kind
 				}
 				for _, s := range detect.Spans(text, h) {
-					out = append(out, Line{Request: r.Stem, Field: name, Start: s.Start, End: s.End, Source: Detector, Detail: detail})
+					out = append(out, Line{Request: r.Stem, Field: messageField(name), Start: s.Start, End: s.End, Source: Detector, Detail: detail})
 				}
 			}
 		}
@@ -271,7 +273,15 @@ func guardSpan(resps []Response, used map[string]bool, c Cut) (*Line, Cut) {
 		c.Unplaced = fmt.Sprintf("the %s verdict (period %d, %d cycles) does not match the end of %s", c.Kind, c.Period, c.Cycles, field)
 		return nil, c
 	}
-	return &Line{Request: hit.Stem, Field: field, Start: start, End: end, Source: Guard, Detail: c.Guard + ":" + c.Kind}, c
+	return &Line{Request: hit.Stem, Field: messageField(field), Start: start, End: end, Source: Guard, Detail: c.Guard + ":" + c.Kind}, c
+}
+
+// messageField is the message field a stream's text key fills.
+func messageField(key string) string {
+	if key == "content" {
+		return "content"
+	}
+	return "reasoning"
 }
 
 // fieldOf is a response's reasoning or reply text, under whichever name

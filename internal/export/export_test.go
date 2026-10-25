@@ -54,7 +54,7 @@ func TestGuardSpan(t *testing.T) {
 		t.Fatalf("no guard span in %+v", lines)
 	}
 	start := len([]rune(lead + block))
-	if g.Field != "reasoning_content" || g.Start != start || g.End != len([]rune(text)) {
+	if g.Field != "reasoning" || g.Start != start || g.End != len([]rune(text)) {
 		t.Fatalf("span %+v, want %d to %d", *g, start, len([]rune(text)))
 	}
 }

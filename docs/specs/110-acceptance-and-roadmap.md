@@ -411,15 +411,21 @@ plugin's, the same for every host.
   verdict; the SDK's notice in the event log does.
   **Built (2026-10-25):** `automaticum export conversations --out <dir>
   --batch <id|pattern> [--run <id>]` (090 §1), from the daemon's
-  `GET /v1/runs/{id}/export`. `<dir>/<run>/` holds the capture's files as
-  the SDK wrote them (`<stem>.json`, `<stem>.response.json`), `meta.json`
-  (the run as `run show` gives it: verdict, resolved arm, provenance with
-  the served template, the settings in effect; the capture's stems; every
-  guard cut with the response it is in) and `spans.jsonl`. A span's
-  `start` and `end` are Unicode code points in the field's text, the
-  stream's deltas joined (`reasoning_content`, `content`), the end not
-  included; each line also says in `detail` which guard verdict or
-  detector found it. Guard spans are placed as above, the guard's
+  `GET /v1/runs/{id}/export`, in the layout omnimergekit's reader
+  (`omk_qad.rollouts --capture`) takes, which reads every `*.json` under its
+  root that is not a response as a request: `<dir>/conversations/<run>/`
+  holds only the capture's files as the SDK wrote them (`<stem>.json`,
+  `<stem>.response.json`); beside it, `loop_spans.jsonl` holds every span
+  with its request as the path under `conversations/`
+  (`<run>/<stem>.json`), `manifest.jsonl` one line per run (id, batch,
+  task, verdict, arm, model, SDK release, counts) and `runs/<run>.json` the
+  run as `run show` gives it (verdict, resolved arm, provenance with the
+  served template, the settings in effect), the capture's stems and every
+  guard cut with the response it is in. A span's `field` is the message
+  field, `reasoning` or `content`; its `start` and `end` are Unicode code
+  points in that field's text, the stream's deltas joined, the end not
+  included; each line also says in `detail` which guard verdict or detector
+  found it. Guard spans are placed as above, the guard's
   `chars` (UTF-16, as JavaScript counts) turned into code points, and the
   trailing repeats checked line for line as the guard reads lines; a cut
   whose response is not found, or whose verdict does not match, is named
