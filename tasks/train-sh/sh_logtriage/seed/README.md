@@ -33,6 +33,9 @@ bytes (a number or `-`), `"referer"`, `"user agent"`, request time in ms (a whol
 - A line that does not have exactly this shape is **malformed**. That includes a request field that
   is not three words `METHOD /target HTTP/x` (nginx writes `"-"` for a connection that timed out
   before sending a request), an unknown month name, a missing time field, and truncated lines.
+  A valid request field is exactly three space-separated words: a METHOD of upper-case letters only
+  (`GET`, `POST`, ...; `get` is malformed), a target that starts with `/`, and a protocol that starts
+  with `HTTP/`. Anything else in the request field (probe bytes, `SSH-2.0`, a fourth word) is malformed.
 - **Blank lines** (empty, or only spaces/tabs) are ignored completely: they are not counted anywhere.
 - The **path** of a request is its target with any query string (`?` and everything after it) removed.
 - The time zone is ignored; times are reported as written.

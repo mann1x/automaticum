@@ -5,7 +5,7 @@
 
 id = "sh_logtriage"
 suite = "train-sh"
-version = 1
+version = 2
 training = true
 layers = ["python"]
 default_answer = "Use your own judgement and continue."

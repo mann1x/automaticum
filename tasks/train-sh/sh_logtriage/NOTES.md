@@ -10,3 +10,8 @@
 - Near-miss `request-field-unchecked`: everything fixed except the request-field validation -> fails `bad_request_field`.
 - Checker: check.py writes hidden logs into `__checker__/sandbox/run/` at test time and runs `bash bin/logsum.sh` there
   (no exec from /tmp needed). Uses no tools beyond bash/coreutils/mawk/gzip/python3.
+
+- **v2 (draft 2026-10-24, bm-889):** README now states the request-field rule outright (upper-case METHOD, target
+  starting with `/`, protocol starting with `HTTP/`). v1's README only implied the upper-case rule; all 3 v1 runs
+  (25, 25 and 50 min caps) ended at the identical 12/13 oracle (only bad_request_field, `parsed: 4` vs 1): the agent
+  checks only the word count, cannot see which hidden lines are wrong, and loops until the SDK guard ends the run.
