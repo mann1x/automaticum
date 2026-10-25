@@ -73,6 +73,11 @@ type Input struct {
 type Gate struct {
 	Name, Version string
 	Check         func(ctx context.Context, in *Input) (Status, string)
+	// Static marks a gate whose answer depends only on the arm, the task
+	// and what this installation has (images, SDK builds, the oracle's
+	// proof): it does not change by waiting, so `run start` asks it before
+	// queueing anything (Static).
+	Static bool
 }
 
 // Builtin lists the built-in gates in the order they are shown. The three
@@ -84,23 +89,23 @@ func Builtin() []Gate {
 		}
 	}
 	return []Gate{
-		{"lane", "1", lane},
-		{"free", "1", free},
-		{"model_tag", "1", modelTag},
-		{"template", "1", template},
-		{"sampler", "1", sampler},
-		{"thinking", "1", thinking},
-		{"gpu_residency", "1", residency},
-		{"harness_build", "1", harness},
-		{"host", "1", host},
-		{"oracle", "1", oracle},
-		{"workspace", "1", workspace},
-		{"bind_address", "1", bind},
-		{"gpu_ownership", "1", agent("the lane's device binding and where the process landed")},
-		{"server_log_level", "1", agent("the server's log level")},
+		{"lane", "1", lane, false},
+		{"free", "1", free, false},
+		{"model_tag", "1", modelTag, false},
+		{"template", "1", template, false},
+		{"sampler", "1", sampler, false},
+		{"thinking", "1", thinking, false},
+		{"gpu_residency", "1", residency, false},
+		{"harness_build", "1", harness, true},
+		{"host", "1", host, false},
+		{"oracle", "1", oracle, true},
+		{"workspace", "1", workspace, false},
+		{"bind_address", "1", bind, false},
+		{"gpu_ownership", "1", agent("the lane's device binding and where the process landed"), false},
+		{"server_log_level", "1", agent("the server's log level"), false},
 		{"expert", "1", func(context.Context, *Input) (Status, string) {
 			return Unchecked, "no expert model can be configured yet"
-		}},
+		}, false},
 	}
 }
 
@@ -126,6 +131,19 @@ func Run(ctx context.Context, in *Input) []Result {
 	for _, g := range Builtin() {
 		st, detail := g.Check(ctx, in)
 		out = append(out, Result{Gate: g.Name, Version: g.Version, Status: st, Detail: detail})
+	}
+	return out
+}
+
+// Static asks only the static gates: what a run of this arm on this task
+// would be refused for whenever it started. It asks no endpoint and no lane.
+func Static(ctx context.Context, in *Input) []Result {
+	var out []Result
+	for _, g := range Builtin() {
+		if g.Static {
+			st, detail := g.Check(ctx, in)
+			out = append(out, Result{Gate: g.Name, Version: g.Version, Status: st, Detail: detail})
+		}
 	}
 	return out
 }

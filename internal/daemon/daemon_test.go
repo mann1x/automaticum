@@ -1568,3 +1568,29 @@ func TestStartSuites(t *testing.T) {
 		t.Errorf("an unknown suite: %d", code)
 	}
 }
+
+// A start whose runs a static gate would refuse whenever they started is
+// itself refused, dry run or not, and nothing is queued.
+func TestStartStaticGates(t *testing.T) {
+	g := newRig(t, false)
+	g.d.Static = func(_ context.Context, arm *config.Arm, tk *task.Task, _ string) []gate.Result {
+		if tk.Name() == "train-sh/sh_logtriage" {
+			return []gate.Result{{Gate: "oracle", Status: gate.Refuse, Detail: "not proven"}}
+		}
+		return []gate.Result{{Gate: "oracle", Status: gate.Pass}}
+	}
+	for _, dry := range []bool{true, false} {
+		req := StartRequest{Arm: "stub", Tasks: []string{"answer", "train-sh/sh_logtriage"}, DryRun: dry}
+		var e struct{ Error string }
+		if code := g.call("POST", "/v1/runs", req, &e); code != 422 || !strings.Contains(e.Error, "stub on train-sh/sh_logtriage: gate oracle: not proven") {
+			t.Errorf("dry %v: %d %q", dry, code, e.Error)
+		}
+	}
+	if q, _ := g.state.Queue(context.Background()); len(q) != 0 {
+		t.Errorf("queued: %v", q)
+	}
+	var resp StartResponse
+	if code := g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", DryRun: true}, &resp); code != 200 {
+		t.Errorf("a start the static gates pass: %d", code)
+	}
+}

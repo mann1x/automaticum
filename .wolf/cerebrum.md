@@ -79,6 +79,8 @@
 
 ## Do-Not-Repeat
 
+- (2026-10-25) An oracle proof is kept per installation. After deploying a new or changed task to a lane host, run `automaticum oracle verify <suite>/<task>` there too, not only on linux-gpu-1 (bug-038).
+
 - (2026-10-24) The private-string gate must fail closed:
   - Pass file names NUL-separated (`git ls-files -z | … | xargs -0 grep -IlniE "$P"`), because train-sh seed files have spaces in their names.
   - Commit only when nothing is listed and grep's exit code is 0, 1 or 123. Any error line means stop.

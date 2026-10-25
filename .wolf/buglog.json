@@ -638,6 +638,24 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-25T04:25:00Z"
+    },
+    {
+      "id": "bug-038",
+      "timestamp": "2026-10-25T05:50:00Z",
+      "error_message": "Mail 1932: k-pool-v2-sh_logtriage runs both SKIPPED: gate oracle: the oracle of train-sh/sh_logtriage, as the task is now, was not proven against its fixtures",
+      "file": "internal/daemon/api.go",
+      "root_cause": "Two causes. (1) I verified sh_logtriage v2 on linux-gpu-1 only; the oracle proof is kept per installation, and blackswan-2 never had one for v2. (2) A design gap: run start queued runs that a static gate (oracle proof, SDK build, lane image) refuses whatever the time, so they were SKIPPED at once.",
+      "fix": "gate.Static (Gate.Static on harness_build and oracle) asked by start() for every arm x task; a refusal refuses the start with 422 'nothing was queued'. Process: after deploying a changed task, run oracle verify on the lane host too.",
+      "tags": [
+        "gate",
+        "oracle",
+        "run-start",
+        "deploy",
+        "process"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-25T05:50:00Z"
     }
   ]
 }

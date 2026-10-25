@@ -1254,3 +1254,14 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 06:40 | 4.100.266 installed on blackswan-2 (reproduced), images rebuilt; stub proof 20261025-050057-6b0a34: continue answered 1624x, SDK never aborted, no breach (TIMEOUT: the stub replays its looping turn). Pool arm g4-128e-bf16-c13-shipped -> 4.100.266 (id 7fe45202) | arms/g4-128e-bf16-c13-shipped.toml | ok | ~8k |
+
+## Session: 2026-10-25 06:07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 06:07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 07:00 | Mail 1932: v2 batch SKIPPED by the oracle gate (proof made on linux-gpu-1 only; backup_models re-verified on blackswan-2 and re-queued r2). Fix: static gates (harness_build, oracle) asked by run start, refusing with 422 instead of queueing SKIPPED runs (bug-038) | internal/gate/gate.go, internal/daemon/api.go, cmd/automaticumd/main.go, 050 | tests pass | ~10k |

@@ -210,3 +210,18 @@ func TestWorst(t *testing.T) {
 		t.Errorf("%+v", w)
 	}
 }
+
+// The static gates are the ones that need neither endpoint nor lane, and
+// asking them asks nothing of the endpoint.
+func TestStatic(t *testing.T) {
+	s := &server{caps: []string{"completion", "tools", "thinking"}, digest: "abc123"}
+	in := rig(t, s)
+	results := Static(context.Background(), in)
+	got := byGate(results)
+	if len(results) != 2 || got["oracle"].Status != Pass || got["harness_build"].Status != Pass {
+		t.Fatalf("static gates: %+v", results)
+	}
+	if s.posts != 0 {
+		t.Errorf("the static gates sent the endpoint %d requests", s.posts)
+	}
+}

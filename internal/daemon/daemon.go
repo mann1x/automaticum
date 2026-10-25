@@ -61,6 +61,10 @@ type Daemon struct {
 	// Gates asks every gate about one arm on one task on one lane. Nil
 	// means no gate is asked.
 	Gates func(ctx context.Context, lane string, arm *config.Arm, tk *task.Task, image string) []gate.Result
+	// Static asks the static gates (gate.Static) about one arm on one
+	// task, so that a start that would only queue refused runs is itself
+	// refused. Nil asks none.
+	Static func(ctx context.Context, arm *config.Arm, tk *task.Task, image string) []gate.Result
 	// GateRetry is how long a waiting run waits before the gates are asked
 	// again; zero means half a minute.
 	GateRetry time.Duration

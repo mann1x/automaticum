@@ -1,28 +1,28 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-25T04:53:51.817Z
-> Files: 508 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-25T05:00:00.300Z
+> Files: 501 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~3258 tok)
-- `CLAUDE.md` — automaticum (~4194 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~4610 tok)
+- `CLAUDE.md` — automaticum (~4360 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
 - `LICENSE` — Project license (~3029 tok)
-- `Makefile` — Make build targets (~701 tok)
+- `Makefile` — Make build targets (~707 tok)
 - `README.md` — Project documentation (~2568 tok)
 - `spike.local.toml` — Untracked. Paths for the store spike on this installation. (~243 tok)
 
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~88948 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~95027 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~0 tok)
-- `score-history.jsonl` (~1453 tok)
+- `score-history.jsonl` (~1569 tok)
 
 ## .caliber/backups/2026-10-12T20-16-19-461Z/
 
@@ -34,14 +34,14 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~98946 tok)
+- `fingerprint.json` — Declares usage (~98832 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` (~7885 tok)
+- `current-session.jsonl` (~1571 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~57674 tok)
-- `state.json` (~41 tok)
+- `roi-stats.json` (~61863 tok)
+- `state.json` (~40 tok)
 
 ## .claude/
 
@@ -58,7 +58,7 @@
 - `endpoint-probe.md` — Endpoint probe and gate conventions (~391 tok)
 - `lane-images.md` — Lane image conventions (~662 tok)
 - `openwolf.md` — OpenWolf protocol (~207 tok)
-- `runner-protocol.md` — Runner protocol conventions (~1254 tok)
+- `runner-protocol.md` — Runner protocol conventions (~1419 tok)
 - `spec-conventions.md` — Spec conventions (~375 tok)
 - `task-loader.md` — Task loader conventions (~803 tok)
 - `wire-arm.md` — Wire detector conventions (~452 tok)
@@ -80,6 +80,10 @@
 
 - `SKILL.md` — Installing automaticum on a fresh host (~1437 tok)
 
+## .claude/skills/learned-new-sdk-release/
+
+- `SKILL.md` — Provisioning a new SDK release (~796 tok)
+
 ## .claude/skills/log-wolf-bug/
 
 - `SKILL.md` — log-wolf-bug (~4099 tok)
@@ -98,8 +102,8 @@
 
 ## arms/
 
-- `base.toml` — The settings every arm here shares. It is not runnable by itself: it names (~549 tok)
-- `g4-128e-bf16-c13-shipped.toml` — The training pool's arm (bm-889, D105): the shipped arm on the same model (~197 tok)
+- `base.toml` — The settings every arm here shares. It is not runnable by itself: it names (~620 tok)
+- `g4-128e-bf16-c13-shipped.toml` — The training pool's arm (bm-889, D105): the shipped arm on the same model (~211 tok)
 - `g4-128e-bf16-shipped.toml` — Gemma-4 26B-A4B (128 experts) BF16, end token 106, Google's chat template (~74 tok)
 - `g4-128e-bf16-stop.toml` — Gemma-4 26B-A4B (128 experts) BF16, end token 106, Google's chat template (~200 tok)
 - `g4-128e.toml` — The Gemma-4 26B-A4B loop test with omnimergekit (D98): what every arm of it (~572 tok)
@@ -113,7 +117,7 @@
 - `stub-sdk-4.100.259.toml` — The stub arm on SDK release 4.100.259, for the harness's own tests of that (~40 tok)
 - `stub-sdk-4.100.260.toml` — The stub arm on SDK release 4.100.260, for the harness's own tests of that (~40 tok)
 - `stub-sdk-4.100.262.toml` — The stub arm on SDK release 4.100.262, for the harness's own tests of that (~40 tok)
-- `stub-sdk-4.100.266.toml` — The stub arm on SDK release 4.100.266 (core takes the host's answer at the reasoning-loop limit, D108) (~50 tok)
+- `stub-sdk-4.100.266.toml` — The stub arm on SDK release 4.100.266, for the harness's own tests of that (~64 tok)
 - `stub-stop-sdk-4.100.258.toml` — The stub arm on SDK release 4.100.258 that ends a run at the first trip of (~66 tok)
 - `stub-stop-sdk-4.100.259.toml` — The stub arm on SDK release 4.100.259 that ends a run at the first trip of (~64 tok)
 - `stub.toml` — An arm for the stub model server: used by the harness's own tests and for (~99 tok)
@@ -131,9 +135,9 @@
 - `config_cmds_test.go` — TestParseInterspersed, TestCellTasks (~370 tok)
 - `config_cmds.go` — place (121 fields) (~3164 tok)
 - `control_cmds.go` (~2001 tok)
-- `export_cmds.go` — export conversations: --batch (pattern) / --run; omk reader layout: <out>/conversations/<run>/ (capture only), loop_spans.jsonl, manifest.jsonl, runs/<run>.json; via <out>/.partial/<run> then rename (~2200 tok)
+- `export_cmds.go` — manifestLine (87 fields); methods: Error (~2178 tok)
 - `image_cmds.go` (~1096 tok)
-- `main.go` — Command automaticum is the command line of automaticum. (~2298 tok)
+- `main.go` — Command automaticum is the command line of automaticum. (~2413 tok)
 - `sdk_cmds.go` — SDKEnv (~1197 tok)
 - `store_cgo.go` — go:build cgo (~1850 tok)
 - `store_nocgo.go` — go:build !cgo (~128 tok)
@@ -152,8 +156,8 @@
 - `000-overview.md` — 000 — Overview, vocabulary and map of the spec set (~2073 tok)
 - `010-architecture.md` — 010 — Architecture (~1615 tok)
 - `020-run-record.md` — 020 — The run record, verdicts and the basis (~3511 tok)
-- `030-configuration.md` — 030 — Configuration (~3085 tok)
-- `040-runner.md` — 040 — The runner (~8629 tok)
+- `030-configuration.md` — 030 — Configuration (~3307 tok)
+- `040-runner.md` — 040 — The runner (~8894 tok)
 - `050-orchestration.md` — 050 — Orchestration: scheduling, gates, control (~4459 tok)
 - `060-tasks-and-suites.md` — 060 — Tasks, oracles and the suite interface (~1893 tok)
 - `061-suite-bfcl.md` — 061 — Suite: BFCL (Berkeley Function-Calling Leaderboard) (~551 tok)
@@ -161,12 +165,12 @@
 - `063-suite-multi-language.md` — 063 — Suite: our own multi-language agentic suite (~791 tok)
 - `064-engine-adapters.md` — 064 — Engine adapters: Cerebriline as the engine of an external harness (~962 tok)
 - `065-cell-contract.md` — 065 — The cell contract and exports (~3390 tok)
-- `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~7191 tok)
+- `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~7331 tok)
 - `080-store.md` — 080 — The store (~4404 tok)
-- `090-interfaces.md` — 090 — Interfaces (~2352 tok)
+- `090-interfaces.md` — 090 — Interfaces (~2507 tok)
 - `100-legacy-import.md` — 100 — Import of the old harness's corpus (~3426 tok)
-- `110-acceptance-and-roadmap.md` — 110 — Acceptance and roadmap (~6840 tok)
-- `decisions.md` — Decisions and open questions (~7029 tok)
+- `110-acceptance-and-roadmap.md` — 110 — Acceptance and roadmap (~7265 tok)
+- `decisions.md` — Decisions and open questions (~7263 tok)
 
 ## docs/specs/archive/
 
@@ -220,12 +224,12 @@
 
 ## internal/config/
 
-- `arm.go` — loads automaticum's configuration: arms, lanes, endpoints (~8276 tok)
+- `arm.go` — loads automaticum's configuration: arms, lanes, endpoints (~8685 tok)
 - `campaign_test.go` — TestLoadCampaign (~574 tok)
 - `campaign.go` — Campaign (41 fields); methods: Validate (~1488 tok)
 - `cell_test.go` — TestArmForCell, TestCellEndpoint (~782 tok)
 - `cell.go` — CallerValues (41 fields); methods: ForCell (~1530 tok)
-- `config_test.go` — TestRepositoryArms, TestArmValidation, TestStopOnIdentity, TestReasoningHistory + 3 more (~4450 tok)
+- `config_test.go` — TestRepositoryArms, TestArmValidation, TestStopOnIdentity, TestReasoningLoopLimitIdentity + 3 more (~4824 tok)
 - `local.go` — Local (97 fields); methods: Endpoint, MayUse, AddCellEndpoint, Token (~2995 tok)
 - `model_test.go` — TestModels (~532 tok)
 - `model.go` — ModelIdentity (25 fields); methods: Missing (~755 tok)
@@ -233,7 +237,7 @@
 
 ## internal/daemon/
 
-- `api.go` — HTTP handlers: reply, fail (~12823 tok)
+- `api.go` — HTTP handlers: reply, fail (~12905 tok)
 - `basis.go` — Basis (87 fields) (~4394 tok)
 - `campaign.go` — CampaignState (112 fields) (~3842 tok)
 - `canary.go` — CanaryRecord (36 fields); methods: Error, Is (~1597 tok)
@@ -242,8 +246,8 @@
 - `control.go` — control (92 fields) (~5676 tok)
 - `daemon_test.go` — memState (126 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~16405 tok)
 - `daemon.go` — is automaticumd without its main: the queue, one worker (~5832 tok)
-- `export_test.go` — TestExport (~1300 tok)
-- `export.go` — handleExport (GET /v1/runs/{id}/export: tar of meta.json, spans.jsonl, capture files; refuses non-training 403, INVALID 422, no capture 404), ExportMeta (~1422 tok)
+- `export_test.go` — TestExport (~1236 tok)
+- `export.go` — ExportMeta (45 fields) (~1523 tok)
 - `modec_test.go` — TestModeCCell, TestModeCBasis (~1727 tok)
 - `modec.go` — CellSpec (69 fields) (~2251 tok)
 
@@ -251,11 +255,11 @@
 
 - `controls.go` — Control (39 fields) (~2450 tok)
 - `detect_test.go` — TestSelfTest, TestShortUnit, TestShortUnitAgainstPattern, TestCharRun + 5 more (~2754 tok)
-- `detect.go` — is the detector library (spec 070 §3): degeneration and (~2624 tok)
-- `guards.go` (~1753 tok)
+- `detect.go` — is the detector library (spec 070 §3): degeneration and (~2699 tok)
+- `guards.go` (~1829 tok)
 - `reference_test.go` — expected (52 fields) (~2243 tok)
-- `spans_test.go` — TestSpansShortUnit, TestSpansSentenceLaterOnly, TestCycleStart (~600 tok)
-- `spans.go` — Spans(text, hit): where a hit's repeats stand, first occurrence left out; CycleStart/WindowRepeatStart read lines as the SDK guard does (~1063 tok)
+- `spans_test.go` — TestSpansShortUnit, TestSpansSentenceLaterOnly, TestCycleStart (~398 tok)
+- `spans.go` — Span (51 fields) (~1138 tok)
 
 ## internal/docker/
 
@@ -264,13 +268,13 @@
 
 ## internal/export/
 
-- `export_test.go` — TestGuardSpan (non-BMP offset), TestGuardSpanUnplaced, TestReadCuts (~900 tok)
-- `export.go` — hands a run's model requests out as training traces: ReadResponse (SSE deltas joined), ReadCuts (guard notices), Spans (guard + detector, code points) (~2469 tok)
+- `export_test.go` — TestGuardSpan, TestGuardSpanUnplaced, TestReadCuts (~871 tok)
+- `export.go` — hands a run's model requests out as training traces (~2739 tok)
 
 ## internal/gate/
 
 - `gate_test.go` — server (40 fields); methods: ImageInspect, Check, Path (~2878 tok)
-- `gate.go` — holds the gates: what must hold before a run starts (spec (~4507 tok)
+- `gate.go` — holds the gates: what must hold before a run starts (spec 050 §3); Gate.Static marks harness_build and oracle, asked by Static() at run start (~4700 tok)
 
 ## internal/human/
 
@@ -388,12 +392,12 @@
 
 ## runner/
 
-- `guards.mjs` — Guard actions as the SDK announces them: a "notice" event whose metadata; reasoningLimitAnswer (stop_on decides, D108) and limitBreach (SDK ended at the limit against the arm -> invalid) (~1200 tok)
+- `guards.mjs` — Guard actions as the SDK announces them: a "notice" event whose metadata (~1320 tok)
 - `package.json` — Node.js package manifest (~103 tok)
 - `plan.mjs` — The extension's switch_to_act_mode tool, ported from Cline 4.100.250 and (~780 tok)
-- `PROTOCOL.md` — The runner: protocol 7 (~2503 tok)
-- `runner.mjs` — The runner: one agent session for one run, inside the lane's container. (~5519 tok)
-- `session.mjs` — unsupported lists what an arm asks for that this runner cannot do. (~2724 tok)
+- `PROTOCOL.md` — The runner: protocol 8 (~2837 tok)
+- `runner.mjs` — The runner: one agent session for one run, inside the lane's container. (~5750 tok)
+- `session.mjs` — unsupported lists what an arm asks for that this runner cannot do. (~2876 tok)
 - `user.mjs` — The scripted user (040 §6.2): the task's rules, played against the (~1979 tok)
 - `wire.mjs` — createWire returns a fetch that appends one JSON line per request to (~1642 tok)
 
@@ -427,24 +431,24 @@
 - `package.json` — Node.js package manifest (~64 tok)
 - `sdk.toml` — SDK release 4.100.260, from the registry: "auto" prior reasoning is (~122 tok)
 
-## runner/sdk/4.100.266/
-
-- `package.json` — pins @cerebriline/sdk 4.100.266 (~60 tok)
-- `package-lock.json` — the bundle's lockfile, 383 packages as 4.100.262 (~large)
-- `sdk.toml` — release 4.100.266 from the registry, bundle pinned 067d663e (X9 landed) (~90 tok)
-
 ## runner/sdk/4.100.262/
 
 - `package-lock.json` — npm lock file (~52617 tok)
 - `package.json` — Node.js package manifest (~64 tok)
 - `sdk.toml` — SDK release 4.100.262, from the registry: "auto" prior reasoning measured (~157 tok)
 
+## runner/sdk/4.100.266/
+
+- `package-lock.json` — npm lock file (~52626 tok)
+- `package.json` — Node.js package manifest (~64 tok)
+- `sdk.toml` — SDK release 4.100.266, from the registry: as 4.100.262, and core passes the (~109 tok)
+
 ## runner/test/
 
 - `arm-stub.json` (~287 tok)
-- `guards.test.mjs` — Declares notice (~753 tok)
+- `guards.test.mjs` — Declares notice (~1283 tok)
 - `plan.test.mjs` — createTool as the SDK's: it hands back what it was given. (~415 tok)
-- `session.test.mjs` — stub: reportOf (~2306 tok)
+- `session.test.mjs` — stub: reportOf (~2499 tok)
 - `user.test.mjs` — Declares categories (~2112 tok)
 - `wire.test.mjs` — Declares serve (~1352 tok)
 
@@ -1011,34 +1015,7 @@
 ## tasks/train-ml/py_reportgen/
 
 - `checker.json` (~163 tok)
-- `NOTES.md` — py_reportgen (feature, long) (~255 tok)
-- `task.toml` — py_reportgen: implement the v0.3 report format of a CSV sales-report CLI (training task, bm-889 rollout pool). (~788 tok)
 
 ## tasks/train-ml/py_reportgen/checker/
 
 - `check.py` — URL configuration (~2174 tok)
-
-## tasks/train-ml/py_reportgen/fixtures/bad-float-share/salesreport/
-
-- `aggregate.py` — from: key_value, parse_keys, percent, group_by + 1 more (~424 tok)
-
-## tasks/train-ml/py_reportgen/fixtures/good/salesreport/
-
-- `aggregate.py` — from: key_value, parse_keys, percent, group_by + 1 more (~434 tok)
-- `cli.py` — parse_date, build_parser, main (~473 tok)
-- `filters.py` — in_range (~113 tok)
-- `render.py` — fmt_money, table, render_text, line + 1 more (~403 tok)
-
-## tasks/train-ml/py_reportgen/oracle/
-
-- `build.mjs` — Builds the oracle the agent may run but not read: run_game.logic.js as a (~795 tok)
-- `run_tests.logic.js` — SPEC: copyTree, hide, scrub, finish (~3985 tok)
-
-## tasks/train-ml/py_reportgen/seed/
-
-- `README.md` — Project documentation (~828 tok)
-
-## tasks/train-ml/py_reportgen/seed/salesreport/
-
-- `__init__.py` — salesreport: summarise sales CSV exports into small tables. (~57 tok)
-- `__main__.py` (~14 tok)

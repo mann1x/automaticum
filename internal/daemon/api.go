@@ -501,6 +501,7 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 		}
 	}
 	var arm *config.Arm
+	var arms []*config.Arm
 	lane, ids := "", map[string]string{}
 	for _, name := range names {
 		a, err := config.LoadArm(filepath.Join(d.Repo, "arms"), name)
@@ -536,7 +537,23 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 		if arm == nil {
 			arm = a
 		}
+		arms = append(arms, a)
 		lane, ids[name] = l, a.ID
+	}
+	// What would be refused whenever it started is refused now, dry run or
+	// not, rather than queued only to be skipped.
+	if d.Static != nil {
+		var refused []string
+		for _, a := range arms {
+			for _, t := range tks {
+				if w := gate.Worst(d.Static(ctx, a, t, LaneImage(t.Layers))); w != nil && w.Status == gate.Refuse {
+					refused = append(refused, fmt.Sprintf("%s on %s: gate %s: %s", a.Name, t.Name(), w.Gate, w.Detail))
+				}
+			}
+		}
+		if len(refused) > 0 {
+			return resp, http.StatusUnprocessableEntity, fmt.Errorf("nothing was queued: %s", strings.Join(refused, "; "))
+		}
 	}
 	resp = StartResponse{Lane: lane, Lanes: cellLanes, ArmID: arm.ID, Task: tk.Name(), Image: LaneImage(tk.Layers), DryRun: req.DryRun}
 	if len(tks) > 1 {

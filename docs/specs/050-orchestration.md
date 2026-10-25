@@ -1,6 +1,6 @@
 # 050 — Orchestration: scheduling, gates, control
 
-**Status:** draft 0.15, 2026-10-24.
+**Status:** draft 0.16, 2026-10-25.
 
 ## 1. Scheduling
 
@@ -117,6 +117,14 @@ is logged and stops nothing. A mailbox notifier is not built.
 `automaticum doctor [--lane L] [--arm A] [--task T] [--all]` asks every gate
 for every lane, every arm the lane may run and every task, and fails when a
 gate refuses.
+
+**Built (2026-10-25):** the static gates, `harness_build` and `oracle`,
+answer from the arm, the task and what the installation has (the lane image,
+the SDK build, the task's artefacts and its oracle's proof): waiting changes
+nothing. `run start` (and a campaign's batch, and a dry run) asks them for
+every arm and task first, and a refusal refuses the start (`422`, "nothing
+was queued", each arm, task and gate named) instead of queueing runs that
+are `SKIPPED` at once. The other gates are still asked when each run starts.
 
 ### 3.2 Before a cell or batch
 
