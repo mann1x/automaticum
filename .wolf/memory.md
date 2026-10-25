@@ -1265,3 +1265,19 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 07:00 | Mail 1932: v2 batch SKIPPED by the oracle gate (proof made on linux-gpu-1 only; backup_models re-verified on blackswan-2 and re-queued r2). Fix: static gates (harness_build, oracle) asked by run start, refusing with 422 instead of queueing SKIPPED runs (bug-038) | internal/gate/gate.go, internal/daemon/api.go, cmd/automaticumd/main.go, 050 | tests pass | ~10k |
+
+## Session: 2026-10-25 06:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 06:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 06:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 07:20 | Owner: model description "Google Gemma-4 A4B 26B" -> models/gemma-4-26b-a4b-it-bf16-eos106.toml family/size. Surveyed long-horizon held-out candidates (Terminal-Bench 2.0: 89 Harbor tasks with expert/junior time estimates, canary GUID, verifier downloads uv/pytest; LHTB: tests hidden; SWE-bench Pro public 731; Commit0; BFCL v4 not long-horizon) | models/ | report to owner | ~15k |
