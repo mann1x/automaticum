@@ -18,6 +18,7 @@
 - (2026-10-23) The client session (for example backup_models) starts its own batches. automaticum prepares the installation, the arm and the endpoint, and hands over the exact commands. It does not start the batch, and it does not ask the owner for a go on the client's behalf.
 
 ## Key Learnings
+- (2026-10-25) Rebuilding the base lane image on a host with its build cache reuses the unchanged `apt-get` layer, so the packages stay byte-identical; prove it by tagging the old image first (`automaticum-lane:base-protoN`) and diffing `dpkg-query -W` of both. A client comparing runs across a harness change needs that diff plus the task hash before and after.
 - The SDK (4.100.266) spawns `rg` by bare name with no env (PATH lookup from process.env) and the agent's shell via `{...process.env, ...e.env}`; there is no ClineCore option for the main session's shell env, so the runner keeps tools off the agent's PATH by patching node:child_process (spawn/spawnSync/execFile/execFileSync, keeping execFile's promisify.custom) + `syncBuiltinESMExports()` before importing the SDK (runner/tools.mjs).
 - Docker's archive API (GET /containers/{id}/archive) works on a stopped container before removal; entries are prefixed with the base name of the path; extract with Go 1.25 `os.Root` (MkdirAll/Symlink/Link/Chmod) so links in the archive cannot escape.
 - With CapDrop ALL even uid 0 cannot chroot, chown or apt-get; `run_as = "root"` therefore means uid 0 plus docker.DefaultCapabilities (the engine's 14 defaults).

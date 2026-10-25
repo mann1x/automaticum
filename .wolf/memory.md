@@ -1357,3 +1357,32 @@
 | 10:40 | O24-O28 answered by the owner → D110-D114: task/oracle run_as root (default caps), [workspace] collect (CopyOut via os.Root), [limits] cpus/memory_mb capped by lane, runner prefix /opt/automaticum + static rg (protocol 9, runner/tools.mjs), GPL vendoring; tbench2 import.toml declarations; seed files >1 MiB as seed=true artefacts from the image; pip from python:<ver>-slim when the image has none | internal/{task,run,docker,suite/tbench2}, runner/, images/base, specs 020/040/060/064/066, decisions rev 28 | make test ok; base rebuilt; circuit/feal/schemelike/regex-chess re-imported (gold 3/3); stub probe 20261025-093213-63c2b6: agent PATH image-only, rg/git/node none, SDK search via private rg | ~250k |
 | 10:40 | path-tracing held: numpy+pillow wheels 23 MB > the importer's 8 MB repo cap; asked the owner (fetch pinned wheels at build time vs vendor) | tasks/tbench2/import.toml | open | ~5k |
 | 10:44 | Session end: 3 writes across 3 files (tools.mjs, tools.test.mjs, import.toml) | 2 reads | ~9183 tok |
+
+## Session: 2026-10-25 10:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 10:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 10:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 10:51
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 11:47
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:10 | Edited docs/specs/090-interfaces.md | modified design() | ~54 |
+| 21:10 | Deployed c19082f on blackswan-2 (binaries 9657f5ef/a1d481ba, protocol 9, all 11 images rebuilt; base dpkg identical to proto8, apt layer 8055865b cached); tbench2 oracle verify there; 090: held-out batches export nothing by design (bug-850 on backup_models' side) | blackswan-2, docs/specs/090-interfaces.md | done: 4 tbench2 proven on blackswan-2, stub manic_miner PASS 8.9s protocol 9 (run 20261025-202328-8a05ef), mailed #1953 | ~6k |
+| 21:10 | Session end: 1 writes across 1 files (090-interfaces.md) | 1 reads | ~2600 tok |
+| 21:34 | Session end: 1 writes across 1 files (090-interfaces.md) | 1 reads | ~2600 tok |

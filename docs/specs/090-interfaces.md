@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.18, 2026-10-25.
+**Status:** draft 0.19, 2026-10-25.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -70,7 +70,9 @@ and `<dir>/manifest.jsonl`, its record to `<dir>/runs/<run>.json` (110
 `GET /v1/runs/{id}/export`, a tar of `meta.json`, `spans.jsonl` and the
 capture's files; it refuses a run of a task that is not a training task
 (403), an INVALID run (422) and a run without a capture (404), and the
-command names each one it passes over (110 §3.5).
+command names each one it passes over (110 §3.5). So a batch of held-out
+tasks (`custom/manic_miner`, `tbench2/*`) exports nothing, by design (D105):
+its runs are read with `run show -json` instead.
 
 The API is HTTP and JSON on a loopback address. Everything that changes
 something needs the token; reading from the same host does not. A run in
