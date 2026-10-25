@@ -318,7 +318,7 @@ async function main() {
 					if (inner?.type === "iteration_start") user.iteration();
 					if (inner?.type === "error") agentError = describe(inner.error).message;
 					const breach = limitBreach(arm, inner);
-					if (breach) {
+					if (breach && !limitProblems.includes(breach)) {
 						limitProblems.push(breach);
 						note("guard_limit_breach", { reason: breach });
 					}

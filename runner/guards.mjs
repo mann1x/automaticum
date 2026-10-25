@@ -73,19 +73,27 @@ export function reasoningLimitAnswer(selectors) {
 	return stopsOn(selectors, LIMIT_TRIP) ? "stop" : "continue";
 }
 
-// limitBreach says why a run the SDK ended at the reasoning-loop limit is not
-// the arm's, or null when it is: the arm would have gone on (an SDK release
-// that does not pass the host's answer on ends it anyway), or the SDK ended
-// it after another number of cut turns than the arm states.
+// The SDK's own limit of turns cut, which an arm that states none has.
+const SDK_LIMIT = 3;
+
+// limitBreach says why the SDK's reasoning-loop guard did not act as the arm
+// says, or null when it did: the limit it reports (4.100.266 on) is not the
+// arm's; or it ended the run where the arm goes on (a release that does not
+// pass the host's answer on ends it anyway); or it ended it after another
+// number of cut turns than the arm states.
 export function limitBreach(arm, event) {
 	const m = event?.type === "notice" ? event.metadata : null;
-	if (!m || m.kind !== "reasoning_loop" || m.phase !== "aborted") return null;
+	if (!m || m.kind !== "reasoning_loop" || (m.phase !== "aborted" && m.phase !== "cut")) return null;
+	const max = arm.guards.reasoning_loop.max_consecutive_trips;
+	if (Number.isInteger(m.maxConsecutiveTrips) && m.maxConsecutiveTrips !== (max ?? SDK_LIMIT)) {
+		return `the SDK's reasoning-loop limit was ${m.maxConsecutiveTrips} turns cut; the arm's is ${max ?? SDK_LIMIT}`;
+	}
+	if (m.phase !== "aborted") return null;
 	const n = Number.isInteger(m.consecutiveTrips) ? m.consecutiveTrips : null;
 	const cut = n === null ? "at its limit" : `after ${n} turns cut one after another`;
 	if (reasoningLimitAnswer(arm.guards.stop_on ?? []) === "continue") {
 		return `the SDK ended the run for a reasoning loop ${cut}, where the arm goes on (stop_on does not name reasoning_loop.aborted, D108): this SDK release does not take the host's answer`;
 	}
-	const max = arm.guards.reasoning_loop.max_consecutive_trips;
 	if (max !== undefined && n !== null && n !== max) {
 		return `the SDK ended the run for a reasoning loop ${cut}; the arm's limit is ${max}`;
 	}

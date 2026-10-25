@@ -477,7 +477,9 @@ The runner never runs the oracle and never sees it (060 §3).
   another number of cut turns than the arm states, is a
   `guard_limit_breach` note and the outcome `invalid`, so the run is
   `INVALID`: the SDK release did not take the answer. Up to 4.100.262 the
-  SDK's core does not pass a host's answer on (X9, §8).
+  SDK's core does not pass a host's answer on (X9, §8); 4.100.266 does, and
+  its notices say the limit that applied (`maxConsecutiveTrips`), which the
+  runner also holds against the arm's.
 
 ## 8. Requests to Cerebriline
 
@@ -492,7 +494,7 @@ code, not from trying. Each request is tracked in `decisions.md` section 4.
 | X3 | A **strict mode** that refuses to read stored provider profiles and global settings. | **partly: provider profiles only** (§8.2) |
 | X4 | The extension's **mention expansion** as an SDK function. | expensive: it lives in the extension and leans on the editor. Worked around at first (§8.1) |
 | X5 | A hook for the **error-retry** decision. | **withdrawn** (owner, 2026-10-12): the runner observes only (§8.1) |
-| X9 | Pass the host's **`onReasoningLoopLimitReached`** from the session's configuration on to the agent, as core does `onConsecutiveMistakeLimitReached` (D108). | **asked** 2026-10-25 |
+| X9 | Pass the host's **`onReasoningLoopLimitReached`** from the session's configuration on to the agent, as core does `onConsecutiveMistakeLimitReached` (D108). | **released in 4.100.266** (2026-10-25); the notice also carries `maxConsecutiveTrips` |
 | X6 | Confirmation of the parity inventory in §6, row by row. | done on 2026-10-13 for §6: 11 rows confirmed, 2 corrected, 6 added. §6.1 and §6.2 not checked |
 
 `INVALID` depends on X1 to X3, which is why they come first. More requests are

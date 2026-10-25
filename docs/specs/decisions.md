@@ -166,7 +166,7 @@ Requests to the Cerebriline SDK (040 §8). The owner approved the work on
 | X6 | Confirmation of the extension-parity inventory. | done 2026-10-13 for 040 §6: 11 rows confirmed, 2 corrected, 6 added. §6.1 checked the same day: 4 rows hold with details the emulation must copy, 2 behaviours added (040 §6.1.1) | §6.2 rests on a source read |
 | X7 | Release 4.100.250 of the SDK, which carries X1 to X3 and which every milestone 2 run must use (D54). | released and used: the lane images install it and every run records it | none |
 | X8 | An SDK release whose published packages carry the patched Ollama provider library, so that a thinking effort level and the sampler options the stock library does not name reach the wire (110 §3.1). | released as 4.100.251 on 2026-10-13 and provisioned here beside 4.100.250; not yet run against a real model | the `wire_arm` findings of the first real run on it are the check (D63) |
-| X9 | An SDK release whose core passes the host's `onReasoningLoopLimitReached` on to the agent, as it does `onConsecutiveMistakeLimitReached` (D108); asked 2026-10-25. | asked | until then a run the SDK ends at the reasoning-loop limit against the arm is `INVALID` |
+| X9 | An SDK release whose core passes the host's `onReasoningLoopLimitReached` on to the agent, as it does `onConsecutiveMistakeLimitReached` (D108); asked 2026-10-25. | released in 4.100.266 (2026-10-25), checked in the bundle; its notice also carries `maxConsecutiveTrips` | until then a run the SDK ends at the reasoning-loop limit against the arm is `INVALID` |
 
 ## 5. Not adopted
 

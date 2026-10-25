@@ -1,0 +1,7 @@
+# SDK release 4.100.266, from the registry: as 4.100.262, and core passes the
+# host's onReasoningLoopLimitReached on to the agent, as it does the mistake
+# limit (X9, D108); the reasoning_loop notice carries maxConsecutiveTrips
+# beside consecutiveTrips.
+version = "4.100.266"
+source = "registry"
+bundle_sha256 = "067d663e15a56da72d7ffa18afe71b4d253da54ebe09238c00c848c7bc510188"

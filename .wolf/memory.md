@@ -1216,3 +1216,20 @@
 |------|--------|---------|---------|--------|
 | 08:05 | Deployed 4d04213 on blackswan-2 (build claim held, lane drained, 7 lane images rebuilt, protocol 8; stub smoke PASS 20261025-042053-7f6566). Mail 1927 to backup_models: on 4.100.262 a 3-cut SDK end is INVALID under stop_on=[]; options (a) wait for X9, (b) arm with stop_on reasoning_loop.aborted (owner's call) | blackswan-2 | ok | ~5k |
 | 08:30 | Mail 1926: omk reader layout. Export CLI now writes conversations/<run>/ (capture only), loop_spans.jsonl (request = <run>/<stem>.json), manifest.jsonl, runs/<run>.json; span field reasoning|content. bug-037 (flaky TestCampaign) logged open | cmd/automaticum/export_cmds.go, internal/export/export.go, specs 090/110 | tests pass | ~8k |
+
+## Session: 2026-10-25 05:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 05:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 05:27
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 05:53 | Edited arms/g4-128e-bf16-c13-shipped.toml | 1→5 lines | ~90 |
+| 06:20 | SDK 4.100.266 on npm 04:49Z: core forwards onReasoningLoopLimitReached (checked in bundle), notice carries maxConsecutiveTrips. runner/sdk/4.100.266 pinned 067d663e (reproduced offline); stub-sdk-4.100.266 arm; limitBreach also checks the notice's reported limit | runner/sdk/4.100.266, arms/stub-sdk-4.100.266.toml, runner/guards.mjs | tests pass | ~10k |

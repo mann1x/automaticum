@@ -182,7 +182,9 @@ notice with phase `aborted` where the arm goes on, or after another number
 of cut turns than the arm states, is a `guard_limit_breach` note and makes
 the last line `invalid`: the SDK release did not take the host's answer
 (the releases to 4.100.262 do not pass it on from the session's
-configuration).
+configuration; 4.100.266 does). From 4.100.266 the notice also says the
+limit that applied (`maxConsecutiveTrips`): one other than the arm's is a
+breach too.
 
 ## What protocol 8 does not do
 

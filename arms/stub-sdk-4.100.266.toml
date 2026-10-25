@@ -1,0 +1,7 @@
+# The stub arm on SDK release 4.100.266, for the harness's own tests of that
+# build: the first whose core takes the host's answer at the reasoning-loop
+# limit (D108).
+extends = "stub"
+
+[harness]
+sdk_release = "4.100.266"

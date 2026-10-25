@@ -60,6 +60,12 @@ test("the SDK ending a run at the reasoning-loop limit against the arm is a brea
 	assert.equal(limitBreach(arm(["reasoning_loop.aborted"]), aborted(3)), null);
 	assert.equal(limitBreach(arm(["reasoning_loop.aborted"], 3), aborted(3)), null);
 	assert.match(limitBreach(arm(["reasoning_loop.aborted"], 5), aborted(3)), /the arm's limit is 5/);
+	// From 4.100.266 the notice says the limit that applied.
+	const cut = (n, max) => ({ type: "notice", metadata: { kind: "reasoning_loop", phase: "cut", consecutiveTrips: n, maxConsecutiveTrips: max } });
+	assert.equal(limitBreach(arm([]), cut(4, 3)), null);
+	assert.equal(limitBreach(arm([], 5), cut(1, 5)), null);
+	assert.match(limitBreach(arm([], 5), cut(1, 3)), /limit was 3 turns cut; the arm's is 5/);
+	assert.match(limitBreach(arm([]), cut(1, 4)), /the arm's is 3/);
 	// A cut is not the limit; other notices are not either.
 	assert.equal(limitBreach(arm([]), { type: "notice", metadata: { kind: "reasoning_loop", phase: "cut", consecutiveTrips: 4 } }), null);
 	assert.equal(limitBreach(arm([]), { type: "notice", metadata: { kind: "loop_detection", phase: "stopped" } }), null);

@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-25T03:51:12.234Z
-> Files: 504 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-25T04:53:51.817Z
+> Files: 508 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -99,7 +99,7 @@
 ## arms/
 
 - `base.toml` — The settings every arm here shares. It is not runnable by itself: it names (~549 tok)
-- `g4-128e-bf16-c13-shipped.toml` — The training pool's arm (bm-889, D105): the shipped arm on the same model (~125 tok)
+- `g4-128e-bf16-c13-shipped.toml` — The training pool's arm (bm-889, D105): the shipped arm on the same model (~197 tok)
 - `g4-128e-bf16-shipped.toml` — Gemma-4 26B-A4B (128 experts) BF16, end token 106, Google's chat template (~74 tok)
 - `g4-128e-bf16-stop.toml` — Gemma-4 26B-A4B (128 experts) BF16, end token 106, Google's chat template (~200 tok)
 - `g4-128e.toml` — The Gemma-4 26B-A4B loop test with omnimergekit (D98): what every arm of it (~572 tok)
@@ -113,6 +113,7 @@
 - `stub-sdk-4.100.259.toml` — The stub arm on SDK release 4.100.259, for the harness's own tests of that (~40 tok)
 - `stub-sdk-4.100.260.toml` — The stub arm on SDK release 4.100.260, for the harness's own tests of that (~40 tok)
 - `stub-sdk-4.100.262.toml` — The stub arm on SDK release 4.100.262, for the harness's own tests of that (~40 tok)
+- `stub-sdk-4.100.266.toml` — The stub arm on SDK release 4.100.266 (core takes the host's answer at the reasoning-loop limit, D108) (~50 tok)
 - `stub-stop-sdk-4.100.258.toml` — The stub arm on SDK release 4.100.258 that ends a run at the first trip of (~66 tok)
 - `stub-stop-sdk-4.100.259.toml` — The stub arm on SDK release 4.100.259 that ends a run at the first trip of (~64 tok)
 - `stub.toml` — An arm for the stub model server: used by the harness's own tests and for (~99 tok)
@@ -241,8 +242,8 @@
 - `control.go` — control (92 fields) (~5676 tok)
 - `daemon_test.go` — memState (126 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~16405 tok)
 - `daemon.go` — is automaticumd without its main: the queue, one worker (~5832 tok)
-- `export.go` — handleExport (GET /v1/runs/{id}/export: tar of meta.json, spans.jsonl, capture files; refuses non-training 403, INVALID 422, no capture 404), ExportMeta (~1422 tok)
 - `export_test.go` — TestExport (~1300 tok)
+- `export.go` — handleExport (GET /v1/runs/{id}/export: tar of meta.json, spans.jsonl, capture files; refuses non-training 403, INVALID 422, no capture 404), ExportMeta (~1422 tok)
 - `modec_test.go` — TestModeCCell, TestModeCBasis (~1727 tok)
 - `modec.go` — CellSpec (69 fields) (~2251 tok)
 
@@ -253,8 +254,8 @@
 - `detect.go` — is the detector library (spec 070 §3): degeneration and (~2624 tok)
 - `guards.go` (~1753 tok)
 - `reference_test.go` — expected (52 fields) (~2243 tok)
-- `spans.go` — Spans(text, hit): where a hit's repeats stand, first occurrence left out; CycleStart/WindowRepeatStart read lines as the SDK guard does (~1063 tok)
 - `spans_test.go` — TestSpansShortUnit, TestSpansSentenceLaterOnly, TestCycleStart (~600 tok)
+- `spans.go` — Spans(text, hit): where a hit's repeats stand, first occurrence left out; CycleStart/WindowRepeatStart read lines as the SDK guard does (~1063 tok)
 
 ## internal/docker/
 
@@ -263,8 +264,8 @@
 
 ## internal/export/
 
-- `export.go` — hands a run's model requests out as training traces: ReadResponse (SSE deltas joined), ReadCuts (guard notices), Spans (guard + detector, code points) (~2469 tok)
 - `export_test.go` — TestGuardSpan (non-BMP offset), TestGuardSpanUnplaced, TestReadCuts (~900 tok)
+- `export.go` — hands a run's model requests out as training traces: ReadResponse (SSE deltas joined), ReadCuts (guard notices), Spans (guard + detector, code points) (~2469 tok)
 
 ## internal/gate/
 
@@ -425,6 +426,12 @@
 - `package-lock.json` — npm lock file (~52617 tok)
 - `package.json` — Node.js package manifest (~64 tok)
 - `sdk.toml` — SDK release 4.100.260, from the registry: "auto" prior reasoning is (~122 tok)
+
+## runner/sdk/4.100.266/
+
+- `package.json` — pins @cerebriline/sdk 4.100.266 (~60 tok)
+- `package-lock.json` — the bundle's lockfile, 383 packages as 4.100.262 (~large)
+- `sdk.toml` — release 4.100.266 from the registry, bundle pinned 067d663e (X9 landed) (~90 tok)
 
 ## runner/sdk/4.100.262/
 
