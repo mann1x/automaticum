@@ -1,7 +1,11 @@
 # The training pool's arm (bm-889, D105): the shipped arm on the same model
 # and template, served by the opencoti c13 engine (build 2610231946001) that
 # replaced c7 at 19:20Z on 2026-10-23. The endpoint is a new name so runs on
-# the two engines never pool. Guards as shipped: no trip ends the run.
+# the two engines never pool. Guards as shipped: no trip ends the run, the
+# reasoning-loop limit included (D108), which needs SDK 4.100.266: the first
+# release whose core passes the runner's answer at that limit on (X9). Moved
+# from 4.100.262 by the owner on 2026-10-25; the arm's identity changed with
+# it (9f95789d to 7fe45202).
 extends = "g4-128e"
 endpoint = "g4-128e-bf16-oc2610231946001"
 
@@ -10,3 +14,6 @@ model = "gemma-4-26b-a4b-it-bf16-eos106"
 
 [guards]
 stop_on = []
+
+[harness]
+sdk_release = "4.100.266"

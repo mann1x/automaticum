@@ -1233,3 +1233,24 @@
 |------|--------|---------|---------|--------|
 | 05:53 | Edited arms/g4-128e-bf16-c13-shipped.toml | 1→5 lines | ~90 |
 | 06:20 | SDK 4.100.266 on npm 04:49Z: core forwards onReasoningLoopLimitReached (checked in bundle), notice carries maxConsecutiveTrips. runner/sdk/4.100.266 pinned 067d663e (reproduced offline); stub-sdk-4.100.266 arm; limitBreach also checks the notice's reported limit | runner/sdk/4.100.266, arms/stub-sdk-4.100.266.toml, runner/guards.mjs | tests pass | ~10k |
+
+## Session: 2026-10-25 05:54
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 05:55
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 05:55
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 05:57
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 06:40 | 4.100.266 installed on blackswan-2 (reproduced), images rebuilt; stub proof 20261025-050057-6b0a34: continue answered 1624x, SDK never aborted, no breach (TIMEOUT: the stub replays its looping turn). Pool arm g4-128e-bf16-c13-shipped -> 4.100.266 (id 7fe45202) | arms/g4-128e-bf16-c13-shipped.toml | ok | ~8k |

@@ -95,7 +95,7 @@ make shell SPIKE_ROOT=<dir>
 - **OpenWolf state** (`.wolf/`): `OPENWOLF.md` · `anatomy.md` · `cerebrum.md` · `memory.md` · `buglog.json` · `identity.md` · `config.json` · `token-ledger.json` · `cron-manifest.json` · `cron-state.json` · `suggestions.json` · `designqc-report.json` · `reframe-frameworks.md` · `daemon.log`
 - **OpenWolf hooks** (`.wolf/hooks/`): `session-start.js` · `pre-read.js` · `post-read.js` · `pre-write.js` · `post-write.js` · `stop.js` · `shared.js` · `package.json`
 - **Claude config** (`.claude/`): `settings.json` · `rules/openwolf.md` · `rules/runner-protocol.md` (runner protocol, guards and `[guards]` arm settings) · `rules/wire-arm.md` (wire detector: `ReadWire`, `CompareWire`, `WireArmVersion`) · `rules/task-loader.md` (task loader: `task.Roots`, private tasks, `train-*` suites and `training = true`, D105) · `rules/lane-images.md` (lane image layers: digests, offline toolchains, `cpp` from the gcc image) · `rules/spec-conventions.md` · `rules/wolf-hooks.md` · `hooks/caliber-check-sync.sh` · `hooks/caliber-session-freshness.sh`
-- **Skills** (`.claude/skills/`): `add-wolf-hook/` · `draft-spec-section/` · `find-skills/` · `learned-new-host-install/` (bring up automaticum on a fresh host, D93/D95) · `log-wolf-bug/` · `record-decision/` · `save-learning/` · `setup-caliber/`
+- **Skills** (`.claude/skills/`): `add-wolf-hook/` · `draft-spec-section/` · `find-skills/` · `learned-new-host-install/` (bring up automaticum on a fresh host, D93/D95) · `learned-new-sdk-release/` (provision, pin, verify and adopt a new `@cerebriline/sdk` release under `runner/sdk/<ver>/`) · `log-wolf-bug/` · `record-decision/` · `save-learning/` · `setup-caliber/`
 
 ## Conventions
 
