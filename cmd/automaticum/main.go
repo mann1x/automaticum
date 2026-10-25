@@ -23,6 +23,8 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   task show <task>              one task and the hash of its files
   task build <task>             build the task's artefacts and check their hashes
   oracle verify <task>          prove the primary oracle against the fixtures
+  suite import tbench2 -source D -commit C <task>...
+                                import Terminal-Bench 2.0 tasks as the held-out suite tbench2, kept only if the oracle holds [--repeats 3]
   image build [<image>...]      build the lane images: base, then the language layers
   image ls                      the lane images
   sdk add <build>               install one SDK build's bundle and keep what it downloaded [--packs D for a local build]
@@ -133,6 +135,7 @@ func main() {
 		"task show":            taskShow,
 		"task build":           taskBuild,
 		"oracle verify":        oracleVerify,
+		"suite import":         suiteImport,
 		"lane ls":              laneLs,
 		"image build":          imageBuild,
 		"image ls":             imageLs,

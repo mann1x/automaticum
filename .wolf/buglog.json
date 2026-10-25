@@ -376,7 +376,7 @@
       "error_message": "demo/plan on the stub ended FAIL twice after a working plan->act switch: editor 'unavailable tool' in plan mode, then 'Read before editing: answer.txt has not been read in this session'",
       "file": "(untracked) work/stub/fix-plan.json",
       "root_cause": "the stub script ignored the arm's no-tool-call nudge (each text-only reply is answered once before a run ends), so its turns went out of step; and the read-before-edit guard forgets reads made in plan mode once the session is restarted in act mode",
-      "fix": "stub script answers the nudge in both halves and reads again in act mode; the guard behaviour recorded in 040 \u00a76.2 and asked of Cerebriline",
+      "fix": "stub script answers the nudge in both halves and reads again in act mode; the guard behaviour recorded in 040 §6.2 and asked of Cerebriline",
       "tags": [
         "stub",
         "scripted-user",
@@ -410,7 +410,7 @@
     {
       "id": "bug-025",
       "timestamp": "2026-10-16T00:10:00+02:00",
-      "error_message": "after a plan->act switch the editor was refused: 'Read before editing: \u2026 has not been read in this session'",
+      "error_message": "after a plan->act switch the editor was refused: 'Read before editing: … has not been read in this session'",
       "file": "runner/runner.mjs",
       "root_cause": "core makes a fresh read-receipt registry per session unless one is passed; the extension passes one registry for its controller's lifetime, the runner passed none",
       "fix": "ClineCore.create capabilities.readReceipts = sdk.createReadReceipts(), one per run; plan demo without a re-read now PASS",
@@ -433,7 +433,7 @@
       "timestamp": "2026-10-16T00:40:00+02:00",
       "error_message": "mode C cell with --endpoint-kind llamacpp: agent error 'Unknown or disabled provider \"llamacpp\".' before any chat request; verdict FAIL",
       "file": "internal/config/cell.go",
-      "root_cause": "Arm.ForCell set model.provider to the endpoint kind; the SDK has no provider llamacpp (kind llamacpp is an OpenAI-compatible llama-server, 030 \u00a73); cell_test asserted the wrong provider",
+      "root_cause": "Arm.ForCell set model.provider to the endpoint kind; the SDK has no provider llamacpp (kind llamacpp is an OpenAI-compatible llama-server, 030 §3); cell_test asserted the wrong provider",
       "fix": "ProviderFor(kind): llamacpp -> openai-compatible; test corrected; the broken stub run invalidated with the reason; rerun PASS with every sampler field on the wire",
       "tags": [
         "mode-c",
@@ -558,7 +558,7 @@
       "error_message": "task: tasks/train-game/space_invaders/task.toml: fixture seed: no files",
       "file": "internal/task/task.go",
       "root_cause": "validate refused any [[fixture]] without files, though Verify lays fixture files over the prepared seed, so an empty fixture is exactly the seed; all 17 training tasks from backup_models declare the seed fixture that way",
-      "fix": "A fixture with no files is allowed when expect = \"fail\" (the seed); refused for expect = \"pass\". TestSeedFixture; 060 \u00a73",
+      "fix": "A fixture with no files is allowed when expect = \"fail\" (the seed); refused for expect = \"pass\". TestSeedFixture; 060 §3",
       "tags": [
         "task-loader",
         "fixture",
@@ -656,6 +656,57 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-25T05:50:00Z"
+    },
+    {
+      "id": "bug-039",
+      "timestamp": "2026-10-25T07:55:00+01:00",
+      "error_message": "PermissionError: [Errno 13] Permission denied: '/app/eval.scm' (tbench2 verifier, oracle as uid 1000)",
+      "file": "internal/task/exec.go",
+      "root_cause": "A Docker tmpfs mounted over a directory the image already has (/app, root 755 in the TB2 image) takes that directory's owner and mode; contents are not copied up. The test on debian passed only because /app did not exist there.",
+      "fix": "Oracle writable paths are mounted 'exec,mode=1777'; TestOracleOwnArtefact now also writes /srv, a root-owned directory of the image, and fails without the mode.",
+      "tags": [
+        "oracle",
+        "tmpfs",
+        "docker",
+        "tbench2",
+        "permissions"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-25T07:55:00+01:00"
+    },
+    {
+      "id": "bug-040",
+      "timestamp": "2026-10-25T07:55:00+01:00",
+      "error_message": "tbench2: feal-linear-cryptanalysis: tests/test.sh is not the standard pytest run",
+      "file": "internal/suite/tbench2/tbench2.go",
+      "root_cause": "The importer matched test.sh's pytest line literally ('/tests/test_outputs.py -rA'); seven TB2 tasks add flags such as -v.",
+      "fix": "Parse the pytest line's arguments, allow /tests/test_outputs.py and bare flags, refuse others; the oracle command carries the source's arguments to the verifier.",
+      "tags": [
+        "tbench2",
+        "importer",
+        "pytest"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-25T07:55:00+01:00"
+    },
+    {
+      "id": "bug-041",
+      "timestamp": "2026-10-25T07:55:00+01:00",
+      "error_message": "SKIPPED: the runner refused to start: the job speaks protocol 8, this runner 5 (stub run on tbench2 on linux-gpu-1)",
+      "file": "images/layers/tb2-*/Dockerfile",
+      "root_cause": "The local automaticum-lane:base was built before protocol 8; a layer copies the runner from the base, so the tb2 layers had runner protocol 5.",
+      "fix": "image build base before the tb2 layers (written in every layer's header and 066 §5).",
+      "tags": [
+        "lane-image",
+        "protocol",
+        "runner",
+        "tbench2"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-25T07:55:00+01:00"
     }
   ]
 }

@@ -1,6 +1,6 @@
 # 000 — Overview, vocabulary and map of the spec set
 
-**Status:** draft 0.5, 2026-10-12. Refined from two input documents kept in
+**Status:** draft 0.6, 2026-10-25. Refined from two input documents kept in
 [`archive/`](archive/): the draft specification 0.4 (from the Cerebriline
 session, the first user) and the omnimergekit evaluation requirements 0.1 (from
 the omnimergekit session, the second user). Items marked **Open** are questions,
@@ -103,6 +103,7 @@ Use these terms exactly. A new term gets a row here before it is used anywhere.
 | [063-suite-multi-language](063-suite-multi-language.md) | our own multi-language agentic suite |
 | [064-engine-adapters](064-engine-adapters.md) | adapters for external harnesses |
 | [065-cell-contract](065-cell-contract.md) | `automaticum cell run`, the result file, exports |
+| [066-suite-terminal-bench](066-suite-terminal-bench.md) | Terminal-Bench 2.0, imported as the held-out suite `tbench2` |
 | [070-diagnostics](070-diagnostics.md) | metrics, detectors, statistics |
 | [080-store](080-store.md) | DuckDB, Lance, blobs, the spike |
 | [090-interfaces](090-interfaces.md) | CLI, TUI, HTTP API, dashboard, MCP server, search |

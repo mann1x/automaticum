@@ -13,6 +13,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -107,8 +108,15 @@ type Oracle struct {
 	Image   string   `toml:"image"`
 	Command []string `toml:"command"` // run in a copy of the workspace
 	// Artefact, if set, is installed from the harness's own copy before
-	// the command runs, whatever the agent left in its place.
+	// the command runs, whatever the agent left in its place. One the
+	// workspace does not install is the oracle's alone (withheld tests,
+	// 060 §4): it is mounted read-only at /oracle/<output> instead, and the
+	// agent never has it.
 	Artefact string `toml:"artefact"`
+	// Writable names paths besides /tmp the oracle may write, each a fresh
+	// tmpfs: the root is read-only, and an imported suite's tests use the
+	// absolute paths of their own harness (066).
+	Writable []string `toml:"writable"`
 	// Exactly one expectation: a pattern the output must match, or an exit
 	// code. A program that exits 0 either way is judged by its pattern.
 	ExpectPattern string `toml:"expect_pattern"`
@@ -356,6 +364,13 @@ func (t *Task) validate() error {
 		case o.TimeoutS < 0:
 			return fmt.Errorf("oracle %s: timeout must not be negative", o.Name)
 		}
+		seen := map[string]bool{}
+		for _, p := range o.Writable {
+			if !path.IsAbs(p) || path.Clean(p) != p || p == "/" || seen[p] || reservedOraclePath(p) {
+				return fmt.Errorf("oracle %s: writable path %q must be absolute, clean, given once, and not /, /w, /tmp, /oracle or under them", o.Name, p)
+			}
+			seen[p] = true
+		}
 		if o.ExpectPattern != "" {
 			re, err := regexp.Compile(o.ExpectPattern)
 			if err != nil {
@@ -438,6 +453,31 @@ func (t *Task) Artefact(name string) *Artefact {
 		}
 	}
 	return nil
+}
+
+// Installed says whether the workspace installs the artefact with this
+// name. An oracle's artefact that is not installed is the oracle's alone.
+func (t *Task) Installed(name string) bool {
+	for _, in := range t.Workspace.Install {
+		if in.Artefact == name {
+			return true
+		}
+	}
+	return false
+}
+
+// OracleArtefactDir is where an oracle's own artefact is mounted.
+const OracleArtefactDir = "/oracle"
+
+// reservedOraclePath says whether p is, or is under, a path the oracle's
+// container already mounts.
+func reservedOraclePath(p string) bool {
+	for _, r := range []string{"/w", "/tmp", OracleArtefactDir} {
+		if p == r || strings.HasPrefix(p, r+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 // Name is "suite/id".

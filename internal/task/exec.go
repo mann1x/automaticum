@@ -62,17 +62,49 @@ func (e *Env) Build(ctx context.Context, t *Task, a *Artefact, log io.Writer) (s
 		// A damaged copy: rebuild it.
 		os.RemoveAll(filepath.Dir(dst))
 	}
-	if err := os.MkdirAll(e.Artefacts, 0o755); err != nil {
-		return "", err
+	out, sum, err := e.build(ctx, t, a, log)
+	if out != "" {
+		defer os.RemoveAll(out)
 	}
-	out, err := os.MkdirTemp(e.Artefacts, ".build-")
 	if err != nil {
 		return "", err
 	}
-	defer os.RemoveAll(out)
+	if sum != a.SHA256 {
+		return "", fmt.Errorf("%w: %s is %s, pinned %s", ErrArtefactChanged, a.Name, sum, a.SHA256)
+	}
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return "", err
+	}
+	if err := copyFile(filepath.Join(out, a.Output), dst, 0o555); err != nil {
+		return "", err
+	}
+	return dst, nil
+}
+
+// Pin builds an artefact whatever the task pins and returns the sha256 of
+// what the build gave, to pin: for an importer that writes the task (066).
+// Nothing is kept.
+func (e *Env) Pin(ctx context.Context, t *Task, a *Artefact, log io.Writer) (string, error) {
+	out, sum, err := e.build(ctx, t, a, log)
+	if out != "" {
+		os.RemoveAll(out)
+	}
+	return sum, err
+}
+
+// build runs an artefact's build in a fresh directory and returns that
+// directory, which the caller removes, and the hash of the output.
+func (e *Env) build(ctx context.Context, t *Task, a *Artefact, log io.Writer) (string, string, error) {
+	if err := os.MkdirAll(e.Artefacts, 0o755); err != nil {
+		return "", "", err
+	}
+	out, err := os.MkdirTemp(e.Artefacts, ".build-")
+	if err != nil {
+		return "", "", err
+	}
 	// The build runs as the lane user and must be able to write its output.
 	if err := os.Chmod(out, 0o777); err != nil {
-		return "", err
+		return out, "", err
 	}
 	timeout := e.BuildTimeout
 	if timeout == 0 {
@@ -85,25 +117,16 @@ func (e *Env) Build(ctx context.Context, t *Task, a *Artefact, log io.Writer) (s
 		Labels: map[string]string{"automaticum": "artefact-build"},
 	}, timeout, log, log, nil)
 	if err != nil {
-		return "", fmt.Errorf("task: build %s: %w", a.Name, err)
+		return out, "", fmt.Errorf("task: build %s: %w", a.Name, err)
 	}
 	if res.TimedOut || res.ExitCode != 0 {
-		return "", fmt.Errorf("task: build %s: exit %d (timed out: %v)", a.Name, res.ExitCode, res.TimedOut)
+		return out, "", fmt.Errorf("task: build %s: exit %d (timed out: %v)", a.Name, res.ExitCode, res.TimedOut)
 	}
 	sum, err := HashFile(filepath.Join(out, a.Output))
 	if err != nil {
-		return "", fmt.Errorf("task: build %s produced no %s: %w", a.Name, a.Output, err)
+		return out, "", fmt.Errorf("task: build %s produced no %s: %w", a.Name, a.Output, err)
 	}
-	if sum != a.SHA256 {
-		return "", fmt.Errorf("%w: %s is %s, pinned %s", ErrArtefactChanged, a.Name, sum, a.SHA256)
-	}
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-		return "", err
-	}
-	if err := copyFile(filepath.Join(out, a.Output), dst, 0o555); err != nil {
-		return "", err
-	}
-	return dst, nil
+	return out, sum, nil
 }
 
 // BuildAll builds every artefact of the task.
@@ -253,10 +276,30 @@ func (e *Env) RunOracle(ctx context.Context, t *Task, o *Oracle, workspace strin
 			res.Tampered = append(res.Tampered, in.Path)
 		}
 	}
+	mounts := []docker.Mount{{Source: tmp, Target: "/w", ReadOnly: true}}
 	if o.Artefact != "" {
-		if err := e.install(t, tmp, t.Artefact(o.Artefact)); err != nil {
-			return res, err
+		a := t.Artefact(o.Artefact)
+		if t.Installed(o.Artefact) {
+			if err := e.install(t, tmp, a); err != nil {
+				return res, err
+			}
+		} else {
+			src := e.ArtefactPath(a)
+			if sum, err := HashFile(src); err != nil || sum != a.SHA256 {
+				return res, fmt.Errorf("task: artefact %s is not built or is damaged; build the task first", a.Name)
+			}
+			mounts = append(mounts, docker.Mount{Source: src, Target: OracleArtefactDir + "/" + a.Output, ReadOnly: true})
 		}
+	}
+	// /tmp is the oracle's only writable place, and a checker of a
+	// compiled language builds its tests there and runs them, so it may
+	// hold programs: exec, as in the build container. The paths the
+	// oracle names as writable are the same, and open to the oracle's
+	// user: a tmpfs over a directory of the image takes that directory's
+	// owner and mode otherwise.
+	tmpfs := map[string]string{"/tmp": "exec"}
+	for _, p := range o.Writable {
+		tmpfs[p] = "exec,mode=1777"
 	}
 	timeout := time.Duration(o.TimeoutS) * time.Second
 	if timeout == 0 {
@@ -270,11 +313,8 @@ func (e *Env) RunOracle(ctx context.Context, t *Task, o *Oracle, workspace strin
 	start := time.Now()
 	r, err := e.Exec.Run(ctx, docker.Spec{
 		Image: o.Image, Cmd: o.Command, User: e.user(), Network: "none", WorkDir: "/w", ReadOnlyRoot: true,
-		Mounts: []docker.Mount{{Source: tmp, Target: "/w", ReadOnly: true}},
-		// /tmp is the oracle's only writable place, and a checker of a
-		// compiled language builds its tests there and runs them, so it
-		// may hold programs: exec, as in the build container.
-		Tmpfs:  map[string]string{"/tmp": "exec"},
+		Mounts: mounts,
+		Tmpfs:  tmpfs,
 		Labels: map[string]string{"automaticum": "oracle"},
 	}, timeout, &out, &out, nil)
 	res.Duration = time.Since(start)

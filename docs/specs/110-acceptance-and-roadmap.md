@@ -1,6 +1,6 @@
 # 110 — Acceptance and roadmap
 
-**Status:** draft 0.21, 2026-10-25. The milestone order in §3 was approved by the owner
+**Status:** draft 0.22, 2026-10-25. The milestone order in §3 was approved by the owner
 on 2026-10-12. Milestone 1 has been carried out: the store, the importer and
 the spike's measurements exist (080 §7.4, 100 §7), and the owner has decided
 the questions it raised (D46 to D51). Milestone 2 was planned and approved on
@@ -436,3 +436,18 @@ plugin's, the same for every host.
 - `manic_miner` runs are the held-out gate and are never exported as
   training data; the training pool is the multi-language suite (063) once
   it has tasks.
+
+### 3.6 Held-out long tasks: Terminal-Bench 2.0 (2026-10-25)
+
+The owner asked for a held-out long-horizon suite beside `manic_miner` and,
+after a survey of other frameworks' suites (BFCL is not long-horizon; the
+long-horizon set with withheld tests and solutions cannot be imported; the
+multi-hour sets are too long for a lane), chose to import Terminal-Bench 2.0
+as a new external suite. **Built:** `automaticum suite import tbench2`
+(090 §1, 066 §3) and the suite `tbench2` with three tasks of 5h0m to 16h0m
+expert estimate (066 §2), each proven at import (gold passes, the seed
+fails, three times each). Two stub runs went through the daemon on
+`linux-gpu-1`: `circuit-fibsqrt` FAIL with the seed, and
+`schemelike-metacircular-eval` PASS with the gold evaluator written through
+`/app`. **Next:** the lane layers on `blackswan-2`; then runs of an arm the
+owner names, which give the reference times. O24 to O28 are open.

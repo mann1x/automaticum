@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.17, 2026-10-25.
+**Status:** draft 0.18, 2026-10-25.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -20,6 +20,7 @@ automaticum arm ls|show|diff|validate
 automaticum basis show|diff
 automaticum task ls|show|verify
 automaticum oracle verify <task>
+automaticum suite import tbench2 -source D -commit C <task>...   # Terminal-Bench 2.0 tasks as tbench2, kept only if the oracle holds (066 §3)
 automaticum run start --arm A --task T [--task T2 ...] [--suite S ...] [-n 5] [--lane L] [--wall-s S] [--idle-s S] [--capture-requests]
 automaticum run ls|show|tail|stop|abort|pause|resume|retry|invalidate|identify
 automaticum compare <batch> [<batch> ...]

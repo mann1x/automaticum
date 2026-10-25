@@ -76,6 +76,10 @@
 - Lane layers copy each toolchain from the oracle image's digest (`COPY --from`):
   - Check the source image's Debian release first: gcc:14 is Debian 13 (bug-032), so `cpp` starts from the gcc image.
   - `automaticum image build` needs `-repo .` when the config is `examples/config`.
+- **A Docker tmpfs over a directory the image has takes that directory's owner and mode** (contents are not copied up): root 755 for TB2's /app. An oracle's `writable` paths are `exec,mode=1777`. Test a mount on an image where the target exists (2026-10-25, bug-039).
+- **A locally built image has no repo digest**, so it can't be an oracle `image` (validate wants `@sha256:`). For an imported suite, the oracle runs on the source's public image by digest and gets its verifier as an oracle-only artefact (2026-10-25).
+- **TB2 tasks:** `test.sh` uses `uvx -p 3.13 -w pytest==8.4.1 ...` and fetches uv, Python and packages at verify time. Tests use absolute `/app` and `/tests`; some `chroot` (path-tracing). solve.sh runs as root with cwd /app. 7 of 89 add pytest flags (`-v`). The images (`alexgshaw/<task>:20251031`) are tags, pinned by digest at import (2026-10-25).
+- **The SDK core spawns `rg`** (file listing, after an `rg --version` check) **and `git`** (checkpoints, with GIT_INDEX_FILE). A lane image foreign to the base needs both (2026-10-25).
 
 ## Do-Not-Repeat
 
@@ -104,6 +108,9 @@
 - (2026-10-13) Never invent a detector, guard or limit number: use the SDK's thresholds or ask. Never bake an arm variable, such as the SDK, into an image.
 - (2026-10-13) The xollama GPU host is `windows-2` (RTX 3090). On a host with two addresses, write the one that answers on the service port.
 - (2026-10-13) A job waiter needs an exit-code file, a failure exit and a time bound. Check the order of the markers before slice-and-splicing a Go file.
+- 2026-10-25: before a stub run on a new lane layer, rebuild `automaticum-lane:base` on that host. A layer copies the runner from the base, and a stale base gives SKIPPED ("the job speaks protocol 8, this runner 5"), bug-041.
+- 2026-10-25: don't bend an owner decision quietly to make an import fit (064 §3.2 "changes nothing else"). Add only what the runner needs, record what was added, and open an O item (O24).
+- 2026-10-25: in a Bash call, never pkill/pgrep a pattern that also appears in the same command. process_guard refuses it. Find the PID in one call, kill it in the next.
 
 ## Decision Log
 
@@ -125,3 +132,4 @@ The full list is in docs/specs/decisions.md; keep this log in step with it.
 - 2026-10-23 D106: export loop spans also come from the SDK guard's cuts (source guard|detector).
 - 2026-10-23 Gemma loop batch: waits for the SDK's reasoningHistory probe fix. Before restarting, render a tool turn and a nudge turn on /apply-template, with request capture ON.
 - 2026-10-24 D107: a batch's own wall/idle limits override the arm's and the task's. A batch takes several tasks and suites.
+- 2026-10-25 (D109): the owner chose to import Terminal-Bench 2.0 as a new external suite, `tbench2`, held out. Built as ordinary tasks by `automaticum suite import tbench2` (066). The subset is circuit-fibsqrt, feal-linear-cryptanalysis and schemelike-metacircular-eval: path-tracing (chroot) and polyglot-rust-c (no Python) were swapped out of the approved plan, and regex-chess (GPL dependency) was held back. O24 to O28 are open.

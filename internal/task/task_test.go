@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -418,5 +419,83 @@ func TestSeedFixture(t *testing.T) {
 	}
 	if _, err := Load(make("pass")); err == nil {
 		t.Error("a fixture with no files, the seed itself, expected to pass")
+	}
+}
+
+// ownOracle is demo/answer with an artefact only its oracle has, and a
+// writable path for that oracle; extra is appended to its oracle.
+func ownOracle(t *testing.T, extra string) string {
+	dir := filepath.Join(t.TempDir(), "demo", "answer")
+	if err := os.CopyFS(dir, os.DirFS(filepath.Join(tasksRoot, "demo", "answer"))); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(filepath.Join(dir, "task.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := strings.Replace(string(b), `command = ["sh", "-c", "grep -q 'is 42\\.' answer.txt && echo RESULT ok || echo RESULT wrong"]`,
+		`artefact = "tests"
+writable = ["/app", "/opt"]
+command = ["sh", "-c", "test ! -e /w/tests.txt && touch /opt/x && cp -r /w/. /app && cat /oracle/tests.txt >> /app/answer.txt && grep -q withheld /app/answer.txt && grep -q 'is 42\\.' /app/answer.txt && echo RESULT ok || echo RESULT wrong"]`+extra, 1)
+	s += `
+[[artefact]]
+name = "tests"
+image = "debian@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587"
+inputs = ["task.toml"]
+command = ["sh", "-c", "printf 'withheld\\n' > /out/tests.txt"]
+output = "tests.txt"
+sha256 = "` + withheldSHA + `"
+`
+	if err := os.WriteFile(filepath.Join(dir, "task.toml"), []byte(s), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+const withheldSHA = "acbbc0faed6666d1ec9f09068b3fe08fc47ec2943839e4ca5aa22c39f33c65ba"
+
+func TestOracleWritableRefused(t *testing.T) {
+	if _, err := Load(ownOracle(t, "")); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{"app", "/app/", "/", "/w", "/tmp/x", "/oracle", "/app\", \"/app"} {
+		if _, err := Load(ownOracle(t, "\nwritable = [\""+p+"\"]")); err == nil {
+			t.Errorf("writable %q was accepted", p)
+		}
+	}
+}
+
+// An artefact the workspace does not install reaches the oracle at
+// /oracle/<output>, read-only, and never the agent's workspace; the
+// oracle may write the paths it names, empty, even one the image has as
+// root's (/opt).
+func TestOracleOwnArtefact(t *testing.T) {
+	e := env(t)
+	tk, err := Load(ownOracle(t, ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pull(t, e, tk.PrimaryOracle().Image)
+	os.MkdirAll(e.Scratch, 0o755)
+	if err := e.BuildAll(context.Background(), tk, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	results, err := e.Verify(context.Background(), tk, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range results {
+		if !r.OK {
+			t.Errorf("fixture %s: %+v", r.Fixture, r.Runs)
+		}
+	}
+	ws := filepath.Join(e.Scratch, "own")
+	os.MkdirAll(ws, 0o755)
+	m, err := e.PrepareWorkspace(tk, ws)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := m["tests.txt"]; ok || len(m) != 1 {
+		t.Errorf("the oracle's own artefact is in the workspace: %v", m)
 	}
 }

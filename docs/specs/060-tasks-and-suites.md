@@ -1,6 +1,6 @@
 # 060 — Tasks, oracles and the suite interface
 
-**Status:** draft 0.11, 2026-10-23.
+**Status:** draft 0.12, 2026-10-25.
 
 ## 1. Scope
 
@@ -48,6 +48,11 @@ Needed beyond the old harness:
   broken task). From 2026-10-23, so a task need not copy its seed into a
   fixture.
 - For an external suite the equivalent is gold validation (050 §3.2).
+- An oracle's `artefact` that the workspace does not install is the
+  oracle's alone: it is mounted read-only at `/oracle/<output>` and the
+  agent never has it (withheld tests, §4). An oracle may name `writable`
+  paths besides `/tmp`, each an empty tmpfs open to its user, for tests that
+  use absolute paths of their own harness (066). From 2026-10-25.
 
 ### 3.1 Periodic oracle sampling
 
@@ -72,7 +77,8 @@ score**. It declares:
 - how its results map to verdicts.
 
 New suites (Aider polyglot, Terminal-Bench, tool-quiz cases mined from real
-sessions) fit without touching the core.
+sessions) fit without touching the core. Terminal-Bench 2.0 is imported as
+ordinary tasks (066).
 
 **What the suite withholds, the agent never gets.** Aider's polyglot set hides
 the tests from the agent; SWE-bench hides the failing tests. A setup where the
@@ -86,6 +92,7 @@ agent can see the oracle is a different bench.
 | BFCL | 061 | external, two cells |
 | SWE-bench and SWE-bench-style sets | 062 | external |
 | multi-language agentic suite | 063 | ours |
+| Terminal-Bench 2.0 (`tbench2`) | 066 | external, imported as tasks; held out |
 
 `manic_miner` is the first custom task to port, with its history, so old and
 new results can be laid side by side (100 §3).

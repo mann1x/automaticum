@@ -1292,3 +1292,36 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 07:30 | Owner questioned the family/size change: reverted 07674a0's family/size (owner's 2026-10-23 words), description now in notes. D80 queries family/size only via Ollama-API endpoints; llama.cpp endpoints need them stated | models/gemma-4-26b-a4b-it-bf16-eos106.toml | ok | ~2k |
+
+## Session: 2026-10-25 06:52
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 06:52
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 06:52
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 06:57
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 06:58 | Created ../../../../root/.claude/plans/functional-mapping-elephant.md | — | ~2004 |
+| 07:05 | Edited internal/task/task.go | modified alone() | ~152 |
+| 07:05 | Edited internal/task/task.go | modified reservedOraclePath() | ~113 |
+| 07:07 | Edited internal/task/exec.go | 6→8 lines | ~39 |
+| 07:09 | Created internal/suite/tbench2/tbench2.go | — | ~3882 |
+| 07:10 | Created internal/suite/tbench2/import.go | — | ~3870 |
+| 07:11 | Created internal/suite/tbench2/tbench2_test.go | — | ~1940 |
+| 07:47 | Created docs/specs/066-suite-terminal-bench.md | — | ~1790 |
+| 07:20 | Core: oracle-only artefact mounted at /oracle, `writable` tmpfs paths (mode=1777), Env.Pin; tests | internal/task/{task,exec}.go, task_test.go | pass | ~3000 |
+| 07:30 | suite import tbench2 (importer + CLI); 3 TB2 tasks imported, gold passes and the seed fails 3/3; re-import gives the same hash | internal/suite/tbench2/, cmd/automaticum/suite_cmds.go, tasks/tbench2/ | pass | ~9000 |
+| 07:45 | Local daemon restarted idle on the new build; stub runs circuit-fibsqrt FAIL (seed), schemelike PASS (gold through /app) | bin/, lane-1 | pass | ~2000 |
+| 07:55 | Spec 066; 060/064/000/090/110 edits; decisions rev 27 (D109, X10, O24-O28, D105 stale copy fixed); CLAUDE.md, task-loader rule, buglog 039-041, cerebrum | docs/specs, .wolf, .claude/rules | done | ~5000 |
+| 07:51 | Session end: 8 writes across 7 files (functional-mapping-elephant.md, task.go, exec.go, tbench2.go, import.go) | 0 reads | ~14776 tok |

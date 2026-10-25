@@ -1,7 +1,11 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-25T05:00:00.300Z
-> Files: 501 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-25T06:47:29.138Z
+> Files: 506 tracked | Anatomy hits: 0 | Misses: 0
+
+## ../../../../root/.claude/plans/
+
+- `functional-mapping-elephant.md` — Terminal-Bench 2.0 as a held-out external suite (`tbench2`) (~1878 tok)
 
 ## ./
 
@@ -128,6 +132,7 @@
 
 ## cmd/automaticum/
 
+- `suite_cmds.go` — `automaticum suite import tbench2 -source -commit <task>...`: checks the checkout's HEAD and cleanliness, runs the importer (~700 tok)
 - `campaign_cmds.go` (~1452 tok)
 - `cell_cmds.go` — exitCode: names (~2996 tok)
 - `client_cmds.go` — client (133 fields) (~8217 tok)
@@ -165,6 +170,7 @@
 - `063-suite-multi-language.md` — 063 — Suite: our own multi-language agentic suite (~791 tok)
 - `064-engine-adapters.md` — 064 — Engine adapters: Cerebriline as the engine of an external harness (~962 tok)
 - `065-cell-contract.md` — 065 — The cell contract and exports (~3390 tok)
+- `066-suite-terminal-bench.md` — 066 — Suite: Terminal-Bench 2.0 (`tbench2`) (~1678 tok)
 - `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~7331 tok)
 - `080-store.md` — 080 — The store (~4404 tok)
 - `090-interfaces.md` — 090 — Interfaces (~2507 tok)
@@ -375,11 +381,31 @@
 - `stubmodel_test.go` — TestChatFollowsTheScript, TestProbesAndErrors, TestOpenAICompatible (~2075 tok)
 - `stubmodel.go` — is a model server that plays a script. It speaks enough (~3497 tok)
 
+## internal/suite/tbench2/
+
+- `import.go` — Importer.Import: pins the image by digest, copies /app out as the seed, vendors pytest wheels with pip in the image, pins the verifier (Env.Pin), gold fixture from solve.sh, keeps a task only if Verify holds (~3900 tok)
+- `tbench2_test.go` — TestRead, TestReadRefuses, TestTaskTOML, TestPromptString, TestTaskTOMLNeedsDigest (~1940 tok)
+- `tbench2.go` — imports tasks of Terminal-Bench 2.0 as the held-out suite (~3882 tok)
+
+## internal/suite/tbench2/verifier/
+
+- `main.py` — the tbench2 verifier zipapp's entry: copies /w into /app, tests into /tests, runs pytest with the task's arguments (~520 tok)
+- `build.py` — builds verify.pyz deterministically from oracle/ (main.py, tests/, wheels/ unpacked under site/) (~410 tok)
+
+## tasks/tbench2/
+
+- `LICENSE` — Terminal-Bench 2.0's Apache-2.0 licence, kept with the imported tasks
+- `circuit-fibsqrt/`, `feal-linear-cryptanalysis/`, `schemelike-metacircular-eval/` — imported TB2 tasks (066), written by `suite import tbench2`: `task.toml` · `NOTES.md` · `seed/` · `fixtures/gold/` · `oracle/` (`main.py` · `build.py` · `requirements.txt` · `tests/` · `wheels/`); never edit by hand
+
+## images/layers/tb2-*/
+
+- `Dockerfile` — written by `suite import tbench2`: the TB2 task's image by digest + Node, runner, git, ripgrep, uid 1000; /app → /workspace (~250 tok)
+
 ## internal/task/
 
-- `exec.go` — Interface: Executor (4 methods) (~3906 tok)
+- `exec.go` — Interface: Executor (~3987 tok)
 - `task_test.go` — TestLoadAll, TestLoadRejects, TestWorkspaceGit, TestHashChangesWithAnyFile + 4 more (~4173 tok)
-- `task.go` — loads tasks from the tasks directory, builds what they need, (~4585 tok)
+- `task.go` — loads tasks from the tasks directory, builds what they need, (~4474 tok)
 - `user_test.go` — TestUserScript (~1060 tok)
 - `user.go` — User (45 fields) (~2600 tok)
 
