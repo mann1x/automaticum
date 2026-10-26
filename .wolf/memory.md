@@ -1418,3 +1418,33 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 07:50 | D115 held-out batches: run start --heldout (ctl.Heldout), export 403 unless ?heldout=1 / --heldout; tests; decisions rev 29, 090 0.20, 110 0.24 | internal/daemon/{api,control,export}.go, cmd/automaticum/{client,export}_cmds.go, main.go, tests, specs | make test ok (17 pkgs) | ~12k |
+
+## Session: 2026-10-26 07:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-26 07:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-26 07:36
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-26 07:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-26 08:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:55 | D115 deployed to blackswan-2 by the idle-gated watcher (09:54:34Z): 94534b4, binaries b35f49f1/bc8cc4c3, -heldout live; run1 gate b20261026-055105-f2436d stopped by the owner (7 TIMEOUT, 1 ABORTED, 2 SKIPPED, 0 PASS); mailed backup_models #1964 | blackswan-2 | done | ~3k |
+| 15:27 | Created models/gemma-4-26b-a4b-it-bm889-run2-s425-bf16-eos106.toml | — | ~246 |
+| 15:27 | Created arms/g4-128e-bf16-c13-bm889-run2-s425.toml | — | ~138 |
+| 15:35 | bm-889 run2-s425 twin: model entry, arm g4-128e-bf16-c13-bm889-run2-s425 (77437830d08c), endpoint + lane-1 entry on blackswan-2, idle daemon restart, doctor 10 pass; mailed backup_models #1969. Arm and model files copied UNTRACKED into the blackswan-2 repo: remove them before the next git checkout there | arms/, models/, CLAUDE.md | done | ~6k |
+| 15:28 | Session end: 2 writes across 2 files (gemma-4-26b-a4b-it-bm889-run2-s425-bf16-eos106.toml, g4-128e-bf16-c13-bm889-run2-s425.toml) | 0 reads | ~411 tok |

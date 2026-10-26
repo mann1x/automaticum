@@ -1,14 +1,14 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-26T05:40:42.751Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-26T14:27:28.238Z
 > Files: 503 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~3866 tok)
-- `CLAUDE.md` — automaticum (~4788 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~4206 tok)
+- `CLAUDE.md` — automaticum (~4851 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
 - `LICENSE` — Project license (~3029 tok)
@@ -19,10 +19,10 @@
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~106180 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~109554 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~211 tok)
-- `score-history.jsonl` (~1656 tok)
+- `score-history.jsonl` (~1686 tok)
 
 ## .caliber/backups/2026-10-12T20-16-19-461Z/
 
@@ -34,14 +34,14 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~98465 tok)
+- `fingerprint.json` — Declares usage (~98413 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` (~2716 tok)
+- `current-session.jsonl` (~6499 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~66466 tok)
-- `state.json` (~40 tok)
+- `roi-stats.json` (~67825 tok)
+- `state.json` (~41 tok)
 
 ## .claude/
 
@@ -103,9 +103,10 @@
 ## arms/
 
 - `base.toml` — The settings every arm here shares. It is not runnable by itself: it names (~620 tok)
-- `g4-128e-bf16-c13-bm889-run1.toml` — The twin of g4-128e-bf16-c13-shipped (7fe45202) for the bm-889 run 1 gate (~131 tok)
+- `g4-128e-bf16-c13-bm889-run1.toml` — The twin of g4-128e-bf16-c13-shipped (7fe45202) for the bm-889 run 1 gate (~140 tok)
+- `g4-128e-bf16-c13-bm889-run2-s425.toml` — The twin of g4-128e-bf16-c13-shipped for the bm-889 run 2 gate (step 425) (~140 tok)
+- `g4-128e-bf16-c13-bm889-run2-s425.toml` — The twin of g4-128e-bf16-c13-shipped (7fe45202) for the bm-889 run 2 gate (~138 tok)
 - `g4-128e-bf16-c13-shipped.toml` — The training pool's arm (bm-889, D105): the shipped arm on the same model (~211 tok)
-- `g4-128e-bf16-c13-bm889-run1.toml` — Twin of g4-128e-bf16-c13-shipped for the bm-889 run 1 gate: only the endpoint name and the weights differ (~150 tok)
 - `g4-128e-bf16-shipped.toml` — Gemma-4 26B-A4B (128 experts) BF16, end token 106, Google's chat template (~74 tok)
 - `g4-128e-bf16-stop.toml` — Gemma-4 26B-A4B (128 experts) BF16, end token 106, Google's chat template (~200 tok)
 - `g4-128e.toml` — The Gemma-4 26B-A4B loop test with omnimergekit (D98): what every arm of it (~572 tok)
@@ -132,14 +133,14 @@
 
 - `campaign_cmds.go` (~1452 tok)
 - `cell_cmds.go` — exitCode: names (~2996 tok)
-- `client_cmds.go` — client (133 fields) (~8217 tok)
+- `client_cmds.go` — client (130 fields) (~8260 tok)
 - `compare_cmds.go` — Declares list (~3430 tok)
 - `config_cmds_test.go` — TestParseInterspersed, TestCellTasks (~370 tok)
 - `config_cmds.go` — place (121 fields) (~3164 tok)
 - `control_cmds.go` (~2001 tok)
-- `export_cmds.go` — manifestLine (87 fields); methods: Error (~2178 tok)
+- `export_cmds.go` — manifestLine (88 fields); methods: Error (~2253 tok)
 - `image_cmds.go` (~1096 tok)
-- `main.go` — Command automaticum is the command line of automaticum. (~2480 tok)
+- `main.go` — Command automaticum is the command line of automaticum. (~2493 tok)
 - `sdk_cmds.go` — SDKEnv (~1197 tok)
 - `store_cgo.go` — go:build cgo (~1850 tok)
 - `store_nocgo.go` — go:build !cgo (~128 tok)
@@ -171,10 +172,10 @@
 - `066-suite-terminal-bench.md` — 066 — Suite: Terminal-Bench 2.0 (`tbench2`) (~2335 tok)
 - `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~7331 tok)
 - `080-store.md` — 080 — The store (~4404 tok)
-- `090-interfaces.md` — 090 — Interfaces (~2580 tok)
+- `090-interfaces.md` — 090 — Interfaces (~2689 tok)
 - `100-legacy-import.md` — 100 — Import of the old harness's corpus (~3426 tok)
-- `110-acceptance-and-roadmap.md` — 110 — Acceptance and roadmap (~7612 tok)
-- `decisions.md` — Decisions and open questions (~8022 tok)
+- `110-acceptance-and-roadmap.md` — 110 — Acceptance and roadmap (~7691 tok)
+- `decisions.md` — Decisions and open questions (~8150 tok)
 
 ## docs/specs/archive/
 
@@ -257,17 +258,17 @@
 
 ## internal/daemon/
 
-- `api.go` — HTTP handlers: reply, fail (~13087 tok)
+- `api.go` — HTTP handlers: reply, fail (~13178 tok)
 - `basis.go` — Basis (87 fields) (~4394 tok)
 - `campaign.go` — CampaignState (112 fields) (~3842 tok)
 - `canary.go` — CanaryRecord (36 fields); methods: Error, Is (~1597 tok)
 - `cell.go` — CellResult (97 fields) (~4032 tok)
 - `compare.go` — CompareView (97 fields) (~4257 tok)
-- `control.go` — control (92 fields) (~5676 tok)
-- `daemon_test.go` — memState (126 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~16738 tok)
+- `control.go` — control (94 fields) (~5756 tok)
+- `daemon_test.go` — memState (126 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~16802 tok)
 - `daemon.go` — is automaticumd without its main: the queue, one worker (~5907 tok)
-- `export_test.go` — TestExport (~1236 tok)
-- `export.go` — ExportMeta (45 fields) (~1523 tok)
+- `export_test.go` — TestExport (~1366 tok)
+- `export.go` — ExportMeta (46 fields) (~1626 tok)
 - `modec_test.go` — TestModeCCell, TestModeCBasis (~1727 tok)
 - `modec.go` — CellSpec (69 fields) (~2251 tok)
 
@@ -417,8 +418,9 @@
 ## models/
 
 - `gemma-4-26b-a4b-it-bf16-eos106.toml` — What this model is, in the owner's words (030 §4.1), as named on (~191 tok)
-- `gemma-4-26b-a4b-it-bm889-run1-bf16-eos106.toml` — The model after bm-889 run 1 (distilled from the 31B teacher, 205 tensors spliced into the eos106 GGUF), sha256 9727ab85 (~260 tok)
-- `gemma-4-26b-a4b-it-bm889-run1-bf16-eos106.toml` — What this model is (030 §4.1), as omnimergekit described it on 2026-10-26 (~231 tok)
+- `gemma-4-26b-a4b-it-bm889-run1-bf16-eos106.toml` — What this model is (030 §4.1), as omnimergekit described it on 2026-10-26 (~247 tok)
+- `gemma-4-26b-a4b-it-bm889-run2-s425-bf16-eos106.toml` — What this model is (030 §4.1): bm-889 run 2 at step 425, GGUF sha256 c2847ae0 (~260 tok)
+- `gemma-4-26b-a4b-it-bm889-run2-s425-bf16-eos106.toml` — What this model is (030 §4.1), as omnimergekit described it on 2026-10-26 (~246 tok)
 - `omnimerge-v4-mtp_tb-27b-q4km-128k.toml` — What this tag is, in the owner's words (030 §4.1), as named on 2026-10-13. (~83 tok)
 - `qwen36-base-mtp_tb-27b-q4km-128k.toml` — What this tag is, in the owner's words (030 §4.1), as named on 2026-10-13: (~67 tok)
 - `stub.toml` — The scripted stub model server of the harness's own tests. Not a model. (~44 tok)
@@ -898,8 +900,3 @@
 ## tasks/train-game/space_invaders/oracle/
 
 - `build.mjs` — Builds the oracle the agent may run but not read: run_game.logic.js as a (~795 tok)
-- `run_tests.logic.js` — run_game: does space_invaders.html actually run, and does it play by its rules? (~8769 tok)
-
-## tasks/train-game/space_invaders/seed/
-
-- `space_invaders.html` — Space Invaders (~3512 tok)

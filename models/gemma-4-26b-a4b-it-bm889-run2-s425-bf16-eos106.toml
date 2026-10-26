@@ -1,0 +1,14 @@
+# What this model is (030 §4.1), as omnimergekit described it on 2026-10-26
+# (bm-889): gemma-4-26b-a4b-it-bf16-eos106 after its second training run,
+# stopped by the owner near step 400; the state gated is step 425, the nearest
+# kept checkpoint. Its 205 trained tensors were spliced into that model's GGUF;
+# every other tensor, the metadata, the end token 106 and the embedded Google
+# template are the same bytes. GGUF sha256
+# c2847ae0eca48ae2ccd0f540a628df5cad9198158129af05732ffd29bbedc349.
+# On its llama.cpp endpoint the server does not say what the weights file
+# calls the model, so family and size are stated here (D80).
+tag = "gemma-4-26b-a4b-it-bm889-run2-s425-bf16-eos106"
+family = "Gemma 4"
+size = "26B-A4B"
+variant = "instruct, 128 experts, unpruned, BF16, end token 106, bm-889 run 2 step 425"
+notes = "Google Gemma-4 A4B 26B (the owner's description, 2026-10-25), trained by bm-889 run 2 to step 425"

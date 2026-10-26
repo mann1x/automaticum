@@ -1,0 +1,10 @@
+# The twin of g4-128e-bf16-c13-shipped (7fe45202) for the bm-889 run 2 gate
+# (2026-10-26): the same engine, flags, template, sampler, guards and SDK,
+# only the weights differ (gemma-4-26b-a4b-it-bm889-run2-s425-bf16-eos106,
+# run 2 at step 425). Its endpoint is its own name on the same server port, so
+# its runs never pool with the floor's or run 1's.
+extends = "g4-128e-bf16-c13-shipped"
+endpoint = "g4-128e-bf16-oc2610231946001-bm889-run2-s425"
+
+[model]
+model = "gemma-4-26b-a4b-it-bm889-run2-s425-bf16-eos106"
