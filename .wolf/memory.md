@@ -715,9 +715,7 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-10-19 04:00
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-21 08:19
 
@@ -1386,3 +1384,26 @@
 | 21:10 | Deployed c19082f on blackswan-2 (binaries 9657f5ef/a1d481ba, protocol 9, all 11 images rebuilt; base dpkg identical to proto8, apt layer 8055865b cached); tbench2 oracle verify there; 090: held-out batches export nothing by design (bug-850 on backup_models' side) | blackswan-2, docs/specs/090-interfaces.md | done: 4 tbench2 proven on blackswan-2, stub manic_miner PASS 8.9s protocol 9 (run 20261025-202328-8a05ef), mailed #1953 | ~6k |
 | 21:10 | Session end: 1 writes across 1 files (090-interfaces.md) | 1 reads | ~2600 tok |
 | 21:34 | Session end: 1 writes across 1 files (090-interfaces.md) | 1 reads | ~2600 tok |
+
+## Session: 2026-10-25 22:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 22:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 22:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-26 04:00
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 06:40 | Created models/gemma-4-26b-a4b-it-bm889-run1-bf16-eos106.toml | — | ~231 |
+| 06:40 | Created arms/g4-128e-bf16-c13-bm889-run1.toml | — | ~131 |
+| 06:55 | Twin arm g4-128e-bf16-c13-bm889-run1 (29e03a47c94e) + model entry for bm-889 run 1; endpoint g4-128e-bf16-oc2610231946001-bm889-run1 added to blackswan-2's config and lane-1 (live at the next idle restart) | arms/, models/, CLAUDE.md | validated on blackswan-2; diff = endpoint + model only | ~4k |

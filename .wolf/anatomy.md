@@ -1,13 +1,13 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-25T20:10:33.358Z
-> Files: 501 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-26T05:40:42.751Z
+> Files: 503 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~3469 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~3866 tok)
 - `CLAUDE.md` — automaticum (~4788 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
@@ -19,7 +19,7 @@
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~105297 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~106180 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~211 tok)
 - `score-history.jsonl` (~1656 tok)
@@ -34,14 +34,14 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~98664 tok)
+- `fingerprint.json` — Declares usage (~98465 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` (~7933 tok)
+- `current-session.jsonl` (~2716 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~65922 tok)
-- `state.json` (~41 tok)
+- `roi-stats.json` (~66466 tok)
+- `state.json` (~40 tok)
 
 ## .claude/
 
@@ -103,7 +103,9 @@
 ## arms/
 
 - `base.toml` — The settings every arm here shares. It is not runnable by itself: it names (~620 tok)
+- `g4-128e-bf16-c13-bm889-run1.toml` — The twin of g4-128e-bf16-c13-shipped (7fe45202) for the bm-889 run 1 gate (~131 tok)
 - `g4-128e-bf16-c13-shipped.toml` — The training pool's arm (bm-889, D105): the shipped arm on the same model (~211 tok)
+- `g4-128e-bf16-c13-bm889-run1.toml` — Twin of g4-128e-bf16-c13-shipped for the bm-889 run 1 gate: only the endpoint name and the weights differ (~150 tok)
 - `g4-128e-bf16-shipped.toml` — Gemma-4 26B-A4B (128 experts) BF16, end token 106, Google's chat template (~74 tok)
 - `g4-128e-bf16-stop.toml` — Gemma-4 26B-A4B (128 experts) BF16, end token 106, Google's chat template (~200 tok)
 - `g4-128e.toml` — The Gemma-4 26B-A4B loop test with omnimergekit (D98): what every arm of it (~572 tok)
@@ -415,6 +417,8 @@
 ## models/
 
 - `gemma-4-26b-a4b-it-bf16-eos106.toml` — What this model is, in the owner's words (030 §4.1), as named on (~191 tok)
+- `gemma-4-26b-a4b-it-bm889-run1-bf16-eos106.toml` — The model after bm-889 run 1 (distilled from the 31B teacher, 205 tensors spliced into the eos106 GGUF), sha256 9727ab85 (~260 tok)
+- `gemma-4-26b-a4b-it-bm889-run1-bf16-eos106.toml` — What this model is (030 §4.1), as omnimergekit described it on 2026-10-26 (~231 tok)
 - `omnimerge-v4-mtp_tb-27b-q4km-128k.toml` — What this tag is, in the owner's words (030 §4.1), as named on 2026-10-13. (~83 tok)
 - `qwen36-base-mtp_tb-27b-q4km-128k.toml` — What this tag is, in the owner's words (030 §4.1), as named on 2026-10-13: (~67 tok)
 - `stub.toml` — The scripted stub model server of the harness's own tests. Not a model. (~44 tok)
