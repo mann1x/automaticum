@@ -120,6 +120,7 @@
 
 ## Decision Log
 
+- (2026-10-26) D115, owner: a batch can be marked held out (`run start --heldout`, `ctl.Heldout` by batch like `Capture`); export refuses its runs (403) unless asked `?heldout=1` / `export conversations --heldout`; held-out tasks stay unexportable regardless. Asked for by backup_models for the bm-889 run2 agentic eval set on the training tasks; the owner chose the explicit override over never-exportable and naming-only.
 - (2026-10-25) Owner: switch the pool arm to the SDK with X9 as soon as it checks out. 4.100.266 was proven on the stub (run 20261025-050057-6b0a34: 1626 cuts, 1624 'continue' answers, no abort, no breach). g4-128e-bf16-c13-shipped moved to 4.100.266 (id 9f95789d -> 7fe45202). Its parent g4-128e and the other Gemma arms stay on 4.100.262.
 
 - (2026-10-25) D108 (closes O23): the arm's stop_on alone decides whether the SDK's reasoning-loop limit ends a run. Every arm states guards.reasoning_loop.max_consecutive_trips; the base has the SDK's 3, which is dropped from Resolved() so arm ids stay the same. The runner answers onReasoningLoopLimitReached with stop only when stop_on names reasoning_loop.aborted (protocol 8). SDK core up to 4.100.262 does not forward the host's hook (X9, asked in mail 1925), so a run the SDK ends against the arm is INVALID (guard_limit_breach).

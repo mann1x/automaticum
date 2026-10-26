@@ -1407,3 +1407,14 @@
 | 06:40 | Created models/gemma-4-26b-a4b-it-bm889-run1-bf16-eos106.toml | — | ~231 |
 | 06:40 | Created arms/g4-128e-bf16-c13-bm889-run1.toml | — | ~131 |
 | 06:55 | Twin arm g4-128e-bf16-c13-bm889-run1 (29e03a47c94e) + model entry for bm-889 run 1; endpoint g4-128e-bf16-oc2610231946001-bm889-run1 added to blackswan-2's config and lane-1 (live at the next idle restart) | arms/, models/, CLAUDE.md | validated on blackswan-2; diff = endpoint + model only | ~4k |
+
+## Session: 2026-10-26 06:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-26 06:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 07:50 | D115 held-out batches: run start --heldout (ctl.Heldout), export 403 unless ?heldout=1 / --heldout; tests; decisions rev 29, 090 0.20, 110 0.24 | internal/daemon/{api,control,export}.go, cmd/automaticum/{client,export}_cmds.go, main.go, tests, specs | make test ok (17 pkgs) | ~12k |

@@ -1,6 +1,6 @@
 # 110 — Acceptance and roadmap
 
-**Status:** draft 0.23, 2026-10-25. The milestone order in §3 was approved by the owner
+**Status:** draft 0.24, 2026-10-26. The milestone order in §3 was approved by the owner
 on 2026-10-12. Milestone 1 has been carried out: the store, the importer and
 the spike's measurements exist (080 §7.4, 100 §7), and the owner has decided
 the questions it raised (D46 to D51). Milestone 2 was planned and approved on
@@ -433,6 +433,11 @@ plugin's, the same for every host.
   `detect.Spans` (070 §3.2) over every response. Only runs of training
   tasks (`training = true`, D105) are exported, never an INVALID run.
   On the 39 pool runs on `blackswan-2` all 106 guard cuts were placed.
+  **Decided by the owner (2026-10-26, D115):** a batch started with
+  `run start --heldout` is passed over by the export, though its runs are
+  of training tasks, unless the export is given `--heldout`: the eval
+  rollouts of bm-889 run 2 on the training tasks never enter a training set
+  by a pattern such as `k-*`.
 - `manic_miner` runs are the held-out gate and are never exported as
   training data; the training pool is the multi-language suite (063) once
   it has tasks.

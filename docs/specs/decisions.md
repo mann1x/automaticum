@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-10-25 (revision 28).
+**Status:** current as of 2026-10-26 (revision 29).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -124,6 +124,7 @@ All dated 2026-10-12.
 | D112 | A task's own CPU and memory limits apply to its containers, the agent's and the oracle's, never more than the lane has (`[limits] cpus`, `memory_mb`); the run records what its container had. `tbench2` tasks carry the source's (1 CPU, 2048 MB) (2026-10-25; closes O27). | 060 §3, 050 §4, 066 §3 |
 | D113 | The runner and what it runs on live under its own prefix, `/opt/automaticum`, on no PATH: the harness starts `/opt/automaticum/bin/node`, and a lane layer on a task's own image adds Node, the runner and a static ripgrep there and nothing else, the SDK's own `rg` calls being routed to it; the agent's commands find only the image's tools (protocol 9) (2026-10-25; closes O24). | 064 §3.2, 040 §1, 066 §3 |
 | D114 | What a task needs may be vendored into the repository whatever its licence, copyleft included (`regex-chess`'s `chess`, GPL-3.0); a package with no wheel is built into a wheel once at import from its source distribution, pinned by hash (2026-10-25; closes O28). | 066 §3, 060 §4 |
+| D115 | A batch can be started held out (`run start --heldout`), kept by batch in the daemon's control file like the request capture: `export conversations` passes over its runs, though they are of training tasks, unless it is given `--heldout` (`GET /v1/runs/{id}/export?heldout=1`, else 403). A held-out task (not `training = true`) stays unexportable even then. For an eval set of rollouts on the training tasks that a training export must never sweep up (bm-889 run 2) (2026-10-26). | 090 §1, 110 §3.5 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked

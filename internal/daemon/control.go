@@ -37,6 +37,9 @@ type control struct {
 	// Capture names the batches whose runs save every model request and
 	// response the SDK sends and reads (D104): opt-in, off by default.
 	Capture map[string]bool `json:"capture,omitempty"`
+	// Heldout names the batches started held out (D115): their runs are
+	// exported only when the export asks for held-out runs by name.
+	Heldout map[string]bool `json:"heldout,omitempty"`
 	// Limits are the batches' own limits (D107), in place of the arm's and
 	// the task's, for the runs that start after they are set.
 	Limits map[string]*run.Override `json:"limits,omitempty"`
@@ -45,7 +48,7 @@ type control struct {
 // loadControl reads the control file once. A missing file is an empty one.
 // It is called with d.mu held.
 func (d *Daemon) loadControl() {
-	d.ctl = control{Drained: map[string]time.Time{}, Held: map[string]time.Time{}, Retries: map[string]string{}, Canary: map[string]*CanaryRecord{}, Campaigns: map[string]*CampaignState{}, Cells: map[string]*CellSpec{}, Capture: map[string]bool{}, Limits: map[string]*run.Override{}}
+	d.ctl = control{Drained: map[string]time.Time{}, Held: map[string]time.Time{}, Retries: map[string]string{}, Canary: map[string]*CanaryRecord{}, Campaigns: map[string]*CampaignState{}, Cells: map[string]*CellSpec{}, Capture: map[string]bool{}, Heldout: map[string]bool{}, Limits: map[string]*run.Override{}}
 	if d.ControlFile == "" {
 		return
 	}
@@ -79,6 +82,9 @@ func (d *Daemon) loadControl() {
 	}
 	if d.ctl.Capture == nil {
 		d.ctl.Capture = map[string]bool{}
+	}
+	if d.ctl.Heldout == nil {
+		d.ctl.Heldout = map[string]bool{}
 	}
 	if d.ctl.Limits == nil {
 		d.ctl.Limits = map[string]*run.Override{}

@@ -45,15 +45,24 @@ func TestExport(t *testing.T) {
 		{ID: "r2", Batch: "k-pool-r1", Suite: "custom", TaskID: "manic_miner", Verdict: store.Pass},
 		{ID: "r3", Batch: "k-pool-r1", Suite: "train-sh", TaskID: "sh_logtriage", Verdict: store.Invalid, VerdictReason: "inherited field"},
 		{ID: "r4", Batch: "k-pool-r1", Suite: "train-sh", TaskID: "sh_logtriage", Verdict: store.Pass},
+		{ID: "r5", Batch: "k-heldout-v1", Suite: "train-sh", TaskID: "sh_logtriage", Verdict: store.Pass},
 	} {
 		g.state.UpsertRun(ctx, &r)
 	}
-	for _, id := range []string{"r1", "r2", "r3"} {
+	g.d.ctl.Heldout["k-heldout-v1"] = true
+	for _, id := range []string{"r1", "r2", "r3", "r5"} {
 		g.state.refs = append(g.state.refs, store.BlobRef{RunID: id, Kind: "model_requests", Name: "requests", Hash: blob.Hash("cap")}, store.BlobRef{RunID: id, Kind: "events", Hash: blob.Hash("ev")})
 	}
 
-	for id, want := range map[string]int{"r2": http.StatusForbidden, "r3": http.StatusUnprocessableEntity, "r4": http.StatusNotFound, "nope": http.StatusNotFound} {
-		if code := g.call("GET", "/v1/runs/"+id+"/export", nil, nil); code != want {
+	for id, want := range map[string]int{"r2": http.StatusForbidden, "r3": http.StatusUnprocessableEntity, "r4": http.StatusNotFound, "nope": http.StatusNotFound,
+		// A held-out batch (D115) only when asked for by name; a held-out
+		// task never, even when asked.
+		"r5": http.StatusForbidden, "r5?heldout=1": http.StatusOK, "r2?heldout=1": http.StatusForbidden, "r1?heldout=0": http.StatusOK} {
+		path, q, _ := strings.Cut(id, "?")
+		if q != "" {
+			q = "?" + q
+		}
+		if code := g.call("GET", "/v1/runs/"+path+"/export"+q, nil, nil); code != want {
 			t.Errorf("%s: %d, want %d", id, code, want)
 		}
 	}

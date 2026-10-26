@@ -882,7 +882,7 @@ func TestCaptureRequests(t *testing.T) {
 	g.d.ControlFile = filepath.Join(t.TempDir(), "control.json")
 	go func() { g.d.Serve(g.ctx()); close(g.served) }()
 	var with, without StartResponse
-	if code := g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Count: 2, CaptureRequests: true}, &with); code != 202 {
+	if code := g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Count: 2, CaptureRequests: true, Heldout: true}, &with); code != 202 {
 		t.Fatalf("start: %d", code)
 	}
 	if code := g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer"}, &without); code != 202 {
@@ -902,6 +902,10 @@ func TestCaptureRequests(t *testing.T) {
 	again.init()
 	if !again.ctl.Capture[with.Batch] || again.ctl.Capture[without.Batch] {
 		t.Errorf("a restarted daemon reads %v", again.ctl.Capture)
+	}
+	// The held-out mark (D115) is kept the same way, by batch.
+	if !again.ctl.Heldout[with.Batch] || again.ctl.Heldout[without.Batch] {
+		t.Errorf("a restarted daemon reads held out %v", again.ctl.Heldout)
 	}
 }
 

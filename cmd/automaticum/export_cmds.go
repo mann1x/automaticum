@@ -25,7 +25,8 @@ import (
 // (every span, its request named by its path under conversations/),
 // manifest.jsonl (one line per run: id, batch, task, verdict) and
 // runs/<run>.json (the run as `run show` gives it, and its guard cuts). A
-// run the daemon will not export (not a training task, INVALID, no capture)
+// run the daemon will not export (not a training task, INVALID, no capture,
+// a held-out batch without --heldout, D115)
 // is named and passed over.
 func exportConversations(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("export conversations", flag.ExitOnError)
@@ -33,10 +34,11 @@ func exportConversations(ctx context.Context, args []string) error {
 	var batches, runs list
 	fs.Var(&batches, "batch", "a batch, or a pattern such as 'k-pool-*'; give it several times for several")
 	fs.Var(&runs, "run", "a run; give it several times for several")
+	heldout := fs.Bool("heldout", false, "also export runs of batches started held out (D115), for an eval set; never into a training set")
 	out := fs.String("out", "", "the directory to write into; a run already in it is refused")
 	parse(fs, args)
 	if *out == "" || len(batches)+len(runs) == 0 {
-		return errors.New("usage: automaticum export conversations --out <dir> [--batch B|GLOB ...] [--run R ...]")
+		return errors.New("usage: automaticum export conversations --out <dir> [--batch B|GLOB ...] [--run R ...] [--heldout]")
 	}
 	c, err := dial()
 	if err != nil {
@@ -71,7 +73,7 @@ func exportConversations(ctx context.Context, args []string) error {
 	defer manifestF.Close()
 	done, passed := 0, 0
 	for _, id := range ids {
-		x, err := exportRun(ctx, c, id, *out)
+		x, err := exportRun(ctx, c, id, *out, *heldout)
 		if err != nil {
 			var refused *refusal
 			if errors.As(err, &refused) {
@@ -164,8 +166,12 @@ type exported struct {
 // exportRun writes one run's capture into <out>/conversations/<run>/,
 // through <out>/.partial/<run>, renamed only once the whole tar has
 // arrived, and its record into <out>/runs/<run>.json.
-func exportRun(ctx context.Context, c *client, id, out string) (*exported, error) {
-	resp, err := c.open(ctx, "GET", "/v1/runs/"+url.PathEscape(id)+"/export", nil)
+func exportRun(ctx context.Context, c *client, id, out string, heldout bool) (*exported, error) {
+	q := ""
+	if heldout {
+		q = "?heldout=1"
+	}
+	resp, err := c.open(ctx, "GET", "/v1/runs/"+url.PathEscape(id)+"/export"+q, nil)
 	if err != nil {
 		if strings.Contains(err.Error(), "daemon does not answer") {
 			return nil, err

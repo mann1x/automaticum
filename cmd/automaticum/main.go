@@ -33,7 +33,7 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   lane ls                       the lanes of this installation
   endpoint ls                   the endpoints of this installation
   status                        lanes, queue, what is running
-  run start --arm A --task T    queue runs [--task T2 ...] [--suite S ...] [-n 5] [--lane L] [--dry-run] [--wall-s S] [--idle-s S]
+  run start --arm A --task T    queue runs [--task T2 ...] [--suite S ...] [-n 5] [--lane L] [--dry-run] [--wall-s S] [--idle-s S] [--capture-requests] [--heldout]
   run ls                        queued, running and finished runs
   run show <run>                one run's record
   run tail <run>                what a run in flight prints, as it arrives
@@ -53,7 +53,7 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   run invalidate <run>          mark a finished run INVALID, --reason "..."
   run identify <run>            add where and on what a run ran to its record, marked as added later
   logs <run>                    a run's raw material [--events|--wire|--runner|--oracle]
-  export conversations --out D  training runs' captured model requests, metadata and loop spans [--batch B|GLOB ...] [--run R ...]
+  export conversations --out D  training runs' captured model requests, metadata and loop spans [--batch B|GLOB ...] [--run R ...] [--heldout]
   doctor                        every gate, on every lane, now [--lane L] [--arm A] [--task T] [--all]
   compare <batch> [<batch> ...] the arms of some batches side by side: every statistic, no conclusion [--all]
   campaign start <name>         run campaigns/<name>.toml: its batches in order, with their stop conditions [--dry-run]

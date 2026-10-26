@@ -108,6 +108,10 @@ type StartRequest struct {
 	// and responses as the SDK sent and read them (D104). It changes
 	// nothing that is sent, so it is no part of the arm.
 	CaptureRequests bool `json:"capture_requests,omitempty"`
+	// Heldout keeps the batch's runs out of a training export (D115):
+	// GET /v1/runs/{id}/export refuses them unless it is asked with
+	// ?heldout=1. Like the capture, it changes nothing that is sent.
+	Heldout bool `json:"heldout,omitempty"`
 	// Limits are the batch's own wall and idle limits (D107), in place of
 	// the arm's and the task's; they may lengthen a run.
 	Limits *run.Override `json:"limits,omitempty"`
@@ -677,11 +681,14 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 			return resp, http.StatusInternalServerError, err
 		}
 	}
-	if req.CaptureRequests || !req.Limits.Empty() {
+	if req.CaptureRequests || req.Heldout || !req.Limits.Empty() {
 		// Kept with the control state, so a restarted daemon still knows.
 		d.mu.Lock()
 		if req.CaptureRequests {
 			d.ctl.Capture[resp.Batch] = true
+		}
+		if req.Heldout {
+			d.ctl.Heldout[resp.Batch] = true
 		}
 		if !req.Limits.Empty() {
 			d.ctl.Limits[resp.Batch] = req.Limits

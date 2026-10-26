@@ -37,7 +37,8 @@ const exportOffsets = "Unicode code points in the field's text, the stream's del
 // D106): a tar of meta.json, spans.jsonl and the capture's files as the SDK
 // wrote them. Only a finished run of a training task (D105) that is not
 // INVALID and was started with its requests captured is exported; a
-// held-out task such as manic_miner never is.
+// held-out task such as manic_miner never is, and a run of a batch started
+// held out (D115) only when the request says ?heldout=1.
 func (d *Daemon) handleExport(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := r.PathValue("id")
@@ -57,6 +58,13 @@ func (d *Daemon) handleExport(w http.ResponseWriter, r *http.Request) {
 	}
 	if !t.Training || t.Private {
 		fail(w, http.StatusForbidden, "run %s is of %s/%s, which is not a training task (D105); only training runs are exported (D102)", id, t.Suite, t.ID)
+		return
+	}
+	d.mu.Lock()
+	heldout := d.ctl.Heldout[rec.Batch]
+	d.mu.Unlock()
+	if heldout && r.URL.Query().Get("heldout") != "1" {
+		fail(w, http.StatusForbidden, "run %s is of batch %s, which was started held out (D115): it is exported only with --heldout", id, rec.Batch)
 		return
 	}
 	if rec.Verdict == store.Invalid {

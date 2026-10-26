@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.19, 2026-10-25.
+**Status:** draft 0.20, 2026-10-26.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -73,6 +73,14 @@ capture's files; it refuses a run of a task that is not a training task
 command names each one it passes over (110 §3.5). So a batch of held-out
 tasks (`custom/manic_miner`, `tbench2/*`) exports nothing, by design (D105):
 its runs are read with `run show -json` instead.
+
+**Decided by the owner (2026-10-26, D115):** `run start --heldout` starts a
+batch held out, kept by batch in the daemon's control file like
+`--capture-requests`. Its runs, though of training tasks, are passed over by
+`export conversations` unless it is given `--heldout`
+(`GET /v1/runs/{id}/export?heldout=1`; without it the route answers 403). A
+held-out task stays unexportable even then. A training export never names
+`--heldout`.
 
 The API is HTTP and JSON on a loopback address. Everything that changes
 something needs the token; reading from the same host does not. A run in
