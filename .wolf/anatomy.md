@@ -1,12 +1,13 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-26T14:27:28.238Z
-> Files: 503 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-26T16:24:11.020Z
+> Files: 506 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
+- `.gitleaks.toml` — Hardcoded credential literal as a shell parameter-expansion default (${VAR:-secret}); use ${VAR:?mes (~542 tok)
 - `CALIBER_LEARNINGS.md` — Caliber Learnings (~4206 tok)
 - `CLAUDE.md` — automaticum (~4851 tok)
 - `go.mod` — Go module definition (~303 tok)

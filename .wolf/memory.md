@@ -1448,3 +1448,21 @@
 | 15:27 | Created arms/g4-128e-bf16-c13-bm889-run2-s425.toml | — | ~138 |
 | 15:35 | bm-889 run2-s425 twin: model entry, arm g4-128e-bf16-c13-bm889-run2-s425 (77437830d08c), endpoint + lane-1 entry on blackswan-2, idle daemon restart, doctor 10 pass; mailed backup_models #1969. Arm and model files copied UNTRACKED into the blackswan-2 repo: remove them before the next git checkout there | arms/, models/, CLAUDE.md | done | ~6k |
 | 15:28 | Session end: 2 writes across 2 files (gemma-4-26b-a4b-it-bm889-run2-s425-bf16-eos106.toml, g4-128e-bf16-c13-bm889-run2-s425.toml) | 0 reads | ~411 tok |
+
+## Session: 2026-10-26 16:57
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-26 16:58
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-26 16:58
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:24 | Created .gitleaks.toml | — | ~542 |
+| 17:26 | gitleaks set up like opencoti (no push workflow): .gitleaks.toml (default rules + shell-credential-fallback rule + value allowlist for the daemon tests token, pinned to its file) and a fail-closed gitleaks block in .git/hooks/pre-commit after caliber; proved: shell-fallback, github-pat, test token elsewhere refused; clean passes; skip env warns; missing binary refuses; history and tree 0 | .gitleaks.toml, .git/hooks/pre-commit | done | ~8k |
+| 17:24 | Session end: 1 writes across 1 files (.gitleaks.toml) | 0 reads | ~581 tok |

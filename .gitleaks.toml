@@ -1,0 +1,42 @@
+title = "automaticum gitleaks config"
+
+# Secret scanning for automaticum, enforced at commit time by the pre-commit
+# hook (`gitleaks git --staged --redact -v`, fail-closed: a missing gitleaks
+# refuses the commit). The repo is public, so a secret that reaches a pushed
+# commit is published.
+#
+# Maintaining the allowlist: every entry is added against a finding that was
+# read first. Allowlist by value, pinned to its file with condition = "AND",
+# never a whole path, so the same string elsewhere still trips the gate. If a
+# finding is real, revoke it at the provider first, then scrub history.
+#
+# Manual scans:
+#   gitleaks git --staged --redact --no-banner -v   # what the hook runs
+#   gitleaks git . --redact --no-banner -v          # the whole history
+#   gitleaks dir . --redact --no-banner -v          # the working tree
+
+[extend]
+useDefault = true
+
+# The default rules anchor a provider token on a preceding delimiter, so a
+# literal used as a shell parameter-expansion default slips past them:
+#
+#     export HF_TOKEN="${HF_TOKEN:-hf_...}"     missed by the default rules
+#
+# That shape leaked a live token from a sibling repo on 2026-05-23. This rule
+# catches it whatever the provider: a non-empty literal default on a variable
+# named *TOKEN/*KEY/*SECRET/*PASSWORD. Write ${VAR:?message} instead.
+[[rules]]
+id = "shell-credential-fallback"
+description = "Hardcoded credential literal as a shell parameter-expansion default (${VAR:-secret}); use ${VAR:?message} instead"
+regex = '''(?i)\$\{[a-z_][a-z0-9_]*(token|key|secret|password|passwd|credential|auth|pat)[a-z0-9_]*[ \t]*:[-=][ \t]*([^\s}"'#$]{8,})\}'''
+secretGroup = 2
+keywords = ["token", "key", "secret", "password", "passwd", "credential", "auth"]
+
+# The daemon tests' API token: a made-up value the test rig hands its own
+# daemon (generic-api-key, found 2026-10-26).
+[[allowlists]]
+description = "the daemon tests' made-up API token"
+condition = "AND"
+paths = ['''^internal/daemon/daemon_test\.go$''']
+regexes = ['''^0123456789abcdef0123456789abcdef$''']
