@@ -78,7 +78,7 @@ make shell SPIKE_ROOT=<dir>
 - **Human formatter** (`internal/human/`): `human.go` · `human_test.go`
 - **Statistics** (`internal/stats/`): `stats.go` · `stats_test.go`
 - **Detector library** (`internal/detect/`): `detect.go` · `guards.go` · `controls.go` · `spans.go` (`Spans`, `CycleStart`: where a hit's repeats stand) · `detect_test.go` · `reference_test.go` · `spans_test.go`
-- **Export** (`internal/export/`): `export.go` (capture responses, guard cuts from the event log, loop spans with `field` `reasoning` or `content`, D102/D104/D106) · `export_test.go`
+- **Export** (`internal/export/`): `export.go` (capture responses with their tool calls, guard cuts from the event log, loop spans with `field` `reasoning`, `content` or `tool_calls[<i>].function.arguments`, capped requests, D102/D104/D106/D117) · `export_test.go`
 - **Gates** (`internal/gate/`): `gate.go` · `gate_test.go`
 - **Ingest** (`internal/ingest/`): `analyse.go` · `canary.go` · `cap.go` · `detectors.go` · `events.go` · `sampler.go` · `wire.go` · `wirearm.go` · tests (`ingest_test.go` · `sample_test.go` · `canary_test.go` · `cap_test.go` · `openai_test.go`)
 - **Terminal-Bench 2.0 importer** (`internal/suite/tbench2/`, 066): `tbench2.go` (reads a source task; writes `task.toml`, the lane layer and `NOTES.md`) · `import.go` (pins the image by digest, copies `/app` out as the seed, vendors the pytest wheels, pins the verifier, makes the gold fixture with `solve.sh`, keeps a task only if `Verify` holds) · `verifier/` (`main.py` · `build.py`: the zipapp the oracle runs, embedded) · `tbench2_test.go`

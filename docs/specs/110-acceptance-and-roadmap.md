@@ -1,6 +1,6 @@
 # 110 — Acceptance and roadmap
 
-**Status:** draft 0.24, 2026-10-26. The milestone order in §3 was approved by the owner
+**Status:** draft 0.25, 2026-10-27. The milestone order in §3 was approved by the owner
 on 2026-10-12. Milestone 1 has been carried out: the store, the importer and
 the spike's measurements exist (080 §7.4, 100 §7), and the owner has decided
 the questions it raised (D46 to D51). Milestone 2 was planned and approved on
@@ -438,6 +438,24 @@ plugin's, the same for every host.
   of training tasks, unless the export is given `--heldout`: the eval
   rollouts of bm-889 run 2 on the training tasks never enter a training set
   by a pattern such as `k-*`.
+  **Decided by the owner (2026-10-27, D117):** a tool call that repeats the
+  one before it is a span too, for the loops a model makes in its calls
+  rather than its text (bm-889 run 3: identical editor calls in every gate
+  run). The export reads each response's streamed tool calls (index, name,
+  arguments joined) and runs the analysis's own repeated-call detector
+  (`repeated_tool_call`, 070 §3.2, the SDK's threshold of 2) over the run's
+  calls in the order the responses came, the arguments compared as the
+  analysis compares them. The first call of a sequence is not a span, as
+  the text detectors leave out the first occurrence; each repeat is a span
+  over the whole of its arguments: `field`
+  `tool_calls[<index>].function.arguments`, the path in the response's
+  message, `start` 0, `end` their length, `source` `detector`, `detail`
+  `repeated_tool_call`. The runaway detector has no place in a text (it
+  says a block is long, not where it went wrong), so it gives no span;
+  instead `meta.json` names in `capped` the requests whose response ended
+  at its output limit (`finish_reason` `length`). On the 39 pool runs:
+  1,454 calls, 15 repeat spans in 11 runs, equal to what the analysis
+  found, and 6 capped requests.
 - `manic_miner` runs are the held-out gate and are never exported as
   training data; the training pool is the multi-language suite (063) once
   it has tasks.

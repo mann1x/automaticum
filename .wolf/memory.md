@@ -1524,3 +1524,24 @@
 | 10:23 | Edited cmd/automaticum/client_cmds.go | modified notices() | ~692 |
 | 10:50 | D116 (owner): notice metrics keyed by type.kind.phase (else reason, else type), never the sentence; analysis version 7; compactions counted once at completed (latent double count under per-phase keys avoided); new command `automaticum notices (<run>|--batch B) [--key K]` reads the sentences from the event streams; proved on blackswan-2 runs with a scratch CLI; make test green; 070 0.21, 090 0.22, decisions rev 30. Not committed; deploy + reanalyse wait for an idle lane | internal/ingest/events.go, analyse.go, cmd/automaticum/client_cmds.go, main.go, specs | done | ~30k |
 | 10:25 | Session end: 1 writes across 1 files (client_cmds.go) | 0 reads | ~742 tok |
+
+## Session: 2026-10-27 10:52
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-27 10:53
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-27 10:53
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-27 10:54
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:01 | D117 (owner, build directly): export reads streamed tool calls and marks repeats (repeated_tool_call, analysis compare and threshold) as spans on tool_calls[<i>].function.arguments; meta.capped for finish_reason length; no runaway span. Proved on the 39 pool runs on blackswan-2 (throwaway test binary, removed): 1,454 calls, 15 spans in 11 runs, matching the analysis; 6 capped. make test green; 110 draft 0.25, D117. 7a8ba65 + 17fe8bd (D116) deployed 10:00Z. D117 not committed or deployed | internal/export/export.go, internal/daemon/export.go, specs | done | ~40k |

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"path"
+	"sort"
 	"strings"
 	"time"
 
@@ -29,6 +30,9 @@ type ExportMeta struct {
 	// Offsets says what a span's start and end count.
 	Offsets       string `json:"offsets"`
 	DetectVersion string `json:"detect_version"`
+	// Capped are the requests whose response ended at its output limit
+	// (finish reason "length").
+	Capped []string `json:"capped"`
 }
 
 const exportOffsets = "Unicode code points in the field's text, the stream's deltas joined; end not included"
@@ -132,7 +136,14 @@ func (d *Daemon) handleExport(w http.ResponseWriter, r *http.Request) {
 	if cuts == nil {
 		cuts = []export.Cut{}
 	}
-	meta, _ := json.MarshalIndent(ExportMeta{Run: v, Requests: stems, Cuts: cuts, Offsets: exportOffsets, DetectVersion: detect.Version}, "", "  ")
+	capped := []string{}
+	for _, r := range resps {
+		if r.Finish == "length" {
+			capped = append(capped, r.Stem)
+		}
+	}
+	sort.Strings(capped)
+	meta, _ := json.MarshalIndent(ExportMeta{Run: v, Requests: stems, Cuts: cuts, Offsets: exportOffsets, DetectVersion: detect.Version, Capped: capped}, "", "  ")
 	var lines strings.Builder
 	enc := json.NewEncoder(&lines)
 	for _, s := range spans {

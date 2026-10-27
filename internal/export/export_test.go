@@ -2,6 +2,7 @@ package export
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -78,5 +79,62 @@ func TestReadCuts(t *testing.T) {
 	}
 	if c := cuts[0]; c.Kind != "block-cycle" || c.Period != 30 || c.Chars != 35734 || c.Iteration != 16 || c.Channel != "reasoning" {
 		t.Fatalf("%+v", c)
+	}
+}
+
+// calls is a streamed response body whose deltas carry these tool calls,
+// each one's arguments split in two deltas, and the finish reason.
+func calls(finish string, cs ...ToolCall) string {
+	var b strings.Builder
+	for _, c := range cs {
+		half := len(c.Arguments) / 2
+		for i, part := range []string{c.Arguments[:half], c.Arguments[half:]} {
+			fn := map[string]string{"arguments": part}
+			if i == 0 {
+				fn["name"] = c.Name
+			}
+			d, _ := json.Marshal(map[string]any{"choices": []any{map[string]any{"delta": map[string]any{
+				"tool_calls": []any{map[string]any{"index": c.Index, "function": fn}}}}}})
+			b.WriteString("data: " + string(d) + "\n\n")
+		}
+	}
+	d, _ := json.Marshal(map[string]any{"choices": []any{map[string]any{"delta": map[string]any{}, "finish_reason": finish}}})
+	return b.String() + "data: " + string(d) + "\n\ndata: [DONE]\n\n"
+}
+
+// TestRepeatedCallSpans: a call that repeats the one before it, its
+// arguments spaced otherwise, is a span over its arguments; the first of
+// the sequence is not, nor a call that breaks it.
+func TestRepeatedCallSpans(t *testing.T) {
+	t0 := time.Date(2026, 10, 27, 10, 0, 0, 0, time.UTC)
+	edit := ToolCall{Name: "editor", Arguments: `{"path":"a.js","new_text":"x"}`}
+	spaced := ToolCall{Name: "editor", Arguments: `{"new_text": "x", "path": "a.js"}`}
+	resps := []Response{
+		response(t, "0001", t0, true, calls("tool_calls", edit)),
+		response(t, "0002", t0, true, calls("tool_calls", spaced)),
+		response(t, "0003", t0, true, calls("tool_calls", ToolCall{Index: 0, Name: "read_files", Arguments: `{"p":"b"}`}, ToolCall{Index: 1, Name: "editor", Arguments: edit.Arguments})),
+		response(t, "0004", t0, true, calls("tool_calls", edit)),
+		response(t, "0005", t0, true, calls("length", edit)),
+	}
+	if c := resps[2].Calls; len(c) != 2 || c[1].Index != 1 || c[1].Name != "editor" || c[1].Arguments != edit.Arguments {
+		t.Fatalf("calls read: %+v", c)
+	}
+	if resps[4].Finish != "length" || resps[0].Finish != "tool_calls" {
+		t.Errorf("finish: %q %q", resps[4].Finish, resps[0].Finish)
+	}
+	spans, _ := Spans(resps, nil)
+	var got []string
+	for _, s := range spans {
+		got = append(got, fmt.Sprintf("%s %s %d-%d %s %s", s.Request, s.Field, s.Start, s.End, s.Source, s.Detail))
+	}
+	// 0001 and 0002 are one sequence; 0003's read_files breaks it; its
+	// editor call starts another, which 0004 and 0005 repeat.
+	want := []string{
+		"0002 tool_calls[0].function.arguments 0-33 detector repeated_tool_call",
+		"0004 tool_calls[0].function.arguments 0-30 detector repeated_tool_call",
+		"0005 tool_calls[0].function.arguments 0-30 detector repeated_tool_call",
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Errorf("spans\n got %s\nwant %s", strings.Join(got, "\n"), strings.Join(want, "\n"))
 	}
 }

@@ -35,6 +35,19 @@ type Response struct {
 	Complete bool
 	// Fields is each text field's whole text, the stream's deltas joined.
 	Fields map[string]string
+	// Calls are the tool calls in the response, by their index in it.
+	Calls []ToolCall
+	// Finish is the stream's finish reason; "length" is a response that
+	// ended at its output limit.
+	Finish string
+}
+
+// ToolCall is one tool call of a streamed response: its index among the
+// response's calls, its name and its arguments, the deltas joined.
+type ToolCall struct {
+	Index     int
+	Name      string
+	Arguments string
 }
 
 // ReadResponse reads one response file.
@@ -61,11 +74,31 @@ func ReadResponse(stem string, b []byte) (Response, error) {
 		}
 		var chunk struct {
 			Choices []struct {
-				Delta map[string]json.RawMessage `json:"delta"`
+				Delta        map[string]json.RawMessage `json:"delta"`
+				FinishReason string                     `json:"finish_reason"`
 			} `json:"choices"`
 		}
 		if json.Unmarshal([]byte(data), &chunk) != nil || len(chunk.Choices) == 0 {
 			continue
+		}
+		if f := chunk.Choices[0].FinishReason; f != "" {
+			resp.Finish = f
+		}
+		var calls []struct {
+			Index    int `json:"index"`
+			Function struct {
+				Name      string `json:"name"`
+				Arguments string `json:"arguments"`
+			} `json:"function"`
+		}
+		if raw, ok := chunk.Choices[0].Delta["tool_calls"]; ok && json.Unmarshal(raw, &calls) == nil {
+			for _, c := range calls {
+				tc := callAt(&resp, c.Index)
+				if c.Function.Name != "" {
+					tc.Name = c.Function.Name
+				}
+				tc.Arguments += c.Function.Arguments
+			}
 		}
 		for _, name := range textFields {
 			raw, ok := chunk.Choices[0].Delta[name]
@@ -83,6 +116,17 @@ func ReadResponse(stem string, b []byte) (Response, error) {
 		resp.Fields[name] = b.String()
 	}
 	return resp, nil
+}
+
+// callAt is the response's tool call of that index, added if it is new.
+func callAt(r *Response, index int) *ToolCall {
+	for i := range r.Calls {
+		if r.Calls[i].Index == index {
+			return &r.Calls[i]
+		}
+	}
+	r.Calls = append(r.Calls, ToolCall{Index: index})
+	return &r.Calls[len(r.Calls)-1]
 }
 
 // Cut is one cut by an SDK guard, as its notice in the event log says it:
@@ -169,6 +213,8 @@ type Line struct {
 	Request string `json:"request"`
 	// Field is the message field the span is in: reasoning or content,
 	// whichever key the stream gave it (reasoning_content or reasoning).
+	// For a tool call it is tool_calls[<index>].function.arguments, the
+	// path of the arguments in the response's message.
 	Field  string `json:"field"`
 	Start  int    `json:"start"`
 	End    int    `json:"end"`
@@ -184,8 +230,9 @@ const (
 )
 
 // Spans places every loop span in a run's responses: each guard cut in
-// the response it cut, and every detector hit in every response's text
-// fields. The cuts come back with the response each one is in, or why
+// the response it cut, every detector hit in every response's text fields,
+// and every repeat of a tool call in the arguments of the calls that
+// repeat it. The cuts come back with the response each one is in, or why
 // none was found.
 func Spans(resps []Response, cuts []Cut) ([]Line, []Cut) {
 	var out []Line
@@ -215,6 +262,7 @@ func Spans(resps []Response, cuts []Cut) ([]Line, []Cut) {
 			}
 		}
 	}
+	out = append(out, repeatedCallSpans(resps)...)
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].Request != out[j].Request {
 			return out[i].Request < out[j].Request
@@ -222,6 +270,53 @@ func Spans(resps []Response, cuts []Cut) ([]Line, []Cut) {
 		return out[i].Start < out[j].Start
 	})
 	return out, placed
+}
+
+// repeatedCallSpans marks the tool calls that repeat the one before them:
+// the run's calls in the order the responses came, each compared as the
+// analysis compares them (detect.RepeatedCalls, the SDK's own threshold),
+// the first of a sequence left out as the text detectors leave out the
+// first occurrence. A span is the whole of a repeat's arguments, in the
+// field tool_calls[<index>].function.arguments of its response.
+func repeatedCallSpans(resps []Response) []Line {
+	ordered := make([]*Response, len(resps))
+	for i := range resps {
+		ordered[i] = &resps[i]
+	}
+	sort.SliceStable(ordered, func(i, j int) bool { return ordered[i].Stem < ordered[j].Stem })
+	type at struct {
+		stem string
+		call *ToolCall
+	}
+	var calls []detect.Call
+	var where []at
+	for turn, r := range ordered {
+		for i := range r.Calls {
+			c := &r.Calls[i]
+			calls = append(calls, detect.Call{Turn: turn, Tool: c.Name, Input: compactArgs(c.Arguments)})
+			where = append(where, at{r.Stem, c})
+		}
+	}
+	var out []Line
+	for _, seq := range detect.RepeatedCalls(calls, 0) {
+		for k := seq.Index + 1; k < seq.Index+seq.Count; k++ {
+			w := where[k]
+			out = append(out, Line{Request: w.stem, Field: fmt.Sprintf("tool_calls[%d].function.arguments", w.call.Index),
+				Start: 0, End: len([]rune(w.call.Arguments)), Source: Detector, Detail: detect.RepeatedToolCall})
+		}
+	}
+	return out
+}
+
+// compactArgs gives a call's arguments one spelling, as the analysis does,
+// so that the same arguments compare equal however they were spaced.
+func compactArgs(s string) string {
+	var v any
+	if strings.TrimSpace(s) == "" || json.Unmarshal([]byte(s), &v) != nil {
+		return s
+	}
+	b, _ := json.Marshal(v) // maps are written with sorted keys
+	return string(b)
 }
 
 // guardSpan finds the response a cut is in and places its span (D106): the
