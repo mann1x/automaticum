@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.21, 2026-10-27.
+**Status:** draft 0.22, 2026-10-27.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -30,6 +30,7 @@ automaticum cohort ls|show
 automaticum report run|batch|cell|ab|regression|census [...]
 automaticum find "<query>" [--semantic] [--where ...]
 automaticum logs <run> [--server|--runtime|--events|--wire] [--grep ...] [--turn N]
+automaticum notices (<run> ... | --batch B ...) [--key K]   # the SDK's notices with their sentences (D116)
 automaticum replay <run> --turn N [--endpoint E]
 automaticum detect <file|run> [--runaway N] # the detector library, standalone; --self-test runs its controls
 automaticum embed start|status|stop [--where ...]   # by hand only (080 §5.2)
@@ -82,6 +83,14 @@ now, so runs of an earlier version of it, another identity, are left out.
 The table has an ARM column, the arm's name as the record says it. The
 route is `GET /v1/runs?task=&suite=&model=&arm_id=`; a queued run, which
 has no model or arm id yet, is listed only when neither is asked.
+
+**Decided by the owner (2026-10-27, D116):** `notices (<run> ... | --batch B
+...) [--key K]` prints the SDK's notices of some runs, each with its run,
+turn, time, key and sentence, read from the runs' event streams through
+`GET /v1/runs/{id}/blobs/events`. The key is the one a report prints for
+the notice's metric (070 §2), with or without `notices.`; a shorter key
+takes every phase under it (`status.loop_detection`). The metrics leave
+the sentence out; this is where it is read.
 
 **Decided by the owner (2026-10-26, D115):** `run start --heldout` starts a
 batch held out, kept by batch in the daemon's control file like

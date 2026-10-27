@@ -1506,3 +1506,21 @@
 | 09:33 | Edited internal/daemon/daemon_test.go | 6→7 lines | ~99 |
 | 09:55 | backup_models gaps (#1981): fixed run ls -task suite/task (bug, queued part ignored task), added -suite -model -arm -arm-id and ARM column, arm name in RunView of finished runs; tests pass; 090 draft 0.21. Not committed or deployed (gate running). Found: notices.<type>:<message> metric names carry free text (unbounded names), proposed to the owner | internal/daemon/api.go, cmd/automaticum/client_cmds.go, daemon_test.go | done | ~25k |
 | 09:34 | Session end: 10 writes across 3 files (api.go, client_cmds.go, daemon_test.go) | 0 reads | ~1194 tok |
+
+## Session: 2026-10-27 10:17
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-27 10:18
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-27 10:18
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:23 | Edited cmd/automaticum/client_cmds.go | modified notices() | ~692 |
+| 10:50 | D116 (owner): notice metrics keyed by type.kind.phase (else reason, else type), never the sentence; analysis version 7; compactions counted once at completed (latent double count under per-phase keys avoided); new command `automaticum notices (<run>|--batch B) [--key K]` reads the sentences from the event streams; proved on blackswan-2 runs with a scratch CLI; make test green; 070 0.21, 090 0.22, decisions rev 30. Not committed; deploy + reanalyse wait for an idle lane | internal/ingest/events.go, analyse.go, cmd/automaticum/client_cmds.go, main.go, specs | done | ~30k |
+| 10:25 | Session end: 1 writes across 1 files (client_cmds.go) | 0 reads | ~742 tok |

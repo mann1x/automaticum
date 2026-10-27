@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.20, 2026-10-25.
+**Status:** draft 0.21, 2026-10-27.
 
 ## 1. The rule: no custom script
 
@@ -68,6 +68,20 @@ method is recorded.
   `guard_stop.<guard>.<phase>.<cause>`. In SDK 4.100.259 that is the
   reasoning-loop guard: `reasoning_loop` (the reasoning repeated),
   `answer_loop` (the reply) and `argument_loop` (a tool call's arguments).
+
+  **Decided by the owner (2026-10-27, D116):** from analysis version 7 a
+  notice of the SDK is counted by what kind it is, never by its sentence:
+  `notices.<type>.<kind>.<phase>` from the kind and phase it states
+  (`notices.status.reasoning_loop.cut`, `notices.status.loop_detection.soft`),
+  else `notices.<reason>`, else `notices.<type>`. Before, a notice without a
+  reason was counted under its type and its whole sentence, which carries
+  counts and quoted text, so every run had metrics of its own and none
+  pooled. The sentences are read with `automaticum notices` (090 §1), by
+  the key a report prints. `context.compactions` counts a compaction once,
+  when the SDK says it completed (`auto_compaction`, `manual_compaction`,
+  `overflow_recovery_compaction` at phase `completed`, as the SDK counts
+  them), and a notice of an older SDK without a kind by its reason, as
+  before.
 
 ### 2.1 Per cell
 
@@ -364,7 +378,7 @@ the server counted them (prompt, cached, fresh, completion) with the SDK's
 split of the completion, rates, completion length per request (n, sum, p10,
 p50, p90, max), finish reasons, empty completions, thinking and text block
 lengths, turns without thinking, context (first, last, peak, share of the
-window, cached share, compactions), the SDK's notices by reason, and the
+window, cached share, compactions), the SDK's notices by kind (D116), and the
 values the SDK derived from the arm. The rest of §2 is not written yet.
 
 ## 5. Generation-cap audit

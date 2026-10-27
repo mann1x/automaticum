@@ -50,7 +50,7 @@ const SessionFork = "session_fork"
 // analysis records it as the metric analysis.version: the basis (020 §5)
 // says from it which detectors a run was analysed with, whether or not
 // they found anything.
-const AnalysisVersion = 6
+const AnalysisVersion = 7
 
 // Versions are the versions of the detectors this analysis applies:
 // ingest's own and the detector library's.
@@ -365,14 +365,10 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 	}
 
 	// Context management, as the SDK announced it.
-	compactions := 0
 	for _, key := range sortedKeys(ev.Notices) {
 		m("notices."+key, float64(ev.Notices[key]))
-		if strings.Contains(key, "compact") {
-			compactions += ev.Notices[key]
-		}
 	}
-	m("context.compactions", float64(compactions))
+	m("context.compactions", float64(ev.Compactions))
 
 	var arm config.Arm
 	if len(r.Arm) > 0 && json.Unmarshal(r.Arm, &arm) == nil {

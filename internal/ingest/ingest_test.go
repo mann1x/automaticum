@@ -27,6 +27,16 @@ not json at all
 
 func events(t *testing.T) *Events {
 	t.Helper()
+	ev, err := ReadEvents(strings.NewReader(eventStream()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ev
+}
+
+// eventStream is a run's event stream: the stream above and a run's agent
+// events.
+func eventStream() string {
 	lines := []string{
 		agentLine("01", `{"type":"iteration_start","iteration":1}`),
 		agentLine("02", `{"type":"content_end","contentType":"reasoning","reasoning":"think think"}`),
@@ -38,22 +48,37 @@ func events(t *testing.T) *Events {
 		agentLine("09", `{"type":"content_end","contentType":"tool","toolName":"run_commands","toolCallId":"c","error":"spawn failed"}`),
 		agentLine("10", `{"type":"content_end","contentType":"tool","toolName":"check_file","toolCallId":"d","output":"{\"success\":false}"}`),
 		agentLine("11", `{"type":"content_end","contentType":"text","text":"done"}`),
-		agentLine("12", `{"type":"notice","noticeType":"status","message":"context-breakdown"}`),
+		agentLine("12", `{"type":"notice","noticeType":"status","message":"context-breakdown","metadata":{"kind":"context_breakdown","iteration":1}}`),
+		agentLine("12", `{"type":"notice","noticeType":"status","message":"The model's reasoning repeated a 8-line block 3 times after 42,794 characters of reasoning.","metadata":{"kind":"reasoning_loop","phase":"cut","cause":"reasoning_loop"}}`),
+		agentLine("12", `{"type":"notice","noticeType":"status","message":"compacting","metadata":{"kind":"auto_compaction","phase":"started"}}`),
+		agentLine("12", `{"type":"notice","noticeType":"status","message":"compacted","metadata":{"kind":"auto_compaction","phase":"completed"}}`),
 		agentLine("13", `{"type":"notice","noticeType":"recovery","reason":"auto_compaction"}`),
 		agentLine("14", `{"type":"usage","timings":{"firstTokenMs":300},"outputSplit":{"reasoningTokens":1,"textTokens":1,"toolInputTokens":1,"method":"stream-chunks"}}`),
 		agentLine("15", `{"type":"done","reason":"completed"}`),
 	}
-	ev, err := ReadEvents(strings.NewReader(stream + strings.Join(lines, "\n")))
-	if err != nil {
+	return stream + strings.Join(lines, "\n")
+}
+
+// TestNoticeLog: asked for, the notices are kept in order with their key
+// and sentence, for `automaticum notices`.
+func TestNoticeLog(t *testing.T) {
+	ev := &Events{KeepNotices: true}
+	if err := ev.Read(strings.NewReader(eventStream())); err != nil {
 		t.Fatal(err)
 	}
-	return ev
+	if len(ev.NoticeLog) != 5 {
+		t.Fatalf("%d notices kept: %+v", len(ev.NoticeLog), ev.NoticeLog)
+	}
+	n := ev.NoticeLog[1]
+	if n.Key != "status.reasoning_loop.cut" || !strings.HasPrefix(n.Message, "The model's reasoning repeated") || n.T.Second() != 12 {
+		t.Errorf("second notice: %+v", n)
+	}
 }
 
 func TestReadEvents(t *testing.T) {
 	ev := events(t)
-	if ev.Lines != 18 || ev.BadLines != 1 {
-		t.Errorf("lines %d, unreadable %d; want 18 and 1", ev.Lines, ev.BadLines)
+	if ev.Lines != 21 || ev.BadLines != 1 {
+		t.Errorf("lines %d, unreadable %d; want 21 and 1", ev.Lines, ev.BadLines)
 	}
 	if ev.Iterations != 2 || ev.AgentEnd != "completed" {
 		t.Errorf("iterations %d, end %q", ev.Iterations, ev.AgentEnd)
@@ -74,8 +99,17 @@ func TestReadEvents(t *testing.T) {
 	if ev.FirstTokenMS != 900 || ev.ReasoningTokens != 11 || ev.TextTokens != 3 || ev.ToolInputTokens != 6 {
 		t.Errorf("first token %v, split %d %d %d", ev.FirstTokenMS, ev.ReasoningTokens, ev.TextTokens, ev.ToolInputTokens)
 	}
-	if ev.Notices["status:context-breakdown"] != 1 || ev.Notices["auto_compaction"] != 1 {
+	// A notice is keyed by its kind and phase, never its sentence; one
+	// without a kind, from an older SDK, by its reason (070 §2).
+	if fmt.Sprint(ev.Notices) != "map[auto_compaction:1 status.auto_compaction.completed:1 status.auto_compaction.started:1 status.context_breakdown:1 status.reasoning_loop.cut:1]" {
 		t.Errorf("notices %v", ev.Notices)
+	}
+	// A compaction counts once, at "completed"; the older one by its reason.
+	if ev.Compactions != 2 {
+		t.Errorf("compactions %d, want 2", ev.Compactions)
+	}
+	if len(ev.NoticeLog) != 0 {
+		t.Errorf("notices kept unasked: %v", ev.NoticeLog)
 	}
 	if ev.Derived["thinking_budget_tokens"] != 48000 {
 		t.Errorf("derived %v", ev.Derived)

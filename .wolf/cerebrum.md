@@ -120,6 +120,7 @@
 
 ## Decision Log
 
+- (2026-10-27) D116, owner: notice metrics leave the sentence out (key = type.kind.phase, else reason, else type; analysis version 7; compactions counted once at completed, as the SDK does); the sentences are read with a command of their own, `automaticum notices`, by the key the table prints. Found because compare -all had rows named notices.status:<whole sentence> that never pooled.
 - (2026-10-26) D115, owner: a batch can be marked held out (`run start --heldout`, `ctl.Heldout` by batch like `Capture`); export refuses its runs (403) unless asked `?heldout=1` / `export conversations --heldout`; held-out tasks stay unexportable regardless. Asked for by backup_models for the bm-889 run2 agentic eval set on the training tasks; the owner chose the explicit override over never-exportable and naming-only.
 - (2026-10-25) Owner: switch the pool arm to the SDK with X9 as soon as it checks out. 4.100.266 was proven on the stub (run 20261025-050057-6b0a34: 1626 cuts, 1624 'continue' answers, no abort, no breach). g4-128e-bf16-c13-shipped moved to 4.100.266 (id 9f95789d -> 7fe45202). Its parent g4-128e and the other Gemma arms stay on 4.100.262.
 

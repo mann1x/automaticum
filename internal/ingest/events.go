@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/mann1x/automaticum/internal/detect"
@@ -33,9 +34,15 @@ type Events struct {
 	// Calls holds the same calls with their arguments, for the detectors.
 	Calls  []detect.Call
 	Blocks []Block
-	// Notices counts the SDK's notices by reason; a notice without a reason
-	// is counted under its type and message.
+	// Notices counts the SDK's notices by key (NoticeKey): what kind of
+	// notice it is, never its sentence, which differs from run to run.
 	Notices map[string]int
+	// Compactions counts the compactions the SDK completed.
+	Compactions int
+	// KeepNotices asks Read to keep every notice with its sentence in
+	// NoticeLog, for `automaticum notices`; the analysis does not.
+	KeepNotices bool
+	NoticeLog   []Notice
 	// GuardTrips counts the guards' trips the runner noted, by guard and
 	// phase ("reasoning_loop.cut"); GuardStop is the trip that ended the
 	// run, for an arm that stops at the first one (D99).
@@ -134,7 +141,11 @@ type agentEvent struct {
 	NoticeType  string          `json:"noticeType"`
 	Reason      string          `json:"reason"`
 	Message     string          `json:"message"`
-	Timings     struct {
+	Metadata    struct {
+		Kind  string `json:"kind"`
+		Phase string `json:"phase"`
+	} `json:"metadata"`
+	Timings struct {
 		FirstTokenMS float64 `json:"firstTokenMs"`
 	} `json:"timings"`
 	OutputSplit *struct {
@@ -143,6 +154,31 @@ type agentEvent struct {
 		ToolInputTokens int    `json:"toolInputTokens"`
 		Method          string `json:"method"`
 	} `json:"outputSplit"`
+}
+
+// Notice is one notice of the SDK as it was shown, with its key.
+type Notice struct {
+	T       time.Time `json:"t"`
+	Turn    int       `json:"turn"`
+	Key     string    `json:"key"`
+	Message string    `json:"message"`
+}
+
+// NoticeKey names a notice by what kind it is, so that the same notice in
+// two runs counts under one metric (070 §2): its type and the kind and
+// phase the SDK states ("status.reasoning_loop.cut"), else the reason it
+// gives, else its type alone. Its sentence is never part of the key: it
+// carries counts and quoted text, and `automaticum notices` shows it.
+func NoticeKey(noticeType, kind, phase, reason string) string {
+	switch {
+	case kind != "" && phase != "":
+		return noticeType + "." + kind + "." + phase
+	case kind != "":
+		return noticeType + "." + kind
+	case reason != "":
+		return reason
+	}
+	return noticeType
 }
 
 // chunkMark is how a "chunk" event starts. Chunks repeat the agent's events
@@ -347,11 +383,22 @@ func (ev *Events) line(line []byte, sc *scan) {
 			ev.SplitMethod = s.Method
 		}
 	case "notice":
-		key := a.Reason
-		if key == "" {
-			key = a.NoticeType + ":" + a.Message
-		}
+		key := NoticeKey(a.NoticeType, a.Metadata.Kind, a.Metadata.Phase, a.Reason)
 		ev.Notices[key]++
+		// A compaction is announced when it starts and when it ends; the
+		// SDK counts it once, at "completed", by these kinds. A notice
+		// without a kind, from an older SDK, is counted by its reason.
+		switch k := a.Metadata.Kind; {
+		case k == "auto_compaction" || k == "manual_compaction" || k == "overflow_recovery_compaction":
+			if a.Metadata.Phase == "completed" {
+				ev.Compactions++
+			}
+		case k == "" && strings.Contains(a.Reason, "compact"):
+			ev.Compactions++
+		}
+		if ev.KeepNotices {
+			ev.NoticeLog = append(ev.NoticeLog, Notice{T: l.T, Turn: sc.turn, Key: key, Message: a.Message})
+		}
 	case "done":
 		ev.AgentEnd = a.Reason
 	}

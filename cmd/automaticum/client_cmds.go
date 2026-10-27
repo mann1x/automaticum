@@ -487,6 +487,88 @@ func logs(ctx context.Context, args []string) error {
 	return err
 }
 
+// notices prints the SDK's notices of some runs with their sentences: a
+// metric counts them by key (notices.<key>, 070 §2) and leaves the
+// sentence out, so this is where it is read.
+func notices(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("notices", flag.ExitOnError)
+	_, dial := addClient(fs)
+	var runs, batches list
+	fs.Var(&runs, "run", "a run; give it several times")
+	fs.Var(&batches, "batch", "every finished run of a batch; give it several times")
+	key := fs.String("key", "", "only this key, as compare prints it, with or without notices.; a shorter key takes every phase under it (status.loop_detection)")
+	rest := parse(fs, args)
+	runs = append(runs, rest...)
+	if len(runs) == 0 && len(batches) == 0 {
+		return errors.New("usage: automaticum notices [--key K] (<run> ... | --run R ... | --batch B ...)")
+	}
+	c, err := dial()
+	if err != nil {
+		return err
+	}
+	for _, b := range batches {
+		var listed []daemon.RunView
+		if err := c.do(ctx, "GET", "/v1/runs?limit=10000&batch="+url.QueryEscape(b), nil, &listed); err != nil {
+			return err
+		}
+		if len(listed) == 0 {
+			return fmt.Errorf("batch %s has no runs", b)
+		}
+		// The list is newest first; the notices read best in the order run.
+		// A run SKIPPED never started and has no events.
+		for i := len(listed) - 1; i >= 0; i-- {
+			if listed[i].State == "finished" && listed[i].Verdict != "SKIPPED" {
+				runs = append(runs, listed[i].ID)
+			}
+		}
+	}
+	type row struct {
+		Run string `json:"run"`
+		ingest.Notice
+	}
+	out := []row{}
+	var missing []string
+	for _, id := range runs {
+		resp, err := c.open(ctx, "GET", "/v1/runs/"+url.PathEscape(id)+"/blobs/events", nil)
+		if err != nil {
+			missing = append(missing, fmt.Sprintf("%s: %v", id, err))
+			continue
+		}
+		ev := &ingest.Events{KeepNotices: true}
+		err = ev.Read(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			return fmt.Errorf("run %s: %w", id, err)
+		}
+		for _, n := range ev.NoticeLog {
+			if noticeMatch(n.Key, *key) {
+				out = append(out, row{id, n})
+			}
+		}
+	}
+	if c.json {
+		return printJSON(out)
+	}
+	w := table()
+	fmt.Fprintln(w, "RUN\tTURN\tTIME\tKEY\tNOTICE")
+	for _, r := range out {
+		fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\n", r.Run, r.Turn, human.Time(r.T), r.Key, r.Message)
+	}
+	if err := w.Flush(); err != nil {
+		return err
+	}
+	for _, m := range missing {
+		fmt.Fprintf(os.Stderr, "no event stream for run %s\n", m)
+	}
+	return nil
+}
+
+// noticeMatch says whether a notice's key is the one asked, or under it.
+func noticeMatch(key, want string) bool {
+	want = strings.TrimPrefix(want, "notices.")
+	return want == "" || key == want || strings.HasPrefix(key, want+".")
+}
+
 // findingLine says one finding in one line.
 func findingLine(f daemon.FindingView) string {
 	head := fmt.Sprintf("%-8s %s", f.Severity, f.Detector)

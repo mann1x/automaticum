@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-27T08:33:12.726Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-27T09:23:49.881Z
 > Files: 504 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
@@ -134,7 +134,7 @@
 
 - `campaign_cmds.go` (~1452 tok)
 - `cell_cmds.go` — exitCode: names (~2996 tok)
-- `client_cmds.go` — Struct: client (~7880 tok)
+- `client_cmds.go` — Struct: client (~8573 tok)
 - `compare_cmds.go` — Declares list (~3430 tok)
 - `config_cmds_test.go` — TestParseInterspersed, TestCellTasks (~370 tok)
 - `config_cmds.go` — place (121 fields) (~3164 tok)

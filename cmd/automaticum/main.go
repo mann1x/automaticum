@@ -53,6 +53,7 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   run invalidate <run>          mark a finished run INVALID, --reason "..."
   run identify <run>            add where and on what a run ran to its record, marked as added later
   logs <run>                    a run's raw material [--events|--wire|--runner|--oracle]
+  notices <run>... | --batch B  the SDK's notices with their sentences [--key K, as compare prints it]
   export conversations --out D  training runs' captured model requests, metadata and loop spans [--batch B|GLOB ...] [--run R ...] [--heldout]
   doctor                        every gate, on every lane, now [--lane L] [--arm A] [--task T] [--all]
   compare <batch> [<batch> ...] the arms of some batches side by side: every statistic, no conclusion [--all]
@@ -87,7 +88,7 @@ func main() {
 		return
 	}
 	// Some commands are one word.
-	one := map[string]func(context.Context, []string) error{"status": status, "logs": logs, "reanalyse": reanalyse, "detect": detectCmd, "doctor": doctor, "compare": compare}
+	one := map[string]func(context.Context, []string) error{"status": status, "logs": logs, "reanalyse": reanalyse, "detect": detectCmd, "doctor": doctor, "compare": compare, "notices": notices}
 	if len(args) >= 1 && one[args[0]] != nil {
 		fail(one[args[0]](ctx, args[1:]))
 		return

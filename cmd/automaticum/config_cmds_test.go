@@ -38,3 +38,24 @@ func TestCellTasks(t *testing.T) {
 		t.Errorf("a missing task: %v", err)
 	}
 }
+
+// TestNoticeMatch: a key is asked as compare prints it, with or without
+// "notices.", and a shorter key takes every phase under it, never a key
+// that only starts with the same letters.
+func TestNoticeMatch(t *testing.T) {
+	for _, c := range []struct {
+		key, want string
+		ok        bool
+	}{
+		{"status.loop_detection.soft", "", true},
+		{"status.loop_detection.soft", "notices.status.loop_detection.soft", true},
+		{"status.loop_detection.soft", "status.loop_detection", true},
+		{"status.loop_detection.soft", "status.loop", false},
+		{"status.reasoning_loop.cut", "status.loop_detection", false},
+		{"auto_compaction", "auto_compaction", true},
+	} {
+		if got := noticeMatch(c.key, c.want); got != c.ok {
+			t.Errorf("noticeMatch(%q, %q) = %v", c.key, c.want, got)
+		}
+	}
+}
