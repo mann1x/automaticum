@@ -1466,3 +1466,15 @@
 | 17:24 | Created .gitleaks.toml | — | ~542 |
 | 17:26 | gitleaks set up like opencoti (no push workflow): .gitleaks.toml (default rules + shell-credential-fallback rule + value allowlist for the daemon tests token, pinned to its file) and a fail-closed gitleaks block in .git/hooks/pre-commit after caliber; proved: shell-fallback, github-pat, test token elsewhere refused; clean passes; skip env warns; missing binary refuses; history and tree 0 | .gitleaks.toml, .git/hooks/pre-commit | done | ~8k |
 | 17:24 | Session end: 1 writes across 1 files (.gitleaks.toml) | 0 reads | ~581 tok |
+
+## Session: 2026-10-26 17:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-26 17:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 06:36 | bm-889 run3 twin prepared ahead of the GGUF: arm g4-128e-bf16-c13-bm889-run3 (0ef3f29f5b09), model entry (sha256 to follow), endpoint + lane-1 entry on blackswan-2, idle restart; blackswan-2 repo moved to b7503f3 after removing the byte-identical untracked run2 files; run3 files are untracked there again; doctor and sha256 pending; mailed backup_models | arms/, models/, CLAUDE.md | partial | ~7k |
+| 07:05 | bm-889 run3 changed to its step-400 snapshot: arm renamed g4-128e-bf16-c13-bm889-run3-s400 (6c69d548751e), model entry with sha256 af324919 (checked on blackswan-2), endpoint -s400 there (run3 arm and endpoint removed, never used), idle restart, doctor 10 pass, /props template 6a1015c4; mailed backup_models confirmed (#1975). Run3-s400 files are untracked in the blackswan-2 repo; uncommitted here | arms/, models/, CLAUDE.md | done | ~6k |

@@ -1,15 +1,15 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-26T16:24:11.020Z
-> Files: 506 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-27T05:00:00.803Z
+> Files: 502 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
-- `.gitleaks.toml` — Hardcoded credential literal as a shell parameter-expansion default (${VAR:-secret}); use ${VAR:?mes (~542 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~4206 tok)
-- `CLAUDE.md` — automaticum (~4851 tok)
+- `.gitleaks.toml` (~581 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~4196 tok)
+- `CLAUDE.md` — automaticum (~4907 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
 - `LICENSE` — Project license (~3029 tok)
@@ -20,7 +20,7 @@
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~109554 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~110098 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~211 tok)
 - `score-history.jsonl` (~1686 tok)
@@ -35,13 +35,13 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~98413 tok)
+- `fingerprint.json` — Declares usage (~98290 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` (~6499 tok)
+- `current-session.jsonl` — Declares token (~13559 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~67825 tok)
+- `roi-stats.json` (~68240 tok)
 - `state.json` (~41 tok)
 
 ## .claude/
@@ -105,8 +105,8 @@
 
 - `base.toml` — The settings every arm here shares. It is not runnable by itself: it names (~620 tok)
 - `g4-128e-bf16-c13-bm889-run1.toml` — The twin of g4-128e-bf16-c13-shipped (7fe45202) for the bm-889 run 1 gate (~140 tok)
-- `g4-128e-bf16-c13-bm889-run2-s425.toml` — The twin of g4-128e-bf16-c13-shipped for the bm-889 run 2 gate (step 425) (~140 tok)
-- `g4-128e-bf16-c13-bm889-run2-s425.toml` — The twin of g4-128e-bf16-c13-shipped (7fe45202) for the bm-889 run 2 gate (~138 tok)
+- `g4-128e-bf16-c13-bm889-run2-s425.toml` — The twin of g4-128e-bf16-c13-shipped (7fe45202) for the bm-889 run 2 gate (~148 tok)
+- `g4-128e-bf16-c13-bm889-run3-s400.toml` — The twin of g4-128e-bf16-c13-shipped for the bm-889 run 3 gate (step 400, full MoE scope) (~140 tok)
 - `g4-128e-bf16-c13-shipped.toml` — The training pool's arm (bm-889, D105): the shipped arm on the same model (~211 tok)
 - `g4-128e-bf16-shipped.toml` — Gemma-4 26B-A4B (128 experts) BF16, end token 106, Google's chat template (~74 tok)
 - `g4-128e-bf16-stop.toml` — Gemma-4 26B-A4B (128 experts) BF16, end token 106, Google's chat template (~200 tok)
@@ -420,8 +420,8 @@
 
 - `gemma-4-26b-a4b-it-bf16-eos106.toml` — What this model is, in the owner's words (030 §4.1), as named on (~191 tok)
 - `gemma-4-26b-a4b-it-bm889-run1-bf16-eos106.toml` — What this model is (030 §4.1), as omnimergekit described it on 2026-10-26 (~247 tok)
-- `gemma-4-26b-a4b-it-bm889-run2-s425-bf16-eos106.toml` — What this model is (030 §4.1): bm-889 run 2 at step 425, GGUF sha256 c2847ae0 (~260 tok)
-- `gemma-4-26b-a4b-it-bm889-run2-s425-bf16-eos106.toml` — What this model is (030 §4.1), as omnimergekit described it on 2026-10-26 (~246 tok)
+- `gemma-4-26b-a4b-it-bm889-run2-s425-bf16-eos106.toml` — What this model is (030 §4.1), as omnimergekit described it on 2026-10-26 (~263 tok)
+- `gemma-4-26b-a4b-it-bm889-run3-s400-bf16-eos106.toml` — What this model is (030 §4.1): bm-889 run 3 step 400, full MoE scope; GGUF sha256 af324919 (~260 tok)
 - `omnimerge-v4-mtp_tb-27b-q4km-128k.toml` — What this tag is, in the owner's words (030 §4.1), as named on 2026-10-13. (~83 tok)
 - `qwen36-base-mtp_tb-27b-q4km-128k.toml` — What this tag is, in the owner's words (030 §4.1), as named on 2026-10-13: (~67 tok)
 - `stub.toml` — The scripted stub model server of the harness's own tests. Not a model. (~44 tok)
@@ -896,8 +896,3 @@
 
 - `known-bad-no-speedup.html` — Space Invaders (~3747 tok)
 - `known-bad-no-stepdown.html` — Space Invaders (~3737 tok)
-- `known-good.html` — Space Invaders (~3749 tok)
-
-## tasks/train-game/space_invaders/oracle/
-
-- `build.mjs` — Builds the oracle the agent may run but not read: run_game.logic.js as a (~795 tok)

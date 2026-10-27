@@ -1,0 +1,15 @@
+# What this model is (030 §4.1), as omnimergekit described it on 2026-10-27
+# (bm-889): gemma-4-26b-a4b-it-bf16-eos106 after its third training run, the
+# full MoE scope (attention, dense MLP, router and routed experts, 24.5B
+# trainable), lr 1e-5, stopped by the owner at step 550; the state gated is
+# the step 400 snapshot. Its 295 trained tensors were spliced into that
+# model's GGUF; every other tensor, the metadata, the end token 106 and the
+# embedded Google template are the same bytes. GGUF sha256
+# af324919c84ea2cf9a74c459f92e8d8e074a8a5f83d3de76bee42dce38940ced.
+# On its llama.cpp endpoint the server does not say what the weights file
+# calls the model, so family and size are stated here (D80).
+tag = "gemma-4-26b-a4b-it-bm889-run3-s400-bf16-eos106"
+family = "Gemma 4"
+size = "26B-A4B"
+variant = "instruct, 128 experts, unpruned, BF16, end token 106, bm-889 run 3 step 400"
+notes = "Google Gemma-4 A4B 26B (the owner's description, 2026-10-25), trained by bm-889 run 3 (full MoE scope) to step 400"
