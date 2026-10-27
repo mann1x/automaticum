@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mann1x/automaticum/internal/config"
 	"github.com/mann1x/automaticum/internal/daemon"
 	"github.com/mann1x/automaticum/internal/detect"
 	"github.com/mann1x/automaticum/internal/gate"
@@ -227,15 +228,29 @@ func runStart(ctx context.Context, args []string) error {
 
 func runLs(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("run ls", flag.ExitOnError)
-	_, dial := addClient(fs)
+	p, dial := addClient(fs)
 	q := url.Values{}
 	batch := fs.String("batch", "", "only this batch")
 	verdict := fs.String("verdict", "", "only this verdict")
-	taskID := fs.String("task", "", "only this task id")
+	taskID := fs.String("task", "", "only this task (suite/task, or a bare task id in any suite)")
+	suite := fs.String("suite", "", "only this suite")
+	model := fs.String("model", "", "only this model tag")
+	arm := fs.String("arm", "", "only this arm, as its file in the checkout is now: runs of an earlier version of it are another arm")
+	armID := fs.String("arm-id", "", "only the arm with this id (in full, as arm show prints it)")
 	imported := fs.Bool("imported", false, "only runs imported from the old harness")
 	limit := fs.Int("limit", 30, "how many")
 	parse(fs, args)
-	for k, v := range map[string]string{"batch": *batch, "verdict": *verdict, "task": *taskID} {
+	if *arm != "" {
+		if *armID != "" {
+			return errors.New("give -arm or -arm-id, not both")
+		}
+		a, err := config.LoadArm(p.arms(), *arm)
+		if err != nil {
+			return err
+		}
+		*armID = a.ID
+	}
+	for k, v := range map[string]string{"batch": *batch, "verdict": *verdict, "task": *taskID, "suite": *suite, "model": *model, "arm_id": *armID} {
 		if v != "" {
 			q.Set(k, v)
 		}
@@ -256,7 +271,7 @@ func runLs(ctx context.Context, args []string) error {
 		return printJSON(runs)
 	}
 	w := table()
-	fmt.Fprintln(w, "RUN\tSTATE\tVERDICT\tTASK\tMODEL\tSDK\tWALL\tREASON")
+	fmt.Fprintln(w, "RUN\tSTATE\tVERDICT\tTASK\tARM\tMODEL\tSDK\tWALL\tREASON")
 	for _, r := range runs {
 		wall := ""
 		if r.WallMS > 0 {
@@ -266,7 +281,7 @@ func runLs(ctx context.Context, args []string) error {
 		if len(reason) > 60 {
 			reason = reason[:57] + "..."
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", r.ID, r.State, r.Verdict, r.Task, r.Model, r.SDKRelease, wall, reason)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", r.ID, r.State, r.Verdict, r.Task, r.Arm, r.Model, r.SDKRelease, wall, reason)
 	}
 	return w.Flush()
 }

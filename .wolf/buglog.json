@@ -741,6 +741,24 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-25T10:12:00+01:00"
+    },
+    {
+      "id": "bug-044",
+      "timestamp": "2026-10-27T09:00:00+01:00",
+      "error_message": "run ls -task custom/manic_miner -limit 1000 lists only queued and running runs; finished ones missing (also with -json)",
+      "file": "internal/daemon/api.go",
+      "root_cause": "the store keeps suite and task_id apart (task_id = manic_miner) and handleRuns passed the whole suite/task string as TaskID; the queued part ignored the task filter altogether, so only queued runs of any task came back. The test fake store filtered only batch and verdict, so no test could see it",
+      "fix": "handleRuns splits suite/task into Suite and TaskID (400 if --suite disagrees) and filters queued runs by them; memState.ListRuns filters like the store's where(); daemon test cases for suite/task, bare id, suite, arm_id, model",
+      "tags": [
+        "daemon",
+        "run-ls",
+        "filter",
+        "task-id",
+        "store"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-27T09:00:00+01:00"
     }
   ]
 }

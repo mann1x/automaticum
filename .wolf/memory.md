@@ -1478,3 +1478,31 @@
 |------|--------|---------|---------|--------|
 | 06:36 | bm-889 run3 twin prepared ahead of the GGUF: arm g4-128e-bf16-c13-bm889-run3 (0ef3f29f5b09), model entry (sha256 to follow), endpoint + lane-1 entry on blackswan-2, idle restart; blackswan-2 repo moved to b7503f3 after removing the byte-identical untracked run2 files; run3 files are untracked there again; doctor and sha256 pending; mailed backup_models | arms/, models/, CLAUDE.md | partial | ~7k |
 | 07:05 | bm-889 run3 changed to its step-400 snapshot: arm renamed g4-128e-bf16-c13-bm889-run3-s400 (6c69d548751e), model entry with sha256 af324919 (checked on blackswan-2), endpoint -s400 there (run3 arm and endpoint removed, never used), idle restart, doctor 10 pass, /props template 6a1015c4; mailed backup_models confirmed (#1975). Run3-s400 files are untracked in the blackswan-2 repo; uncommitted here | arms/, models/, CLAUDE.md | done | ~6k |
+
+## Session: 2026-10-27 08:33
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-27 08:33
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-27 08:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 08:37 | committed and pushed d145cd3 (run3-s400 twin arm and model; gitleaks clean); removed stale work/bin (spike linkcheck/bench binaries, 2026-10-12/13) and work/oracle from the work root, ~3.2 GB freed | arms/, models/ | done | ~3k |
+| 09:31 | Edited internal/daemon/api.go | 5→8 lines | ~69 |
+| 09:31 | Edited internal/daemon/api.go | modified Valid() | ~162 |
+| 09:31 | Edited internal/daemon/api.go | 2→3 lines | ~58 |
+| 09:31 | Edited internal/daemon/api.go | 4→5 lines | ~59 |
+| 09:31 | Edited cmd/automaticum/client_cmds.go | expanded (+14 lines) | ~295 |
+| 09:31 | Edited cmd/automaticum/client_cmds.go | "RUN\tSTATE\tVERDICT\tTASK" → "RUN\tSTATE\tVERDICT\tTASK" | ~21 |
+| 09:31 | Edited cmd/automaticum/client_cmds.go | "%s\t%s\t%s\t%s\t%s\t%s\t%" → "%s\t%s\t%s\t%s\t%s\t%s\t%" | ~36 |
+| 09:32 | Edited internal/daemon/daemon_test.go | 1→4 lines | ~90 |
+| 09:32 | Edited internal/daemon/daemon_test.go | expanded (+17 lines) | ~227 |
+| 09:33 | Edited internal/daemon/daemon_test.go | 6→7 lines | ~99 |
+| 09:55 | backup_models gaps (#1981): fixed run ls -task suite/task (bug, queued part ignored task), added -suite -model -arm -arm-id and ARM column, arm name in RunView of finished runs; tests pass; 090 draft 0.21. Not committed or deployed (gate running). Found: notices.<type>:<message> metric names carry free text (unbounded names), proposed to the owner | internal/daemon/api.go, cmd/automaticum/client_cmds.go, daemon_test.go | done | ~25k |
+| 09:34 | Session end: 10 writes across 3 files (api.go, client_cmds.go, daemon_test.go) | 0 reads | ~1194 tok |

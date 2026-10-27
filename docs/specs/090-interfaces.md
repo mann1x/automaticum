@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.20, 2026-10-26.
+**Status:** draft 0.21, 2026-10-27.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -73,6 +73,15 @@ capture's files; it refuses a run of a task that is not a training task
 command names each one it passes over (110 §3.5). So a batch of held-out
 tasks (`custom/manic_miner`, `tbench2/*`) exports nothing, by design (D105):
 its runs are read with `run show -json` instead.
+
+**Built on 2026-10-27:** `run ls` takes `--task` as `suite/task`, as every
+other command names a task (a bare task id still matches it in any suite;
+before, `suite/task` matched no finished run), and `--suite`, `--model`,
+`--arm` and `--arm-id`. `--arm` is the arm as its file in the checkout is
+now, so runs of an earlier version of it, another identity, are left out.
+The table has an ARM column, the arm's name as the record says it. The
+route is `GET /v1/runs?task=&suite=&model=&arm_id=`; a queued run, which
+has no model or arm id yet, is listed only when neither is asked.
 
 **Decided by the owner (2026-10-26, D115):** `run start --heldout` starts a
 batch held out, kept by batch in the daemon's control file like

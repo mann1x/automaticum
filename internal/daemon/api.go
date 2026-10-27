@@ -254,6 +254,9 @@ func view(r *store.Run, full bool) RunView {
 		AgentEnd: r.AgentEnd, Claimed: r.ClaimedSuccess, StartedAt: r.StartedAt, EndedAt: r.EndedAt, WallMS: r.WallMS,
 		Provider: r.Provider, Model: r.Model, Endpoint: r.Endpoint, Thinking: r.Thinking, SDKRelease: r.Harness, Imported: r.Imported, Paused: r.Paused,
 	}
+	// The arm's name, as the record says it (its resolved arm, else what
+	// was asked); an imported run may not say.
+	v.Arm = func() string { it, _ := askedOf(r); return it.Arm }()
 	if full {
 		v.ResolvedArm, v.Provenance = r.Arm, r.Provenance
 	}
@@ -719,7 +722,16 @@ func dedupe(sorted []string) []string {
 func (d *Daemon) handleRuns(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	q := r.URL.Query()
-	f := store.RunFilter{Suite: q.Get("suite"), TaskID: q.Get("task"), Model: q.Get("model"), Batch: q.Get("batch"), Verdict: store.Verdict(strings.ToUpper(q.Get("verdict")))}
+	f := store.RunFilter{Suite: q.Get("suite"), TaskID: q.Get("task"), ArmID: q.Get("arm_id"), Model: q.Get("model"), Batch: q.Get("batch"), Verdict: store.Verdict(strings.ToUpper(q.Get("verdict")))}
+	// A task is named as everywhere else, "suite/task"; the store keeps
+	// the two apart. A bare task id still matches it in every suite.
+	if suite, id, ok := strings.Cut(f.TaskID, "/"); ok {
+		if f.Suite != "" && f.Suite != suite {
+			fail(w, http.StatusBadRequest, "task %s is not of suite %s", f.TaskID, f.Suite)
+			return
+		}
+		f.Suite, f.TaskID = suite, id
+	}
 	if f.Verdict != "" && !f.Verdict.Valid() {
 		fail(w, http.StatusBadRequest, "%q is not a verdict", q.Get("verdict"))
 		return
@@ -734,8 +746,9 @@ func (d *Daemon) handleRuns(w http.ResponseWriter, r *http.Request) {
 		f.Limit = v
 	}
 	out := []RunView{}
-	// What has not finished comes first; it has no record yet.
-	if f.Verdict == "" && f.Imported == nil {
+	// What has not finished comes first; it has no record yet, so it is
+	// listed only when the filter asks nothing a queued run cannot say.
+	if f.Verdict == "" && f.Imported == nil && f.Model == "" && f.ArmID == "" {
 		queue, err := d.State.Queue(ctx)
 		if err != nil {
 			fail(w, http.StatusInternalServerError, "%v", err)
@@ -743,7 +756,8 @@ func (d *Daemon) handleRuns(w http.ResponseWriter, r *http.Request) {
 		}
 		for i := len(queue) - 1; i >= 0; i-- {
 			it := queue[i]
-			if f.Batch != "" && it.Batch != f.Batch {
+			suite, id, _ := strings.Cut(it.Task, "/")
+			if f.Batch != "" && it.Batch != f.Batch || f.Suite != "" && suite != f.Suite || f.TaskID != "" && id != f.TaskID {
 				continue
 			}
 			out = append(out, d.queuedView(it))

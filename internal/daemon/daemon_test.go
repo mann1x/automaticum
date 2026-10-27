@@ -102,7 +102,10 @@ func (s *memState) ListRuns(_ context.Context, f store.RunFilter) ([]store.Run, 
 	defer s.mu.Unlock()
 	var out []store.Run
 	for _, r := range s.runs {
-		if (f.Batch == "" || r.Batch == f.Batch) && (f.Verdict == "" || r.Verdict == f.Verdict) {
+		// As the store's own filter: each field given must equal the column.
+		if (f.Batch == "" || r.Batch == f.Batch) && (f.Verdict == "" || r.Verdict == f.Verdict) &&
+			(f.Suite == "" || r.Suite == f.Suite) && (f.TaskID == "" || r.TaskID == f.TaskID) &&
+			(f.ArmID == "" || r.ArmID == f.ArmID) && (f.Model == "" || r.Model == f.Model) {
 			out = append(out, r)
 		}
 	}
@@ -402,6 +405,24 @@ func TestStartRunsInOrder(t *testing.T) {
 	var list []RunView
 	if g.call("GET", "/v1/runs?batch=k-once", nil, &list); len(list) != 3 {
 		t.Fatalf("list: %+v", list)
+	}
+	// A finished run says its arm by name, from its resolved arm (this
+	// rig's runner records none), and a task is filtered as it is named,
+	// suite/task, as well as by its bare id.
+	if v := view(&store.Run{Suite: "demo", TaskID: "answer", Arm: json.RawMessage(`{"name":"stub"}`)}, false); v.Arm != "stub" {
+		t.Errorf("a finished run's arm: %q", v.Arm)
+	}
+	for q, want := range map[string]int{
+		"task=demo/answer": 3, "task=answer": 3, "task=custom/answer": 0, "suite=demo": 3,
+		"arm_id=" + resp.ArmID: 3, "arm_id=nothing": 0, "model=nothing": 0,
+	} {
+		list = nil
+		if code := g.call("GET", "/v1/runs?"+q, nil, &list); code != 200 || len(list) != want {
+			t.Errorf("%s: %d, %d runs, want %d", q, code, len(list), want)
+		}
+	}
+	if code := g.call("GET", "/v1/runs?suite=custom&task=demo/answer", nil, nil); code != 400 {
+		t.Errorf("a task of another suite than the one given: %d", code)
 	}
 	var st Status
 	g.call("GET", "/v1/status", nil, &st)
