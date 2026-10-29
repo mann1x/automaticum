@@ -804,8 +804,8 @@
       "timestamp": "2026-10-29T17:40:00+01:00",
       "error_message": "stub run with a model request that never answers (stub hang.json), -wall-s 60: runner notes wall_limit at 60s and calls core.abort, then nothing; harness kills at wall + grace (TIMEOUT 'enforced by the harness', no runner end). Same on 4.100.266 (20261029-163306-640538, 3m38s) and 4.100.268 (20261029-162939-e55f6a, 3m01s)",
       "file": "(SDK) @cerebriline/core run.abort",
-      "root_cause": "Not established: the session's abort does not end a main model request whose server holds the connection open and sends no headers. Not a 4.100.268 regression; core.abort is identical in both bundles (sends run.abort to the session host). Distinct from bug-045 (side calls).",
-      "fix": "Reported to Cerebriline (ollama session) with the repro. Harness side unchanged: the grace kill still bounds the run and the TIMEOUT verdict stands.",
+      "root_cause": "The SDK's Ollama provider runs one-time probes before the first turn (/api/show, then two /api/chat with options.num_predict 1, stream false, user/assistant/tool messages) and awaited them without the run's signal; the stub's hang turn held the first probe, so the real turn was never sent and run.abort had nothing to reach. Same on 4.100.266 and 4.100.268.",
+      "fix": "Upstream: Cerebriline main f8ce4b3c51 (llms) gives the probes the request's signal and bounds /api/show and account reads at 30s; ships with the next SDK release (Cerebriline ol-137). Harness: the stub now answers the probe chats at once without taking a script turn (bug-048), so hang.json holds the real turn.",
       "tags": [
         "sdk",
         "abort",
@@ -819,6 +819,26 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-10-29T17:40:00+01:00"
+    },
+    {
+      "id": "bug-048",
+      "timestamp": "2026-10-29T19:45:00+01:00",
+      "error_message": "stub hang.json meant to hold the agent's turn held the SDK's one-time model probe instead (found through bug-047)",
+      "file": "internal/stubmodel/stubmodel.go",
+      "root_cause": "chat() picks the scripted turn by counting assistant messages; the SDK's probe chats (num_predict 1, stream false, one assistant message) took turn min(1, n-1) like a real turn, hanging under hang.json and answering with a scripted turn otherwise",
+      "fix": "/api/chat with options.num_predict == 1 and stream false is answered at once (empty assistant message, done, done_reason length, no prompt_eval_count so the SDK decides as before) and is not recorded in Chats; TestSDKProbeTakesNoTurn The script option hang_probe holds the probe chats open instead (TestHangProbe), to test an abort during the SDK's probes.",
+      "tags": [
+        "stub",
+        "probe",
+        "ollama",
+        "hang",
+        "sdk"
+      ],
+      "related_bugs": [
+        "bug-047"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T19:45:00+01:00"
     }
   ]
 }

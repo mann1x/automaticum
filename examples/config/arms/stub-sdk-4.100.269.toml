@@ -1,0 +1,7 @@
+# The stub arm on SDK release 4.100.269, for the harness's own tests of that
+# build: the first whose abort ends a turn still waiting on the Ollama
+# provider's first-use probes (X12, bug-047).
+extends = "stub"
+
+[harness]
+sdk_release = "4.100.269"

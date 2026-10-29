@@ -1,0 +1,7 @@
+# SDK release 4.100.269, from the registry: as 4.100.268, and the Ollama
+# provider's first-use probes take the run's signal, so an abort while one
+# waits ends the turn; /api/show and the account reads time out after 30 s
+# (bug-047, Cerebriline f8ce4b3c51).
+version = "4.100.269"
+source = "registry"
+bundle_sha256 = "b62452083eefa820c2b5d75dafcb9689dedca21547345cd905512fd15fb0ba27"

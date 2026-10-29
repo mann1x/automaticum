@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-10-29 (revision 32).
+**Status:** current as of 2026-10-29 (revision 33).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -181,6 +181,7 @@ Requests to the Cerebriline SDK (040 §8). The owner approved the work on
 | X10 | Terminal-Bench 2.0 (`harbor-framework/terminal-bench-2`, Apache-2.0) at commit `2fd12b88aafdd04a52c298e3940bcb189f9766d6`, with its task images pinned by digest, and the pytest wheels from PyPI pinned by hash. | pinned 2026-10-25 | the suite `tbench2` (066) is imported from it; a new commit is a new import and new task hashes |
 | X9 | An SDK release whose core passes the host's `onReasoningLoopLimitReached` on to the agent, as it does `onConsecutiveMistakeLimitReached` (D108); asked 2026-10-25. | released in 4.100.266 (2026-10-25), checked in the bundle; its notice also carries `maxConsecutiveTrips` | until then a run the SDK ends at the reasoning-loop limit against the arm is `INVALID` |
 | X11 | An SDK release whose session abort reaches the capped-thinking note, the retrospective and the compaction requests, and whose note and retrospective stop streaming once they repeat themselves or pass the length they are cut to (bug-045); asked 2026-10-29. | released in 4.100.268 (2026-10-29, Cerebriline 21938f7f52), checked in the bundle | until then a run stopped at its wall while such a request streams is killed by the harness after the grace (`TIMEOUT`, no runner `end`) |
+| X12 | An SDK release whose Ollama provider's first-use probes (`/api/show`, the reinjection `/api/chat` pair) take the run's signal, so an abort while one waits ends the turn, and whose model and account reads are bounded (bug-047); asked 2026-10-29. | released in 4.100.269 (2026-10-29, Cerebriline f8ce4b3c51), checked in the bundle | until then a run stopped at its wall while a probe waits is killed by the harness after the grace (`TIMEOUT`, no runner `end`) |
 
 ## 5. Not adopted
 

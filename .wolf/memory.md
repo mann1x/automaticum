@@ -1613,3 +1613,21 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 17:40 | 4.100.268 on blackswan-2: checkout 9688843, sdk add+verify 19805e16, stub arm; smoke manic_miner PASS 20261029-162728-7368dd; hang+wall 60s TIMEOUT by harness on 268 and 266 alike (bug-047, reported); bug-046 fix (gate-skipped runs record arm_id) in tree, uncommitted | internal/daemon/daemon.go, .wolf/buglog.json | partial | ~20k |
+
+## Session: 2026-10-29 17:57
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-29 17:57
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-29 17:58
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:03 | d8c0cd8 (bug-046: gate-skipped runs record arm_id) committed, pushed, deployed on blackswan-2 while idle (automaticum 12d3968229ae, automaticumd 2e6475008fc1); proof: gate-skipped 20261029-170236-6c7a45 listed by run ls -arm; lane idle, 0 queued | internal/daemon/daemon.go | ok | ~6k |
+| 19:45 | mail #2016: bug-047 cause = SDK Ollama probes (num_predict 1) ignore the signal; fixed upstream f8ce4b3c51, unreleased. Stub now answers probe chats without a script turn (bug-048), tests pass, uncommitted | internal/stubmodel/stubmodel.go, stubmodel_test.go | ok | ~8k |
+| 20:10 | SDK 4.100.269 pinned b6245208 (reproduced; probe fetch carries signal in llms bundle); stub-sdk-4.100.269 arm; X12 rows (decisions rev 33, 040 draft 1.11); stub hang_probe option + probe answer (bug-048); make test 17 ok | runner/sdk/4.100.269, internal/stubmodel, docs/specs | ok | ~15k |

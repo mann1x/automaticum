@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-29T11:00:00.736Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-29T17:00:00.825Z
 > Files: 502 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
@@ -8,8 +8,8 @@
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
 - `.gitleaks.toml` (~581 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~3036 tok)
-- `CLAUDE.md` — automaticum (~4755 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~3114 tok)
+- `CLAUDE.md` — automaticum (~4759 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
 - `LICENSE` — Project license (~3029 tok)
@@ -20,7 +20,7 @@
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~118506 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~118916 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~211 tok)
 - `score-history.jsonl` (~1715 tok)
@@ -35,14 +35,14 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~97625 tok)
+- `fingerprint.json` — Declares usage (~97954 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` (~5454 tok)
+- `current-session.jsonl` (~21930 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~74207 tok)
-- `state.json` (~40 tok)
+- `roi-stats.json` (~74833 tok)
+- `state.json` (~41 tok)
 
 ## .claude/
 
@@ -137,7 +137,7 @@
 - `010-architecture.md` — 010 — Architecture (~1615 tok)
 - `020-run-record.md` — 020 — The run record, verdicts and the basis (~3568 tok)
 - `030-configuration.md` — 030 — Configuration (~3572 tok)
-- `040-runner.md` — 040 — The runner (~9013 tok)
+- `040-runner.md` — 040 — The runner (~9062 tok)
 - `050-orchestration.md` — 050 — Orchestration: scheduling, gates, control (~4591 tok)
 - `060-tasks-and-suites.md` — 060 — Tasks, oracles and the suite interface (~2271 tok)
 - `061-suite-bfcl.md` — 061 — Suite: BFCL (Berkeley Function-Calling Leaderboard) (~551 tok)
@@ -151,7 +151,7 @@
 - `090-interfaces.md` — 090 — Interfaces (~2982 tok)
 - `100-legacy-import.md` — 100 — Import of the old harness's corpus (~3426 tok)
 - `110-acceptance-and-roadmap.md` — 110 — Acceptance and roadmap (~8001 tok)
-- `decisions.md` — Decisions and open questions (~8444 tok)
+- `decisions.md` — Decisions and open questions (~8566 tok)
 
 ## docs/specs/archive/
 
@@ -173,7 +173,8 @@
 - `stub-sdk-4.100.260.toml` — The stub arm on SDK release 4.100.260, for the harness's own tests of that (~40 tok)
 - `stub-sdk-4.100.262.toml` — The stub arm on SDK release 4.100.262, for the harness's own tests of that (~40 tok)
 - `stub-sdk-4.100.266.toml` — The stub arm on SDK release 4.100.266, for the harness's own tests of that (~64 tok)
-- `stub-sdk-4.100.268.toml` — The stub arm on SDK release 4.100.268: the first whose abort reaches the thinking note (X11, bug-045) (~64 tok)
+- `stub-sdk-4.100.268.toml` — The stub arm on SDK release 4.100.268, for the harness's own tests of that (~73 tok)
+- `stub-sdk-4.100.269.toml` — The stub arm on SDK release 4.100.269: the first whose abort ends a turn waiting on the Ollama probes (X12, bug-047) (~75 tok)
 - `stub-stop-sdk-4.100.258.toml` — The stub arm on SDK release 4.100.258 that ends a run at the first trip of (~66 tok)
 - `stub-stop-sdk-4.100.259.toml` — The stub arm on SDK release 4.100.259 that ends a run at the first trip of (~64 tok)
 - `stub.toml` — An arm for the stub model server: used by the harness's own tests and for (~99 tok)
@@ -261,8 +262,8 @@
 - `cell.go` — CellResult (97 fields) (~4032 tok)
 - `compare.go` — CompareView (97 fields) (~4257 tok)
 - `control.go` — control (94 fields) (~5756 tok)
-- `daemon_test.go` — memState (121 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~17212 tok)
-- `daemon.go` — is automaticumd without its main: the queue, one worker (~5919 tok)
+- `daemon_test.go` — memState (121 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~17224 tok)
+- `daemon.go` — is automaticumd without its main: the queue, one worker (~5963 tok)
 - `export_test.go` — TestExport (~1366 tok)
 - `export.go` — ExportMeta (48 fields) (~1711 tok)
 - `modec_test.go` — TestModeCCell, TestModeCBasis (~1727 tok)
@@ -465,12 +466,18 @@
 - `package.json` — Node.js package manifest (~64 tok)
 - `sdk.toml` — SDK release 4.100.266, from the registry: as 4.100.262, and core passes the (~109 tok)
 
-
 ## runner/sdk/4.100.268/
 
-- `package-lock.json` — npm lock file (~52626 tok)
+- `package-lock.json` — npm lock file (~52537 tok)
 - `package.json` — Node.js package manifest (~64 tok)
-- `sdk.toml` — SDK release 4.100.268, from the registry: as 4.100.266, and an abort now reaches the (~109 tok)
+- `sdk.toml` — SDK release 4.100.268, from the registry: as 4.100.266, and an abort now (~115 tok)
+
+
+## runner/sdk/4.100.269/
+
+- `package-lock.json` — npm lock file (~52537 tok)
+- `package.json` — Node.js package manifest (~64 tok)
+- `sdk.toml` — SDK release 4.100.269, from the registry: as 4.100.268, and the Ollama probes take the run's signal (~120 tok)
 ## runner/test/
 
 - `arm-stub.json` (~287 tok)
@@ -912,10 +919,3 @@
 
 - `ini_doc.c` — include <stdlib.h> (~597 tok)
 - `ini_get.c` — include <ctype.h> (~275 tok)
-- `ini_parse.c` — include <stdio.h> (~1355 tok)
-- `ini_util.c` — include <stdlib.h> (~498 tok)
-
-## tasks/train-ml/c_parser_bugfix/fixtures/bad-range/src/
-
-- `ini_doc.c` — include <stdlib.h> (~597 tok)
-- `ini_get.c` — include <ctype.h> (~280 tok)

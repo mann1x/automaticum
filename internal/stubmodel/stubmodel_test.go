@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestChatFollowsTheScript(t *testing.T) {
@@ -113,6 +114,57 @@ func TestProbesAndErrors(t *testing.T) {
 	resp.Body.Close()
 	if s.Calls()["/api/chat"] != 1 || s.Calls()["/api/show"] != 1 {
 		t.Errorf("calls: %v", s.Calls())
+	}
+}
+
+// The SDK's one-token probe chat is answered at once, without a turn of the
+// script: a script whose only turn hangs still answers it.
+func TestSDKProbeTakesNoTurn(t *testing.T) {
+	s := New(Script{Model: "m:1", ContextWindow: 4096, Turns: []Turn{{Hang: true}}})
+	srv := httptest.NewServer(s)
+	defer srv.Close()
+	c := http.Client{Timeout: 5 * time.Second}
+	body := `{"model":"m:1","stream":false,"think":true,"options":{"num_predict":1},"messages":[{"role":"user","content":"probe"},{"role":"assistant","content":"checking"},{"role":"tool","content":"probe"}]}`
+	resp, err := c.Post(srv.URL+"/api/chat", "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	json.NewDecoder(resp.Body).Decode(&got)
+	resp.Body.Close()
+	if resp.StatusCode != 200 || got["done"] != true {
+		t.Errorf("probe: %d %v", resp.StatusCode, got)
+	}
+	if _, ok := got["prompt_eval_count"]; ok {
+		t.Errorf("probe answer has prompt_eval_count: %v", got)
+	}
+	if n := len(s.Chats()); n != 0 || s.Calls()["/api/chat"] != 1 {
+		t.Errorf("probe recorded as %d chats, calls %v", n, s.Calls())
+	}
+}
+
+// With hang_probe the probe chat is held until the caller gives up.
+func TestHangProbe(t *testing.T) {
+	var sc Script
+	if err := json.Unmarshal([]byte(`{"model":"m:1","context_window":4096,"hang_probe":true,"turns":[{"content":"done"}]}`), &sc); err != nil {
+		t.Fatal(err)
+	}
+	s := New(sc)
+	srv := httptest.NewServer(s)
+	defer srv.Close()
+	c := http.Client{Timeout: 300 * time.Millisecond}
+	_, err := c.Post(srv.URL+"/api/chat", "application/json", strings.NewReader(`{"model":"m:1","stream":false,"options":{"num_predict":1},"messages":[{"role":"user","content":"probe"}]}`))
+	if err == nil {
+		t.Fatal("the probe was answered")
+	}
+	c.Timeout = 5 * time.Second
+	resp, err := c.Post(srv.URL+"/api/chat", "application/json", strings.NewReader(`{"model":"m:1","stream":false,"messages":[{"role":"user","content":"hi"}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 200 || len(s.Chats()) != 1 {
+		t.Errorf("turn: %d, %d chats", resp.StatusCode, len(s.Chats()))
 	}
 }
 

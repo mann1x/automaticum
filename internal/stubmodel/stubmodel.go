@@ -25,6 +25,10 @@ type Script struct {
 	// Slots is the total_slots /props reports; 1 when not given. The
 	// context of each slot is ContextWindow.
 	Slots int `json:"slots,omitempty"`
+	// HangProbe makes the stub hold the SDK's one-token probe chats open
+	// and send nothing, as a turn with Hang does; otherwise they are
+	// answered at once.
+	HangProbe bool `json:"hang_probe,omitempty"`
 	// Turns are the answers, in order. The answer to a request is chosen by
 	// how many assistant messages the request already holds, so a retried
 	// request gets the same answer. Past the last turn, the last is repeated.
@@ -178,8 +182,25 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) {
 		Messages []struct {
 			Role string `json:"role"`
 		} `json:"messages"`
+		Options struct {
+			NumPredict int `json:"num_predict"`
+		} `json:"options"`
 	}
 	json.Unmarshal(raw, &req)
+	// The SDK's Ollama provider probes a model once before its first turn
+	// with chats of one token, not streamed. They are answered at once and
+	// take no turn of the script, so a turn that hangs holds the turn and
+	// not the probe. The answer has no prompt_eval_count, as the scripted
+	// answers do not: the SDK decides what it did before.
+	if r.URL.Path == "/api/chat" && req.Options.NumPredict == 1 && req.Stream != nil && !*req.Stream {
+		if s.script.HangProbe {
+			<-r.Context().Done()
+			return
+		}
+		writeJSON(w, map[string]any{"model": s.script.Model, "created_at": time.Now().UTC().Format(time.RFC3339Nano),
+			"message": map[string]any{"role": "assistant", "content": ""}, "done": true, "done_reason": "length"})
+		return
+	}
 	assistant := 0
 	for _, m := range req.Messages {
 		if m.Role == "assistant" {
