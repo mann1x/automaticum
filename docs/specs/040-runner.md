@@ -1,6 +1,6 @@
 # 040 — The runner
 
-**Status:** draft 1.9, 2026-10-25. Facts about the SDK in this file were read
+**Status:** draft 1.10, 2026-10-29. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
 running it. The parity table in §6 was checked row by row by the Cerebriline
 session on 2026-10-13 against its main branch (release 4.100.249 plus requests
@@ -503,6 +503,7 @@ code, not from trying. Each request is tracked in `decisions.md` section 4.
 | X4 | The extension's **mention expansion** as an SDK function. | expensive: it lives in the extension and leans on the editor. Worked around at first (§8.1) |
 | X5 | A hook for the **error-retry** decision. | **withdrawn** (owner, 2026-10-12): the runner observes only (§8.1) |
 | X9 | Pass the host's **`onReasoningLoopLimitReached`** from the session's configuration on to the agent, as core does `onConsecutiveMistakeLimitReached` (D108). | **released in 4.100.266** (2026-10-25); the notice also carries `maxConsecutiveTrips` |
+| X11 | Let the session's **abort** reach the capped-thinking note, the retrospective and the compaction requests, and stop a runaway note (bug-045). | **released in 4.100.268** (2026-10-29) |
 | X6 | Confirmation of the parity inventory in §6, row by row. | done on 2026-10-13 for §6: 11 rows confirmed, 2 corrected, 6 added. §6.1 and §6.2 not checked |
 
 `INVALID` depends on X1 to X3, which is why they come first. More requests are

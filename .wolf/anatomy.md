@@ -1,19 +1,15 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-29T07:36:18.129Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-29T11:00:00.736Z
 > Files: 502 tracked | Anatomy hits: 0 | Misses: 0
-
-## ../../../../root/.claude/projects/-srv-dev-disk-by-label-opt-dev-automaticum/memory/
-
-- `client-sessions-start-their-own-batches.md` (~361 tok)
 
 ## ./
 
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
 - `.gitleaks.toml` (~581 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~4415 tok)
-- `CLAUDE.md` — automaticum (~4971 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~3036 tok)
+- `CLAUDE.md` — automaticum (~4755 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
 - `LICENSE` — Project license (~3029 tok)
@@ -24,10 +20,10 @@
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~114031 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~118506 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~211 tok)
-- `score-history.jsonl` (~1686 tok)
+- `score-history.jsonl` (~1715 tok)
 
 ## .caliber/backups/2026-10-12T20-16-19-461Z/
 
@@ -39,14 +35,14 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~97852 tok)
+- `fingerprint.json` — Declares usage (~97625 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` (~9650 tok)
+- `current-session.jsonl` (~5454 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~71716 tok)
-- `state.json` (~41 tok)
+- `roi-stats.json` (~74207 tok)
+- `state.json` (~40 tok)
 
 ## .claude/
 
@@ -63,7 +59,7 @@
 - `endpoint-probe.md` — Endpoint probe and gate conventions (~528 tok)
 - `lane-images.md` — Lane image conventions (~763 tok)
 - `openwolf.md` — OpenWolf protocol (~207 tok)
-- `runner-protocol.md` — Runner protocol conventions (~1419 tok)
+- `runner-protocol.md` — Runner protocol conventions (~1427 tok)
 - `spec-conventions.md` — Spec conventions (~375 tok)
 - `task-loader.md` — Task loader conventions (~1369 tok)
 - `wire-arm.md` — Wire detector conventions (~452 tok)
@@ -87,7 +83,7 @@
 
 ## .claude/skills/learned-new-sdk-release/
 
-- `SKILL.md` — Provisioning a new SDK release (~796 tok)
+- `SKILL.md` — Provisioning a new SDK release (~800 tok)
 
 ## .claude/skills/log-wolf-bug/
 
@@ -105,21 +101,6 @@
 
 - `SKILL.md` — Setup Caliber (~1941 tok)
 
-## arms/
-
-- `base.toml` — The settings every arm here shares. It is not runnable by itself: it names (~620 tok)
-- `stub-plan-sdk-4.100.258.toml` — The stub arm in plan mode on SDK release 4.100.258, for the tests of the (~53 tok)
-- `stub-plan.toml` — The stub arm in plan mode, for the harness's own tests of the scripted (~52 tok)
-- `stub-sdk-4.100.251.toml` — The stub arm on SDK release 4.100.251: the same settings, another build of (~58 tok)
-- `stub-sdk-4.100.258.toml` — The stub arm on SDK release 4.100.258: the same settings, another build of (~53 tok)
-- `stub-sdk-4.100.259.toml` — The stub arm on SDK release 4.100.259, for the harness's own tests of that (~40 tok)
-- `stub-sdk-4.100.260.toml` — The stub arm on SDK release 4.100.260, for the harness's own tests of that (~40 tok)
-- `stub-sdk-4.100.262.toml` — The stub arm on SDK release 4.100.262, for the harness's own tests of that (~40 tok)
-- `stub-sdk-4.100.266.toml` — The stub arm on SDK release 4.100.266, for the harness's own tests of that (~64 tok)
-- `stub-stop-sdk-4.100.258.toml` — The stub arm on SDK release 4.100.258 that ends a run at the first trip of (~66 tok)
-- `stub-stop-sdk-4.100.259.toml` — The stub arm on SDK release 4.100.259 that ends a run at the first trip of (~64 tok)
-- `stub.toml` — An arm for the stub model server: used by the harness's own tests and for (~99 tok)
-
 ## campaigns/
 
 - `stub-demo.toml` — A campaign on the stub model server, for trying campaigns without a GPU: (~121 tok)
@@ -128,10 +109,10 @@
 
 - `campaign_cmds.go` (~1452 tok)
 - `cell_cmds.go` — exitCode: names (~2996 tok)
-- `client_cmds.go` — client (122 fields) (~9210 tok)
+- `client_cmds.go` — client (123 fields) (~9231 tok)
 - `compare_cmds.go` — Declares list (~3430 tok)
 - `config_cmds_test.go` — TestParseInterspersed, TestCellTasks, TestNoticeMatch (~593 tok)
-- `config_cmds.go` — place (121 fields) (~3164 tok)
+- `config_cmds.go` — place (125 fields) (~3192 tok)
 - `control_cmds.go` (~2001 tok)
 - `export_cmds.go` — manifestLine (88 fields); methods: Error (~2253 tok)
 - `image_cmds.go` (~1096 tok)
@@ -155,7 +136,7 @@
 - `000-overview.md` — 000 — Overview, vocabulary and map of the spec set (~2103 tok)
 - `010-architecture.md` — 010 — Architecture (~1615 tok)
 - `020-run-record.md` — 020 — The run record, verdicts and the basis (~3568 tok)
-- `030-configuration.md` — 030 — Configuration (~3307 tok)
+- `030-configuration.md` — 030 — Configuration (~3572 tok)
 - `040-runner.md` — 040 — The runner (~9013 tok)
 - `050-orchestration.md` — 050 — Orchestration: scheduling, gates, control (~4591 tok)
 - `060-tasks-and-suites.md` — 060 — Tasks, oracles and the suite interface (~2271 tok)
@@ -170,7 +151,7 @@
 - `090-interfaces.md` — 090 — Interfaces (~2982 tok)
 - `100-legacy-import.md` — 100 — Import of the old harness's corpus (~3426 tok)
 - `110-acceptance-and-roadmap.md` — 110 — Acceptance and roadmap (~8001 tok)
-- `decisions.md` — Decisions and open questions (~8334 tok)
+- `decisions.md` — Decisions and open questions (~8444 tok)
 
 ## docs/specs/archive/
 
@@ -179,7 +160,23 @@
 
 ## examples/config/
 
-- `automaticum.toml` — The daemon's own file. Copy this directory, edit it, and start the daemon (~259 tok)
+- `automaticum.toml` — The daemon's own file. Copy this directory, edit it, and start the daemon (~272 tok)
+
+## examples/config/arms/
+
+- `base.toml` — The settings every arm here shares. It is not runnable by itself: it names (~620 tok)
+- `stub-plan-sdk-4.100.258.toml` — The stub arm in plan mode on SDK release 4.100.258, for the tests of the (~53 tok)
+- `stub-plan.toml` — The stub arm in plan mode, for the harness's own tests of the scripted (~52 tok)
+- `stub-sdk-4.100.251.toml` — The stub arm on SDK release 4.100.251: the same settings, another build of (~58 tok)
+- `stub-sdk-4.100.258.toml` — The stub arm on SDK release 4.100.258: the same settings, another build of (~53 tok)
+- `stub-sdk-4.100.259.toml` — The stub arm on SDK release 4.100.259, for the harness's own tests of that (~40 tok)
+- `stub-sdk-4.100.260.toml` — The stub arm on SDK release 4.100.260, for the harness's own tests of that (~40 tok)
+- `stub-sdk-4.100.262.toml` — The stub arm on SDK release 4.100.262, for the harness's own tests of that (~40 tok)
+- `stub-sdk-4.100.266.toml` — The stub arm on SDK release 4.100.266, for the harness's own tests of that (~64 tok)
+- `stub-sdk-4.100.268.toml` — The stub arm on SDK release 4.100.268: the first whose abort reaches the thinking note (X11, bug-045) (~64 tok)
+- `stub-stop-sdk-4.100.258.toml` — The stub arm on SDK release 4.100.258 that ends a run at the first trip of (~66 tok)
+- `stub-stop-sdk-4.100.259.toml` — The stub arm on SDK release 4.100.259 that ends a run at the first trip of (~64 tok)
+- `stub.toml` — An arm for the stub model server: used by the harness's own tests and for (~99 tok)
 
 ## examples/config/endpoints/
 
@@ -189,6 +186,10 @@
 ## examples/config/lanes/
 
 - `lane-1.toml` (~32 tok)
+
+## examples/config/models/
+
+- `stub.toml` — The scripted stub model server of the harness's own tests. Not a model. (~44 tok)
 
 ## examples/systemd/
 
@@ -243,29 +244,29 @@
 - `arm.go` — loads automaticum's configuration: arms, lanes, endpoints (~8685 tok)
 - `campaign_test.go` — TestLoadCampaign (~574 tok)
 - `campaign.go` — Campaign (41 fields); methods: Validate (~1488 tok)
-- `cell_test.go` — TestArmForCell, TestCellEndpoint (~782 tok)
+- `cell_test.go` — TestArmForCell, TestCellEndpoint (~791 tok)
 - `cell.go` — CallerValues (41 fields); methods: ForCell (~1530 tok)
-- `config_test.go` — TestRepositoryArms, TestArmValidation, TestStopOnIdentity, TestReasoningLoopLimitIdentity + 3 more (~4824 tok)
-- `local.go` — Local (97 fields); methods: Endpoint, MayUse, AddCellEndpoint, Token (~2995 tok)
-- `model_test.go` — TestModels (~532 tok)
-- `model.go` — ModelIdentity (25 fields); methods: Missing (~755 tok)
+- `config_test.go` — TestRepositoryArms, TestArmValidation, TestStopOnIdentity, TestReasoningLoopLimitIdentity + 3 more (~4829 tok)
+- `local.go` — Local (97 fields); methods: Endpoint, MayUse, AddCellEndpoint, ArmsDir (~3097 tok)
+- `model_test.go` — TestModels (~541 tok)
+- `model.go` — ModelIdentity (25 fields); methods: Missing (~761 tok)
 - `runner_fixture_test.go` — TestRunnerFixtureIsTheResolvedArm (~164 tok)
 
 ## internal/daemon/
 
-- `api.go` — HTTP handlers: reply, fail (~13406 tok)
+- `api.go` — HTTP handlers: reply, fail (~13391 tok)
 - `basis.go` — Basis (87 fields) (~4394 tok)
 - `campaign.go` — CampaignState (112 fields) (~3842 tok)
 - `canary.go` — CanaryRecord (36 fields); methods: Error, Is (~1597 tok)
 - `cell.go` — CellResult (97 fields) (~4032 tok)
 - `compare.go` — CompareView (97 fields) (~4257 tok)
 - `control.go` — control (94 fields) (~5756 tok)
-- `daemon_test.go` — memState (121 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~17127 tok)
-- `daemon.go` — is automaticumd without its main: the queue, one worker (~5907 tok)
+- `daemon_test.go` — memState (121 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~17212 tok)
+- `daemon.go` — is automaticumd without its main: the queue, one worker (~5919 tok)
 - `export_test.go` — TestExport (~1366 tok)
 - `export.go` — ExportMeta (48 fields) (~1711 tok)
 - `modec_test.go` — TestModeCCell, TestModeCBasis (~1727 tok)
-- `modec.go` — CellSpec (69 fields) (~2251 tok)
+- `modec.go` — CellSpec (69 fields) (~2243 tok)
 
 ## internal/detect/
 
@@ -289,7 +290,7 @@
 
 ## internal/gate/
 
-- `gate_test.go` — server (42 fields); methods: ImageInspect, Check, Path (~3036 tok)
+- `gate_test.go` — server (42 fields); methods: ImageInspect, Check, Path (~3040 tok)
 - `gate.go` — holds the gates: what must hold before a run starts (spec (~4730 tok)
 
 ## internal/human/
@@ -338,7 +339,7 @@
 - `props_test.go` — TestProps, TestProbeLlamaServer (~1470 tok)
 - `props.go` — Props (51 fields) (~1519 tok)
 - `protocol.go` — executes one run: an arm on a task, once, on a lane. It (~2108 tok)
-- `run_test.go` — fakeState (75 fields); methods: UpsertRun, AddBlobRefs, Put, Check (~7704 tok)
+- `run_test.go` — fakeState (75 fields); methods: UpsertRun, AddBlobRefs, Put, Check (~7708 tok)
 - `run.go` — Interface: Engine (5 methods) (~9706 tok)
 - `verdict.go` — Facts (24 fields) (~707 tok)
 
@@ -410,10 +411,6 @@
 - `user_test.go` — TestUserScript (~1060 tok)
 - `user.go` — User (45 fields) (~2600 tok)
 
-## models/
-
-- `stub.toml` — The scripted stub model server of the harness's own tests. Not a model. (~44 tok)
-
 ## runner/
 
 - `guards.mjs` — Guard actions as the SDK announces them: a "notice" event whose metadata (~1320 tok)
@@ -468,6 +465,12 @@
 - `package.json` — Node.js package manifest (~64 tok)
 - `sdk.toml` — SDK release 4.100.266, from the registry: as 4.100.262, and core passes the (~109 tok)
 
+
+## runner/sdk/4.100.268/
+
+- `package-lock.json` — npm lock file (~52626 tok)
+- `package.json` — Node.js package manifest (~64 tok)
+- `sdk.toml` — SDK release 4.100.268, from the registry: as 4.100.266, and an abort now reaches the (~109 tok)
 ## runner/test/
 
 - `arm-stub.json` (~287 tok)
@@ -874,7 +877,45 @@
 
 - `checker.json` (~96 tok)
 - `NOTES.md` — space_invaders — notes (~320 tok)
+- `task.toml` — space_invaders: repair a broken single-file browser Space Invaders (training task, bm-889 rollout pool). (~755 tok)
 
 ## tasks/train-game/space_invaders/checker/
 
 - `run_game.logic.js` — run_game: does space_invaders.html actually run, and does it play by its rules? (~8769 tok)
+
+## tasks/train-game/space_invaders/fixtures/
+
+- `known-bad-no-speedup.html` — Space Invaders (~3747 tok)
+- `known-bad-no-stepdown.html` — Space Invaders (~3737 tok)
+- `known-good.html` — Space Invaders (~3749 tok)
+
+## tasks/train-game/space_invaders/oracle/
+
+- `build.mjs` — Builds the oracle the agent may run but not read: run_game.logic.js as a (~795 tok)
+- `run_tests.logic.js` — run_game: does space_invaders.html actually run, and does it play by its rules? (~8769 tok)
+
+## tasks/train-game/space_invaders/seed/
+
+- `space_invaders.html` — Space Invaders (~3512 tok)
+
+## tasks/train-ml/c_parser_bugfix/
+
+- `checker.json` (~312 tok)
+- `NOTES.md` — c_parser_bugfix — notes (~412 tok)
+- `task.toml` — c_parser_bugfix: fix a small C INI-parser library so it follows its README (training task, bm-889 rollout pool). (~790 tok)
+
+## tasks/train-ml/c_parser_bugfix/checker/
+
+- `check.c` — define _GNU_SOURCE (~4515 tok)
+
+## tasks/train-ml/c_parser_bugfix/fixtures/bad-quote/src/
+
+- `ini_doc.c` — include <stdlib.h> (~597 tok)
+- `ini_get.c` — include <ctype.h> (~275 tok)
+- `ini_parse.c` — include <stdio.h> (~1355 tok)
+- `ini_util.c` — include <stdlib.h> (~498 tok)
+
+## tasks/train-ml/c_parser_bugfix/fixtures/bad-range/src/
+
+- `ini_doc.c` — include <stdlib.h> (~597 tok)
+- `ini_get.c` — include <ctype.h> (~280 tok)

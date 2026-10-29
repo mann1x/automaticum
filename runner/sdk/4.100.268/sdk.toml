@@ -1,0 +1,7 @@
+# SDK release 4.100.268, from the registry: as 4.100.266, and an abort now
+# reaches the capped-thinking note, the retrospective and the compaction
+# requests, which also stop streaming past 16,000 characters or once they
+# repeat themselves (bug-045, Cerebriline 21938f7f52).
+version = "4.100.268"
+source = "registry"
+bundle_sha256 = "19805e16c758f7ced607282689020ee787f3d72acc650652ccf7573c3aa9d037"

@@ -1559,3 +1559,26 @@
 | 09:30 | owner correction: this session develops automaticum only; clients drive it (memory + cerebrum). D118: arms and models are the installation's, read only from <config>/arms and <config>/models (Local.ArmsDir/ModelsDir); repo arms/ and models/stub.toml moved to examples/config/, tests repointed; 10 experiment arms + 6 models left the repo (kept in linux-gpu-1's config dir, ids unchanged). A first 'private roots' design was rejected by the owner and reverted before commit. make test green; 030 0.18. Not committed; blackswan-2 migration waits for an idle lane | internal/config/local.go, internal/daemon, cmd/automaticum, examples/config | done | ~50k |
 | 08:45 | Session end: 1 writes across 1 files (client-sessions-start-their-own-batches.md) | 0 reads | ~413 tok |
 | 09:11 | Session end: 1 writes across 1 files (client-sessions-start-their-own-batches.md) | 0 reads | ~413 tok |
+
+## Session: 2026-10-29 09:27
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-29 09:27
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-29 09:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:40 | D118 committed 19d49c7 and migrated on blackswan-2 at ~08:35Z while idle (double idle check + recheck before stop): 23 arms + 8 models (incl. the client run4b pair) copied into config/arms and config/models, checkout moved, leftovers removed after cmp, binaries 44accf01/127c7043; arm validate output identical before/after (ids same); dry-run starts resolve. Mailed backup_models the correction (#2008) and the ollama session the Cerebriline write-up for bug-045 (#2007, queued: no ollama session registered now) | blackswan-2 | done | ~6k |
+
+## Session: 2026-10-29 10:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 14:30 | mail #2012: bug-045 fixed upstream (Cerebriline 21938f7f52, unreleased); buglog updated | .wolf/buglog.json | noted | ~1k |
+| 14:58 | SDK 4.100.268 provisioned: runner/sdk/4.100.268 pinned 19805e16 (reproduced offline), abort fix checked in bundle (core B6 setAbortSignal, agents discarded-turn abortSignal); stub-sdk-4.100.268 arm; X11 rows in decisions (rev 32) and 040 (draft 1.10); make test + runner tests pass | runner/sdk/4.100.268, examples/config/arms/stub-sdk-4.100.268.toml, docs/specs | ok, not committed | ~12k |

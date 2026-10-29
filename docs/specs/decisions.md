@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-10-29 (revision 31).
+**Status:** current as of 2026-10-29 (revision 32).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -180,6 +180,7 @@ Requests to the Cerebriline SDK (040 §8). The owner approved the work on
 | X8 | An SDK release whose published packages carry the patched Ollama provider library, so that a thinking effort level and the sampler options the stock library does not name reach the wire (110 §3.1). | released as 4.100.251 on 2026-10-13 and provisioned here beside 4.100.250; not yet run against a real model | the `wire_arm` findings of the first real run on it are the check (D63) |
 | X10 | Terminal-Bench 2.0 (`harbor-framework/terminal-bench-2`, Apache-2.0) at commit `2fd12b88aafdd04a52c298e3940bcb189f9766d6`, with its task images pinned by digest, and the pytest wheels from PyPI pinned by hash. | pinned 2026-10-25 | the suite `tbench2` (066) is imported from it; a new commit is a new import and new task hashes |
 | X9 | An SDK release whose core passes the host's `onReasoningLoopLimitReached` on to the agent, as it does `onConsecutiveMistakeLimitReached` (D108); asked 2026-10-25. | released in 4.100.266 (2026-10-25), checked in the bundle; its notice also carries `maxConsecutiveTrips` | until then a run the SDK ends at the reasoning-loop limit against the arm is `INVALID` |
+| X11 | An SDK release whose session abort reaches the capped-thinking note, the retrospective and the compaction requests, and whose note and retrospective stop streaming once they repeat themselves or pass the length they are cut to (bug-045); asked 2026-10-29. | released in 4.100.268 (2026-10-29, Cerebriline 21938f7f52), checked in the bundle | until then a run stopped at its wall while such a request streams is killed by the harness after the grace (`TIMEOUT`, no runner `end`) |
 
 ## 5. Not adopted
 
