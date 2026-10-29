@@ -447,8 +447,11 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 		}
 		setLane("idle", nil)
 	}
+	// A run a gate skips still names its arm by id, once the arm is read, so
+	// that run ls --arm finds it.
+	var armID string
 	skip := func(reason string) {
-		r := &store.Run{ID: it.RunID, Batch: it.Batch, Lane: it.Lane, Verdict: store.Skipped, VerdictReason: reason,
+		r := &store.Run{ID: it.RunID, Batch: it.Batch, Lane: it.Lane, ArmID: armID, Verdict: store.Skipped, VerdictReason: reason,
 			StartedAt: time.Now().UTC(), EndedAt: time.Now().UTC(), Provenance: askedProvenance(it)}
 		if suite, id, ok := strings.Cut(it.Task, "/"); ok {
 			r.Suite, r.TaskID = suite, id
@@ -469,6 +472,7 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 		skip("the arm cannot be used: " + err.Error())
 		return false
 	}
+	armID = arm.ID
 	tk, err := task.Find(d.taskRoots(), it.Task)
 	if err != nil {
 		skip("the task cannot be used: " + err.Error())

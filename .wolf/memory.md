@@ -1582,3 +1582,34 @@
 |------|--------|---------|---------|--------|
 | 14:30 | mail #2012: bug-045 fixed upstream (Cerebriline 21938f7f52, unreleased); buglog updated | .wolf/buglog.json | noted | ~1k |
 | 14:58 | SDK 4.100.268 provisioned: runner/sdk/4.100.268 pinned 19805e16 (reproduced offline), abort fix checked in bundle (core B6 setAbortSignal, agents discarded-turn abortSignal); stub-sdk-4.100.268 arm; X11 rows in decisions (rev 32) and 040 (draft 1.10); make test + runner tests pass | runner/sdk/4.100.268, examples/config/arms/stub-sdk-4.100.268.toml, docs/specs | ok, not committed | ~12k |
+
+## Session: 2026-10-29 17:04
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-29 17:04
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-29 17:04
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-29 17:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-29 17:07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-29 17:07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:40 | 4.100.268 on blackswan-2: checkout 9688843, sdk add+verify 19805e16, stub arm; smoke manic_miner PASS 20261029-162728-7368dd; hang+wall 60s TIMEOUT by harness on 268 and 266 alike (bug-047, reported); bug-046 fix (gate-skipped runs record arm_id) in tree, uncommitted | internal/daemon/daemon.go, .wolf/buglog.json | partial | ~20k |

@@ -778,6 +778,47 @@
       "related_bugs": [],
       "occurrences": 4,
       "last_seen": "2026-10-29T14:30:00+01:00"
+    },
+    {
+      "id": "bug-046",
+      "timestamp": "2026-10-29T17:30:00+01:00",
+      "error_message": "run ls -arm stub-sdk-4.100.268 listed nothing although two runs of that arm had finished SKIPPED (gate model_tag: endpoint stub does not answer /api/version)",
+      "file": "internal/daemon/daemon.go",
+      "root_cause": "fly's skip() wrote the record without ArmID; run ls -arm resolves the name to an id and filters on arm_id, so every gate-skipped run was invisible to it",
+      "fix": "skip() records armID, set as soon as armFor has read the arm; runs skipped before that (arm unusable) or stopped by the operator while queued still have none. TestGates checks the refused run's ArmID equals the start's",
+      "tags": [
+        "daemon",
+        "run-ls",
+        "arm_id",
+        "skipped",
+        "gate"
+      ],
+      "related_bugs": [
+        "bug-044"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T17:30:00+01:00"
+    },
+    {
+      "id": "bug-047",
+      "timestamp": "2026-10-29T17:40:00+01:00",
+      "error_message": "stub run with a model request that never answers (stub hang.json), -wall-s 60: runner notes wall_limit at 60s and calls core.abort, then nothing; harness kills at wall + grace (TIMEOUT 'enforced by the harness', no runner end). Same on 4.100.266 (20261029-163306-640538, 3m38s) and 4.100.268 (20261029-162939-e55f6a, 3m01s)",
+      "file": "(SDK) @cerebriline/core run.abort",
+      "root_cause": "Not established: the session's abort does not end a main model request whose server holds the connection open and sends no headers. Not a 4.100.268 regression; core.abort is identical in both bundles (sends run.abort to the session host). Distinct from bug-045 (side calls).",
+      "fix": "Reported to Cerebriline (ollama session) with the repro. Harness side unchanged: the grace kill still bounds the run and the TIMEOUT verdict stands.",
+      "tags": [
+        "sdk",
+        "abort",
+        "wall",
+        "stub",
+        "hang",
+        "cerebriline"
+      ],
+      "related_bugs": [
+        "bug-045"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T17:40:00+01:00"
     }
   ]
 }

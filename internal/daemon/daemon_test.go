@@ -732,7 +732,7 @@ func TestGates(t *testing.T) {
 	mu.Unlock()
 	g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer"}, &resp)
 	v := g.waitFinished(resp.RunIDs[0])
-	if v.Verdict != "SKIPPED" || v.VerdictReason != "gate oracle: not proven" {
+	if v.Verdict != "SKIPPED" || v.VerdictReason != "gate oracle: not proven" || v.ArmID == "" || v.ArmID != resp.ArmID {
 		t.Errorf("refused run: %+v", v)
 	}
 	mu.Lock()
