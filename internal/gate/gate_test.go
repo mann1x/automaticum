@@ -68,7 +68,7 @@ func (b bundles) Path(name string) string { return "/bundles/" + name }
 // rig is one arm on one task on one lane, with everything in order.
 func rig(t *testing.T, s *server) *Input {
 	t.Helper()
-	arm, err := config.LoadArm("../../arms", "stub")
+	arm, err := config.LoadArm("../../examples/config/arms", "stub")
 	if err != nil {
 		t.Fatal(err)
 	}

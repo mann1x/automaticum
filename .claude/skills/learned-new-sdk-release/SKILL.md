@@ -48,7 +48,7 @@ Use Python to slice `<SPIKE_ROOT>/m2/sdk/<ver>/node_modules/@cerebriline/{core,a
 
 ## 5. Arms, runner and docs
 
-- Add `arms/stub-sdk-<ver>.toml` (`extends = "stub"`, `[harness] sdk_release = "<ver>"`) for the harness's own tests.
+- Add `examples/config/arms/stub-sdk-<ver>.toml` (`extends = "stub"`, `[harness] sdk_release = "<ver>"`) for the harness's own tests.
 - Move a real arm only on the owner's go. Set `[harness] sdk_release`, then run `arm validate` and `arm show | grep ^id`. Note old id → new id and the date in the arm's header comment, because the identity changes and runs no longer pool.
 - If the release changes notice metadata or hook behaviour, update `runner/guards.mjs` and its tests (`cd runner && node --test test/`), along with `runner/PROTOCOL.md`, `docs/specs/040-runner.md` and the X row in `docs/specs/decisions.md`.
 - Update `CLAUDE.md` Layout (`runner/sdk/<ver>/`, the stub arm) and `.wolf/anatomy.md`. Then run `make test`.

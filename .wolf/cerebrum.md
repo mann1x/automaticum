@@ -86,6 +86,10 @@
 - **The SDK core spawns `rg`** (file listing, after an `rg --version` check) **and `git`** (checkpoints, with GIT_INDEX_FILE). A lane image foreign to the base needs both (2026-10-25).
 
 ## Do-Not-Repeat
+
+- 2026-10-29: when the owner says installation data must not be in the repo, do not invent a second 'private' location beside the repo's; put it in the installation's configuration directory, the one place it already keeps its own data, and ship only examples in the repo.
+
+- 2026-10-29: never set up a client's arms, model entries, endpoints or lane entries, confirm its gates, or commit its experiment files. This session develops automaticum; client sessions (backup_models) drive it themselves (owner). Experiment arms and models do not belong in the public repo.
 - 2026-10-25: when the owner says a task class "must declare" something (root, extra dirs), build a declaration in config, not a heuristic that guesses from the solution; and never recommend "leave such tasks out" again for a capability gap — the owner wants the tool to grow to fit the task (O25/O26 answers).
 - 2026-10-25: in hand-written TOML generators, a top-level key written after any `[table]` header lands inside that table (tbench2 `run_as` became `labels.run_as`); write top-level keys before the first table.
 
@@ -120,6 +124,7 @@
 
 ## Decision Log
 
+- (2026-10-29) D118, owner: an installation's arms and models live in its configuration directory (<config>/arms, <config>/models) beside endpoints and lanes, read only from there; the repo is the program and ships examples/config/arms (base, stubs) and examples/config/models (stub), also used by tests. I first built 'private roots' beside repo arms/ — the owner rejected the private/non-private split as confusing ('the repo should not contain the models or the runs or the lanes we use'); reverted before any commit. Arm ids unchanged by the move (checked all 10). blackswan-2 migration waits for an idle lane (owner: don't touch backup_models jobs).
 - (2026-10-27) D117, owner ("build directly"): export spans for repeated tool calls (field tool_calls[<i>].function.arguments, whole arguments, repeats only, detector repeated_tool_call with the analysis's compare and threshold) and meta.capped for finish_reason length; no runaway span (no offset, would invent a threshold). Asked by backup_models for bm-889 run3's editor-call loops. Note: the export already had text detector spans (1,785 in pool_export); backup_models had read only the guard lines.
 - (2026-10-27) D116, owner: notice metrics leave the sentence out (key = type.kind.phase, else reason, else type; analysis version 7; compactions counted once at completed, as the SDK does); the sentences are read with a command of their own, `automaticum notices`, by the key the table prints. Found because compare -all had rows named notices.status:<whole sentence> that never pooled.
 - (2026-10-26) D115, owner: a batch can be marked held out (`run start --heldout`, `ctl.Heldout` by batch like `Capture`); export refuses its runs (403) unless asked `?heldout=1` / `export conversations --heldout`; held-out tasks stay unexportable regardless. Asked for by backup_models for the bm-889 run2 agentic eval set on the training tasks; the owner chose the explicit override over never-exportable and naming-only.

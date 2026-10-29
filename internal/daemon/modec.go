@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -131,7 +130,7 @@ func (d *Daemon) cellLanes(n int, asked string) ([]string, error) {
 // armFor loads an arm as the runs of batch use it: for a mode C cell, with
 // the cell's endpoint, model and values.
 func (d *Daemon) armFor(batch, name string) (*config.Arm, *CellSpec, error) {
-	arm, err := config.LoadArm(filepath.Join(d.Repo, "arms"), name)
+	arm, err := config.LoadArm(d.Local.ArmsDir(), name)
 	if err != nil {
 		return nil, nil, err
 	}

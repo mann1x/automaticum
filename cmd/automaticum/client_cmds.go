@@ -244,7 +244,11 @@ func runLs(ctx context.Context, args []string) error {
 		if *armID != "" {
 			return errors.New("give -arm or -arm-id, not both")
 		}
-		a, err := config.LoadArm(p.arms(), *arm)
+		dir, err := p.arms()
+		if err != nil {
+			return err
+		}
+		a, err := config.LoadArm(dir, *arm)
 		if err != nil {
 			return err
 		}
@@ -580,7 +584,7 @@ func findingLine(f daemon.FindingView) string {
 			NotStated []string `json:"not_stated"`
 		}
 		json.Unmarshal(f.Evidence, &e)
-		return fmt.Sprintf("%s  the model's identity is not on record: %s of %s not stated; add it to the model catalogue (models/)", head, strings.Join(e.NotStated, ", "), e.Tag)
+		return fmt.Sprintf("%s  the model's identity is not on record: %s of %s not stated; add it to the model catalogue (models/ in the configuration)", head, strings.Join(e.NotStated, ", "), e.Tag)
 	case ingest.ModelReloaded:
 		return fmt.Sprintf("%s  the server loaded the model again %d times after the run's first request, first at request #%d: %s", head, f.Count, f.Turn, f.Evidence)
 	case ingest.GPUResidency:

@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.17, 2026-10-25.
+**Status:** draft 0.18, 2026-10-29.
 
 ## 1. Rules
 
@@ -20,18 +20,26 @@ pinned version, not vendored.
 **Decided by the owner (2026-10-13):** the daemon reads **one configuration
 directory, given by `--config`**. Lanes and endpoints hold addresses and
 device bindings, so that directory is local to an installation and is not
-tracked; the repository carries `examples/config/` with neutral values. Arms
-and tasks are tracked. An arm names an endpoint and never an address.
+tracked; the repository carries `examples/config/` with neutral values.
+**Decided by the owner (2026-10-29, D118):** the installation's arms and
+model catalogue are in that directory too, beside its lanes and endpoints:
+they are what an installation runs, not part of the harness. The
+repository is the program; it carries no arm or model of anyone's
+experiments, only examples. Tasks are tracked. An arm names an endpoint and
+never an address.
 
 ```
 <config>/                 local, not tracked
   automaticum.toml        daemon: data root, archive root, bind address, token, [notify] webhook
   lanes/*.toml
   endpoints/*.toml
-arms/*.toml               tracked
+  arms/*.toml             the installation's arms (D118)
+  models/*.toml           what each model tag is (family, size, variant) (D118)
+examples/config/          tracked: a configuration to copy, with neutral values;
+                          its arms/ (base.toml, the stub arms) and models/ (the
+                          stub model) are also what the harness's own tests use
 tasks/<suite>/<task>/task.toml   tracked
 images/                   tracked: base and language layer definitions
-models/*.toml             tracked: what each model tag is (family, size, variant)
 runner/sdk/<build>/       tracked: one SDK build's manifest, lockfile and pinned bundle hash
 campaigns/*.toml          tracked (milestone 4)
 suites/*.toml             tracked (milestone 5): source, pinned version, scorer
@@ -100,12 +108,20 @@ Without the switch the gate `free` waits, as before.
 
 ### 4.1 The model catalogue
 
-`models/*.toml`, tracked, one file per model tag (D70): `tag`, `family`,
+`<config>/models/*.toml`, one file per model tag (D70, D118): `tag`, `family`,
 `size`, `variant`, and optionally `lineage`, `digest` (a pin to one build of
 the tag) and `notes`. It says what a tag **is**, in the owner's words. An
 arm names a tag and never repeats this; every arm on a tag gets the same
 identity, and an arm's own identity does not change when an entry does.
 An unknown field is an error; a tag described in two files is an error.
+
+**Decided by the owner (2026-10-29, D118):** the catalogue, like the
+arms, is the installation's and lives in its configuration directory
+(§1); the daemon and the command line read arms and models from there
+only. Where an arm file lives is not part of its identity: an arm moved
+out of the repository keeps its id. A new installation starts from a copy
+of `examples/config/`, whose `arms/base.toml` is the template its own arms
+extend.
 
 **Decided by the owner (2026-10-13), D80:** `family` and `size` may be left
 empty. On an endpoint of kind `ollama` or `xollama` they are then read from
@@ -206,7 +222,8 @@ part of it. Both are the client's settings, whoever owns thinking.
 - **As built in milestone 2 (not an owner decision):** an arm file that only
   exists to be extended carries `template = true`. A template may leave values
   unstated, has no identity and is never run; the mark is not inherited, so
-  every arm that extends it is checked whole. `arms/base.toml` is one.
+  every arm that extends it is checked whole. `base.toml` (in
+  `examples/config/arms/`, copied into each installation) is one.
 - A child that switches a feature off (loop detection, compaction, the
   protocol, task progress, thinking or sampler ownership by the arm) also drops
   the settings of that feature it inherited. Settings stated beside the switch

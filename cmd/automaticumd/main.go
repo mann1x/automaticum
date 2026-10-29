@@ -73,7 +73,7 @@ func serve(cfgDir string, log *slog.Logger) error {
 	}
 	d := &local.Daemon
 	if d.Repo == "" {
-		return errors.New("the configuration names no repo: the checkout with arms/ and tasks/")
+		return errors.New("the configuration names no repo: the checkout with tasks/ and images/")
 	}
 	runs := filepath.Join(d.DataRoot, "runs")
 	for _, dir := range []string{d.DataRoot, runs, filepath.Join(d.DataRoot, "artefacts"), filepath.Join(d.DataRoot, "scratch")} {

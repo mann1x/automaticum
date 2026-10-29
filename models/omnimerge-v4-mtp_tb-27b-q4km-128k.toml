@@ -1,7 +1,0 @@
-# What this tag is, in the owner's words (030 §4.1), as named on 2026-10-13.
-# Family and size are left empty on purpose: on an Ollama or xOllama
-# endpoint they are read from the weights file (D80).
-tag = "omnimerge-v4-mtp_tb:27b-q4km-128k"
-family = ""
-size = ""
-variant = "OmniMerge v4"

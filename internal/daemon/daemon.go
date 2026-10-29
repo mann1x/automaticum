@@ -51,7 +51,8 @@ type Daemon struct {
 	Blobs      BlobReader
 	Runner     Runner
 	Containers Containers
-	// Repo is the checkout with arms/ and tasks/.
+	// Repo is the checkout with tasks/ and images/; arms and models are the
+	// configuration's (D118).
 	Repo string
 	// RunsDir holds the directories of runs in flight.
 	RunsDir string
@@ -532,7 +533,7 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 	}
 	// What the model is, in the owner's words (D70). A tag without an entry
 	// runs all the same and its run says so (D71).
-	models, err := config.LoadModels(filepath.Join(d.Repo, "models"))
+	models, err := config.LoadModels(d.Local.ModelsDir())
 	if err != nil {
 		skip("the model catalogue cannot be read: " + err.Error())
 		return false

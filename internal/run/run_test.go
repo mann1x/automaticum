@@ -204,7 +204,7 @@ type world struct {
 
 func newWorld(t *testing.T) *world {
 	t.Helper()
-	arm, err := config.LoadArm("../../arms", "stub")
+	arm, err := config.LoadArm("../../examples/config/arms", "stub")
 	if err != nil {
 		t.Fatal(err)
 	}

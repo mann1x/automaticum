@@ -281,6 +281,7 @@ func newRig(t *testing.T, serve bool) *rig {
 	g := &rig{t: t, state: state, runner: &fakeRunner{state: state}, cont: &fakeContainers{}, served: make(chan struct{})}
 	g.d = &Daemon{
 		Local: &config.Local{
+			Dir:       examplesConfig(t),
 			Lanes:     map[string]*config.Lane{"lane-1": {Name: "lane-1", Host: "linux-gpu-1", Endpoints: []string{"stub"}}},
 			Endpoints: map[string]*config.Endpoint{"stub": {Name: "stub", Kind: "ollama"}},
 		},
@@ -1403,10 +1404,20 @@ func TestStopReason(t *testing.T) {
 	}
 }
 
-// campaignRepo is a checkout with the real arms and tasks and one campaign.
+// examplesConfig is the example configuration directory, whose arms/ and
+// models/ hold the harness's own stub arms and model (D118).
+func examplesConfig(t *testing.T) string {
+	dir, err := filepath.Abs("../../examples/config")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+// campaignRepo is a checkout with the real tasks and one campaign.
 func campaignRepo(t *testing.T, name, text string) string {
 	dir := t.TempDir()
-	for _, sub := range []string{"arms", "tasks"} {
+	for _, sub := range []string{"tasks"} {
 		abs, _ := filepath.Abs(filepath.Join("../..", sub))
 		if err := os.Symlink(abs, filepath.Join(dir, sub)); err != nil {
 			t.Fatal(err)

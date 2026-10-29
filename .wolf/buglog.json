@@ -759,6 +759,25 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-27T09:00:00+01:00"
+    },
+    {
+      "id": "bug-045",
+      "timestamp": "2026-10-29T09:30:00+01:00",
+      "error_message": "4 of 10 run4b gate runs (k-gate-run4b-manic-w1800-p9: -001,-007,-009,-010) killed by the harness at ~32m instead of stopped by the runner at 30m; no runner end line, basis says the run did not record its SDK",
+      "file": "(SDK @cerebriline/sdk 4.100.266, core capped-thinking condensation)",
+      "root_cause": "the wall abort arrived during the SDK's capped-thinking condensation side call (notice thinking-condensing, kind capped_thinking, phase started). That call (core j6, a new handler via createHandlerAsync, max_tokens ~51k) is never given the session's AbortSignal, and the agent loop checks throwIfAborted only after prepareTurn returns; runaway condensing calls ran 7m55s to finish_reason length, longer than the harness's 2-minute grace. Context compaction does forward abortSignal; the discarded-turn retrospective (YEe) has the same gap",
+      "fix": "not fixed: SDK defect, write-up prepared for Cerebriline (pass abortSignal to j6/YEe, check signal before the call, optionally cap the side call). Runner workaround options (dispose after the wall, cut the in-flight wire fetch, disable condensing in the arm) need the owner's decision",
+      "tags": [
+        "sdk",
+        "abort",
+        "wall-limit",
+        "capped-thinking",
+        "condensing",
+        "grace"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-10-29T03:07:44Z"
     }
   ]
 }

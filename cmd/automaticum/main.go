@@ -72,7 +72,7 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   legacy import                 import the old harness's corpus (spec 100)
   store check                   verify every blob and every blob reference
 
-Commands about runs talk to the daemon. The checkout with arms/ and tasks/ is
+Commands about runs talk to the daemon. The checkout with tasks/ and images/ is
 --repo, AUTOMATICUM_REPO, the "repo" of the configuration, or the current directory. The configuration directory is
 --config or AUTOMATICUM_CONFIG. Store paths come from flags or from
 AUTOMATICUM_DATA, AUTOMATICUM_ARCHIVE, AUTOMATICUM_LEGACY_ROOT and

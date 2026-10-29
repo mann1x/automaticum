@@ -9,7 +9,7 @@ import (
 // each with the caller as its origin, under an identity of its own; values
 // that leave the arm incomplete are refused like an incomplete arm.
 func TestArmForCell(t *testing.T) {
-	a, err := LoadArm("../../arms", "stub")
+	a, err := LoadArm("../../examples/config/arms", "stub")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +33,7 @@ func TestArmForCell(t *testing.T) {
 		t.Errorf("thinking origin %q, id %s", a.Origins["thinking.owner"], a.ID)
 	}
 
-	b, _ := LoadArm("../../arms", "stub")
+	b, _ := LoadArm("../../examples/config/arms", "stub")
 	if err := b.ForCell("cell-x", "openai-compatible", "served", &CallerValues{Sampler: &Sampler{Name: "no owner"}}); err == nil || !strings.Contains(err.Error(), "sampler") {
 		t.Errorf("a sampler without an owner: %v", err)
 	}

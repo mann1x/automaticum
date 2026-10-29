@@ -9,7 +9,7 @@ import (
 )
 
 // ModelIdentity says what a model tag is, in the owner's words: the facts no
-// server can know. One file per tag in models/ (030 §4.1). A server calls a
+// server can know. One file per tag in the configuration's models/ (030 §4.1). A server calls a
 // Qwen 3.6 tag "qwen35" and knows nothing of a merge's name; the run records
 // this entry next to what the server and the weights file say.
 type ModelIdentity struct {

@@ -1,9 +1,0 @@
-# The owner's first real arm (D55, D59) on SDK release 4.100.251: the same
-# model, window, thinking and sampler, another build of the SDK. Release
-# 4.100.251 is the first whose packages send the thinking effort level and
-# the sampler options the stock Ollama library dropped (110 §3.1), so runs
-# of this arm are not pooled with those of the arm on 4.100.250.
-extends = "qwen36-mtp-27b-high"
-
-[harness]
-sdk_release = "4.100.251"

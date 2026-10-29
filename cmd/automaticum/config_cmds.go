@@ -28,7 +28,7 @@ type place struct {
 
 func addPlace(fs *flag.FlagSet) place {
 	return place{
-		repo: fs.String("repo", os.Getenv("AUTOMATICUM_REPO"), "checkout with arms/ and tasks/"),
+		repo: fs.String("repo", os.Getenv("AUTOMATICUM_REPO"), "checkout with tasks/ and images/"),
 		cfg:  fs.String("config", os.Getenv("AUTOMATICUM_CONFIG"), "configuration directory"),
 		json: fs.Bool("json", false, "print JSON"),
 	}
@@ -55,7 +55,14 @@ func (p place) root() string {
 	return "."
 }
 
-func (p place) arms() string { return filepath.Join(p.root(), "arms") }
+// arms is the installation's arms directory, in its configuration (D118).
+func (p place) arms() (string, error) {
+	l, err := p.local()
+	if err != nil {
+		return "", err
+	}
+	return l.ArmsDir(), nil
+}
 
 // tasks are the repository's tasks/ and the private root of the local
 // configuration, when it names one (D105).
@@ -90,9 +97,13 @@ func armValidate(_ context.Context, args []string) error {
 	fs := flag.NewFlagSet("arm validate", flag.ExitOnError)
 	p := addPlace(fs)
 	args = parse(fs, args)
+	local, err := p.local()
+	if err != nil {
+		return err
+	}
 	names := args
 	if len(names) == 0 {
-		paths, err := filepath.Glob(filepath.Join(p.arms(), "*.toml"))
+		paths, err := filepath.Glob(filepath.Join(local.ArmsDir(), "*.toml"))
 		if err != nil {
 			return err
 		}
@@ -100,21 +111,13 @@ func armValidate(_ context.Context, args []string) error {
 			names = append(names, strings.TrimSuffix(filepath.Base(f), ".toml"))
 		}
 		if len(names) == 0 {
-			return fmt.Errorf("no arms in %s", p.arms())
-		}
-	}
-	// An endpoint can only be checked where a configuration exists.
-	var local *config.Local
-	if *p.cfg != "" {
-		var err error
-		if local, err = p.local(); err != nil {
-			return err
+			return fmt.Errorf("no arms in %s", local.ArmsDir())
 		}
 	}
 	bad := 0
 	for _, name := range names {
-		a, err := config.LoadArm(p.arms(), name)
-		if err == nil && !a.Template && local != nil && local.Endpoints[a.Endpoint] == nil {
+		a, err := config.LoadArm(local.ArmsDir(), name)
+		if err == nil && !a.Template && local.Endpoints[a.Endpoint] == nil {
 			err = fmt.Errorf("arm %s names endpoint %q, which this installation does not have", name, a.Endpoint)
 		}
 		if err != nil {
@@ -141,7 +144,11 @@ func armShow(_ context.Context, args []string) error {
 	if len(args) != 1 {
 		return errors.New("usage: automaticum arm show <arm>")
 	}
-	a, err := config.LoadArm(p.arms(), args[0])
+	dir, err := p.arms()
+	if err != nil {
+		return err
+	}
+	a, err := config.LoadArm(dir, args[0])
 	if err != nil {
 		return err
 	}
@@ -174,11 +181,15 @@ func armDiff(_ context.Context, args []string) error {
 	if len(args) != 2 {
 		return errors.New("usage: automaticum arm diff <arm> <arm>")
 	}
-	a, err := config.LoadArm(p.arms(), args[0])
+	dir, err := p.arms()
 	if err != nil {
 		return err
 	}
-	b, err := config.LoadArm(p.arms(), args[1])
+	a, err := config.LoadArm(dir, args[0])
+	if err != nil {
+		return err
+	}
+	b, err := config.LoadArm(dir, args[1])
 	if err != nil {
 		return err
 	}

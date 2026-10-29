@@ -10,7 +10,6 @@ import (
 	"maps"
 	"net"
 	"net/http"
-	"path/filepath"
 	"slices"
 	"sort"
 	"strconv"
@@ -511,7 +510,7 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 	var arms []*config.Arm
 	lane, ids := "", map[string]string{}
 	for _, name := range names {
-		a, err := config.LoadArm(filepath.Join(d.Repo, "arms"), name)
+		a, err := config.LoadArm(d.Local.ArmsDir(), name)
 		if err != nil {
 			return resp, http.StatusUnprocessableEntity, err
 		}
@@ -973,7 +972,7 @@ func (d *Daemon) handleDoctor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := r.URL.Query()
-	arms, err := config.LoadArms(filepath.Join(d.Repo, "arms"))
+	arms, err := config.LoadArms(d.Local.ArmsDir())
 	if err != nil {
 		fail(w, http.StatusInternalServerError, "the arms cannot be read: %v", err)
 		return
@@ -1321,7 +1320,7 @@ func (d *Daemon) handleIdentify(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusConflict, "run %s already records where and on what it ran", id)
 		return
 	}
-	models, err := config.LoadModels(filepath.Join(d.Repo, "models"))
+	models, err := config.LoadModels(d.Local.ModelsDir())
 	if err != nil {
 		fail(w, http.StatusInternalServerError, "%v", err)
 		return

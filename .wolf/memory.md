@@ -718,24 +718,16 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-10-21 08:19
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-21 12:18
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-21 20:27
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-21 21:06
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-23 11:46
 
@@ -1545,3 +1537,25 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 11:01 | D117 (owner, build directly): export reads streamed tool calls and marks repeats (repeated_tool_call, analysis compare and threshold) as spans on tool_calls[<i>].function.arguments; meta.capped for finish_reason length; no runaway span. Proved on the 39 pool runs on blackswan-2 (throwaway test binary, removed): 1,454 calls, 15 spans in 11 runs, matching the analysis; 6 capped. make test green; 110 draft 0.25, D117. 7a8ba65 + 17fe8bd (D116) deployed 10:00Z. D117 not committed or deployed | internal/export/export.go, internal/daemon/export.go, specs | done | ~40k |
+
+## Session: 2026-10-27 11:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-27 11:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-27 11:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:08 | D117 committed 5867c68 and deployed on blackswan-2 while idle (a7d0cce5/7cd142a5); export of pool run fc6c14 through the live daemon: 5 repeated_tool_call spans + 1 guard cut, capped present; mailed backup_models the format (#1989) and that text detector spans already existed | blackswan-2 | done | ~5k |
+| 11:12 | reanalyse of all 103 harness runs on blackswan-2 (not imported, which get findings only): 35s, 0 failed; analysis.version 7; notice metrics now by kind (longest metric name 45 chars, was 316); compare floor batch shows notices.status.<kind>.<phase> rows | blackswan-2 | done | ~2k |
+| 10:55 | backup_models #1995 (owner-approved floor x10 on protocol 9 + run4b twin tonight): answered (a) protocol 9, no runner/image deploy until both batches end (rg-ownership image fix held); (b) reuse floor arm 7fe45202ca9e but a NEW idempotency key (old key would repeat nothing); (c) the 2 protocol-9 floor runs are 0a8903-001/002 in b20261026-044434-d1bb11; compare new floor batch + that + run4b, not k-gate-floor-manic-7fe45202-w1800 (all protocol 8) | mail | done | ~4k |
+| 08:36 | Created ../../../../root/.claude/projects/-srv-dev-disk-by-label-opt-dev-automaticum/memory/client-sessions-start-their-own-batches.md | — | ~385 |
+| 09:30 | owner correction: this session develops automaticum only; clients drive it (memory + cerebrum). D118: arms and models are the installation's, read only from <config>/arms and <config>/models (Local.ArmsDir/ModelsDir); repo arms/ and models/stub.toml moved to examples/config/, tests repointed; 10 experiment arms + 6 models left the repo (kept in linux-gpu-1's config dir, ids unchanged). A first 'private roots' design was rejected by the owner and reverted before commit. make test green; 030 0.18. Not committed; blackswan-2 migration waits for an idle lane | internal/config/local.go, internal/daemon, cmd/automaticum, examples/config | done | ~50k |
+| 08:45 | Session end: 1 writes across 1 files (client-sessions-start-their-own-batches.md) | 0 reads | ~413 tok |
+| 09:11 | Session end: 1 writes across 1 files (client-sessions-start-their-own-batches.md) | 0 reads | ~413 tok |

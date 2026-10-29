@@ -91,7 +91,7 @@ type Daemon struct {
 	Listen string `toml:"listen"`
 	// TokenFile holds the API's write token; relative to the directory.
 	TokenFile string `toml:"token_file"`
-	// Repo is the checkout holding arms/, tasks/ and images/.
+	// Repo is the checkout holding tasks/ and images/.
 	Repo string `toml:"repo"`
 	// PrivateTasks is a second tasks root outside the public repository
 	// (D105): <suite>/<task>/task.toml, every task private. Optional.
@@ -101,6 +101,13 @@ type Daemon struct {
 	// Notify says where a refusing or waiting gate is told to (050 §2).
 	Notify Notify `toml:"notify"`
 }
+
+// ArmsDir holds the installation's arms and ModelsDir its model catalogue
+// (D118): they are the installation's, like its endpoints and lanes, and
+// live in its configuration directory, never in the repository.
+func (l *Local) ArmsDir() string { return filepath.Join(l.Dir, "arms") }
+
+func (l *Local) ModelsDir() string { return filepath.Join(l.Dir, "models") }
 
 // Notify is the [notify] table of automaticum.toml.
 type Notify struct {

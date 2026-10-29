@@ -1,15 +1,19 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-27T09:23:49.881Z
-> Files: 504 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-29T07:36:18.129Z
+> Files: 502 tracked | Anatomy hits: 0 | Misses: 0
+
+## ../../../../root/.claude/projects/-srv-dev-disk-by-label-opt-dev-automaticum/memory/
+
+- `client-sessions-start-their-own-batches.md` (~361 tok)
 
 ## ./
 
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
 - `.gitleaks.toml` (~581 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~4196 tok)
-- `CLAUDE.md` — automaticum (~4907 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~4415 tok)
+- `CLAUDE.md` — automaticum (~4971 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
 - `LICENSE` — Project license (~3029 tok)
@@ -20,7 +24,7 @@
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~110098 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~114031 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~211 tok)
 - `score-history.jsonl` (~1686 tok)
@@ -35,13 +39,13 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~98290 tok)
+- `fingerprint.json` — Declares usage (~97852 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` — Declares token (~13559 tok)
+- `current-session.jsonl` (~9650 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~68240 tok)
+- `roi-stats.json` (~71716 tok)
 - `state.json` (~41 tok)
 
 ## .claude/
@@ -104,16 +108,6 @@
 ## arms/
 
 - `base.toml` — The settings every arm here shares. It is not runnable by itself: it names (~620 tok)
-- `g4-128e-bf16-c13-bm889-run1.toml` — The twin of g4-128e-bf16-c13-shipped (7fe45202) for the bm-889 run 1 gate (~140 tok)
-- `g4-128e-bf16-c13-bm889-run2-s425.toml` — The twin of g4-128e-bf16-c13-shipped (7fe45202) for the bm-889 run 2 gate (~148 tok)
-- `g4-128e-bf16-c13-bm889-run3-s400.toml` — The twin of g4-128e-bf16-c13-shipped for the bm-889 run 3 gate (step 400, full MoE scope) (~140 tok)
-- `g4-128e-bf16-c13-shipped.toml` — The training pool's arm (bm-889, D105): the shipped arm on the same model (~211 tok)
-- `g4-128e-bf16-shipped.toml` — Gemma-4 26B-A4B (128 experts) BF16, end token 106, Google's chat template (~74 tok)
-- `g4-128e-bf16-stop.toml` — Gemma-4 26B-A4B (128 experts) BF16, end token 106, Google's chat template (~200 tok)
-- `g4-128e.toml` — The Gemma-4 26B-A4B loop test with omnimergekit (D98): what every arm of it (~572 tok)
-- `omnimerge-v4-mtp-27b-high-sdk-4.100.251.toml` — OmniMerge v4 against the base model (owner, 2026-10-13): the same (~118 tok)
-- `qwen36-mtp-27b-high-sdk-4.100.251.toml` — The owner's first real arm (D55, D59) on SDK release 4.100.251: the same (~124 tok)
-- `qwen36-mtp-27b-high.toml` — First real arm of milestone 2 (decisions D55 and D59). Every value here is (~220 tok)
 - `stub-plan-sdk-4.100.258.toml` — The stub arm in plan mode on SDK release 4.100.258, for the tests of the (~53 tok)
 - `stub-plan.toml` — The stub arm in plan mode, for the harness's own tests of the scripted (~52 tok)
 - `stub-sdk-4.100.251.toml` — The stub arm on SDK release 4.100.251: the same settings, another build of (~58 tok)
@@ -134,14 +128,14 @@
 
 - `campaign_cmds.go` (~1452 tok)
 - `cell_cmds.go` — exitCode: names (~2996 tok)
-- `client_cmds.go` — Struct: client (~8573 tok)
+- `client_cmds.go` — client (122 fields) (~9210 tok)
 - `compare_cmds.go` — Declares list (~3430 tok)
-- `config_cmds_test.go` — TestParseInterspersed, TestCellTasks (~370 tok)
+- `config_cmds_test.go` — TestParseInterspersed, TestCellTasks, TestNoticeMatch (~593 tok)
 - `config_cmds.go` — place (121 fields) (~3164 tok)
 - `control_cmds.go` (~2001 tok)
 - `export_cmds.go` — manifestLine (88 fields); methods: Error (~2253 tok)
 - `image_cmds.go` (~1096 tok)
-- `main.go` — Command automaticum is the command line of automaticum. (~2493 tok)
+- `main.go` — Command automaticum is the command line of automaticum. (~2528 tok)
 - `sdk_cmds.go` — SDKEnv (~1197 tok)
 - `store_cgo.go` — go:build cgo (~1850 tok)
 - `store_nocgo.go` — go:build !cgo (~128 tok)
@@ -171,12 +165,12 @@
 - `064-engine-adapters.md` — 064 — Engine adapters: Cerebriline as the engine of an external harness (~1057 tok)
 - `065-cell-contract.md` — 065 — The cell contract and exports (~3390 tok)
 - `066-suite-terminal-bench.md` — 066 — Suite: Terminal-Bench 2.0 (`tbench2`) (~2335 tok)
-- `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~7331 tok)
+- `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~7555 tok)
 - `080-store.md` — 080 — The store (~4404 tok)
-- `090-interfaces.md` — 090 — Interfaces (~2689 tok)
+- `090-interfaces.md` — 090 — Interfaces (~2982 tok)
 - `100-legacy-import.md` — 100 — Import of the old harness's corpus (~3426 tok)
-- `110-acceptance-and-roadmap.md` — 110 — Acceptance and roadmap (~7691 tok)
-- `decisions.md` — Decisions and open questions (~8150 tok)
+- `110-acceptance-and-roadmap.md` — 110 — Acceptance and roadmap (~8001 tok)
+- `decisions.md` — Decisions and open questions (~8334 tok)
 
 ## docs/specs/archive/
 
@@ -259,17 +253,17 @@
 
 ## internal/daemon/
 
-- `api.go` — HTTP handlers: reply, fail (~12512 tok)
+- `api.go` — HTTP handlers: reply, fail (~13406 tok)
 - `basis.go` — Basis (87 fields) (~4394 tok)
 - `campaign.go` — CampaignState (112 fields) (~3842 tok)
 - `canary.go` — CanaryRecord (36 fields); methods: Error, Is (~1597 tok)
 - `cell.go` — CellResult (97 fields) (~4032 tok)
 - `compare.go` — CompareView (97 fields) (~4257 tok)
 - `control.go` — control (94 fields) (~5756 tok)
-- `daemon_test.go` — Struct: memState (~15986 tok)
+- `daemon_test.go` — memState (121 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~17127 tok)
 - `daemon.go` — is automaticumd without its main: the queue, one worker (~5907 tok)
 - `export_test.go` — TestExport (~1366 tok)
-- `export.go` — ExportMeta (46 fields) (~1626 tok)
+- `export.go` — ExportMeta (48 fields) (~1711 tok)
 - `modec_test.go` — TestModeCCell, TestModeCBasis (~1727 tok)
 - `modec.go` — CellSpec (69 fields) (~2251 tok)
 
@@ -290,8 +284,8 @@
 
 ## internal/export/
 
-- `export_test.go` — TestGuardSpan, TestGuardSpanUnplaced, TestReadCuts (~871 tok)
-- `export.go` — hands a run's model requests out as training traces (~2739 tok)
+- `export_test.go` — TestGuardSpan, TestGuardSpanUnplaced, TestReadCuts, TestRepeatedCallSpans (~1664 tok)
+- `export.go` — hands a run's model requests out as training traces (~3681 tok)
 
 ## internal/gate/
 
@@ -305,14 +299,14 @@
 
 ## internal/ingest/
 
-- `analyse.go` — Interface: Blobs (58 methods) (~5258 tok)
+- `analyse.go` — Interface: Blobs (58 methods) (~5232 tok)
 - `canary_test.go` — TestCanary (~680 tok)
 - `canary.go` — CanaryVerdict (14 fields) (~698 tok)
 - `cap_test.go` — TestCapHits, TestFailedRequestFinish (~586 tok)
 - `cap.go` — CapHit is the finding that a request of the agent's loop was ended by its (~460 tok)
 - `detectors.go` — Firing (23 fields) (~1014 tok)
-- `events.go` — turns a run's stored raw material into what is queried: (~3545 tok)
-- `ingest_test.go` — TestReadEvents, TestReadWire, TestCompareWireClean, TestCompareWire + 2 more (~9964 tok)
+- `events.go` — turns a run's stored raw material into what is queried: (~4069 tok)
+- `ingest_test.go` — TestNoticeLog, TestReadEvents, TestReadWire, TestCompareWireClean, TestCompareWire (~10465 tok)
 - `openai_test.go` — TestOpenAIWire, TestOpenAIWireFromStub, TestOpenAIThinkingBudget (~1625 tok)
 - `sample_test.go` — TestSample, TestDumpBlocks (~1010 tok)
 - `sampler.go` — Setting (43 fields) (~1398 tok)
@@ -418,12 +412,6 @@
 
 ## models/
 
-- `gemma-4-26b-a4b-it-bf16-eos106.toml` — What this model is, in the owner's words (030 §4.1), as named on (~191 tok)
-- `gemma-4-26b-a4b-it-bm889-run1-bf16-eos106.toml` — What this model is (030 §4.1), as omnimergekit described it on 2026-10-26 (~247 tok)
-- `gemma-4-26b-a4b-it-bm889-run2-s425-bf16-eos106.toml` — What this model is (030 §4.1), as omnimergekit described it on 2026-10-26 (~263 tok)
-- `gemma-4-26b-a4b-it-bm889-run3-s400-bf16-eos106.toml` — What this model is (030 §4.1): bm-889 run 3 step 400, full MoE scope; GGUF sha256 af324919 (~260 tok)
-- `omnimerge-v4-mtp_tb-27b-q4km-128k.toml` — What this tag is, in the owner's words (030 §4.1), as named on 2026-10-13. (~83 tok)
-- `qwen36-base-mtp_tb-27b-q4km-128k.toml` — What this tag is, in the owner's words (030 §4.1), as named on 2026-10-13: (~67 tok)
 - `stub.toml` — The scripted stub model server of the harness's own tests. Not a model. (~44 tok)
 
 ## runner/
@@ -886,13 +874,7 @@
 
 - `checker.json` (~96 tok)
 - `NOTES.md` — space_invaders — notes (~320 tok)
-- `task.toml` — space_invaders: repair a broken single-file browser Space Invaders (training task, bm-889 rollout pool). (~755 tok)
 
 ## tasks/train-game/space_invaders/checker/
 
 - `run_game.logic.js` — run_game: does space_invaders.html actually run, and does it play by its rules? (~8769 tok)
-
-## tasks/train-game/space_invaders/fixtures/
-
-- `known-bad-no-speedup.html` — Space Invaders (~3747 tok)
-- `known-bad-no-stepdown.html` — Space Invaders (~3737 tok)

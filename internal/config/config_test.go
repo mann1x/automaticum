@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-const armsDir = "../../arms"
+const armsDir = "../../examples/config/arms"
 
 func TestRepositoryArms(t *testing.T) {
 	// base is a template: it loads, and as an arm it would miss exactly

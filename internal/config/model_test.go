@@ -9,11 +9,11 @@ import (
 
 func TestModels(t *testing.T) {
 	// The repository's own catalogue reads, and names the tags its arms use.
-	models, err := LoadModels("../../models")
+	models, err := LoadModels("../../examples/config/models")
 	if err != nil {
 		t.Fatal(err)
 	}
-	arms, err := LoadArms("../../arms")
+	arms, err := LoadArms("../../examples/config/arms")
 	if err != nil {
 		t.Fatal(err)
 	}

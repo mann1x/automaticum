@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-10-27 (revision 30).
+**Status:** current as of 2026-10-29 (revision 31).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -127,6 +127,7 @@ All dated 2026-10-12.
 | D115 | A batch can be started held out (`run start --heldout`), kept by batch in the daemon's control file like the request capture: `export conversations` passes over its runs, though they are of training tasks, unless it is given `--heldout` (`GET /v1/runs/{id}/export?heldout=1`, else 403). A held-out task (not `training = true`) stays unexportable even then. For an eval set of rollouts on the training tasks that a training export must never sweep up (bm-889 run 2) (2026-10-26). | 090 §1, 110 §3.5 |
 | D116 | A notice of the SDK is counted by what kind it is (`notices.<type>.<kind>.<phase>`, else its reason, else its type), never by its sentence, from analysis version 7; a compaction counts once, at `completed`. Its sentences are read with `automaticum notices (<run> ... | --batch B ...) [--key K]`, by the key a report prints. | 070 §2, 090 §1 |
 | D117 | The export marks a tool call that repeats the one before it (`repeated_tool_call`, the analysis's own detector and threshold) as a span over its arguments, `field` `tool_calls[<index>].function.arguments`, the first call of a sequence left out; the runaway detector gives no span, and `meta.json` names the requests whose response hit its output limit in `capped`. | 110 §3.5 |
+| D118 | An installation's arms and model catalogue live in its configuration directory (`<config>/arms/`, `<config>/models/`), beside its lanes and endpoints, and are read from there only. The repository is the program and carries no arm or model of anyone's experiments: `examples/config/` holds `base.toml`, the stub arms and the stub model, to copy and for the harness's own tests. An arm keeps its id when it moves. | 030 §1, §4.1 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked
