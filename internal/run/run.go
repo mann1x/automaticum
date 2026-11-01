@@ -628,6 +628,11 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 	if facts.Aborted == "" && len(facts.Invalid) == 0 && events == 0 {
 		facts.Aborted = "the event stream is empty"
 	}
+	if end != nil && end.AgentEnd == "error" {
+		if kind := Fault(end.AgentError); kind != "" {
+			facts.Infra = kind + ": " + end.AgentError
+		}
+	}
 
 	// The endpoint must still be what it was.
 	octx := context.WithoutCancel(ctx)

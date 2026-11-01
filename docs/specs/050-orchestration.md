@@ -1,6 +1,6 @@
 # 050 — Orchestration: scheduling, gates, control
 
-**Status:** draft 0.18, 2026-11-01.
+**Status:** draft 0.19, 2026-11-01.
 
 ## 1. Scheduling
 
@@ -46,6 +46,13 @@
   capacity decide. The adapter queues rather than oversubscribing (064 §2).
 - Large suites are sharded across lanes, with per-instance environment caching
   and resume of a half-finished evaluation (062).
+
+**As built (2026-11-01, scheduling):** a run starts only while its arm's
+endpoint serves fewer runs than its `capacity` (030 §4); a run held back
+says `endpoint <name> serves its capacity of N` in `status`. A mode C
+cell's endpoint is the caller's and is not counted (065 §3.1). **Open**:
+where a run's labels come from (O34), the external busy signal (O35), and
+priorities and reservations (O38).
 
 ## 2. Gates
 
@@ -215,6 +222,16 @@ batch, campaign, lane and whole daemon.
   guards start from nothing).
 - **Infrastructure errors** (endpoint down, 429, network) wait and retry and
   are recorded as such. They are never the model's failure.
+  **As built (2026-11-01):** the SDK waits and retries them itself: three
+  attempts in its stream wrapper (250 ms after a server error, 2 s after a
+  network one), then the agent's provider-error retries with backoff, and
+  a turn the server dropped or queued is waited out; each retry is a
+  notice, stored as a `notices.*` metric (D116). An agent that ends in
+  error with a fault the SDK calls `refusal` or `transport` (its own
+  patterns, ported to `run.Fault`) has exhausted them: the run is `ABORTED`
+  ("the server failed after the SDK's retries"), never `FAIL` or `TIMEOUT`.
+  A pass outranks the fault as it outranks a limit. Before, such a run
+  went to the oracle and could be counted `FAIL`.
 - **Restart:** the daemon survives its own restart. Runs in flight are
   re-attached or marked `ABORTED(reason=daemon restart)`, never lost and never
   duplicated.
@@ -320,13 +337,18 @@ itself after repeated infrastructure failures (item 2 of the audit).
 ## 5. Watchdogs
 
 - A run whose event stream is silent for N minutes while its process lives.
-- A batch whose driver vanished.
+- A batch whose driver vanished. **Open** (O37): whether it applies.
 - A lane that produces only infrastructure failures: quarantine it.
+  **Open** (O36): after how many; `lane quarantine` by hand is built.
 - A run whose endpoint identity changed since the probe at start: `INVALID`.
 
 ## 6. Unattended operation
 
 - A heartbeat with counts every ten minutes, to the log and on request.
+  **Built 2026-11-01:** every ten minutes the daemon logs `heartbeat` with
+  its lanes by state, the runs in flight and queued, and the runs that
+  ended since the heartbeat before, by verdict; the last one is in
+  `status` and `GET /v1/heartbeat` (`?now=1` counts now).
 - Server-side `wait` primitives so a caller does not poll (090 §5). **Built
   2026-11-01:** `automaticum wait` and `GET /v1/wait/{kind}` (090 §5).
 - A mailbox message and a webhook on campaign end, on any refusing gate, and

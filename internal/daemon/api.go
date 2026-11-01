@@ -30,11 +30,14 @@ import (
 
 // Status is the answer to GET /v1/status.
 type Status struct {
-	Version  string       `json:"version"`
-	Started  time.Time    `json:"started"`
-	Draining bool         `json:"draining"`
-	Lanes    []LaneStatus `json:"lanes"`
-	Queue    []QueueEntry `json:"queue"`
+	Version  string    `json:"version"`
+	Started  time.Time `json:"started"`
+	Draining bool      `json:"draining"`
+	// Heartbeat is the last heartbeat (050 §6), none in the first ten
+	// minutes.
+	Heartbeat *Heartbeat   `json:"heartbeat,omitempty"`
+	Lanes     []LaneStatus `json:"lanes"`
+	Queue     []QueueEntry `json:"queue"`
 }
 
 // LaneStatus is one lane in a Status.
@@ -320,6 +323,7 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/runs/{id}/resume", d.handleResume)
 	mux.HandleFunc("GET /v1/compare", d.handleCompare)
 	mux.HandleFunc("GET /v1/report/census", d.handleCensus)
+	mux.HandleFunc("GET /v1/heartbeat", d.handleHeartbeat)
 	mux.HandleFunc("GET /v1/basis", d.handleBasis)
 	mux.HandleFunc("POST /v1/runs/{id}/invalidate", d.handleInvalidate)
 	mux.HandleFunc("POST /v1/runs/{id}/identify", d.handleIdentify)
@@ -396,7 +400,7 @@ func (d *Daemon) handleStatus(w http.ResponseWriter, r *http.Request) {
 // status is the lanes, what each is doing, and the queue.
 func (d *Daemon) status(ctx context.Context) (Status, error) {
 	d.mu.Lock()
-	st := Status{Version: d.Version, Started: d.started, Draining: d.draining}
+	st := Status{Version: d.Version, Started: d.started, Draining: d.draining, Heartbeat: d.lastBeat}
 	flying := map[string]*flight{}
 	for lane, f := range d.flights {
 		flying[lane] = f
@@ -460,6 +464,9 @@ func (d *Daemon) status(ctx context.Context) (Status, error) {
 		d.mu.Lock()
 		if !e.Running {
 			e.Stopped = d.stopped(it)
+			if e.Stopped == "" {
+				e.Stopped = d.atCapacity[it.RunID]
+			}
 		}
 		e.RetryOf = d.ctl.Retries[it.RunID]
 		d.mu.Unlock()

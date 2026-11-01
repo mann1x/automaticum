@@ -209,7 +209,12 @@ func statusOnce(ctx context.Context, c *client) error {
 	if st.Draining {
 		state = "draining"
 	}
-	fmt.Printf("automaticumd %s, %s for %s\n\n", st.Version, state, ago(st.Started))
+	fmt.Printf("automaticumd %s, %s for %s\n", st.Version, state, ago(st.Started))
+	if h := st.Heartbeat; h != nil {
+		fmt.Printf("last heartbeat %s ago: %d running, %d queued; ended in the %s before it: %s\n",
+			ago(h.At), h.Running, h.Queued, human.Duration(h.At.Sub(h.Since)), countList(h.Ended))
+	}
+	fmt.Println()
 	w := table()
 	fmt.Fprintln(w, "LANE\tHOST\tSTATE\tRUN\tARM\tTASK\tFOR")
 	for _, l := range st.Lanes {

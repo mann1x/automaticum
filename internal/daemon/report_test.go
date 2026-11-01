@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mann1x/automaticum/internal/config"
 	"github.com/mann1x/automaticum/internal/store"
 )
 
@@ -70,5 +71,68 @@ func TestReportRegressionAndCensus(t *testing.T) {
 	}
 	if code := g.call("GET", "/v1/report/census?where=nope=1", nil, nil); code != 400 {
 		t.Errorf("bad where: %d", code)
+	}
+}
+
+// Two lanes on one endpoint of capacity 1 take turns; with capacity 2
+// they run together (050 §1).
+func TestEndpointCapacity(t *testing.T) {
+	g := newRig(t, false)
+	g.d.Local.Lanes["lane-2"] = &config.Lane{Name: "lane-2", Host: "linux-gpu-1", Endpoints: []string{"stub"}}
+	g.d.Local.Endpoints["stub"].Capacity = 1
+	g.runner.hold, g.runner.started = make(chan struct{}), make(chan string, 8)
+	go func() { g.d.Serve(g.ctx()); close(g.served) }()
+	var a, b StartResponse
+	g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Lane: "lane-1"}, &a)
+	g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Lane: "lane-2"}, &b)
+	<-g.runner.started
+	time.Sleep(200 * time.Millisecond)
+	st := g.status()
+	waiting := ""
+	for _, q := range st.Queue {
+		if !q.Running {
+			waiting = q.Stopped
+		}
+	}
+	if waiting != "endpoint stub serves its capacity of 1" {
+		t.Fatalf("the second run: %q in %+v", waiting, st.Queue)
+	}
+	g.runner.hold <- struct{}{}
+	<-g.runner.started
+	close(g.runner.hold)
+	g.waitFinished(a.RunIDs[0])
+	g.waitFinished(b.RunIDs[0])
+}
+
+// The heartbeat counts lanes, runs and the runs ended since the one before
+// (050 §6), on GET /v1/heartbeat and in the status; the loop keeps the last.
+func TestHeartbeat(t *testing.T) {
+	g := newRig(t, false)
+	if code := g.call("GET", "/v1/heartbeat", nil, nil); code != 404 {
+		t.Errorf("before the first heartbeat: %d", code)
+	}
+	g.d.HeartbeatEvery = time.Hour
+	go func() { g.d.Serve(g.ctx()); close(g.served) }()
+	var resp StartResponse
+	g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer"}, &resp)
+	g.waitFinished(resp.RunIDs[0])
+	// No heartbeat yet: the window starts at the daemon's start.
+	var h Heartbeat
+	if code := g.call("GET", "/v1/heartbeat?now=1", nil, &h); code != 200 || h.Ended["PASS"] != 1 || h.Running+h.Queued != 0 || len(h.Lanes) == 0 {
+		t.Fatalf("now: %d %+v", code, h)
+	}
+	if st := g.status(); st.Heartbeat != nil {
+		t.Error("a heartbeat before its time")
+	}
+
+	g2 := newRig(t, false)
+	g2.d.HeartbeatEvery = 20 * time.Millisecond
+	go func() { g2.d.Serve(g2.ctx()); close(g2.served) }()
+	deadline := time.Now().Add(5 * time.Second)
+	for g2.status().Heartbeat == nil && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if g2.status().Heartbeat == nil || g2.call("GET", "/v1/heartbeat", nil, &h) != 200 || h.At.IsZero() {
+		t.Fatalf("the loop kept no heartbeat: %+v", h)
 	}
 }

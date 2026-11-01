@@ -1008,6 +1008,55 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-01T20:15:00+01:00"
+    },
+    {
+      "id": "bug-059",
+      "timestamp": "2026-11-01T20:45:00+01:00",
+      "error_message": "a run whose server failed mid-run (connection refused, 503, rate limit) after the SDK's retries went to the oracle and could be counted FAIL",
+      "file": "internal/run/run.go",
+      "root_cause": "only D89's case (no request answered) was ABORTED; 050 §4 says infrastructure errors are never the model's failure",
+      "fix": "run.Fault ports the SDK's refusal/transport patterns (llms Kr: Mk, _k); Facts.Infra set from agent_error when agent_end is error; Decide: pass outranks it, otherwise ABORTED",
+      "tags": [
+        "verdict",
+        "infrastructure",
+        "050",
+        "sdk"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T20:45:00+01:00"
+    },
+    {
+      "id": "bug-060",
+      "timestamp": "2026-11-01T20:45:00+01:00",
+      "error_message": "endpoint capacity was validated and printed but never used: two lanes on one capacity-1 endpoint ran at once",
+      "file": "internal/daemon/daemon.go",
+      "root_cause": "the scheduler only looked at the lane, never at the endpoint's runs in flight",
+      "fix": "endpointFull counts flights per endpoint (flight.endpoint) before a start; status shows the wait",
+      "tags": [
+        "scheduler",
+        "capacity",
+        "050"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T20:45:00+01:00"
+    },
+    {
+      "id": "bug-061",
+      "timestamp": "2026-11-01T20:45:00+01:00",
+      "error_message": "TestHeartbeat saw lanes idle:1 running:1 in a one-lane rig",
+      "file": "internal/daemon/report_test.go",
+      "root_cause": "the test decoded each poll into the same struct; encoding/json merges into an existing map",
+      "fix": "decode into a fresh value, and test the counts through ?now=1 rather than racing 50 ms windows",
+      "tags": [
+        "test",
+        "json",
+        "flaky"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T20:45:00+01:00"
     }
   ]
 }

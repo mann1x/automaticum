@@ -26,6 +26,14 @@ new code. Three gaps became owner questions: O31 (how a cohort is
 declared), O32 (`requeue`), O33 (`rescore`). Count after item 1: about
 432 rows built, 109 partial, 144 not built, 93 scheduled, 12 open.
 
+**Item 2, scheduling and unattended operation (2026-11-01):** endpoint
+capacity in the scheduler; the heartbeat; infrastructure errors that end a
+run after the SDK's own retries are `ABORTED`, never `FAIL` (the audit's
+first evidence pointed at the plan-mode tool's retry setting, not at model
+requests). Owner questions: O34 (labels), O35 (external busy signal), O36
+(automatic quarantine), O37 (driver watchdog), O38 (priorities and
+reservations).
+
 The other rows below are as found, before those fixes. Each table was written by
 one reader of a group of specs; a row's evidence is a path and line at
 180cc97.
@@ -299,8 +307,8 @@ It is not counted as BUILT below.
 | spec § | item | status | evidence / notes |
 |---|---|---|---|
 | 050 §1 | Queue of runs; one run per lane | BUILT | `internal/daemon/daemon.go:350` `startReady` (one flight per lane, `d.flights[it.Lane]`) |
-| 050 §1 | Scheduler places a run on a lane that satisfies its **labels** | NOT BUILT | lanes have `labels` (`internal/config/local.go:134`) but nothing reads them; lane chosen at queue time as first lane (by name) that may use the endpoint, `daemon.go:618` `laneFor` |
-| 050 §1 | ... and whose endpoint has **capacity** | NOT BUILT | endpoint `capacity` key validated (`local.go:148,246`) and printed by `endpoint ls`, never used by the scheduler; only gate `free` waits when another model is loaded |
+| 050 §1 | Scheduler places a run on a lane that satisfies its **labels** | OPEN | O34: where a run's labels come from |
+| 050 §1 | ... and whose endpoint has **capacity** | BUILT | `endpointFull` in startReady (daemon.go); status says why a run waits; TestEndpointCapacity |
 | 050 §1 | Interleaving A/B arms ABAB on the same lane | BUILT | `internal/daemon/api.go:447` (order `interleaved` default), `:620` rounds; arms forced onto one lane `api.go:545` |
 | 050 §1 | `campaign start <name>` reads `campaigns/<name>.toml`, checks every batch, keeps definition | BUILT | `internal/daemon/campaign.go:272`, `cmd/automaticum/campaign_cmds.go` (`--dry-run`) |
 | 050 §1 | Campaign batches started in order under key `<campaign>-<batch>`; stop conditions applied every few seconds | BUILT | `campaign.go:67` `campaignLoop`, `:104` `campaignStep`, `:92` `stopReason` (after_consecutive_pass, on_invalid, at) |
@@ -311,12 +319,12 @@ It is not counted as BUILT below.
 | 050 §1 | Campaign end (finished or stopped) notified like a refusing gate | BUILT (webhook+log only) | `campaign.go:243` `endCampaign` -> `notify`; no mailbox (see §2) |
 | 050 §1 | `campaign show` with each batch compared | BUILT | `campaign.go:332` `handleCampaign` |
 | 050 §1 | Gates of a campaign's own | NOT BUILT | stated "not built yet"; no milestone assigned; campaign config has no gate key (`internal/config/campaign.go`) |
-| 050 §1 | Priorities and reservations ("this lane is mine until 08:00") | NOT BUILT | stated "not built yet"; no milestone; no code |
+| 050 §1 | Priorities and reservations ("this lane is mine until 08:00") | OPEN | O38 |
 | 050 §1 | One campaign across two hosts | SCHEDULED (m7) | agent mode |
 | 050 §1 | Batch of several tasks / whole suites (`--task A --task B`, `--suite`) (D107) | BUILT | `cmd/automaticum/client_cmds.go:174-175` |
 | 050 §1 | Batch limits: `run start --wall-s/--idle-s`, campaign `wall_s`/`idle_s`, `batch limits` for queued runs | BUILT | `client_cmds.go` `addLimits`, `config/campaign.go:44-45`, `control.go:278` |
 | 050 §1 | Campaign batch takes `suites` and `capture_requests` (D104) | BUILT | `config/campaign.go:37,48` |
-| 050 §1 | Lane marked busy by an **external signal**; scheduler waits; never preempts | PARTIAL | no external busy signal (no claim/marker read); only operator `lane drain` and gate `free` (waits when the endpoint holds another model, D64) |
+| 050 §1 | Lane marked busy by an **external signal**; scheduler waits; never preempts | OPEN | O35: what the signal is; gate `free` waits for another model (D64) |
 | 050 §1 | External harness concurrency is a request; adapter queues | SCHEDULED (m5) | adapters not built (064) |
 | 050 §1 | Large suites sharded across lanes, per-instance env caching, resume of half-finished evaluation | SCHEDULED (m5) | 062; only mode C `cell run --lanes N` spreads a cell over lanes (`modec.go`) |
 | 050 §2 | Gate failure produces SKIPPED/INVALID with reason | BUILT | `daemon.go:533` `skip("gate "+...)` |
@@ -357,7 +365,7 @@ It is not counted as BUILT below.
 | 050 §4 | Abort kills process tree by recorded id; aborted run still ingested | BUILT | container killed by id (`daemon.go:593`), oracle and ingest still run |
 | 050 §4 | Abort confirms on the server side that generation stopped | SCHEDULED (m7) | spec: needs agent mode |
 | 050 §4 | Pause inside a run (D77/D83): hold before next request, unload on Ollama/xOllama, held time subtracted, `paused` flag | BUILT | `run.go:245-248` Holds/HeldMS, `HoldFile`; `api.go:1223` `afterHeld` unload |
-| 050 §4 | Infrastructure errors (endpoint down, 429, network) wait and retry, recorded as such | NOT BUILT | runner sets `retryable:false, maxRetries:0` (`runner/plan.mjs:33-34`); no retry/classification in daemon; endpoint down at start -> gate refuse (SKIPPED) |
+| 050 §4 | Infrastructure errors (endpoint down, 429, network) wait and retry, recorded as such | BUILT | the SDK retries (llms 3 attempts, agents provider retries, turn fault recovery), each a `notices.*` metric; a run ending on a `refusal`/`transport` fault is ABORTED unless passed (`run/fault.go`, verdict.go `Infra`); the old evidence (`plan.mjs` retryable:false) was the switch tool, not requests |
 | 050 §4 | Restart: runs in flight re-attached or marked ABORTED(daemon restart) | BUILT | `daemon.go:239` `Recover` (`:265` "daemon restart"); no re-attach (allowed by "or") |
 | 050 §4 | Immutability: arm/task read at run start | BUILT | `daemon.go` `fly` reads arm and task at start |
 | 050 §4 | Idempotency key on **every** mutating command | BUILT | `Idempotency-Key` header on every mutating route (mutate.go `idempotent`), answers kept 30 days; local commands repeatable by construction (090 §1) |
@@ -373,14 +381,14 @@ It is not counted as BUILT below.
 | 050 §4 (m4) | `provenance.asked` kept for never-started runs; old records refused | BUILT | `control.go:130-150`, `:597` `askedOf` |
 | 050 §4 (m4) | Control state in `control.json`; unreadable file drains every lane | BUILT | `control.go:64` |
 | 050 §5 | Watchdog: run whose event stream is silent N minutes | BUILT | idle limit `idle_s` ends the run as TIMEOUT (`run.go:35,122`) |
-| 050 §5 | Watchdog: batch whose driver vanished | NOT BUILT | no code (daemon drives batches; no driver-liveness check) |
-| 050 §5 | Watchdog: lane producing only infrastructure failures -> quarantine | NOT BUILT | only the string "quarantined" in `internal/store/store.go:146`; nothing sets it |
+| 050 §5 | Watchdog: batch whose driver vanished | OPEN | O37: whether it applies |
+| 050 §5 | Watchdog: lane producing only infrastructure failures -> quarantine | OPEN | O36: the count; manual `lane quarantine` built |
 | 050 §5 | Watchdog: endpoint identity changed since probe -> INVALID | BUILT | `run.go:256-289` EndpointBefore/After/Changed; test `TestOperatorAbortAndEndpointChange` |
-| 050 §6 | Heartbeat with counts every ten minutes, to log and on request | NOT BUILT | no heartbeat code |
-| 050 §6 | Server-side `wait` primitives (090 §5) | NOT BUILT | not in HEAD; uncommitted WIP in working tree (`internal/wait/`, `internal/daemon/wait.go`, `GET /v1/wait/{kind}`), no CLI `automaticum wait` |
+| 050 §6 | Heartbeat with counts every ten minutes, to log and on request | BUILT | heartbeat.go: log every 10 min, `status`, `GET /v1/heartbeat`; TestHeartbeat |
+| 050 §6 | Server-side `wait` primitives (090 §5) | BUILT | bbdd18f: internal/wait, `GET /v1/wait/{kind}`, `automaticum wait` |
 | 050 §6 | Notification (webhook) on campaign end | BUILT | `campaign.go:254` |
 | 050 §6 | Notification on any refusing gate | BUILT (webhook) | per-run gates notified; static refusal at start not (see §2) |
-| 050 §6 | Notification on a **stopped batch** | NOT BUILT | `batch stop` (`control.go:400`) and a campaign batch stopped by its condition (`campaign.go:232` `setBatch`, log only) send nothing; only canary stop (`canary.go:118`) and campaign end notify |
+| 050 §6 | Notification on a **stopped batch** | BUILT | bbdd18f: batch stop and a campaign batch stopped by its condition notify (control.go, daemon.go notifyEnd) |
 | 050 (not specified) | Notification on run end / batch end | not in these specs | no code either; 050 promises only refusing gate, campaign end, stopped batch, canary |
 | 050 §6 | Cell with any SKIPPED task marked incomplete, says so in result file | BUILT | `daemon/cell.go:209-211,292-294` |
 | 060 §1 | Agent-loop tasks only (completion-form out of scope) | BUILT | by design |

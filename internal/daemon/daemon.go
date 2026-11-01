@@ -80,6 +80,9 @@ type Daemon struct {
 	// means every five seconds. ControlTokens, when set, replaces asking
 	// the endpoint for a model's control tokens.
 	CanaryEvery time.Duration
+	// HeartbeatEvery is how often the heartbeat is logged; zero means ten
+	// minutes (050 §6).
+	HeartbeatEvery time.Duration
 	// CampaignEvery is how often the campaigns are moved on; zero means
 	// every five seconds.
 	CampaignEvery time.Duration
@@ -99,6 +102,11 @@ type Daemon struct {
 	// notified which waiting runs were already told about.
 	holds    map[string]time.Time
 	notified map[string]bool
+	// lastBeat is the last heartbeat.
+	lastBeat *Heartbeat
+	// atCapacity says, by run, that it waits because its endpoint serves
+	// as many runs as its capacity (050 §1).
+	atCapacity map[string]string
 	// batchTold is how many finished runs a batch had when its end was
 	// last notified.
 	batchTold map[string]int
@@ -114,7 +122,9 @@ type flight struct {
 	runID   string
 	item    store.QueueItem
 	started time.Time
-	cancel  context.CancelCauseFunc
+	// endpoint is the name of the arm's endpoint, for its capacity.
+	endpoint string
+	cancel   context.CancelCauseFunc
 
 	mu     sync.Mutex
 	lines  [][]byte // what the runner printed, bounded
@@ -219,6 +229,7 @@ func (d *Daemon) init() {
 		d.flights = map[string]*flight{}
 		d.holds = map[string]time.Time{}
 		d.notified = map[string]bool{}
+		d.atCapacity = map[string]string{}
 		d.batchTold = map[string]int{}
 		d.wake = make(chan struct{}, 1)
 		d.changed = make(chan struct{})
@@ -350,6 +361,7 @@ func (d *Daemon) Serve(ctx context.Context) {
 	defer stopCanary()
 	go d.canaryLoop(canary)
 	go d.campaignLoop(canary)
+	go d.heartbeatLoop(canary)
 	for {
 		d.mu.Lock()
 		draining := d.draining
@@ -390,11 +402,16 @@ func (d *Daemon) startReady(ctx context.Context, wg *sync.WaitGroup) {
 		return
 	}
 	// A lane whose waiting run was taken off the queue is idle again.
-	queued := map[string]bool{}
+	queued, waiting := map[string]bool{}, map[string]bool{}
 	for _, it := range queue {
-		queued[it.Lane] = true
+		queued[it.Lane], waiting[it.RunID] = true, true
 	}
 	d.mu.Lock()
+	for id := range d.atCapacity {
+		if !waiting[id] {
+			delete(d.atCapacity, id)
+		}
+	}
 	var freed []string
 	for lane := range d.holds {
 		if !queued[lane] {
@@ -419,12 +436,29 @@ func (d *Daemon) startReady(ctx context.Context, wg *sync.WaitGroup) {
 		if d.stopped(it) != "" {
 			busy = true
 		}
+		d.mu.Unlock()
+		if busy {
+			continue
+		}
+		// The endpoint serves at most its capacity of runs at once (050
+		// §1); the arm is read again when the run starts.
+		endpoint, full := d.endpointFull(it)
+		d.mu.Lock()
+		if _, taken := d.flights[it.Lane]; taken {
+			busy = true
+		}
+		if full != "" {
+			busy = true
+			d.atCapacity[it.RunID] = full
+		} else {
+			delete(d.atCapacity, it.RunID)
+		}
 		var f *flight
 		var fctx context.Context
 		if !busy {
 			var cancel context.CancelCauseFunc
 			fctx, cancel = context.WithCancelCause(context.WithoutCancel(ctx))
-			f = &flight{runID: it.RunID, item: it, started: time.Now(), cancel: cancel, subs: map[chan []byte]struct{}{}}
+			f = &flight{runID: it.RunID, item: it, started: time.Now(), cancel: cancel, endpoint: endpoint, subs: map[chan []byte]struct{}{}}
 			d.flights[it.Lane] = f
 		}
 		d.mu.Unlock()
@@ -459,6 +493,33 @@ func (d *Daemon) startReady(ctx context.Context, wg *sync.WaitGroup) {
 			}
 		}()
 	}
+}
+
+// endpointFull gives the name of a queued run's endpoint and, when that
+// endpoint already serves as many runs as its capacity, why the run waits.
+// A mode C cell's endpoint is the caller's, with its own lanes (065 §3.1),
+// and an arm that cannot be read is left to fail when the run starts.
+func (d *Daemon) endpointFull(it store.QueueItem) (string, string) {
+	arm, cell, err := d.armFor(it.Batch, it.Arm)
+	if err != nil || cell != nil {
+		return "", ""
+	}
+	ep := d.Local.Endpoint(arm.Endpoint)
+	if ep == nil || ep.Cell || ep.Capacity < 1 {
+		return arm.Endpoint, ""
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	n := 0
+	for _, f := range d.flights {
+		if f.endpoint == arm.Endpoint {
+			n++
+		}
+	}
+	if n >= ep.Capacity {
+		return arm.Endpoint, fmt.Sprintf("endpoint %s serves its capacity of %d", arm.Endpoint, ep.Capacity)
+	}
+	return arm.Endpoint, ""
 }
 
 // fly runs one queued run to its end. It returns true when the run did not

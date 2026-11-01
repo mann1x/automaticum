@@ -1,6 +1,6 @@
 # 020 — The run record, verdicts and the basis
 
-**Status:** draft 0.15, 2026-11-01.
+**Status:** draft 0.16, 2026-11-01.
 
 Nothing in this file is optional. Each item is here because its absence
 invalidated or blinded a real campaign. A value is recorded **as probed or as
@@ -105,7 +105,7 @@ beside it:
 | `PASS` | the oracle passed. Outranks the clock. |
 | `FAIL` | the oracle ran and said no; or a guard tripped that the arm's `guards.stop_on` names (D99, D100). Nothing else. |
 | `TIMEOUT` | a limit ended it: an outer kill, the agent's own limit exiting 0 near the cap, or an external harness's limit. Which one is recorded. |
-| `ABORTED` | no verdict could be produced: crash, out of memory, operator kill, empty event stream, tampered oracle, scorer error, an agent that ended in error before the server answered any of its requests (D89). |
+| `ABORTED` | no verdict could be produced: crash, out of memory, operator kill, empty event stream, tampered oracle, scorer error, an agent that ended in error before the server answered any of its requests (D89), an agent that ended on a server fault after the SDK's own retries, unless the oracle passed (050 §4). |
 | `INVALID` | the run finished but a gate or an integrity check says its result must not be counted (wrong build, setting not applied, model not GPU-resident, endpoint changed mid-run). |
 | `SKIPPED` | never started; reason recorded. |
 

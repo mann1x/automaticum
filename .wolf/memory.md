@@ -1406,3 +1406,26 @@
 | 20:16 | O30 decided by owner -> D119: drain releases held run (releaseHeld), test, 050 §5, decisions rev 35 | internal/daemon/control.go, daemon.go, mutate_test.go, docs/specs | done | ~6000 |
 | 20:17 | item 1C: report regression (compare split=build), report census, report aliases, export cell/campaign/run, dry runs on local commands, wait fact quarantined, campaign abort/retry test | internal/daemon/{compare,report,cell}.go, cmd/automaticum/{report_cmds,compare_cmds,...}.go | make test + test-store pass | ~25000 |
 | 20:18 | specs 090/070/065/050/030/020 as built; O31 cohort, O32 requeue, O33 rescore opened; audit item-1 rows updated | docs/specs, docs/audit | done | ~8000 |
+
+## Session: 2026-11-01 20:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-01 20:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-01 20:23
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-01 20:24
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:28 | Created internal/run/fault.go | — | ~742 |
+| 20:30 | Created internal/daemon/heartbeat.go | — | ~805 |
+| 20:46 | item 2: endpoint capacity in scheduler, heartbeat (log/status/GET /v1/heartbeat), infra faults ABORTED via run.Fault (SDK patterns); O34-O38 opened; 050/020 as built; audit rows | internal/daemon/{daemon,heartbeat,api}.go, internal/run/{fault,verdict,run}.go | tests pass | ~20000 |

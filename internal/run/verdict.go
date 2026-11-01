@@ -27,6 +27,10 @@ type Facts struct {
 	// GuardStop is the guard trip that ended the run, for an arm that stops
 	// at the first one (D99).
 	GuardStop string
+	// Infra is the server's fault the agent ended with, after the SDK's
+	// own retries (Fault): an infrastructure error is never the model's
+	// failure (050 §4).
+	Infra string
 }
 
 // Decide applies the verdict rules and returns the verdict with its reason.
@@ -35,7 +39,9 @@ type Facts struct {
 // is known. A failed integrity check makes the result uncountable, so INVALID
 // comes before anything the oracle says. A run that produced no verdict is
 // ABORTED. After that the oracle speaks, and a pass outranks the clock: a
-// limit only makes a TIMEOUT of a run the oracle did not pass.
+// limit only makes a TIMEOUT of a run the oracle did not pass. A pass
+// outranks a server fault the same way; a run the oracle did not pass that
+// ended on one is ABORTED, never FAIL or TIMEOUT (050 §4).
 func Decide(f Facts) (store.Verdict, string) {
 	switch {
 	case f.Skipped != "":
@@ -59,6 +65,8 @@ func Decide(f Facts) (store.Verdict, string) {
 			return store.Pass, fmt.Sprintf("oracle passed; the %s limit had fired (%s)", f.Limit, limitWho(f))
 		}
 		return store.Pass, "oracle passed"
+	case f.Infra != "":
+		return store.Aborted, "the server failed after the SDK's retries (" + f.Infra + "); not the model's failure"
 	case f.Limit != "":
 		return store.Timeout, fmt.Sprintf("%s limit (%s)", f.Limit, limitWho(f))
 	}

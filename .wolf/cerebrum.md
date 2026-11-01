@@ -18,6 +18,8 @@
 - (2026-10-29) This session only develops automaticum. Client sessions (e.g. backup_models) write their own arms, models, endpoints and lanes, confirm their gates and start their own batches.
 
 ## Key Learnings
+- (2026-11-01) encoding/json decodes into an existing map by merging keys: a test that polls into one struct keeps stale keys. Decode into a fresh value each time.
+- (2026-11-01) The SDK already waits and retries infrastructure errors (llms stream wrapper 3 attempts, 250 ms / 2 s; agents provider_error_retry with backoff; turn_fault_recovery). automaticum's job is the verdict: `run.Fault` (ported from llms `Kr`) makes such an end ABORTED unless the oracle passed.
 - (2026-11-01) Daemon tests: the fakeRunner's records carry no `Arm` JSON, so a retry of a run it ended is refused ("the record does not say which arm it was"); only runs that never started (SKIPPED, with `provenance.asked`) retry in the rig. `batch pause` answers 202 when it holds a run in flight. `RunView.Verdict` is a string: compare with `string(store.Pass)`.
 - (2026-11-01) `Executor.Release` is a no-op on a run that is not held, and also cancels a hold asked for that the runner has not reached: safe to call on every run a drain touches (D119).
 - (2026-11-01) The regression view is `compareView(..., split="build")`: groups by arm NAME + task + the basis "harness build" fact, because an SDK change changes the arm id.
