@@ -133,7 +133,7 @@ func compareAs(ctx context.Context, args []string, name, split string) error {
 	}
 	fmt.Printf("\nverdicts (intervals at %s):\n", human.Percent(v.Level))
 	w := table()
-	fmt.Fprint(w, "  \tRUNS\tPASS\tINTERVAL\tOTHER\tTOKENS PER SOLVED\n")
+	fmt.Fprint(w, "  \tRUNS\tPASS\tINTERVAL\tOTHER\tLONGEST STREAKS\tTOKENS PER SOLVED\n")
 	for i, g := range v.Groups {
 		var other []string
 		for verdict, n := range g.Verdicts {
@@ -146,11 +146,19 @@ func compareAs(ctx context.Context, args []string, name, split string) error {
 		if g.TokensPerSolved > 0 {
 			solved = human.Number(g.TokensPerSolved)
 		}
-		fmt.Fprintf(w, "  %s\t%d\t%d\t%s to %s\t%s\t%s\n", letter(i), len(g.Runs), g.Pass, human.Percent(g.PassLow), human.Percent(g.PassHigh), strings.Join(other, ", "), solved)
+		fmt.Fprintf(w, "  %s\t%d\t%d\t%s to %s\t%s\t%d pass, %d not\t%s\n", letter(i), len(g.Runs), g.Pass, human.Percent(g.PassLow), human.Percent(g.PassHigh), strings.Join(other, ", "), g.Streaks.Pass, g.Streaks.Fail, solved)
 	}
 	w.Flush()
 	for _, p := range v.Pairs {
 		fmt.Printf("  %s against %s, pass counts: Fisher's exact test, two-sided p = %.3f\n", letter(p.A), letter(p.B), p.PassP)
+		if q := p.Paired; q.Pairs > 0 {
+			fmt.Printf("  %s against %s, %d runs paired in the order they ran: %d passed only in %s, %d only in %s; McNemar's exact test, two-sided p = %.3f",
+				letter(p.A), letter(p.B), q.Pairs, q.OnlyA, letter(p.A), q.OnlyB, letter(p.B), q.P)
+			if q.Unpaired > 0 {
+				fmt.Printf("; %d runs without a partner", q.Unpaired)
+			}
+			fmt.Println()
+		}
 	}
 
 	fmt.Println("\ngeneration cap, at any turn:")

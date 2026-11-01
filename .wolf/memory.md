@@ -1446,3 +1446,19 @@
 |------|--------|---------|---------|--------|
 | 20:39 | Created internal/ingest/oracle.go | — | ~1226 |
 | 21:05 | item 3: secondary oracles run (run.go), partial score + secondary/claimed findings at ingest (oracle.go), analysis v8; specs 060/020/063/070; audit | internal/run/run.go, internal/ingest/{oracle,analyse}.go | tests pass | ~12000 |
+
+## Session: 2026-11-01 20:43
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-01 20:43
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-01 20:44
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:25 | item 4 part 1: p10/p90, cell verdict numbers (token_stats_pass, tokens_per_solved, throughput, empty>5%, loop_by_verdict), streaks, McNemar, time per turn/gap; O39 opened | internal/{stats,daemon,ingest}, cmd/automaticum/compare_cmds.go, docs | tests pass | ~15000 |

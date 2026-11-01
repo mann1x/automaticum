@@ -270,6 +270,7 @@
 - `runner_fixture_test.go` — TestRunnerFixtureIsTheResolvedArm (~164 tok)
 
 ## internal/daemon/
+- `cell_numbers_test.go` — TestVerdictNumbers, TestStreaks (~700 tok)
 
 - `api.go` — HTTP handlers: reply, fail (~13391 tok)
 - `basis.go` — Basis (87 fields) (~4394 tok)

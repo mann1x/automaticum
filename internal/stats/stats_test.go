@@ -67,3 +67,13 @@ func TestSummarise(t *testing.T) {
 		t.Errorf("%+v", s)
 	}
 }
+
+func TestMcNemar(t *testing.T) {
+	// 10 discordant pairs split 9 to 1: 2 * (1 + 10) / 1024.
+	if p := McNemar(9, 1); math.Abs(p-22.0/1024) > 1e-12 {
+		t.Errorf("9/1: %v", p)
+	}
+	if McNemar(0, 0) != 1 || McNemar(3, 3) != 1 {
+		t.Error("no difference")
+	}
+}

@@ -11,6 +11,7 @@ import (
 
 	"github.com/mann1x/automaticum/internal/config"
 	"github.com/mann1x/automaticum/internal/detect"
+	"github.com/mann1x/automaticum/internal/stats"
 	"github.com/mann1x/automaticum/internal/store"
 	"github.com/mann1x/automaticum/internal/store/blob"
 )
@@ -216,6 +217,24 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 	}
 
 	// Time.
+	// Time per turn, from one turn's start to the next and the last to
+	// the stream's end, and the longest silence in the stream (070 §2).
+	if n := len(ev.TurnStarts); n > 0 && !ev.Last.IsZero() {
+		var turns []float64
+		for i, t := range ev.TurnStarts {
+			end := ev.Last
+			if i+1 < n {
+				end = ev.TurnStarts[i+1]
+			}
+			turns = append(turns, float64(end.Sub(t).Milliseconds()))
+		}
+		s := stats.Summarise(turns)
+		m("time.turn_median_ms", s.Median)
+		m("time.turn_max_ms", s.Max)
+	}
+	if ev.Lines > 1 {
+		m("time.gap_max_ms", ev.MaxGapMS)
+	}
 	m("analysis.version", AnalysisVersion)
 	m("time.wall_ms", float64(r.WallMS))
 	if !ev.First.IsZero() {

@@ -44,11 +44,17 @@ type CellResult struct {
 	} `json:"headline"`
 	// Counts are of each run's last attempt, and sum to NExpected:
 	// "unfinished" holds those still queued or in flight.
-	Counts           map[string]int           `json:"counts"`
-	Scores           map[string]float64       `json:"scores"`
-	Basis            map[string][]string      `json:"basis"`
-	BasisSHA256      string                   `json:"basis_sha256"`
-	TokenStats       map[string]stats.Summary `json:"token_stats"`
+	Counts      map[string]int           `json:"counts"`
+	Scores      map[string]float64       `json:"scores"`
+	Basis       map[string][]string      `json:"basis"`
+	BasisSHA256 string                   `json:"basis_sha256"`
+	TokenStats  map[string]stats.Summary `json:"token_stats"`
+	// TokenStatsPass are the token distributions over the PASS runs only
+	// (070 §2.1): a median over every run rewards giving up early.
+	TokenStatsPass map[string]stats.Summary `json:"token_stats_pass"`
+	// LoopByVerdict cross-tabulates the runs with a loop and the runs
+	// that hit their output limit with the verdict (070 §3.1).
+	LoopByVerdict    map[string]LoopCross     `json:"loop_by_verdict"`
 	GenerationCaps   CapAudit                 `json:"generation_caps"`
 	Degeneration     map[string]int           `json:"degeneration"`
 	ToolCalls        map[string]stats.Summary `json:"tool_calls"`
@@ -78,6 +84,78 @@ type CellRow struct {
 	SupersededBy  string             `json:"superseded_by,omitempty"`
 	Findings      map[string]int     `json:"findings,omitempty"`
 	Metrics       map[string]float64 `json:"metrics"`
+}
+
+// LoopCross is one verdict's runs in a cell: how many, how many looped
+// (a reasoning loop or repetition finding), how many hit their output limit,
+// and how many did both.
+type LoopCross struct {
+	Runs         int `json:"runs"`
+	Looped       int `json:"looped"`
+	Capped       int `json:"capped"`
+	LoopedCapped int `json:"looped_and_capped"`
+}
+
+// emptyShareWarn is 070 §2.1's "empty completions above 5 %".
+const emptyShareWarn = 0.05
+
+// verdictNumbers are the cell's numbers that need each run's verdict (070
+// §2.1, §3.1), over the runs that count (PASS, FAIL, TIMEOUT, not
+// superseded): the token distributions over the PASS runs, tokens per
+// solved task, throughput over the whole cell, the share of empty
+// completions with its warning, and loops and caps by verdict.
+func verdictNumbers(res *CellResult, rows []CellRow) {
+	res.TokenStatsPass, res.LoopByVerdict = map[string]stats.Summary{}, map[string]LoopCross{}
+	pass := map[string][]float64{}
+	var completion, modelMS, empty, requests float64
+	solved := 0
+	for _, r := range rows {
+		if r.SupersededBy != "" || (r.Verdict != "PASS" && r.Verdict != "FAIL" && r.Verdict != "TIMEOUT") {
+			continue
+		}
+		c := res.LoopByVerdict[r.Verdict]
+		c.Runs++
+		looped := r.Findings[detect.ReasoningLoop] > 0 || r.Findings[detect.ReasoningRepetition] > 0
+		capped := r.Metrics["cap.hits"] > 0
+		if looped {
+			c.Looped++
+		}
+		if capped {
+			c.Capped++
+		}
+		if looped && capped {
+			c.LoopedCapped++
+		}
+		res.LoopByVerdict[r.Verdict] = c
+		completion += r.Metrics["tokens.completion"]
+		modelMS += r.Metrics["time.model_ms"]
+		empty += r.Metrics["completions.empty"]
+		requests += r.Metrics["requests"]
+		if r.Verdict == "PASS" {
+			solved++
+			for name, v := range r.Metrics {
+				if strings.HasPrefix(name, "tokens.") {
+					pass[name] = append(pass[name], v)
+				}
+			}
+		}
+	}
+	for name, vals := range pass {
+		res.TokenStatsPass[name] = stats.Summarise(vals)
+	}
+	if solved > 0 {
+		res.Scores["tokens_per_solved"] = completion / float64(solved)
+	}
+	if modelMS > 0 {
+		res.Scores["throughput_tok_s"] = completion / (modelMS / 1000)
+	}
+	if requests > 0 {
+		share := empty / requests
+		res.Scores["empty_completion_share"] = share
+		if share > emptyShareWarn {
+			res.Warnings = append(res.Warnings, fmt.Sprintf("empty completions are %.1f%% of the requests, above 5%% (070 §2.1)", 100*share))
+		}
+	}
 }
 
 // CellView is the daemon's answer about a cell: the result, its rows, what
@@ -262,6 +340,7 @@ func (d *Daemon) handleCell(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// The numbers, over the runs that count.
+	verdictNumbers(res, v.Rows)
 	if len(recs) > 0 {
 		cv, _, err := d.compareView(ctx, []string{batch}, leave, "")
 		if err == nil {

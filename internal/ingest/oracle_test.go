@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/mann1x/automaticum/internal/store"
@@ -54,5 +55,26 @@ func TestOracleFindings(t *testing.T) {
 	r.Verdict = store.Pass
 	if f, _ := oracleFindings(r, nil); len(f) != 1 || f[0].Detector != SecondaryOracle {
 		t.Errorf("a pass that was claimed is no finding: %+v", f)
+	}
+}
+
+// Time per turn and the longest silence in the stream (070 §2).
+func TestTurnTimes(t *testing.T) {
+	ev := &Events{Notices: map[string]int{}, GuardTrips: map[string]int{}, GuardCauses: map[string]int{}}
+	lines := `{"t":"2026-11-01T10:00:00Z","k":"runner","note":"prepared"}
+{"t":"2026-11-01T10:00:01Z","k":"event","event":{"type":"agent_event","payload":{"event":{"type":"iteration_start","iteration":1}}}}
+{"t":"2026-11-01T10:00:11Z","k":"event","event":{"type":"agent_event","payload":{"event":{"type":"iteration_start","iteration":2}}}}
+{"t":"2026-11-01T10:00:41Z","k":"event","event":{"type":"agent_event","payload":{"event":{"type":"iteration_start","iteration":3}}}}
+{"t":"2026-11-01T10:00:46Z","k":"end","outcome":"completed"}
+`
+	if err := ev.Read(strings.NewReader(lines)); err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]float64{}
+	for _, m := range Analyse(&store.Run{ID: "r", Arm: json.RawMessage(`{}`)}, ev, nil).Metrics {
+		got[m.Name] = m.Value
+	}
+	if got["time.turn_median_ms"] != 10000 || got["time.turn_max_ms"] != 30000 || got["time.gap_max_ms"] != 30000 {
+		t.Errorf("turn times: median %v max %v gap %v", got["time.turn_median_ms"], got["time.turn_max_ms"], got["time.gap_max_ms"])
 	}
 }

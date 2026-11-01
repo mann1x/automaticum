@@ -39,6 +39,18 @@ oracles run and are findings; the partial score is read from the primary
 oracle's output; "claimed success, oracle says no" is a finding; analysis
 version 8.
 
+**Item 4, first part (2026-11-01):** p10/p90 everywhere, the cell's
+verdict-conditioned numbers (tokens over PASS runs, tokens per solved,
+throughput, empty completions with the 5 % warning, loops and caps by
+verdict), streaks, McNemar, time per turn and the longest gap. Owner
+question: O39 (the statistics that need a significance level, against
+D78). Still not built in 070: the §4 tool-call classes and output hygiene,
+turn pathologies, struggle signals, guard replay, near-duplicate rounds,
+edit oscillation, re-read loop, the SDK's failed-identical-call guards,
+compaction detail, edits and change protocol, escalation, sub-agents,
+cost, per-request rates, group-by, lane skew, bootstrap, and the per-run
+report's arm highlight and timeline.
+
 The other rows below are as found, before those fixes. Each table was written by
 one reader of a group of specs; a row's evidence is a path and line at
 180cc97.
@@ -613,7 +625,7 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §1.1 | timeline | NOT BUILT | carried forward (110 §3.2), no milestone |
 | 070 §2 | tokens from server `usage` | BUILT | tokens.prompt/.cached/.fresh/.completion (ingest) |
 | 070 §2 | time: wall, first token, in tools vs model | BUILT | time.wall_ms, first_token_ms, tools_ms, model_ms, agent_ms |
-| 070 §2 | time per turn; idle gaps | NOT BUILT | no metric (spec: "The rest of §2 is not written yet") |
+| 070 §2 | time per turn; idle gaps | BUILT | `time.turn_median_ms`, `time.turn_max_ms`, `time.gap_max_ms` (analysis 8); TestTurnTimes |
 | 070 §2 | volume: requests, turns, tool calls by tool, failures by tool | BUILT | tool_calls.by_tool.*, tool_calls.failed.by_tool.* |
 | 070 §2 | tool failures by error class | NOT BUILT | no metric |
 | 070 §2 | completion split reasoning/text/tool input; rates prompt/gen | BUILT | tokens.completion.reasoning/text/tool_input, rate.*_tok_s |
@@ -634,11 +646,11 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §2 | scripted user `user.*`, hidden where zero (D88) | BUILT | user.actions/denials/failed/forks/mode_switches; compare.go:234,266 |
 | 070 §2 | guard trips and stops by guard/phase/cause (D99, D100) | BUILT | guard_trips.*, guard_stop.* (compare.go:266) |
 | 070 §2 | notices by kind `notices.<type>.<kind>.<phase>` (D116); compaction counted once | BUILT | ingest (status.reasoning_loop.cut etc.) |
-| 070 §2.1 | every distribution over a cell's runs | PARTIAL | compare gives median/min/max/swing per metric; no p10/p90 over the cell |
-| 070 §2.1 | token p50/p90 over PASS runs only | NOT BUILT | no verdict-conditioned distribution |
+| 070 §2.1 | every distribution over a cell's runs | BUILT | p10/p90 added to every summary (stats.Summary) |
+| 070 §2.1 | token p50/p90 over PASS runs only | BUILT | `token_stats_pass` in the result file (cell.go verdictNumbers); TestVerdictNumbers |
 | 070 §2.1 | tokens per solved task | BUILT | compare.go:61,403 |
-| 070 §2.1 | throughput over whole cell | NOT BUILT | not found |
-| 070 §2.1 | sanity warnings: n vs expected, empty >5%, p10 visible chars under floor | NOT BUILT | cell.go warnings cover task change / self-test / INVALID / ABORTED only (cell.go:260-287) |
+| 070 §2.1 | throughput over whole cell | BUILT | `scores.throughput_tok_s` |
+| 070 §2.1 | sanity warnings: n vs expected, empty >5%, p10 visible chars under floor | PARTIAL | empty >5% warning built (`empty_completion_share`); n always equals the runs queued; no suite declares a visible-character floor |
 | 070 §3 | Go detector library, via CLI and API (D24) | BUILT | internal/detect; `detect`, GET /v1/runs/{id}/detect |
 | 070 §3 | short-unit repeat, char run, sentence repeat (§3.1) | BUILT | internal/detect/detect.go, reference_test.go |
 | 070 §3 | runaway (per-suite declared size) | PARTIAL | detector exists; no suite/task field declares a size and ingest always passes `detect.Options{}` (analyse.go:124,514), so it never fires at ingest |
@@ -650,7 +662,7 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §3 | detectors evaluated per run and per cell | PARTIAL | per run yes; per cell only `loop_rate` + degeneration counts (cell.go:242) |
 | 070 §3.1 | controls per domain, self-test at start, in result file | BUILT | detect controls; daemon start; cell.go:279 |
 | 070 §3.1 | `loop_rate` with its components (detector, channel, turn) | PARTIAL | cell.go:242 gives the rate; components only as separate findings, not reported with it |
-| 070 §3.1 | always cross-tabulated with verdict and cap hits | NOT BUILT | compare counts findings per group only (compare.go:54,373) |
+| 070 §3.1 | always cross-tabulated with verdict and cap hits | BUILT | `loop_by_verdict` in the result file |
 | 070 §3.1 | suite subset may declare `loop_rate` as headline | NOT BUILT | headline is always pass_rate (cell.go:229) |
 | 070 §3.1 | report says which runs had a guard fire | BUILT | guard_trips metrics in run show/compare |
 | 070 §3.1 | reanalyse recomputes over corpus incl. imported (D65) | BUILT | reanalyse `--imported` |
@@ -671,7 +683,7 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §4 | integrity: oracle tampering, workspace not pristine | PARTIAL | tampering = verdict (run TestTamperedOracle), pristine = gate `workspace`; files outside workspace, sandbox escapes, PATH/chmod changes not detected |
 | 070 §4 | struggle signals with recall / false alarm | NOT BUILT | none |
 | 070 §4 | session forks `session_fork` (D86) | BUILT | ingest/analyse.go:46 |
-| 070 §4 | outcome mismatches (claimed vs oracle, fixed then broken) | NOT BUILT | `Claimed` recorded on the run (api.go:253) but no finding |
+| 070 §4 | outcome mismatches (claimed vs oracle, fixed then broken) | PARTIAL | claimed vs oracle built (`claimed_success_oracle_no`); fixed-then-broken needs periodic oracle sampling (060 §3.1) |
 | 070 §4.1 | `wire_arm` v2 kinds stated_not_sent / sent_not_stated / differs / drift (D63) | BUILT | ingest/wirearm.go |
 | 070 §4.1 | `model_reloaded`, `gpu_residency` -> INVALID unless `[accepts]` (D73); reanalyse undoes own INVALID | BUILT | ingest/analyse.go:36-40; config/arm.go accepts |
 | 070 §4.1 | reload after pause kept as note, endpoint.reloads_after_pause (D85) | BUILT | metric endpoint.reloads_after_pause |
@@ -681,11 +693,11 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §5 | reasoning-budget regime recorded | BUILT | compare.go:120 (thinking.budget_tokens.served) |
 | 070 §5 | derived answer allowance band; pile-up test | SCHEDULED | M5 (single-turn suites), per spec |
 | 070 §6 | `compare`: Wilson, Fisher, Mann-Whitney, medians/ranges/swing, basis diff above, cap per pair, denominators | BUILT | compare.go:394-429; stats.go |
-| 070 §6 | streaks; "how many more runs to tell apart" | NOT BUILT | none |
-| 070 §6 | paired comparison (McNemar) | NOT BUILT | no McNemar in internal/stats; also an M4 item ("paired ... statistics") |
+| 070 §6 | streaks; "how many more runs to tell apart" | PARTIAL | streaks built (CompareGroup.Streaks); "how many more runs" is O39 |
+| 070 §6 | paired comparison (McNemar) | BUILT | stats.McNemar; ComparePair.Paired; TestMcNemar |
 | 070 §6 | unpaired with bootstrap; statement whether distinguishable | PARTIAL | Fisher/MW built; no bootstrap; the "distinguishable" statement is overridden by D78 (no conclusion) |
-| 070 §6 | jitter band | NOT BUILT | none |
-| 070 §6 | zero/null result carries its power | NOT BUILT | none |
+| 070 §6 | jitter band | OPEN | O39 |
+| 070 §6 | zero/null result carries its power | OPEN | O39 |
 | 070 §6 | distributions on request | PARTIAL | `--all` shows every metric, not distributions |
 | 070 §6 | group by any arm field, task label or finding | NOT BUILT | compare groups by arm id + task only (compare.go:321) |
 | 070 §6 | census of tool failures | PARTIAL | `report census` built; error classes are `tool_error` only and parse paths unrecorded until the 070 §4 classes (item 4) |

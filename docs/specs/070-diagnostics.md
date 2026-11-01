@@ -69,6 +69,14 @@ method is recorded.
   reasoning-loop guard: `reasoning_loop` (the reasoning repeated),
   `answer_loop` (the reply) and `argument_loop` (a tool call's arguments).
 
+  From analysis version 8 (2026-11-01) the partial score of the primary
+  oracle is `oracle.tests_passed`, `oracle.tests_total` and
+  `oracle.partial_share`, where its output says them (060 §2), and the
+  time per turn is `time.turn_median_ms` and `time.turn_max_ms` (from one
+  turn's start to the next, the last to the stream's end), with the
+  longest silence in the stream `time.gap_max_ms` (a paused run's hold is
+  inside its turns and gaps).
+
   **Decided by the owner (2026-10-27, D116):** from analysis version 7 a
   notice of the SDK is counted by what kind it is, never by its sentence:
   `notices.<type>.<kind>.<phase>` from the kind and phase it states
@@ -93,6 +101,16 @@ method is recorded.
   rate of the suite.
 - **Sanity warnings:** n differs from expected; empty completions above 5 %;
   p10 of visible characters under the suite's declared floor.
+
+**As built (2026-11-01):** every summary of a cell or a comparison has p10
+and p90 beside the quartiles. A cell's result file has `token_stats_pass`
+(the token distributions over its `PASS` runs only), `tokens_per_solved`,
+`throughput_tok_s` (its completion tokens over its time in the model) and
+`empty_completion_share` in `scores`, with the warning above 5 %, and
+`loop_by_verdict`: per verdict, the runs, those that looped, those that hit
+their output limit and those that did both (§3.1). n always equals the
+runs the cell queued, so it cannot differ. Not built: the floor of visible
+characters, which no suite declares yet.
 
 ## 3. Detectors: degeneration and looping
 
@@ -497,6 +515,15 @@ run of each arm in turn (`--order blocks` for all of one, then the next).
   boundaries, with the excluded runs and the reason.
 - **Lane skew:** the same arm on two hosts, to separate the model from the
   machine.
+
+**As built (2026-11-01), statistics:** each group has its longest streaks
+(passes, and runs counted that did not pass) in the order the runs
+started. Each pair on one task has McNemar's exact test with its two
+discordant counts, the i-th counted run of one arm paired with the i-th of
+the other in the order they ran, and the runs left without a partner.
+**Open** (O39): "how many more runs to tell these two arms apart", the
+power of a null result and the jitter band's "not distinguishable" each
+need a significance level, which D78 does not set.
 
 **As built (2026-11-01):** `automaticum report regression <batch>...` is
 `compare` with the runs grouped by arm name, task and harness build (SDK

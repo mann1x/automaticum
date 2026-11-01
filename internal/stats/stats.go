@@ -28,9 +28,11 @@ func Wilson(k, n int, z float64) (lo, hi float64) {
 type Summary struct {
 	N      int     `json:"n"`
 	Min    float64 `json:"min"`
+	P10    float64 `json:"p10"`
 	Q1     float64 `json:"q1"`
 	Median float64 `json:"median"`
 	Q3     float64 `json:"q3"`
+	P90    float64 `json:"p90"`
 	Max    float64 `json:"max"`
 	Mean   float64 `json:"mean"`
 	// SD is the sample standard deviation, and CV its share of the mean:
@@ -49,6 +51,7 @@ func Summarise(v []float64) Summary {
 	sort.Float64s(x)
 	s.Min, s.Max = x[0], x[len(x)-1]
 	s.Q1, s.Median, s.Q3 = quantile(x, 0.25), quantile(x, 0.5), quantile(x, 0.75)
+	s.P10, s.P90 = quantile(x, 0.1), quantile(x, 0.9)
 	sum := 0.0
 	for _, a := range x {
 		sum += a
@@ -96,6 +99,23 @@ func Fisher(a, b, c, d int) float64 {
 		}
 	}
 	return math.Min(1, p)
+}
+
+// McNemar is the exact test of paired outcomes: b the pairs in which only
+// the first passed, c those in which only the second did. It returns the
+// two-sided binomial probability, under no difference, of a split of the
+// b+c discordant pairs at least this uneven.
+func McNemar(b, c int) float64 {
+	n := b + c
+	if n == 0 {
+		return 1
+	}
+	k := min(b, c)
+	p := 0.0
+	for x := 0; x <= k; x++ {
+		p += math.Exp(lchoose(n, x) - float64(n)*math.Ln2)
+	}
+	return math.Min(1, 2*p)
 }
 
 func lchoose(n, k int) float64 {

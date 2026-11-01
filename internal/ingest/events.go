@@ -28,9 +28,13 @@ type Block struct {
 type Events struct {
 	Lines, BadLines int
 	First, Last     time.Time
-	Iterations      int
-	AgentEnd        string
-	ToolCalls       []store.ToolCall
+	// TurnStarts is when each turn started; MaxGapMS the longest time
+	// between two lines with a time (a hold of a paused run is inside it).
+	TurnStarts []time.Time
+	MaxGapMS   float64
+	Iterations int
+	AgentEnd   string
+	ToolCalls  []store.ToolCall
 	// Calls holds the same calls with their arguments, for the detectors.
 	Calls  []detect.Call
 	Blocks []Block
@@ -242,6 +246,8 @@ func (ev *Events) line(line []byte, sc *scan) {
 	if !l.T.IsZero() {
 		if ev.First.IsZero() {
 			ev.First = l.T
+		} else if gap := float64(l.T.Sub(ev.Last).Milliseconds()); gap > ev.MaxGapMS {
+			ev.MaxGapMS = gap
 		}
 		ev.Last = l.T
 	}
@@ -323,6 +329,9 @@ func (ev *Events) line(line []byte, sc *scan) {
 	switch a.Type {
 	case "iteration_start":
 		sc.turn = a.Iteration
+		if !l.T.IsZero() {
+			ev.TurnStarts = append(ev.TurnStarts, l.T)
+		}
 		if a.Iteration > ev.Iterations {
 			ev.Iterations = a.Iteration
 		}

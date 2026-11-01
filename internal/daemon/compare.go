@@ -73,6 +73,10 @@ type CompareGroup struct {
 
 	values map[string][]float64
 	bases  []map[string]string
+	passed map[string]bool // by run, for the streaks
+	// Streaks are the longest runs of PASS and of anything else, in the
+	// order the runs started (070 §6).
+	Streaks Streaks `json:"streaks"`
 }
 
 // CapAudit is the generation-cap audit of one arm on one task (070 §5): a
@@ -160,7 +164,11 @@ type ComparePair struct {
 	// what else changed besides what is being compared.
 	Differs []string `json:"differs"`
 	// PassP is Fisher's exact test of the two pass counts, two-sided.
-	PassP   float64               `json:"pass_p"`
+	PassP float64 `json:"pass_p"`
+	// Paired is McNemar's test over the runs of the two groups paired in
+	// the order they ran (070 §6): the i-th counted run of one with the
+	// i-th of the other.
+	Paired  Paired                `json:"paired"`
 	Metrics map[string]stats.Rank `json:"metrics"`
 	// Cap is the cap asymmetry between the two arms (070 §5).
 	Cap CapAsymmetry `json:"cap"`
@@ -282,6 +290,66 @@ func counter(name string) bool {
 	return false
 }
 
+// Paired is the paired comparison of two groups' pass counts: how many
+// pairs, the discordant ones each way, McNemar's exact p, and the runs left
+// without a partner.
+type Paired struct {
+	Pairs    int     `json:"pairs"`
+	OnlyA    int     `json:"only_a"`
+	OnlyB    int     `json:"only_b"`
+	P        float64 `json:"p"`
+	Unpaired int     `json:"unpaired"`
+}
+
+func paired(a, b *CompareGroup) Paired {
+	ra, rb := append([]string(nil), a.Runs...), append([]string(nil), b.Runs...)
+	sort.Strings(ra)
+	sort.Strings(rb)
+	n := min(len(ra), len(rb))
+	p := Paired{Pairs: n, Unpaired: len(ra) + len(rb) - 2*n}
+	for i := 0; i < n; i++ {
+		switch pa, pb := a.passed[ra[i]], b.passed[rb[i]]; {
+		case pa && !pb:
+			p.OnlyA++
+		case pb && !pa:
+			p.OnlyB++
+		}
+	}
+	p.P = stats.McNemar(p.OnlyA, p.OnlyB)
+	return p
+}
+
+// Streaks are a group's longest runs of passes and of failures (any
+// verdict counted that is not PASS), in the order the runs started.
+type Streaks struct {
+	Pass int `json:"pass"`
+	Fail int `json:"fail"`
+}
+
+// streaks reads the runs in the order of their ids, which start with the
+// time they were made.
+func streaks(runs []string, passed map[string]bool) Streaks {
+	ids := append([]string(nil), runs...)
+	sort.Strings(ids)
+	var s Streaks
+	cur, last := 0, false
+	for i, id := range ids {
+		p := passed[id]
+		if i == 0 || p != last {
+			cur = 0
+		}
+		cur++
+		last = p
+		if p && cur > s.Pass {
+			s.Pass = cur
+		}
+		if !p && cur > s.Fail {
+			s.Fail = cur
+		}
+	}
+	return s
+}
+
 func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
 	split := r.URL.Query().Get("split")
 	if split != "" && split != "build" {
@@ -368,6 +436,10 @@ func (d *Daemon) compareView(ctx context.Context, batches []string, leave map[st
 				continue
 			}
 			g.Runs = append(g.Runs, run.ID)
+			if g.passed == nil {
+				g.passed = map[string]bool{}
+			}
+			g.passed[run.ID] = run.Verdict == store.Pass
 			if run.Verdict == store.Pass {
 				g.Pass++
 			}
@@ -416,6 +488,7 @@ func (d *Daemon) compareView(ctx context.Context, batches []string, leave map[st
 			}
 		}
 		g.Cap.decide()
+		g.Streaks = streaks(g.Runs, g.passed)
 		g.Basis = basisOf(g.bases)
 		g.PassLow, g.PassHigh = stats.Wilson(g.Pass, len(g.Runs), stats.Z95)
 		for name, vals := range g.values {
@@ -440,7 +513,7 @@ func (d *Daemon) compareView(ctx context.Context, batches []string, leave map[st
 				PassP: stats.Fisher(a.Pass, len(a.Runs)-a.Pass, b.Pass, len(b.Runs)-b.Pass),
 				// One task per group: the two share it.
 				Cap:   capAsymmetry(a.Cap.CappedRequests, b.Cap.CappedRequests, 1),
-				Basis: DiffBasis(a.Basis, b.Basis)}
+				Basis: DiffBasis(a.Basis, b.Basis), Paired: paired(a, b)}
 			if arms[i] != nil && arms[j] != nil {
 				p.Differs = config.Diff(arms[i], arms[j])
 			}
