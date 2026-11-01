@@ -1,6 +1,10 @@
 package run
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/mann1x/automaticum/internal/store"
+)
 
 func TestFault(t *testing.T) {
 	for msg, want := range map[string]string{
@@ -24,5 +28,26 @@ func TestFault(t *testing.T) {
 		if got := Fault(msg); got != want {
 			t.Errorf("%q: %q, want %q", msg, got, want)
 		}
+	}
+}
+
+func TestInfrastructure(t *testing.T) {
+	for reason, want := range map[string]bool{
+		"the container engine failed: EOF": true,
+		"the server failed after the SDK's retries (transport: fetch failed); not the model's failure": true,
+		"the runner ended without its last line (exit code 137)":                                       true,
+		"the event stream is empty":                             true,
+		"operator abort":                                        false,
+		"daemon stop":                                           false,
+		"the lane's container ran out of memory":                false,
+		"the oracle gave no answer: the oracle timed out":       false,
+		"the oracle's copy in the workspace was changed: check": false,
+	} {
+		if got := Infrastructure(store.Aborted, reason); got != want {
+			t.Errorf("%q: %v", reason, got)
+		}
+	}
+	if Infrastructure(store.Fail, "the container engine failed") {
+		t.Error("only an ABORTED run")
 	}
 }

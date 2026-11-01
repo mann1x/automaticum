@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/mann1x/automaticum/internal/daemon"
 	"github.com/mann1x/automaticum/internal/human"
@@ -277,4 +278,46 @@ func batchLimits(ctx context.Context, args []string) error {
 		fmt.Printf("%s: %s\n", out.InFlight, out.Action)
 	}
 	return nil
+}
+
+// laneReserve reserves a lane for one batch or campaign until a time, or
+// ends its reservation (D125).
+func laneReserve(unreserve bool) func(context.Context, []string) error {
+	verb := "reserve"
+	if unreserve {
+		verb = "unreserve"
+	}
+	return func(ctx context.Context, args []string) error {
+		fs := flag.NewFlagSet("lane "+verb, flag.ExitOnError)
+		_, dial := addClient(fs)
+		m := addMutation(fs)
+		until := fs.String("until", "", "reserve: when it ends, as 2026-11-02T08:00:00+01:00, or a length of time from now such as 8h")
+		forWhat := fs.String("for", "", "reserve: the batch or campaign the lane is kept for")
+		rest := parse(fs, args)
+		if len(rest) != 1 || !unreserve && (*until == "" || *forWhat == "") {
+			return fmt.Errorf("usage: automaticum lane %s <lane>%s [--dry-run] [--idempotency-key K]", verb,
+				map[bool]string{false: " --until T --for <batch|campaign>", true: ""}[unreserve])
+		}
+		body := daemon.ReserveRequest{For: *forWhat, Until: *until}
+		if d, err := time.ParseDuration(*until); err == nil && !unreserve {
+			body.Until = time.Now().Add(d).Format(time.RFC3339)
+		}
+		c, err := dial()
+		if err != nil {
+			return err
+		}
+		var out map[string]any
+		if err := c.do(ctx, "POST", m.on(c, "/v1/lanes/"+url.PathEscape(rest[0])+"/"+verb), body, &out); err != nil {
+			return err
+		}
+		if c.json {
+			return printJSON(out)
+		}
+		if unreserve {
+			fmt.Printf("%slane %s: no longer reserved for %v\n", m.dryNote(), rest[0], out["was_for"])
+			return nil
+		}
+		fmt.Printf("%slane %s: reserved for %s until %s; only its runs start there\n", m.dryNote(), rest[0], *forWhat, body.Until)
+		return nil
+	}
 }

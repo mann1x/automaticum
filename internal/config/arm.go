@@ -34,6 +34,9 @@ type Arm struct {
 	Template bool `toml:"template" json:"-"`
 	// Endpoint names an endpoint file. An arm never holds an address.
 	Endpoint string `toml:"endpoint" json:"endpoint"`
+	// Requires are the lane labels (key=value) the arm's runs need
+	// (D122). Placement, not identity: the id leaves them out.
+	Requires []string `toml:"requires" json:"requires,omitempty"`
 
 	Model      Model      `toml:"model" json:"model"`
 	Thinking   Thinking   `toml:"thinking" json:"thinking"`
@@ -498,6 +501,11 @@ func (a *Arm) Validate() []string {
 		}
 	}
 	need(a.Endpoint != "", "endpoint")
+	for _, r := range a.Requires {
+		if k, _, ok := strings.Cut(r, "="); !ok || strings.TrimSpace(k) == "" {
+			bad("requires %q: a lane label is key=value", r)
+		}
+	}
 	need(a.Model.Provider != "", "model.provider")
 	need(a.Model.Model != "", "model.model")
 	need(a.Model.ContextWindow != nil, "model.context_window")
@@ -714,6 +722,7 @@ func (a *Arm) hash() string {
 	var v map[string]any
 	json.Unmarshal(a.Resolved(), &v)
 	delete(v, "name")
+	delete(v, "requires")
 	b, _ := json.Marshal(v)
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])

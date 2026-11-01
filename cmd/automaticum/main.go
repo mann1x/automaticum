@@ -36,7 +36,7 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   lane ls                       the lanes of this installation
   endpoint ls                   the endpoints of this installation
   status                        lanes, queue, what is running
-  run start --arm A --task T    queue runs [--task T2 ...] [--suite S ...] [-n 5] [--lane L] [--dry-run] [--wall-s S] [--idle-s S] [--capture-requests] [--heldout]
+  run start --arm A --task T    queue runs [--task T2 ...] [--suite S ...] [-n 5] [--lane L] [--dry-run] [--wall-s S] [--idle-s S] [--capture-requests] [--heldout] [--priority N]
   run ls                        queued, running and finished runs
   run show <run>                one run's record
   run tail <run>                what a run prints, as it arrives; a queued run is waited for until it starts
@@ -51,7 +51,13 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   wait lane <lane> | wait idle  until the lane, or every lane, has no run in flight and none queued
                                 (exit 0 the condition holds, 4 timeout, 5 ended without it; automaticum wait run -h)
   lane drain <lane>             the run in flight finishes, then the lane starts nothing until resumed
-  lane resume <lane>            the lane starts queued runs again
+  lane resume <lane>            the lane starts queued runs again (also lifts a pause or a quarantine)
+  lane pause <lane>             drained, and its run in flight held with the endpoint freed [--keep-model]
+  lane quarantine <lane>        drained and shown quarantined --reason R
+  lane abort <lane>             abort the lane's run in flight
+  lane show <lane>              a lane's configuration, state, queue and last runs [--recent N]
+  lane reserve <lane>           only one batch or campaign starts there --for B --until T|8h
+  lane unreserve <lane>         end a lane's reservation
   batch show <batch>            a batch's runs by state, whether it is paused, and what the canary said
   batch pause <batch>           start none of the batch's queued runs; hold its run in flight and free the endpoint [--keep-model]
   batch resume <batch>          let a paused batch go on
@@ -133,6 +139,8 @@ func main() {
 		"lane pause":           laneControl("pause"),
 		"lane quarantine":      laneControl("quarantine"),
 		"lane abort":           laneControl("abort"),
+		"lane reserve":         laneReserve(false),
+		"lane unreserve":       laneReserve(true),
 		"batch show":           batchShow,
 		"batch start":          runStart,
 		"cell run":             cellRun,

@@ -1,6 +1,6 @@
 # 050 — Orchestration: scheduling, gates, control
 
-**Status:** draft 0.19, 2026-11-01.
+**Status:** draft 0.20, 2026-11-01.
 
 ## 1. Scheduling
 
@@ -50,9 +50,30 @@
 **As built (2026-11-01, scheduling):** a run starts only while its arm's
 endpoint serves fewer runs than its `capacity` (030 §4); a run held back
 says `endpoint <name> serves its capacity of N` in `status`. A mode C
-cell's endpoint is the caller's and is not counted (065 §3.1). **Open**:
-where a run's labels come from (O34), the external busy signal (O35), and
-priorities and reservations (O38).
+cell's endpoint is the caller's and is not counted (065 §3.1).
+
+**Decided by the owner (2026-11-01), D122, D123, D125, as built:**
+
+- **Labels (D122).** A task and an arm may say `requires = ["key=value",
+  ...]`. A batch runs on one lane, so a run queued without `--lane` goes to
+  the first lane, by name, whose `labels` hold every requirement of its
+  arms and tasks and that may use the arm's endpoint; when none does, the
+  start is refused naming the labels. A `--lane` without them is refused
+  too. An arm's `requires` is in its resolved form but not its identity.
+- **Busy signal (D123).** A lane may set `busy_command`, run on the
+  daemon's host before each start with a time limit (`busy_timeout_s`, 10 s
+  unless set). Exit 0 means something else uses the lane's devices: the run
+  waits as for the `free` gate, notified once (gate `busy`), nothing
+  unloaded, and its output is the reason `status` shows. A command that
+  does not answer in time, or cannot be run, counts as busy, so a broken
+  command never starts work beside someone else's.
+- **Priorities and reservations (D125).** `run start --priority N`: higher
+  starts first, and equal priorities keep the queue's order and so a
+  batch's A/B interleaving; `batch ls` shows it. `automaticum lane reserve
+  <lane> --for <batch|campaign> --until T` (a time, or a length such as
+  `8h`): only that batch, or the batches of that campaign, start on the
+  lane until T; others say `lane reserved for X until T`; a run in flight
+  finishes. `lane unreserve` ends it. Both are kept in `control.json`.
 
 ## 2. Gates
 
@@ -317,9 +338,9 @@ later):
   next to the database and survive a restart. A control file that cannot be
   read drains every lane, so nothing the operator stopped starts by
   accident.
-- `requeue` is not built: with retry and the queue's order it had no use of
-  its own yet. **Open** (O32): whether it is built at all. Pause at campaign
-  level: `campaign pause|resume|stop` (§1).
+- **Decided by the owner (2026-11-01, O32):** `requeue` is not adopted:
+  `retry` runs again, `lane drain` and `run start --lane` move work. Pause
+  at campaign level: `campaign pause|resume|stop` (§1).
 
 **As built (2026-11-01, control):** the matrix's other cells. `lane pause`
 (drained, its run in flight held, the endpoint freed unless
@@ -337,9 +358,24 @@ itself after repeated infrastructure failures (item 2 of the audit).
 ## 5. Watchdogs
 
 - A run whose event stream is silent for N minutes while its process lives.
-- A batch whose driver vanished. **Open** (O37): whether it applies.
+- A batch whose driver vanished. **Decided by the owner (2026-11-01,
+  O37):** not adopted: the daemon drives every batch, a stopped `cell run`
+  leaves its cell running (065 §3.1), and a daemon stop is the restart
+  case (§4).
 - A lane that produces only infrastructure failures: quarantine it.
-  **Open** (O36): after how many; `lane quarantine` by hand is built.
+  **Decided by the owner (2026-11-01), D124, as built:** when the last 10
+  runs in a row on a lane ended `ABORTED` for the harness's or the server's
+  reason (the container engine failed, the runner failed or ended without
+  its last line, an empty event stream, the oracle's container could not
+  run, a server fault after the SDK's retries, an agent that ended before
+  the server answered), the daemon quarantines the lane, with the count and
+  the last reason, and notifies (kind `lane`, each run and its reason).
+  Any other end resets the count; an operator's abort, a daemon's stop, a
+  container out of memory, a tampered oracle and an oracle that timed out
+  are not counted. The number is `quarantine_after` in `automaticum.toml`
+  or the lane's file (0 turns it off). Only `lane resume` lifts it. The
+  count is kept in `control.json` and is checked before the lane takes its
+  next run.
 - A run whose endpoint identity changed since the probe at start: `INVALID`.
 
 ## 6. Unattended operation

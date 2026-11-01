@@ -59,8 +59,14 @@ gate holds its next run), `paused` (its run in flight held), `drained` (no
 run in flight, nothing starts) and `quarantined` (drained by `lane
 quarantine` with the operator's reason, 050 §4). A lane that is draining
 shows `running` with `drained: true` until its run ends. Not built:
-`offline`, and a quarantine the daemon sets itself after repeated
-infrastructure failures (050 §5).
+`offline`.
+
+**As built (2026-11-01):** a lane's file may also say `labels` (matched
+against a run's `requires`, D122), `busy_command` and `busy_timeout_s`
+(D123) and `quarantine_after` (D124, in place of the installation's);
+`automaticum.toml` may say `quarantine_after` (10 unless set, 0 never),
+and its `[notify] events` takes `lane`. An arm may say `requires` (D122);
+it is left out of the arm's identity.
 
 ## 3. Images
 

@@ -32,11 +32,14 @@ type Task struct {
 	Prompt        string            `toml:"prompt"`
 	DefaultAnswer string            `toml:"default_answer"`
 	Labels        map[string]string `toml:"labels"`
-	Limits        Limits            `toml:"limits"`
-	Workspace     Workspace         `toml:"workspace"`
-	Artefacts     []Artefact        `toml:"artefact"`
-	Oracles       []Oracle          `toml:"oracle"`
-	Fixtures      []Fixture         `toml:"fixture"`
+	// Requires are the lane labels (key=value) the task's runs need
+	// (D122), as an arm's.
+	Requires  []string   `toml:"requires"`
+	Limits    Limits     `toml:"limits"`
+	Workspace Workspace  `toml:"workspace"`
+	Artefacts []Artefact `toml:"artefact"`
+	Oracles   []Oracle   `toml:"oracle"`
+	Fixtures  []Fixture  `toml:"fixture"`
 	// User is the scripted user (040 §6.2); nil for the default one.
 	User *User `toml:"user"`
 	// Private marks a task whose text must not leave the owner's hosts:
@@ -305,6 +308,11 @@ func (t *Task) validate() error {
 	}
 	if strings.TrimSpace(t.Prompt) == "" {
 		return errors.New("prompt is empty")
+	}
+	for _, r := range t.Requires {
+		if k, _, ok := strings.Cut(r, "="); !ok || strings.TrimSpace(k) == "" {
+			return fmt.Errorf("requires %q: a lane label is key=value", r)
+		}
 	}
 	if t.Limits.WallS < 0 || t.Limits.IdleS < 0 || t.Limits.OracleS < 0 || t.Limits.CPUs < 0 || t.Limits.MemoryMB < 0 {
 		return errors.New("limits must not be negative")

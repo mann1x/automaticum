@@ -401,6 +401,12 @@ func (d *Daemon) startReady(ctx context.Context, wg *sync.WaitGroup) {
 		d.Log.Error("reading the queue", "error", err)
 		return
 	}
+	// Higher priority first; the queue's own order otherwise, which keeps
+	// a batch's A/B interleaving (D125).
+	d.mu.Lock()
+	prio := d.ctl.Priority
+	sort.SliceStable(queue, func(i, j int) bool { return prio[queue[i].Batch] > prio[queue[j].Batch] })
+	d.mu.Unlock()
 	// A lane whose waiting run was taken off the queue is idle again.
 	queued, waiting := map[string]bool{}, map[string]bool{}
 	for _, it := range queue {
@@ -473,6 +479,13 @@ func (d *Daemon) startReady(ctx context.Context, wg *sync.WaitGroup) {
 			stop := context.AfterFunc(ctx, func() { f.cancel(run.ErrDaemonStop) })
 			defer stop()
 			waiting := d.fly(fctx, f)
+			if !waiting {
+				// Before the lane is free: a quarantine this end sets
+				// must hold for the next run (D124).
+				if rec, err := d.State.GetRun(context.WithoutCancel(ctx), f.runID); err == nil {
+					d.countInfra(context.WithoutCancel(ctx), rec)
+				}
+			}
 			d.mu.Lock()
 			delete(d.flights, f.item.Lane)
 			if waiting {
@@ -589,6 +602,21 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 			skip("gate basis_facts: " + why)
 			return false
 		}
+	}
+	// Something else uses the lane's devices (D123): the run waits as for
+	// the free gate, once notified, and nothing is unloaded.
+	if busy, why := d.laneBusy(ctx, it.Lane); busy && ctx.Err() == nil {
+		setLane("waiting", &laneDetail{Item: it, Waiting: "busy: " + why})
+		d.mu.Lock()
+		told := d.notified[it.RunID]
+		d.notified[it.RunID] = true
+		d.mu.Unlock()
+		if !told {
+			log.Warn("run waits", "gate", "busy", "detail", why)
+			d.notify(bg, Notification{Kind: "gate", Status: string(gate.Wait), Gate: "busy", Detail: why,
+				Lane: it.Lane, Run: it.RunID, Arm: it.Arm, Task: it.Task})
+		}
+		return true
 	}
 	// An endpoint that allows it is asked to drop any other model before
 	// the gates look (D79): arms on different models can then follow each
@@ -712,10 +740,22 @@ func (d *Daemon) flight(runID string) *flight {
 	return nil
 }
 
-// laneFor picks a lane for an arm: the one asked for, or the first, by
-// name, that may use the arm's endpoint.
-func (d *Daemon) laneFor(arm *config.Arm, asked string) (string, error) {
+// laneFor picks a lane for an arm and the labels its runs require (the
+// arm's and the tasks', D122): the one asked for, or the first, by name,
+// that may use the arm's endpoint and has every label.
+func (d *Daemon) laneFor(arm *config.Arm, asked string, requires []string) (string, error) {
 	may := func(lane string) bool { return d.Local.MayUse(lane, arm.Endpoint) }
+	missing := func(lane string) []string {
+		var out []string
+		have := d.Local.Lanes[lane].Labels
+		for _, r := range requires {
+			k, v, _ := strings.Cut(r, "=")
+			if got, ok := have[strings.TrimSpace(k)]; !ok || got != strings.TrimSpace(v) {
+				out = append(out, r)
+			}
+		}
+		return out
+	}
 	if asked != "" {
 		l := d.Local.Lanes[asked]
 		switch {
@@ -724,15 +764,21 @@ func (d *Daemon) laneFor(arm *config.Arm, asked string) (string, error) {
 		case !may(asked):
 			return "", fmt.Errorf("lane %s may not use endpoint %s", asked, arm.Endpoint)
 		}
+		if m := missing(asked); len(m) > 0 {
+			return "", fmt.Errorf("lane %s lacks the labels the runs require: %s", asked, strings.Join(m, ", "))
+		}
 		return asked, nil
 	}
 	var names []string
 	for n := range d.Local.Lanes {
-		if may(n) {
+		if may(n) && len(missing(n)) == 0 {
 			names = append(names, n)
 		}
 	}
 	if len(names) == 0 {
+		if len(requires) > 0 {
+			return "", fmt.Errorf("no lane may use endpoint %s and has the labels %s", arm.Endpoint, strings.Join(requires, ", "))
+		}
 		return "", fmt.Errorf("no lane may use endpoint %s", arm.Endpoint)
 	}
 	sort.Strings(names)
@@ -744,7 +790,7 @@ func (d *Daemon) laneFor(arm *config.Arm, asked string) (string, error) {
 // finished or was stopped, a run's end.
 type Notification struct {
 	Source string `json:"source"`
-	Kind   string `json:"kind"`   // gate, canary, campaign, batch or run
+	Kind   string `json:"kind"`   // gate, canary, campaign, batch, run or lane
 	Status string `json:"status"` // gate: refuse or wait; canary: stop; campaign: finished or stopped; batch: finished or stopped; run: its verdict
 	Gate   string `json:"gate"`   // the gate; the campaign's name for a campaign
 	Detail string `json:"detail"`

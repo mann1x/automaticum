@@ -155,8 +155,12 @@ static-gate refusal of a start answers 422 with `gate` beside `error`.
 - Not built yet: `--format parquet`, to be written by the daemon's DuckDB
   (no new library); the omnimergekit layout
   (`<results>/<suite>/<served-model>/`); slices and the HTML report (065
-  §5). `cohort ls|show` and `export cohort` wait for **Open** O31, `rescore`
-  for **Open** O33, and `requeue` for **Open** O32.
+  §5). `requeue` is not adopted (O32).
+- **2026-11-01, D122 to D125:** `run start --priority N`; `lane reserve
+  <lane> --for <batch|campaign> --until T|8h` and `lane unreserve <lane>`
+  (`POST /v1/lanes/{lane}/reserve|unreserve`); `status` shows a lane's
+  reservation and the reason a run waits (`busy: ...`, `lane reserved for
+  ...`, `lane quarantined: the daemon: ...`).
 
 **Decided by the owner (2026-10-27, D116):** `notices (<run> ... | --batch B
 ...) [--key K]` prints the SDK's notices of some runs, each with its run,

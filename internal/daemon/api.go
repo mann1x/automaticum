@@ -56,6 +56,8 @@ type LaneStatus struct {
 	Drained bool `json:"drained,omitempty"`
 	// Quarantined is why the lane is out of use, when it is (050 §5).
 	Quarantined string `json:"quarantined,omitempty"`
+	// Reserved is the lane's reservation while it lasts (D125).
+	Reserved *Reservation `json:"reserved,omitempty"`
 }
 
 // DoctorEntry is every gate's answer for one arm on one task on one lane.
@@ -119,6 +121,9 @@ type StartRequest struct {
 	// Limits are the batch's own wall and idle limits (D107), in place of
 	// the arm's and the task's; they may lengthen a run.
 	Limits *run.Override `json:"limits,omitempty"`
+	// Priority orders the batch's runs against the others' (D125): higher
+	// first; equal priorities keep the queue's order.
+	Priority int `json:"priority,omitempty"`
 }
 
 // StartResponse says what was, or would be, queued.
@@ -324,6 +329,8 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/compare", d.handleCompare)
 	mux.HandleFunc("GET /v1/report/census", d.handleCensus)
 	mux.HandleFunc("GET /v1/heartbeat", d.handleHeartbeat)
+	mux.HandleFunc("POST /v1/lanes/{lane}/reserve", d.handleReserve)
+	mux.HandleFunc("POST /v1/lanes/{lane}/unreserve", d.handleReserve)
 	mux.HandleFunc("GET /v1/basis", d.handleBasis)
 	mux.HandleFunc("POST /v1/runs/{id}/invalidate", d.handleInvalidate)
 	mux.HandleFunc("POST /v1/runs/{id}/identify", d.handleIdentify)
@@ -443,6 +450,9 @@ func (d *Daemon) status(ctx context.Context) (Status, error) {
 		}
 		d.mu.Lock()
 		q, quarantined := d.ctl.Quarantined[n]
+		if r, ok := d.ctl.Reserved[n]; ok && time.Now().Before(r.Until) {
+			ls.Reserved = &r
+		}
 		d.mu.Unlock()
 		if quarantined {
 			ls.Quarantined = q.Reason
@@ -605,7 +615,11 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 			if d.Local.Endpoint(a.Endpoint) == nil {
 				return resp, http.StatusUnprocessableEntity, fmt.Errorf("arm %s names endpoint %q, which this installation does not have", name, a.Endpoint)
 			}
-			if l, err = d.laneFor(a, req.Lane); err != nil {
+			requires := append([]string(nil), a.Requires...)
+			for _, t := range tks {
+				requires = append(requires, t.Requires...)
+			}
+			if l, err = d.laneFor(a, req.Lane, requires); err != nil {
 				return resp, http.StatusUnprocessableEntity, err
 			}
 		}
@@ -764,7 +778,7 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 			return resp, http.StatusInternalServerError, err
 		}
 	}
-	if req.CaptureRequests || req.Heldout || !req.Limits.Empty() {
+	if req.CaptureRequests || req.Heldout || !req.Limits.Empty() || req.Priority != 0 {
 		// Kept with the control state, so a restarted daemon still knows.
 		d.mu.Lock()
 		if req.CaptureRequests {
@@ -775,6 +789,9 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 		}
 		if !req.Limits.Empty() {
 			d.ctl.Limits[resp.Batch] = req.Limits
+		}
+		if req.Priority != 0 {
+			d.ctl.Priority[resp.Batch] = req.Priority
 		}
 		err := d.saveControl()
 		d.mu.Unlock()

@@ -521,9 +521,10 @@ run of each arm in turn (`--order blocks` for all of one, then the next).
 started. Each pair on one task has McNemar's exact test with its two
 discordant counts, the i-th counted run of one arm paired with the i-th of
 the other in the order they ran, and the runs left without a partner.
-**Open** (O39): "how many more runs to tell these two arms apart", the
-power of a null result and the jitter band's "not distinguishable" each
-need a significance level, which D78 does not set.
+**Decided by the owner (2026-11-01, O39):** "how many more runs to tell
+these two arms apart", the power of a null result and the jitter band's
+"not distinguishable" are not adopted: each needs a significance level,
+and D78 sets none and draws no conclusion.
 
 **As built (2026-11-01):** `automaticum report regression <batch>...` is
 `compare` with the runs grouped by arm name, task and harness build (SDK

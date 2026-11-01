@@ -51,6 +51,13 @@ compaction detail, edits and change protocol, escalation, sub-agents,
 cost, per-request rates, group-by, lane skew, bootstrap, and the per-run
 report's arm highlight and timeline.
 
+**Owner answers on O31 to O39 (2026-11-01):** D120 (cohorts), D121
+(rescore), D122 (labels), D123 (busy command), D124 (automatic quarantine
+after 10 infrastructure failures in a row, `quarantine_after`), D125
+(priorities and reservations); `requeue` (O32), the driver watchdog (O37)
+and the level-based statistics (O39) not adopted. D122 to D125 are built
+and their rows updated; D120 and D121 follow.
+
 The other rows below are as found, before those fixes. Each table was written by
 one reader of a group of specs; a row's evidence is a path and line at
 180cc97.
@@ -202,7 +209,7 @@ Repo state: main at 180cc97, 2026-11-01. Paths are relative to the repo root. St
 | 030 §2 | Lane: image (base plus layers) | CHANGED (not by a decision row) | no lane image field; the image comes from the task's layers (daemon.go:253 LaneImage) |
 | 030 §2 | Lane: GPU devices bound | NOT BUILT | no field; gpu_ownership gate m7 |
 | 030 §2 | Lane: concurrency (default 1) | PARTIAL | fixed at 1, no field |
-| 030 §2 | Lane states idle, running, paused, draining, offline, quarantined | PARTIAL | idle, running, waiting, paused, drained, quarantined (operator, `lane quarantine`) built (api.go status); offline and a quarantine set by the daemon after infra failures not built (item 2) |
+| 030 §2 | Lane states idle, running, paused, draining, offline, quarantined | PARTIAL | idle, running, waiting, paused, drained, quarantined (by hand, or by the daemon after `quarantine_after` infrastructure failures, D124) built; offline not built |
 | 030 §3 | No SDK in any image (D66) | BUILT | images/base/Dockerfile: empty node_modules; bundle mounted (internal/sdk) |
 | 030 §3 | Base: runner, Node, git, shell tools | BUILT | images/base/Dockerfile |
 | 030 §3 | Base: sandbox prerequisites / sandbox binary (040 §1) | NOT BUILT | no sandbox binary or setup in images/base/Dockerfile |
@@ -324,7 +331,7 @@ It is not counted as BUILT below.
 | spec § | item | status | evidence / notes |
 |---|---|---|---|
 | 050 §1 | Queue of runs; one run per lane | BUILT | `internal/daemon/daemon.go:350` `startReady` (one flight per lane, `d.flights[it.Lane]`) |
-| 050 §1 | Scheduler places a run on a lane that satisfies its **labels** | OPEN | O34: where a run's labels come from |
+| 050 §1 | Scheduler places a run on a lane that satisfies its **labels** | BUILT | D122: task and arm `requires`, lane `labels`; `laneFor` (daemon.go); TestLaneLabels |
 | 050 §1 | ... and whose endpoint has **capacity** | BUILT | `endpointFull` in startReady (daemon.go); status says why a run waits; TestEndpointCapacity |
 | 050 §1 | Interleaving A/B arms ABAB on the same lane | BUILT | `internal/daemon/api.go:447` (order `interleaved` default), `:620` rounds; arms forced onto one lane `api.go:545` |
 | 050 §1 | `campaign start <name>` reads `campaigns/<name>.toml`, checks every batch, keeps definition | BUILT | `internal/daemon/campaign.go:272`, `cmd/automaticum/campaign_cmds.go` (`--dry-run`) |
@@ -336,12 +343,12 @@ It is not counted as BUILT below.
 | 050 §1 | Campaign end (finished or stopped) notified like a refusing gate | BUILT (webhook+log only) | `campaign.go:243` `endCampaign` -> `notify`; no mailbox (see §2) |
 | 050 §1 | `campaign show` with each batch compared | BUILT | `campaign.go:332` `handleCampaign` |
 | 050 §1 | Gates of a campaign's own | NOT BUILT | stated "not built yet"; no milestone assigned; campaign config has no gate key (`internal/config/campaign.go`) |
-| 050 §1 | Priorities and reservations ("this lane is mine until 08:00") | OPEN | O38 |
+| 050 §1 | Priorities and reservations ("this lane is mine until 08:00") | BUILT | D125: `run start --priority`, `lane reserve/unreserve` (lanerules.go, control.go `stopped`); TestPriorityAndReservation |
 | 050 §1 | One campaign across two hosts | SCHEDULED (m7) | agent mode |
 | 050 §1 | Batch of several tasks / whole suites (`--task A --task B`, `--suite`) (D107) | BUILT | `cmd/automaticum/client_cmds.go:174-175` |
 | 050 §1 | Batch limits: `run start --wall-s/--idle-s`, campaign `wall_s`/`idle_s`, `batch limits` for queued runs | BUILT | `client_cmds.go` `addLimits`, `config/campaign.go:44-45`, `control.go:278` |
 | 050 §1 | Campaign batch takes `suites` and `capture_requests` (D104) | BUILT | `config/campaign.go:37,48` |
-| 050 §1 | Lane marked busy by an **external signal**; scheduler waits; never preempts | OPEN | O35: what the signal is; gate `free` waits for another model (D64) |
+| 050 §1 | Lane marked busy by an **external signal**; scheduler waits; never preempts | BUILT | D123: lane `busy_command` (`laneBusy`, lanerules.go), checked in `fly` before the unload; TestBusyCommand |
 | 050 §1 | External harness concurrency is a request; adapter queues | SCHEDULED (m5) | adapters not built (064) |
 | 050 §1 | Large suites sharded across lanes, per-instance env caching, resume of half-finished evaluation | SCHEDULED (m5) | 062; only mode C `cell run --lanes N` spreads a cell over lanes (`modec.go`) |
 | 050 §2 | Gate failure produces SKIPPED/INVALID with reason | BUILT | `daemon.go:533` `skip("gate "+...)` |
@@ -376,8 +383,8 @@ It is not counted as BUILT below.
 | 050 §3.2 | Gate credentials (token in secret store before start) | NOT BUILT | only endpoint `api_key_file` read during probe (`gate.go:120`) |
 | 050 §3.3 | First-generations canary: first 5 finished requests, empty/length/control tokens, stops batch, notifies (D84) | BUILT | `internal/ingest/canary.go`, `internal/daemon/canary.go:102-118`; verdict in `batch show` |
 | 050 §3.3 | Median length within the band the suite/task declares | PARTIAL | check exists but always "unchecked": no task or suite field can declare a band (`ingest/canary.go:57`; no band key in `internal/task/task.go`) |
-| 050 §4 | Control matrix pause/resume/abort/drain/requeue/retry at run, batch, campaign, lane, daemon | PARTIAL | all built but `requeue` (O32): run, batch, campaign pause/resume/stop/abort/retry; lane drain/pause/quarantine/abort/resume (`--all` for the daemon); daemon drain (signal, `POST /v1/drain`) |
-| 050 §4 | `requeue` | OPEN | O32: build it or drop it (recommendation: drop) |
+| 050 §4 | Control matrix pause/resume/abort/drain/requeue/retry at run, batch, campaign, lane, daemon | BUILT | `requeue` not adopted (O32, decisions §5); run, batch, campaign pause/resume/stop/abort/retry; lane drain/pause/quarantine/abort/resume (`--all` for the daemon); daemon drain (signal, `POST /v1/drain`) |
+| 050 §4 | `requeue` | NOT ADOPTED | O32: dropped by the owner; `run retry` and `run start` cover it |
 | 050 §4 | Graceful by default | BUILT | `batch stop` graceful unless `--abort`; drain |
 | 050 §4 | Abort kills process tree by recorded id; aborted run still ingested | BUILT | container killed by id (`daemon.go:593`), oracle and ingest still run |
 | 050 §4 | Abort confirms on the server side that generation stopped | SCHEDULED (m7) | spec: needs agent mode |
@@ -398,8 +405,8 @@ It is not counted as BUILT below.
 | 050 §4 (m4) | `provenance.asked` kept for never-started runs; old records refused | BUILT | `control.go:130-150`, `:597` `askedOf` |
 | 050 §4 (m4) | Control state in `control.json`; unreadable file drains every lane | BUILT | `control.go:64` |
 | 050 §5 | Watchdog: run whose event stream is silent N minutes | BUILT | idle limit `idle_s` ends the run as TIMEOUT (`run.go:35,122`) |
-| 050 §5 | Watchdog: batch whose driver vanished | OPEN | O37: whether it applies |
-| 050 §5 | Watchdog: lane producing only infrastructure failures -> quarantine | OPEN | O36: the count; manual `lane quarantine` built |
+| 050 §5 | Watchdog: batch whose driver vanished | NOT ADOPTED | O37: the daemon drives its batches itself |
+| 050 §5 | Watchdog: lane producing only infrastructure failures -> quarantine | BUILT | D124: 10 in a row, `quarantine_after`; `countInfra` (lanerules.go), `run.Infrastructure` (fault.go); TestAutoQuarantine, TestInfrastructure |
 | 050 §5 | Watchdog: endpoint identity changed since probe -> INVALID | BUILT | `run.go:256-289` EndpointBefore/After/Changed; test `TestOperatorAbortAndEndpointChange` |
 | 050 §6 | Heartbeat with counts every ten minutes, to log and on request | BUILT | heartbeat.go: log every 10 min, `status`, `GET /v1/heartbeat`; TestHeartbeat |
 | 050 §6 | Server-side `wait` primitives (090 §5) | BUILT | bbdd18f: internal/wait, `GET /v1/wait/{kind}`, `automaticum wait` |
@@ -693,11 +700,11 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §5 | reasoning-budget regime recorded | BUILT | compare.go:120 (thinking.budget_tokens.served) |
 | 070 §5 | derived answer allowance band; pile-up test | SCHEDULED | M5 (single-turn suites), per spec |
 | 070 §6 | `compare`: Wilson, Fisher, Mann-Whitney, medians/ranges/swing, basis diff above, cap per pair, denominators | BUILT | compare.go:394-429; stats.go |
-| 070 §6 | streaks; "how many more runs to tell apart" | PARTIAL | streaks built (CompareGroup.Streaks); "how many more runs" is O39 |
+| 070 §6 | streaks; "how many more runs to tell apart" | BUILT | streaks built (CompareGroup.Streaks); "how many more runs" not adopted (O39) |
 | 070 §6 | paired comparison (McNemar) | BUILT | stats.McNemar; ComparePair.Paired; TestMcNemar |
 | 070 §6 | unpaired with bootstrap; statement whether distinguishable | PARTIAL | Fisher/MW built; no bootstrap; the "distinguishable" statement is overridden by D78 (no conclusion) |
-| 070 §6 | jitter band | OPEN | O39 |
-| 070 §6 | zero/null result carries its power | OPEN | O39 |
+| 070 §6 | jitter band | NOT ADOPTED | O39 |
+| 070 §6 | zero/null result carries its power | NOT ADOPTED | O39 |
 | 070 §6 | distributions on request | PARTIAL | `--all` shows every metric, not distributions |
 | 070 §6 | group by any arm field, task label or finding | NOT BUILT | compare groups by arm id + task only (compare.go:321) |
 | 070 §6 | census of tool failures | PARTIAL | `report census` built; error classes are `tool_error` only and parse paths unrecorded until the 070 §4 classes (item 4) |

@@ -231,6 +231,9 @@ func statusOnce(ctx context.Context, c *client) error {
 		if l.Quarantined != "" {
 			fmt.Printf("\n%s is quarantined: %s\n", l.Lane, l.Quarantined)
 		}
+		if r := l.Reserved; r != nil {
+			fmt.Printf("\n%s is reserved for %s until %s\n", l.Lane, r.For, human.Time(r.Until))
+		}
 	}
 	waiting := 0
 	for _, q := range st.Queue {
@@ -273,6 +276,7 @@ func runStart(ctx context.Context, args []string) error {
 	fs.StringVar(&req.Key, "idempotency-key", "", "repeating the command with the same key starts nothing new")
 	fs.BoolVar(&req.DryRun, "dry-run", false, "say what would start, start nothing")
 	fs.BoolVar(&req.CaptureRequests, "capture-requests", false, "every run saves the model requests and responses as the SDK sent and read them (large; off by default)")
+	fs.IntVar(&req.Priority, "priority", 0, "the batch's priority: higher starts first; equal priorities keep the queue's order (D125)")
 	fs.BoolVar(&req.Heldout, "heldout", false, "the batch is held out: export conversations passes over its runs unless it is given --heldout (D115)")
 	limits := addLimits(fs)
 	if rest := parse(fs, args); len(rest) > 0 || len(arms) == 0 || len(tasks)+len(suites) == 0 {

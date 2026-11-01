@@ -415,3 +415,24 @@ func TestAccepts(t *testing.T) {
 		t.Errorf("an arm that accepts nothing changed identity, or says so: %s", a.Resolved())
 	}
 }
+
+// An arm's required lane labels are in the resolved arm but not its
+// identity: placement is not what is measured (D122).
+func TestRequiresNotIdentity(t *testing.T) {
+	dir := arms(t, map[string]string{"a": good, "b": "requires = [\"gpu=a\"]\n" + good, "c": "requires = [\"gpu\"]\n" + good})
+	a, err := LoadArm(dir, "a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := LoadArm(dir, "b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.ID != b.ID || len(b.Requires) != 1 || !strings.Contains(string(b.Resolved()), `"requires":["gpu=a"]`) {
+		t.Errorf("requires: ids %s %s, %s", a.ID, b.ID, b.Resolved())
+	}
+	c, _ := LoadArm(dir, "c")
+	if c != nil && len(c.Validate()) == 0 {
+		t.Error("a label without = was accepted")
+	}
+}

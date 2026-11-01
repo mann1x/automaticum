@@ -46,6 +46,14 @@ type control struct {
 	// Quarantined lanes start nothing until resumed, with the reason they
 	// were taken out (050 §5).
 	Quarantined map[string]Quarantine `json:"quarantined,omitempty"`
+	// InfraStreak are, per lane, the runs in a row that ended for the
+	// harness's or the server's reason (D124).
+	InfraStreak map[string][]InfraEnd `json:"infra_streak,omitempty"`
+	// Priority is each batch's priority, where not 0 (D125).
+	Priority map[string]int `json:"priority,omitempty"`
+	// Reserved are the lanes reserved for a batch or a campaign until a
+	// time (D125).
+	Reserved map[string]Reservation `json:"reserved,omitempty"`
 	// LaneHeld are the lanes paused with their run in flight held, so a
 	// resume releases it.
 	LaneHeld map[string]time.Time `json:"lane_held,omitempty"`
@@ -57,6 +65,13 @@ type control struct {
 }
 
 // Quarantine is why and since when a lane is out of use.
+// Reservation is a lane kept for one batch or campaign until a time.
+type Reservation struct {
+	For   string    `json:"for"`
+	Until time.Time `json:"until"`
+	At    time.Time `json:"at"`
+}
+
 type Quarantine struct {
 	At     time.Time `json:"at"`
 	Reason string    `json:"reason"`
@@ -65,7 +80,7 @@ type Quarantine struct {
 // loadControl reads the control file once. A missing file is an empty one.
 // It is called with d.mu held.
 func (d *Daemon) loadControl() {
-	d.ctl = control{Drained: map[string]time.Time{}, Held: map[string]time.Time{}, Retries: map[string]string{}, Canary: map[string]*CanaryRecord{}, Campaigns: map[string]*CampaignState{}, Cells: map[string]*CellSpec{}, Capture: map[string]bool{}, Heldout: map[string]bool{}, Limits: map[string]*run.Override{}, Quarantined: map[string]Quarantine{}, LaneHeld: map[string]time.Time{}, CellBatches: map[string]string{}, Idem: map[string]*IdemEntry{}}
+	d.ctl = control{Drained: map[string]time.Time{}, Held: map[string]time.Time{}, Retries: map[string]string{}, Canary: map[string]*CanaryRecord{}, Campaigns: map[string]*CampaignState{}, Cells: map[string]*CellSpec{}, Capture: map[string]bool{}, Heldout: map[string]bool{}, Limits: map[string]*run.Override{}, Quarantined: map[string]Quarantine{}, LaneHeld: map[string]time.Time{}, InfraStreak: map[string][]InfraEnd{}, Priority: map[string]int{}, Reserved: map[string]Reservation{}, CellBatches: map[string]string{}, Idem: map[string]*IdemEntry{}}
 	if d.ControlFile == "" {
 		return
 	}
@@ -115,6 +130,15 @@ func (d *Daemon) loadControl() {
 	if d.ctl.LaneHeld == nil {
 		d.ctl.LaneHeld = map[string]time.Time{}
 	}
+	if d.ctl.InfraStreak == nil {
+		d.ctl.InfraStreak = map[string][]InfraEnd{}
+	}
+	if d.ctl.Priority == nil {
+		d.ctl.Priority = map[string]int{}
+	}
+	if d.ctl.Reserved == nil {
+		d.ctl.Reserved = map[string]Reservation{}
+	}
 	if d.ctl.Idem == nil {
 		d.ctl.Idem = map[string]*IdemEntry{}
 	}
@@ -155,6 +179,9 @@ func (d *Daemon) stopped(it store.QueueItem) string {
 	}
 	if _, ok := d.ctl.Held[it.Batch]; ok && it.Batch != "" {
 		return "batch paused"
+	}
+	if r, ok := d.ctl.Reserved[it.Lane]; ok && time.Now().Before(r.Until) && it.Batch != r.For && d.campaignOf(it.Batch) != r.For {
+		return fmt.Sprintf("lane reserved for %s until %s", r.For, r.Until.Format(time.RFC3339))
 	}
 	return ""
 }
@@ -362,6 +389,7 @@ func (d *Daemon) handleLane(verb string) http.HandlerFunc {
 			delete(d.ctl.Drained, name)
 			delete(d.ctl.LaneHeld, name)
 			delete(d.ctl.Quarantined, name)
+			delete(d.ctl.InfraStreak, name)
 		}
 		err := d.saveControl()
 		d.mu.Unlock()

@@ -206,6 +206,8 @@ type fakeRunner struct {
 	dir  string
 	// reqs is every request it was given.
 	reqs []run.Request
+	// end, when set, is the verdict and reason every run ends with.
+	end *[2]string
 }
 
 func (f *fakeRunner) Execute(ctx context.Context, req run.Request) (*store.Run, error) {
@@ -241,6 +243,11 @@ func (f *fakeRunner) Execute(ctx context.Context, req run.Request) (*store.Run, 
 	if req.OnLine != nil {
 		req.OnLine([]byte(`{"k":"end"}`))
 	}
+	f.mu.Lock()
+	if f.end != nil {
+		r.Verdict, r.VerdictReason = store.Verdict(f.end[0]), f.end[1]
+	}
+	f.mu.Unlock()
 	r.EndedAt = time.Now().UTC()
 	if err := f.state.UpsertRun(context.Background(), r); err != nil {
 		return nil, err

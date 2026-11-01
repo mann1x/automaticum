@@ -24,11 +24,13 @@ type BatchSummary struct {
 	Tasks    int            `json:"tasks"`
 	Lanes    []string       `json:"lanes,omitempty"`
 	// Cell is the suite (and subset) when the batch was started as a cell.
-	Cell    string    `json:"cell,omitempty"`
-	First   time.Time `json:"first,omitzero"` // the first run's start or enqueue
-	Last    time.Time `json:"last,omitzero"`  // the last run's end
-	Paused  bool      `json:"paused,omitempty"`
-	Heldout bool      `json:"heldout,omitempty"`
+	Cell   string    `json:"cell,omitempty"`
+	First  time.Time `json:"first,omitzero"` // the first run's start or enqueue
+	Last   time.Time `json:"last,omitzero"`  // the last run's end
+	Paused bool      `json:"paused,omitempty"`
+	// Priority is the batch's priority, where not 0 (D125).
+	Priority int  `json:"priority,omitempty"`
+	Heldout  bool `json:"heldout,omitempty"`
 }
 
 // handleBatches lists the batches, the one with the latest activity first;
@@ -104,6 +106,7 @@ func (d *Daemon) handleBatches(w http.ResponseWriter, r *http.Request) {
 	for b, s := range by {
 		_, s.Paused = d.ctl.Held[b]
 		s.Heldout = d.ctl.Heldout[b]
+		s.Priority = d.ctl.Priority[b]
 		if c := d.ctl.CellBatches[b]; c != "" {
 			s.Cell = c
 		} else if d.ctl.Cells[b] != nil {

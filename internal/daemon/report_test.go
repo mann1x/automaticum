@@ -3,6 +3,9 @@ package daemon
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -135,4 +138,135 @@ func TestHeartbeat(t *testing.T) {
 	if g2.status().Heartbeat == nil || g2.call("GET", "/v1/heartbeat", nil, &h) != 200 || h.At.IsZero() {
 		t.Fatalf("the loop kept no heartbeat: %+v", h)
 	}
+}
+
+// A lane whose runs end for infrastructure reasons N times in a row is
+// quarantined by the daemon, with a lane notification; another end resets
+// the count; `lane resume` lifts it (D124).
+func TestAutoQuarantine(t *testing.T) {
+	g := newRig(t, false)
+	three := 3
+	g.d.Local.Daemon.QuarantineAfter = &three
+	g.runner.end = &[2]string{"ABORTED", "the container engine failed: EOF"}
+	go func() { g.d.Serve(g.ctx()); close(g.served) }()
+	var resp StartResponse
+	g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Count: 2}, &resp)
+	g.waitFinished(resp.RunIDs[1])
+	// A pass in between resets the streak.
+	g.runner.mu.Lock()
+	g.runner.end = nil
+	g.runner.mu.Unlock()
+	g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer"}, &resp)
+	g.waitFinished(resp.RunIDs[0])
+	g.runner.mu.Lock()
+	g.runner.end = &[2]string{"ABORTED", "the container engine failed: EOF"}
+	g.runner.mu.Unlock()
+	g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Count: 4}, &resp)
+	g.waitFinished(resp.RunIDs[2])
+	deadline := time.Now().Add(5 * time.Second)
+	var st Status
+	for time.Now().Before(deadline) {
+		if st = g.status(); st.Lanes[0].Quarantined != "" {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if !strings.Contains(st.Lanes[0].Quarantined, "3 runs in a row") {
+		t.Fatalf("not quarantined: %+v", st.Lanes[0])
+	}
+	time.Sleep(100 * time.Millisecond)
+	if st := g.status(); len(st.Queue) != 1 || !strings.HasPrefix(st.Queue[0].Stopped, "lane quarantined") {
+		t.Fatalf("the fourth run started: %+v", st.Queue)
+	}
+	var lc LaneControl
+	g.call("POST", "/v1/lanes/lane-1/resume", nil, &lc)
+	g.waitFinished(resp.RunIDs[3])
+}
+
+// A lane's busy command holds its runs while it exits 0, with its output as
+// the reason, notified once (D123).
+func TestBusyCommand(t *testing.T) {
+	g := newRig(t, false)
+	flag := filepath.Join(t.TempDir(), "busy")
+	os.WriteFile(flag, []byte("someone's training job"), 0o644)
+	g.d.Local.Lanes["lane-1"].BusyCommand = []string{"sh", "-c", "test -f " + flag + " && cat " + flag}
+	g.d.GateRetry = 50 * time.Millisecond
+	go func() { g.d.Serve(g.ctx()); close(g.served) }()
+	var resp StartResponse
+	g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer"}, &resp)
+	deadline := time.Now().Add(5 * time.Second)
+	var st Status
+	for time.Now().Before(deadline) {
+		if st = g.status(); st.Lanes[0].Waiting != "" {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if st.Lanes[0].Waiting != "busy: someone's training job" {
+		t.Fatalf("waiting: %+v", st.Lanes[0])
+	}
+	os.Remove(flag)
+	g.waitFinished(resp.RunIDs[0])
+
+	g.d.Local.Lanes["lane-1"].BusyCommand = []string{"/no/such/command"}
+	if busy, why := g.d.laneBusy(context.Background(), "lane-1"); !busy || !strings.Contains(why, "cannot be run") {
+		t.Errorf("a command that cannot run: %v %q", busy, why)
+	}
+}
+
+// A run goes to the first lane, by name, that has every label its arm and
+// tasks require; an asked lane without them is refused (D122).
+func TestLaneLabels(t *testing.T) {
+	g := newRig(t, false)
+	g.d.Local.Lanes["lane-2"] = &config.Lane{Name: "lane-2", Host: "linux-gpu-1", Endpoints: []string{"stub"}, Labels: map[string]string{"gpu": "a", "os": "linux"}}
+	arm := &config.Arm{Endpoint: "stub", Requires: []string{"gpu=a"}}
+	if l, err := g.d.laneFor(arm, "", []string{"gpu=a", "os=linux"}); err != nil || l != "lane-2" {
+		t.Errorf("labelled: %q %v", l, err)
+	}
+	if l, err := g.d.laneFor(arm, "", nil); err != nil || l != "lane-1" {
+		t.Errorf("no labels: %q %v", l, err)
+	}
+	if _, err := g.d.laneFor(arm, "lane-1", []string{"gpu=a"}); err == nil || !strings.Contains(err.Error(), "lacks the labels") {
+		t.Errorf("asked lane without the label: %v", err)
+	}
+	if _, err := g.d.laneFor(arm, "", []string{"gpu=b"}); err == nil || !strings.Contains(err.Error(), "gpu=b") {
+		t.Errorf("no lane has it: %v", err)
+	}
+}
+
+// A batch of higher priority starts first; a reserved lane starts only the
+// work it is reserved for until the reservation ends (D125).
+func TestPriorityAndReservation(t *testing.T) {
+	g := newRig(t, false)
+	g.runner.started = make(chan string, 16)
+	var low, high, other StartResponse
+	g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Count: 2, Key: "low"}, &low)
+	g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Count: 1, Key: "high", Priority: 5}, &high)
+	go func() { g.d.Serve(g.ctx()); close(g.served) }()
+	if first := <-g.runner.started; first != high.RunIDs[0] {
+		t.Fatalf("first started %s, want the high-priority %s", first, high.RunIDs[0])
+	}
+	for _, id := range low.RunIDs {
+		g.waitFinished(id)
+	}
+
+	until := time.Now().Add(time.Hour).Format(time.RFC3339)
+	if code := g.call("POST", "/v1/lanes/lane-1/reserve", ReserveRequest{For: "k-mine", Until: until}, nil); code != 200 {
+		t.Fatalf("reserve: %d", code)
+	}
+	if st := g.status(); st.Lanes[0].Reserved == nil || st.Lanes[0].Reserved.For != "k-mine" {
+		t.Fatalf("status: %+v", st.Lanes[0])
+	}
+	g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Key: "other"}, &other)
+	var mine StartResponse
+	g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Key: "mine"}, &mine)
+	g.waitFinished(mine.RunIDs[0])
+	if st := g.status(); len(st.Queue) != 1 || !strings.HasPrefix(st.Queue[0].Stopped, "lane reserved for k-mine") {
+		t.Fatalf("the other batch: %+v", st.Queue)
+	}
+	if code := g.call("POST", "/v1/lanes/lane-1/reserve", ReserveRequest{For: "x", Until: "2020-01-01T00:00:00Z"}, nil); code != 400 {
+		t.Errorf("a past reservation: %d", code)
+	}
+	g.call("POST", "/v1/lanes/lane-1/unreserve", nil, nil)
+	g.waitFinished(other.RunIDs[0])
 }

@@ -3,6 +3,8 @@ package run
 import (
 	"regexp"
 	"strings"
+
+	"github.com/mann1x/automaticum/internal/store"
 )
 
 // Fault says whether an error the agent ended with was the server's, and of
@@ -75,4 +77,36 @@ func compileAll(exprs ...string) []*regexp.Regexp {
 		out[i] = regexp.MustCompile(e)
 	}
 	return out
+}
+
+// infrastructureEnds are the reasons of an ABORTED run that are the
+// harness's or the server's, never the model's or the operator's (D124):
+// the container engine, the runner, the stream, the oracle's container,
+// and a server fault after the SDK's retries. An operator's abort, a
+// daemon's stop, a container out of memory, a tampered oracle and an
+// oracle that timed out on the agent's work are not among them.
+var infrastructureEnds = []string{
+	"the container engine failed",
+	"what the task collects of the agent's container could not be copied",
+	"the runner ended without its last line",
+	"the runner failed",
+	"the runner reported an outcome this harness does not know",
+	"the agent ended in error before the server answered any of its requests",
+	"the event stream is empty",
+	"the oracle could not be run",
+	"the server failed after the SDK's retries",
+}
+
+// Infrastructure says whether a run ended ABORTED for the harness's or the
+// server's reason.
+func Infrastructure(v store.Verdict, reason string) bool {
+	if v != store.Aborted {
+		return false
+	}
+	for _, p := range infrastructureEnds {
+		if strings.HasPrefix(reason, p) {
+			return true
+		}
+	}
+	return false
 }

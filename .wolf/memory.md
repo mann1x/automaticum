@@ -1462,3 +1462,24 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 21:25 | item 4 part 1: p10/p90, cell verdict numbers (token_stats_pass, tokens_per_solved, throughput, empty>5%, loop_by_verdict), streaks, McNemar, time per turn/gap; O39 opened | internal/{stats,daemon,ingest}, cmd/automaticum/compare_cmds.go, docs | tests pass | ~15000 |
+
+## Session: 2026-11-01 20:51
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-01 20:51
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-01 20:51
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-01 21:11
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:12 | D122-D125 built: lane labels/requires, busy_command, auto quarantine (10, quarantine_after), priorities and reservations; specs 030/050/060/090, audit, examples | daemon, config, task, cmd, specs | tests pass | ~40000 |

@@ -4,3 +4,7 @@ user = "1000:1000"
 cpus = 4
 memory_gb = 8
 pids = 1024
+# labels = { gpu = "rtx-3090" }      # matched against a task's or arm's requires (D122)
+# busy_command = ["/usr/local/bin/gpu-in-use", "0"]   # exit 0: busy, the run waits (D123)
+# busy_timeout_s = 10
+# quarantine_after = 10              # infrastructure failures in a row (D124); 0 never

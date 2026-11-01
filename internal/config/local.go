@@ -100,6 +100,25 @@ type Daemon struct {
 	DockerSocket string `toml:"docker_socket"`
 	// Notify says where a refusing or waiting gate is told to (050 §2).
 	Notify Notify `toml:"notify"`
+	// QuarantineAfter is how many runs in a row on a lane may end for the
+	// harness's or the server's reason before the daemon quarantines the
+	// lane (D124): unset is 10, 0 never. A lane may set its own.
+	QuarantineAfter *int `toml:"quarantine_after"`
+}
+
+// DefaultQuarantineAfter is D124's number.
+const DefaultQuarantineAfter = 10
+
+// QuarantineAfter is the lane's own number, else the installation's, else
+// D124's.
+func (l *Local) QuarantineAfter(lane string) int {
+	if ln := l.Lanes[lane]; ln != nil && ln.QuarantineAfter != nil {
+		return *ln.QuarantineAfter
+	}
+	if l.Daemon.QuarantineAfter != nil {
+		return *l.Daemon.QuarantineAfter
+	}
+	return DefaultQuarantineAfter
 }
 
 // ArmsDir holds the installation's arms and ModelsDir its model catalogue
@@ -118,13 +137,13 @@ type Notify struct {
 	// with the JSON object on its standard input: the way to a mailbox or
 	// anything else the installation uses (090 §5). Empty runs nothing.
 	Command []string `toml:"command"`
-	// Events are the kinds sent (gate, canary, campaign, batch, run). Empty
+	// Events are the kinds sent (gate, canary, campaign, batch, run, lane). Empty
 	// sends every kind but run; the daemon's log has them all.
 	Events []string `toml:"events"`
 }
 
 // NotifyEvents are the kinds of notification, in the order they are named.
-var NotifyEvents = []string{"gate", "canary", "campaign", "batch", "run"}
+var NotifyEvents = []string{"gate", "canary", "campaign", "batch", "run", "lane"}
 
 // Sends says whether a notification of the kind goes to the webhook and the
 // command.
@@ -149,8 +168,19 @@ type Lane struct {
 	CPUs     float64 `toml:"cpus"`
 	MemoryGB float64 `toml:"memory_gb"`
 	Pids     int64   `toml:"pids"`
-	// Labels are free-form, for placement later.
+	// Labels place runs (D122): a run whose task or arm `requires`
+	// key=value pairs goes only to a lane with all of them.
 	Labels map[string]string `toml:"labels"`
+	// QuarantineAfter replaces the installation's number for this lane
+	// (D124).
+	QuarantineAfter *int `toml:"quarantine_after"`
+	// BusyCommand is run on the daemon's host before each start (D123):
+	// exit 0 means something else uses the lane's devices and the run
+	// waits as for the free gate; its output is the reason. Empty never.
+	BusyCommand []string `toml:"busy_command"`
+	// BusyTimeoutS bounds the busy command (default 10 s); one that does
+	// not answer in time counts as busy.
+	BusyTimeoutS int `toml:"busy_timeout_s"`
 }
 
 // Endpoint is endpoints/<name>.toml: a model server.
@@ -238,6 +268,9 @@ func LoadLocal(dir string) (*Local, error) {
 	if d.ArchiveRoot != "" && !filepath.IsAbs(d.ArchiveRoot) {
 		bad("automaticum.toml: archive_root must be an absolute path")
 	}
+	if d.QuarantineAfter != nil && *d.QuarantineAfter < 0 {
+		bad("automaticum.toml: quarantine_after must be 0 (never) or more")
+	}
 	if d.FreeFloorGB <= 0 {
 		bad("automaticum.toml: free_floor_gb must be stated and positive")
 	}
@@ -303,6 +336,12 @@ func LoadLocal(dir string) (*Local, error) {
 			if l.Endpoints[e] == nil {
 				bad("lane %s: no endpoint %q", ln.Name, e)
 			}
+		}
+		if ln.QuarantineAfter != nil && *ln.QuarantineAfter < 0 {
+			bad("lane %s: quarantine_after must be 0 (never) or more", ln.Name)
+		}
+		if ln.BusyTimeoutS < 0 {
+			bad("lane %s: busy_timeout_s must be positive", ln.Name)
 		}
 		l.Lanes[ln.Name] = ln
 	}
