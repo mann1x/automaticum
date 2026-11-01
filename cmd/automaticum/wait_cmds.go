@@ -142,14 +142,19 @@ type waiter struct {
 // until waits for one condition; the view says how it ended. A wait whose
 // time runs out ends with the last state read, not an error.
 func (w *waiter) until(ctx context.Context, kind, id, until string, seen int) (daemon.WaitView, error) {
-	var last daemon.WaitView
+	cond, err := wait.Parse(kind, until)
+	if err != nil {
+		return daemon.WaitView{}, err
+	}
+	last := daemon.WaitView{Snapshot: wait.Snapshot{Kind: kind, ID: id}, Until: cond.String()}
 	for {
 		v, err := w.once(ctx, kind, id, until, seen)
+		// A read cut short by the timeout still says what it read.
+		if v.Kind != "" {
+			last = v
+		}
 		if ctx.Err() != nil {
 			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-				if last.Kind == "" {
-					last.Kind, last.ID, last.Until = kind, id, until
-				}
 				return last, nil
 			}
 			return last, ctx.Err()
@@ -182,7 +187,13 @@ func (w *waiter) once(ctx context.Context, kind, id, until string, seen int) (da
 }
 
 func (w *waiter) ask(ctx context.Context, kind, id, until string, seen int) (daemon.WaitView, error) {
-	q := url.Values{"until": {until}, "hold": {"55s"}}
+	// The daemon answers before a timeout would cut the request, so a wait
+	// that times out still has the last state read.
+	hold := 55 * time.Second
+	if dl, ok := ctx.Deadline(); ok {
+		hold = max(0, min(hold, time.Until(dl)-time.Second))
+	}
+	q := url.Values{"until": {until}, "hold": {hold.Round(time.Millisecond).String()}}
 	if id != "" {
 		q.Set("id", id)
 	}
@@ -246,6 +257,9 @@ func (w *waiter) read(ctx context.Context, kind, id, until string, seen int) (da
 		return daemon.WaitView{}, err
 	}
 	end := time.Now().Add(time.Minute)
+	if dl, ok := ctx.Deadline(); ok && dl.Before(end) {
+		end = dl.Add(-time.Second)
+	}
 	for {
 		s, err := w.snapshot(ctx, kind, id)
 		if ctx.Err() != nil {

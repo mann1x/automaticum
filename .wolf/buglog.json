@@ -937,6 +937,24 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-01T18:30:00Z"
+    },
+    {
+      "id": "bug-055",
+      "timestamp": "2026-11-01T19:05:00Z",
+      "error_message": "`wait ... --timeout 12s` against blackswan-2's daemon (no wait route) printed an empty state: '0 finished, 0 running, 0 queued of 0'",
+      "file": "cmd/automaticum/wait_cmds.go",
+      "root_cause": "until() dropped the view a read returned when the context expired, and the fallback read window (1 min) and the server hold (55 s) ignored a shorter --timeout, so the timeout cut the only read.",
+      "fix": "Keep the last view a read returned; bound the server hold and the fallback window by the deadline less 1 s; test asserts the counts on timeout.",
+      "tags": [
+        "wait",
+        "timeout",
+        "fallback"
+      ],
+      "related_bugs": [
+        "bug-049"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T19:05:00Z"
     }
   ]
 }

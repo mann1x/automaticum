@@ -85,7 +85,7 @@ func TestWaitFallback(t *testing.T) {
 	defer stop()
 	o.runs = append(o.runs, daemon.RunView{ID: "b-003", State: "queued"})
 	v, err = w.until(short, wait.KindBatch, "b", "", -1)
-	if err != nil || v.Met || v.Over || ended(v) != exitCode(waitTimeout) {
+	if err != nil || v.Met || v.Over || ended(v) != exitCode(waitTimeout) || v.Counts["queued"] != 1 || v.Until != "done" {
 		t.Fatalf("timeout: %v %+v", err, v)
 	}
 }
