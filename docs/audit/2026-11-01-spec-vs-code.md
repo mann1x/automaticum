@@ -56,7 +56,7 @@ report's arm highlight and timeline.
 after 10 infrastructure failures in a row, `quarantine_after`), D125
 (priorities and reservations); `requeue` (O32), the driver watchdog (O37)
 and the level-based statistics (O39) not adopted. D122 to D125 are built
-and their rows updated; D121 (rescore) is built; D120 follows.
+and their rows updated; D121 (rescore) and D120 (cohorts) are built.
 
 The other rows below are as found, before those fixes. Each table was written by
 one reader of a group of specs; a row's evidence is a path and line at
@@ -190,7 +190,7 @@ Repo state: main at 180cc97, 2026-11-01. Paths are relative to the repo root. St
 | 020 §5 | Basis field imatrix | NOT BUILT | basis.go records "not recorded" |
 | 020 §5 | Basis field GPU driver and power | SCHEDULED (m7) | needs agent mode |
 | 020 §5 | Basis field suite version, task-set sha256, task ids in order | PARTIAL | in CellResult (suite_version, task_set_sha256); basis `task` fact per task only |
-| 020 §5 | Cohort declared variable; **confounded** label | OPEN | O31: how a cohort is declared (recommendation in decisions.md) |
+| 020 §5 | Cohort declared variable; **confounded** label | BUILT | D120: campaign `[cohort]`, `cell run --cohort --declared-variable`; `internal/daemon/cohort.go` (`cohortFacts`, `cohortView`); TestCohort, TestCampaign |
 | 020 §5 | Refuse to put different bases in one table unless told; label differing columns | NOT BUILT | spec says not built |
 | 020 §5 | Greedy anchor; sampled cells in separate sampler cohort, never mixed | NOT BUILT | none (grep greedy: none) |
 | 020 §5 | Plain-text basis exported with every cell | BUILT | CellResult.BasisText (cell.go:90); the spec's "not built" line is out of date |
@@ -486,7 +486,7 @@ It is not counted as BUILT below.
 | 065 §2 | Resume: same key does not repeat finished runs | BUILT | `cell_cmds.go:94-102` |
 | 065 §2 | Progress stream started / n_done/n_total / finished | BUILT | `cell_cmds.go` |
 | 065 §2.1 | Exit codes 0/10/20/30/70 and `refusal.json` on 20/30 | PARTIAL | built for per-run gate refusals (`cell.go:296-300`); but a static-gate refusal at start (422 from `api.go:561`, since 2026-10-25) makes `cell run` exit **70** with no `refusal.json` (`cell_cmds.go:91-93` returns the plain error -> `cellInternal`) |
-| 065 §3 | Result file `automaticum.cell/1`, atomic, all listed fields | PARTIAL | written; `suite`/`subset` now filled from the cell header; `cohort`, `declared_variable` wait for O31; `suite_version` unset |
+| 065 §3 | Result file `automaticum.cell/1`, atomic, all listed fields | PARTIAL | written; `suite`/`subset` filled from the cell header; `cohort`, `declared_variable` filled (D120); `suite_version` unset |
 | 065 §3 | Headline over n_expected; counts sum; errored tasks counted explicitly; warnings; complete=false implies warnings; runs.jsonl; UTC | BUILT | `cell.go:146-300` (`counted_as`) |
 | 065 §3 | Suite-declared headline (e.g. resolved_rate), `empty_patch_rate` | SCHEDULED (m5) | spec 065 §3.1 says milestone 5 |
 | 065 §3.1 | Mode C flags `--endpoint-kind`, `--caller-values`, `--basis-facts`, `--lanes`; `/props` contradiction -> SKIPPED `gate basis_facts`; 409 on reused key with other values; provenance `cell`; basis marks | BUILT | `daemon/modec.go:152-205`, `run/props.go:95-120`, `daemon.go:484-490` |
@@ -495,7 +495,7 @@ It is not counted as BUILT below.
 | 065 §5 | `automaticum_result.json` + `runs.jsonl` per cell | BUILT | `cell_cmds.go:289` |
 | 065 §5 | Basis in plain text per cell | BUILT | `basis.txt` |
 | 065 §5 | Raw per-run artefacts by run id (transcript, requests as sent, patch/diff, scorer logs) | BUILT | `export run <run>... --out D [--kind K]` (report_cmds.go); no diff made, the workspaces are stored whole |
-| 065 §5 | `automaticum export cohort <name> --format parquet\|jsonl` | OPEN | waits for O31; `export cell --format jsonl\|csv` built, Parquet not yet (DuckDB in the daemon) |
+| 065 §5 | `automaticum export cohort <name> --format parquet\|jsonl` | PARTIAL | `export cohort --format jsonl\|csv` built (cohort_cmds.go, D120); Parquet not yet (DuckDB in the daemon) |
 | 065 §5 | Layout option `<results>/<suite>/<served-model>/` (omnimergekit tree) | NOT BUILT | no code; 065 §3.1 lists the layout as still to agree |
 | 065 §5 | Per-campaign export mirrorable to another host | BUILT | `export campaign <name> --out D` (report_cmds.go) |
 | 065 §5 | Any slice as JSONL/CSV/Parquet; self-contained HTML report (090 §6) | PARTIAL | a cell as JSONL and CSV (`export cell`); slices, Parquet and the HTML report not built |
@@ -574,7 +574,7 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 090 §1 | `cell run` | BUILT | cell_cmds.go |
 | 090 §1 | `cell show` | BUILT | show_cmds.go cellShow |
 | 090 §1 | `cell ls` | BUILT | show_cmds.go cellLs (`GET /v1/batches?cell=1`) |
-| 090 §1 | `cohort ls\|show` | OPEN | O31 |
+| 090 §1 | `cohort ls\|show` | BUILT | cohort_cmds.go, `GET /v1/cohorts[/{name}]`, D120 |
 | 090 §1 | `report run\|batch\|cell\|ab\|regression\|census` | BUILT | report_cmds.go; regression `GET /v1/compare?split=build`, census `GET /v1/report/census` (report.go), TestReportRegressionAndCensus |
 | 090 §1 | `find "<query>" [--semantic] [--where]` | SCHEDULED | M6 (search); no code |
 | 090 §1 | `logs <run>` with `--events`, `--wire` (+ `--runner`, `--oracle`, `--kind`) | BUILT | client_cmds.go:457-463 |
@@ -587,7 +587,7 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 090 §1 | `reanalyse [--run|--batch] [--imported]` | BUILT | client_cmds.go:645-647, POST/GET /v1/reanalyse |
 | 090 §1 | `reanalyse --detector D` / `--where` | BUILT | ReanalyseRequest.Where/Detector, whereFilter, TestWhereFilter |
 | 090 §1 | `rescore <cell>` | BUILT | `rescore <batch> [--out D]` (rescore_cmds.go), D121 |
-| 090 §1 | `export run\|cell\|cohort\|campaign` | PARTIAL | run, cell, campaign built (report_cmds.go); cohort waits for O31 |
+| 090 §1 | `export run\|cell\|cohort\|campaign` | BUILT | run, cell, campaign (report_cmds.go), cohort (cohort_cmds.go, D120) |
 | 090 §1 | `export conversations --out [--batch][--run][--heldout]` | BUILT | export_cmds.go:35-38, GET /v1/runs/{id}/export |
 | 090 §1, §5 | `wait run\|batch\|cell <id> [--until]` | BUILT | bbdd18f, ec5de3c: internal/wait, `GET /v1/wait/{kind}`, wait_cmds.go |
 | 090 §1 | `agent` (agent mode) | SCHEDULED | M7 |

@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-01T20:22:09.369Z
-> Files: 538 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-01T20:32:19.953Z
+> Files: 541 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../tmp/claude-0/-srv-dev-disk-by-label-opt-dev-automaticum/b3252f5f-43ab-4bf3-a0a5-9eef085a7e35/scratchpad/
 
@@ -110,7 +110,6 @@
 - `stub-demo.toml` — A campaign on the stub model server, for trying campaigns without a GPU: (~121 tok)
 
 ## cmd/automaticum/
-- `rescore_cmds.go` — `automaticum rescore <batch> [--out D] [--no-wait] [--dry-run]`: queue, poll, rewrite cell files keeping automaticum_result.<time>.json (~1100 tok)
 
 - `campaign_cmds.go` (~1452 tok)
 - `cell_cmds.go` — exitCode: names (~2996 tok)
@@ -125,6 +124,8 @@
 - `main.go` — Command automaticum is the command line of automaticum. (~2528 tok)
 - `report_cmds_test.go` — runs.csv columns, positional args, export formats (~600 tok)
 - `report_cmds.go` — report run|cell|batch|ab|regression|census; export cell|campaign|run (runs.csv, artefacts), with --dry-run (~3194 tok)
+- `cohort_cmds.go` — `automaticum cohort ls|show`, `export cohort --out D [--format jsonl|csv]` (~1700 tok)
+- `rescore_cmds.go` — `automaticum rescore <batch> [--out D] [--no-wait] [--dry-run]`: queue, poll, rewrite cell files keeping automaticum_result.<time>.json (~1100 tok)
 - `sdk_cmds.go` — SDKEnv (~1197 tok)
 - `show_cmds.go` — lane show, batch ls, cell show|ls, arm ls, endpoint show|models|probe, task verify (~4501 tok)
 - `store_cgo.go` — go:build cgo (~1850 tok)
@@ -285,8 +286,6 @@
 - `export_test.go` — TestExport (~1366 tok)
 - `export.go` — ExportMeta (48 fields) (~1711 tok)
 - `heartbeat.go` — Heartbeat every ten minutes to the log; kept for status and GET /v1/heartbeat (050 §6) (~805 tok)
-- `rescore.go` — D121 rescore: handleRescore (POST/GET /v1/batches/{batch}/rescore), startRescores (per-lane slot, takes turns with queued runs), rescoreOne (untar workspace_after/collected, d.Oracle, rescore/rescore_oracle blobs), latestRescore (~3500 tok)
-- `rescore_test.go` — TestRescore (~1800 tok)
 - `lanerules.go` — countInfra (D124 auto quarantine), laneBusy (D123 busy_command), handleReserve (D125 lane reserve/unreserve) (~1500 tok)
 - `lists_test.go` — TestBatchesAndLaneShow, TestWhereFilter (~628 tok)
 - `lists.go` — GET /v1/batches (BatchSummary) and GET /v1/lanes/{lane} (LaneView); atoiPositive (~1750 tok)
@@ -298,6 +297,10 @@
 - `notify_test.go` — TestNotifyCommand (~669 tok)
 - `report_test.go` — TestReportRegressionAndCensus, TestEndpointCapacity, TestHeartbeat, TestAutoQuarantine, TestBusyCommand, TestLaneLabels, TestPriorityAndReservation (~3000 tok)
 - `report.go` — GET /v1/report/census: tool calls by tool and model, failures by error class, parse paths (~842 tok)
+- `rescore_test.go` — TestRescore (~1800 tok)
+- `cohort.go` — D120 cohorts: Cohort, cohortFacts (basis fact or arm field → facts), checkCohort, addToCohort, cohortOf, cohortView (cells, differs, confounded), armValue (~2600 tok)
+- `cohort_test.go` — TestCohort (~1000 tok)
+- `rescore.go` — D121 rescore: handleRescore (POST/GET /v1/batches/{batch}/rescore), startRescores (per-lane slot, takes turns with queued runs), rescoreOne (untar workspace_after/collected, d.Oracle, rescore/rescore_oracle blobs), latestRescore (~3500 tok)
 - `wait_test.go` — TestWait: hold, run started, batch next/done, lane idle, over, 404/400 (~1200 tok)
 - `wait_test.go` — Struct: answer (~1023 tok)
 - `wait.go` — GET /v1/wait/{kind}: held ≤55 s, woken by bump() on poke/flight start, 2 s recheck; batchRuns (dedup queued+written), statusSnapshot, WaitView (~1700 tok)
@@ -372,8 +375,6 @@
 - `verify.go` — FileCheck (71 fields); methods: OK, String, String (~2664 tok)
 
 ## internal/run/
-- `rescore.go` — Rescore (verdict decided again from recorded facts + new oracle answer, D121), Untar (os.Root-safe restore of tarTree) (~900 tok)
-- `rescore_test.go` — TestRescoreVerdict, TestUntar (~800 tok)
 
 - `fault_test.go` — TestFault: SDK error messages and their kind (~500 tok)
 - `fault.go` — Fault(message): the SDK refusal/transport patterns (llms Kr), ported; a run ending on one is ABORTED (~742 tok)
@@ -382,6 +383,8 @@
 - `props_test.go` — TestProps, TestProbeLlamaServer (~1470 tok)
 - `props.go` — Props (51 fields) (~1519 tok)
 - `protocol.go` — executes one run: an arm on a task, once, on a lane. It (~2108 tok)
+- `rescore_test.go` — TestRescoreVerdict, TestUntar (~800 tok)
+- `rescore.go` — Rescore (verdict decided again from recorded facts + new oracle answer, D121), Untar (os.Root-safe restore of tarTree) (~900 tok)
 - `run_test.go` — fakeState (75 fields); methods: UpsertRun, AddBlobRefs, Put, Check (~7708 tok)
 - `run.go` — Interface: Engine (5 methods) (~9706 tok)
 - `verdict.go` — Facts (24 fields) (~707 tok)

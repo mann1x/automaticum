@@ -206,6 +206,12 @@ func writeBatchCell(ctx context.Context, c *client, batch, dir, format string) (
 // writeRunsCSV writes the rows with a column for every metric any run has
 // and one for every detector that fired in any run, sorted by name.
 func writeRunsCSV(path string, rows []daemon.CellRow) error {
+	return writeRowsCSV(path, rows, nil, nil)
+}
+
+// writeRowsCSV is writeRunsCSV with lead columns first: head names them,
+// and lead gives row i's values.
+func writeRowsCSV(path string, rows []daemon.CellRow, head []string, lead func(i int) []string) error {
 	metrics, findings := map[string]bool{}, map[string]bool{}
 	for _, r := range rows {
 		for k := range r.Metrics {
@@ -222,13 +228,17 @@ func writeRunsCSV(path string, rows []daemon.CellRow) error {
 		return err
 	}
 	w := csv.NewWriter(f)
-	head := []string{"run_id", "task", "verdict", "verdict_reason", "counted_as", "retry_of", "superseded_by"}
+	head = append(head[:len(head):len(head)], "run_id", "task", "verdict", "verdict_reason", "counted_as", "retry_of", "superseded_by")
 	for _, k := range fk {
 		head = append(head, "finding."+k)
 	}
 	w.Write(append(head, mk...))
-	for _, r := range rows {
-		line := []string{r.RunID, r.Task, r.Verdict, r.VerdictReason, r.CountedAs, r.RetryOf, r.SupersededBy}
+	for i, r := range rows {
+		var line []string
+		if lead != nil {
+			line = lead(i)
+		}
+		line = append(line, r.RunID, r.Task, r.Verdict, r.VerdictReason, r.CountedAs, r.RetryOf, r.SupersededBy)
 		for _, k := range fk {
 			line = append(line, strconv.Itoa(r.Findings[k]))
 		}

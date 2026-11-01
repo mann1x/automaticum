@@ -1094,6 +1094,40 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-11-01T21:12:27+01:00"
+    },
+    {
+      "id": "bug-064",
+      "timestamp": "2026-11-01T21:36:45+01:00",
+      "error_message": "handleCell refactor into cellView: 'too many return values' and 'undefined: context'; cell.go edited three times",
+      "file": "internal/daemon/cell.go",
+      "root_cause": "a python first-occurrence replace of `reply(w, http.StatusOK, v)` hit the new wrapper instead of the function's end, and the import was not added",
+      "fix": "restored the wrapper's reply, made cellView end with `return v, http.StatusOK, nil`, added the context import",
+      "tags": [
+        "refactor",
+        "python-edit",
+        "daemon",
+        "D120"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T21:36:45+01:00"
+    },
+    {
+      "id": "bug-065",
+      "timestamp": "2026-11-01T21:36:45+01:00",
+      "error_message": "TestCohort: the run's cohort: \"\"",
+      "file": "internal/daemon/daemon_test.go",
+      "root_cause": "fakeRunner builds its own store.Run and did not copy run.Request.Cohort",
+      "fix": "fakeRunner copies req.Cohort into the record",
+      "tags": [
+        "test",
+        "fake",
+        "cohort",
+        "D120"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T21:36:45+01:00"
     }
   ]
 }

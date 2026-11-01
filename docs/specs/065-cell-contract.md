@@ -1,6 +1,6 @@
 # 065 — The cell contract and exports
 
-**Status:** draft 0.12, 2026-11-01.
+**Status:** draft 0.13, 2026-11-01.
 
 ## 1. Purpose
 
@@ -237,7 +237,8 @@ recorded as caller-asserted. `--lanes N` (default 1) is chosen by the
 caller, never derived from the server's slots, and is part of the basis:
 cells at different lane counts are not the same basis. Headline:
 `pass_rate` for local tasks, the suite's declared headline for BFCL and
-SWE-bench. The cohort and its declared variable, and
+SWE-bench. The cohort and its declared variable (D120: a campaign's
+`[cohort]` or `cell run --cohort N --declared-variable V`, 020 §5), and
 the layout of omnimergekit's result tree (§5).
 
 ## 4. Re-scoring
@@ -295,6 +296,12 @@ host. `export run <run>... --out D [--kind K]` writes each run's record and
 its stored artefacts (the transcript, the requests as sent, the workspace
 before and after, the oracle's output). Not built yet: Parquet (to be
 written by the daemon's DuckDB, no new library), the omnimergekit layout,
-slices and the HTML report; `export cohort` waits for **Open** O31.
+slices and the HTML report. `export cohort <name> --out D [--format
+jsonl|csv]` (D120) writes each cell as `<D>/<batch>/`, the cohort's view
+(cells, values of the variable, differing facts, confounded) as
+cohort.json, and one row per run of every cell, with the cohort, the cell,
+the arm and the value of the variable, every per-run metric and every
+detector's count as a column, as runs.jsonl (and runs.csv); Parquet is not
+built.
 
 Private tasks are never exported to a cloud destination (060 §7).

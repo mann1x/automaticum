@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.20, 2026-11-01.
+**Status:** draft 0.21, 2026-11-01.
 
 ## 1. Rules
 
@@ -274,6 +274,10 @@ description = "A against B overnight"
 
 [stop]                       # the whole campaign; optional
 at = 2026-10-15T08:00:00+02:00
+
+[cohort]                     # optional (D120): every batch is a cell of it
+name = "temperature"
+variable = "sampler.temperature"   # a basis fact or an arm field (020 §5)
 
 [[batch]]                    # in order; each starts when the one before has ended
 name = "ab"

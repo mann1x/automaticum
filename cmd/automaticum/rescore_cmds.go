@@ -92,20 +92,6 @@ func rescore(ctx context.Context, args []string) error {
 		}
 		return nil
 	}
-	var view daemon.CellView
-	if err := c.do(ctx, "GET", "/v1/batches/"+url.PathEscape(batch)+"/cell", nil, &view); err != nil {
-		return err
-	}
-	res := view.Result
-	code := cellClean
-	switch {
-	case view.Refusal != nil && view.Refusal.Code == cellRefused:
-		code = cellRefused
-	case !res.Complete:
-		code = cellIncomplete
-	case len(res.Warnings) > 0:
-		code = cellWarnings
-	}
 	old := filepath.Join(*out, "automaticum_result.json")
 	if _, err := os.Stat(old); err == nil {
 		kept := filepath.Join(*out, "automaticum_result."+j.Finished.UTC().Format("20060102T150405Z")+".json")
@@ -116,12 +102,13 @@ func rescore(ctx context.Context, args []string) error {
 			fmt.Printf("the old result file is kept as %s\n", kept)
 		}
 	}
-	if err := writeCell(*out, res, view, code); err != nil {
+	code, err := writeBatchCell(ctx, c, batch, *out, "jsonl")
+	if err != nil {
 		return err
 	}
 	if c.json {
-		return printJSON(res)
+		return printJSON(map[string]any{"batch": batch, "out": *out, "code": code, "rescore": st})
 	}
-	fmt.Printf("wrote %s: %s %s\n", *out, res.Headline.Metric, human.Number(res.Headline.Value))
+	fmt.Printf("wrote the cell's files to %s (cell code %d)\n", *out, code)
 	return nil
 }

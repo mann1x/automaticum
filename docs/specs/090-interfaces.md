@@ -26,7 +26,7 @@ automaticum run ls|show|tail|stop|abort|pause|resume|retry|invalidate|identify
 automaticum compare <batch> [<batch> ...]
 automaticum batch|campaign start|ls|show|pause|resume|abort
 automaticum cell run|show|ls
-automaticum cohort ls|show
+automaticum cohort ls|show [<name>]        # cells declared to differ in one variable; confounded when another fact differs (D120)
 automaticum report run|batch|cell|ab|regression|census [...]
 automaticum find "<query>" [--semantic] [--where ...]
 automaticum logs <run> [--server|--runtime|--events|--wire] [--grep ...] [--turn N]
@@ -161,6 +161,11 @@ static-gate refusal of a start answers 422 with `gate` beside `error`.
   (`POST /v1/lanes/{lane}/reserve|unreserve`); `status` shows a lane's
   reservation and the reason a run waits (`busy: ...`, `lane reserved for
   ...`, `lane quarantined: the daemon: ...`).
+- **2026-11-01, D120 and D121:** `cell run --cohort N --declared-variable
+  V`; `cohort ls`, `cohort show <name>` (`GET /v1/cohorts`, `GET
+  /v1/cohorts/{name}`); `export cohort <name> --out D [--format jsonl|csv]`;
+  `rescore <batch> [--out D] [--no-wait] [--dry-run]` (`POST|GET
+  /v1/batches/{batch}/rescore`), `status` shows a lane `rescoring`.
 
 **Decided by the owner (2026-10-27, D116):** `notices (<run> ... | --batch B
 ...) [--key K]` prints the SDK's notices of some runs, each with its run,

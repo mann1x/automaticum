@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -207,17 +208,24 @@ var degenerate = []string{detect.ShortUnitRepeat, detect.CharRun, detect.Sentenc
 
 // handleCell gives the result of a batch as a cell (065 §3).
 func (d *Daemon) handleCell(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	batch := r.PathValue("batch")
+	v, code, err := d.cellView(r.Context(), r.PathValue("batch"))
+	if err != nil {
+		fail(w, code, "%v", err)
+		return
+	}
+	reply(w, http.StatusOK, v)
+}
+
+// cellView is a batch seen as a cell (065 §3): its result file and its
+// rows, with the status to answer when it cannot be made.
+func (d *Daemon) cellView(ctx context.Context, batch string) (CellView, int, error) {
 	recs, err := d.State.ListRuns(ctx, store.RunFilter{Batch: batch})
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "%v", err)
-		return
+		return CellView{}, http.StatusInternalServerError, err
 	}
 	queue, err := d.State.Queue(ctx)
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "%v", err)
-		return
+		return CellView{}, http.StatusInternalServerError, err
 	}
 	var queued []store.QueueItem
 	for _, it := range queue {
@@ -226,8 +234,7 @@ func (d *Daemon) handleCell(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(recs) == 0 && len(queued) == 0 {
-		fail(w, http.StatusNotFound, "there is no batch %s", batch)
-		return
+		return CellView{}, http.StatusNotFound, fmt.Errorf("there is no batch %s", batch)
 	}
 	d.mu.Lock()
 	supersededBy := map[string]string{}
@@ -242,6 +249,9 @@ func (d *Daemon) handleCell(w http.ResponseWriter, r *http.Request) {
 	res.Schema, res.Batch, res.Runs = CellSchema, batch, "runs.jsonl"
 	d.mu.Lock()
 	res.ModeC = d.ctl.Cells[batch]
+	if c := d.cohortOf(batch); c != nil {
+		res.Cohort, res.DeclaredVariable = c.Name, c.Variable
+	}
 	d.mu.Unlock()
 	res.Counts = map[string]int{"pass": 0, "fail": 0, "timeout": 0, "aborted": 0, "invalid": 0, "skipped": 0, "unfinished": 0}
 	res.Scores, res.Degeneration, res.Warnings = map[string]float64{}, map[string]int{}, []string{}
@@ -254,16 +264,14 @@ func (d *Daemon) handleCell(w http.ResponseWriter, r *http.Request) {
 			RetryOf: retryOf[rec.ID], SupersededBy: supersededBy[rec.ID], Metrics: map[string]float64{}}
 		ms, err := d.State.Metrics(ctx, rec.ID)
 		if err != nil {
-			fail(w, http.StatusInternalServerError, "%v", err)
-			return
+			return v, http.StatusInternalServerError, err
 		}
 		for _, m := range ms {
 			row.Metrics[m.Name] = m.Value
 		}
 		fs, err := d.State.Findings(ctx, rec.ID)
 		if err != nil {
-			fail(w, http.StatusInternalServerError, "%v", err)
-			return
+			return v, http.StatusInternalServerError, err
 		}
 		for _, f := range fs {
 			if row.Findings == nil {
@@ -431,7 +439,7 @@ func (d *Daemon) handleCell(w http.ResponseWriter, r *http.Request) {
 		res.Suite, res.Subset, _ = strings.Cut(c, ":")
 	}
 	d.mu.Unlock()
-	reply(w, http.StatusOK, v)
+	return v, http.StatusOK, nil
 }
 
 // cellNumbers fills the result's numbers from the compare view of the

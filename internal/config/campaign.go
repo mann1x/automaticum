@@ -23,8 +23,26 @@ type Campaign struct {
 	// Stop ends the whole campaign: the batch in flight is stopped and no
 	// later batch starts.
 	Stop CampaignStop `toml:"stop" json:"stop"`
+	// Cohort makes every batch of the campaign a cell of one cohort (D120).
+	Cohort *CampaignCohort `toml:"cohort" json:"cohort,omitempty"`
 	// SHA256 is the hash of the file as it was read.
 	SHA256 string `toml:"-" json:"sha256"`
+}
+
+// CohortOf is the campaign's cohort and its variable, empty when it
+// declares none.
+func (c *Campaign) CohortOf() (name, variable string) {
+	if c.Cohort == nil {
+		return "", ""
+	}
+	return c.Cohort.Name, c.Cohort.Variable
+}
+
+// CampaignCohort names a cohort and the one variable in which its cells
+// may differ: a basis fact or an arm field (D120, 020 §5).
+type CampaignCohort struct {
+	Name     string `toml:"name" json:"name"`
+	Variable string `toml:"variable" json:"variable"`
 }
 
 // CampaignBatch is one batch of a campaign: Runs runs of every arm on every
@@ -101,6 +119,14 @@ func (c *Campaign) Validate() error {
 	bad := func(format string, args ...any) { problems = append(problems, fmt.Sprintf(format, args...)) }
 	if len(c.Batches) == 0 {
 		bad("no [[batch]]")
+	}
+	if co := c.Cohort; co != nil {
+		if !armNameRE.MatchString(co.Name) {
+			bad("[cohort] name %q: lower-case letters, digits, dots, dashes and underscores, starting with a letter or digit", co.Name)
+		}
+		if co.Variable == "" {
+			bad("[cohort] names no variable: the basis fact or arm field in which its cells differ")
+		}
 	}
 	seen := map[string]bool{}
 	for i, b := range c.Batches {

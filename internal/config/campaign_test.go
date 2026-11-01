@@ -43,6 +43,21 @@ retries = 3
 	if _, err := LoadCampaign(dir, "unknown"); err == nil || !strings.Contains(err.Error(), "retries") {
 		t.Errorf("an unknown field: %v", err)
 	}
+	write("cohort", `
+[cohort]
+name = "Bad Name"
+[[batch]]
+name = "x"
+arms = ["a"]
+tasks = ["t"]
+runs = 1
+`)
+	_, err = LoadCampaign(dir, "cohort")
+	for _, want := range []string{"[cohort] name", "names no variable"} {
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("want %q in %v", want, err)
+		}
+	}
 	write("bad", `
 [[batch]]
 name = "x"

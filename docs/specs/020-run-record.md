@@ -1,6 +1,6 @@
 # 020 — The run record, verdicts and the basis
 
-**Status:** draft 0.16, 2026-11-01.
+**Status:** draft 0.17, 2026-11-01.
 
 Nothing in this file is optional. Each item is here because its absence
 invalidated or blinded a real campaign. A value is recorded **as probed or as
@@ -233,7 +233,20 @@ different lane counts never share a basis.
 `automaticum basis diff <batch[/arm]> <batch[/arm]>` prints exactly the facts
 in which two differ; `automaticum compare` prints, above every number, the
 basis diff of each pair and every fact in which an arm's own runs differ.
-Not built yet: the cohort's declared variable and the **confounded** label
-(**Open**, O31: how a cohort is declared), and the refusal to put different
-bases in one table. The cell's plain-text basis is exported with `export
+**Decided by the owner (2026-11-01), D120, as built:** a cohort is
+declared by a campaign's `[cohort] name, variable` (every batch of the
+campaign is a cell of it, 030 §6) or by `cell run --cohort N
+--declared-variable V` (mode C included). The variable is a basis fact
+(above) or an arm field (`sampler.temperature`, `harness.sdk_release`, ...),
+which stands for the facts its section feeds: `model` the weights,
+quantization, imatrix, template, parser, tag parameters, context and output
+limit; `endpoint` those and the server and GPU; `sampler` the sampler and
+seed; `thinking` thinking; `agent`, `guards`, `compaction`, `limits` and
+`protocol` the agent settings; `harness` the harness build. Anything else is
+refused, as is a second variable for a cohort that has one. Each run
+records its cohort. `automaticum cohort show <name>` gives each cell's
+headline and value of the variable, every basis fact in which the cells
+differ with each cell's values, and labels the cohort **confounded** when a
+fact other than the variable's differs. Not built yet: the refusal to put
+different bases in one table. The cell's plain-text basis is exported with `export
 cell` (065 §5).

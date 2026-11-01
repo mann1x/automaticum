@@ -137,8 +137,9 @@ func (d *Daemon) campaignStep(ctx context.Context, name string) error {
 		if at := def.Stop.At; !at.IsZero() && now.After(at) {
 			return d.setBatch(name, cur, "stopped", "its stop time "+at.Format(time.RFC3339)+" came before it started")
 		}
+		co, vr := c.Def.CohortOf()
 		resp, _, err := d.start(ctx, StartRequest{Arms: def.Arms, Tasks: def.Tasks, Suites: def.Suites, Count: def.Runs, Order: def.Order, Lane: def.Lane,
-			Key: campaignKey(name, def.Name), CaptureRequests: def.CaptureRequests, Limits: batchLimits(def)})
+			Key: campaignKey(name, def.Name), CaptureRequests: def.CaptureRequests, Limits: batchLimits(def), Cohort: co, DeclaredVariable: vr})
 		if err != nil {
 			d.setBatch(name, cur, "stopped", "it could not start: "+err.Error())
 			return d.endCampaign(ctx, name, "stopped", "batch "+def.Name+" could not start: "+err.Error())
@@ -298,8 +299,10 @@ func (d *Daemon) handleCampaignStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Every batch must be one the daemon would queue.
+	co, vr := def.CohortOf()
 	for _, b := range def.Batches {
-		if _, code, err := d.start(r.Context(), StartRequest{Arms: b.Arms, Tasks: b.Tasks, Suites: b.Suites, Count: b.Runs, Order: b.Order, Lane: b.Lane, Limits: batchLimits(b), DryRun: true}); err != nil {
+		if _, code, err := d.start(r.Context(), StartRequest{Arms: b.Arms, Tasks: b.Tasks, Suites: b.Suites, Count: b.Runs, Order: b.Order, Lane: b.Lane, Limits: batchLimits(b), DryRun: true,
+			Cohort: co, DeclaredVariable: vr}); err != nil {
 			fail(w, code, "campaign %s, batch %s: %v", req.Name, b.Name, err)
 			return
 		}

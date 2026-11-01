@@ -591,7 +591,10 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 		done()
 	}
 	d.mu.Lock()
-	campaign := d.campaignOf(it.Batch)
+	campaign, cohort := d.campaignOf(it.Batch), ""
+	if c := d.cohortOf(it.Batch); c != nil {
+		cohort = c.Name
+	}
 	d.mu.Unlock()
 	// The arm and the task are read now and fixed from here on.
 	arm, cell, err := d.armFor(it.Batch, it.Arm)
@@ -691,7 +694,7 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 	setLane("running", det)
 	log.Info("run starts", "arm", it.Arm, "task", it.Task)
 	r, err := d.Runner.Execute(ctx, run.Request{
-		ID: it.RunID, Arm: arm, Task: tk, Lane: it.Lane, Image: LaneImage(tk.Layers), Batch: it.Batch, Campaign: campaign, Gates: answers, Identity: models[arm.Model.Model], Unloaded: unloaded, Cell: cellOrNil(cellRec), CaptureRequests: capture, Limits: limits,
+		ID: it.RunID, Arm: arm, Task: tk, Lane: it.Lane, Image: LaneImage(tk.Layers), Batch: it.Batch, Campaign: campaign, Cohort: cohort, Gates: answers, Identity: models[arm.Model.Model], Unloaded: unloaded, Cell: cellOrNil(cellRec), CaptureRequests: capture, Limits: limits,
 		OnStart: func(partial *store.Run, containerID string) {
 			copy := *partial
 			det.ContainerID, det.Run = containerID, &copy

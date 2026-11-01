@@ -1502,3 +1502,20 @@
 | 21:19 | Created internal/daemon/rescore.go | — | ~3507 |
 | 21:22 | Created cmd/automaticum/rescore_cmds.go | — | ~975 |
 | 21:25 | D121 rescore built: queued per lane, one oracle at a time, records beside the run (rescore/rescore_oracle blobs), cell view takes the latest, `automaticum rescore <batch> [--out D]`; 065 §4, 090 §1, audit | internal/daemon/rescore.go, internal/run/rescore.go, cmd/automaticum/rescore_cmds.go | tests pass | ~30000 |
+
+## Session: 2026-11-01 21:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-01 21:26
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-01 21:27
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:32 | Created internal/daemon/cohort.go | — | ~2411 |
+| 21:36 | D120 cohorts built: campaign [cohort], cell run --cohort/--declared-variable, run records carry cohort, cohort ls|show with confounded label, export cohort; 020/030/065/090, audit | internal/daemon/cohort.go, cmd/automaticum/cohort_cmds.go | tests pass | ~35000 |

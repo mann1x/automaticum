@@ -64,6 +64,8 @@ type control struct {
 	Idem map[string]*IdemEntry `json:"idempotency,omitempty"`
 	// Rescores are the cells' rescores, by batch (D121).
 	Rescores map[string]*RescoreJob `json:"rescores,omitempty"`
+	// Cohorts are the declared cohorts, by name (D120).
+	Cohorts map[string]*Cohort `json:"cohorts,omitempty"`
 }
 
 // Reservation is a lane kept for one batch or campaign until a time.
@@ -82,7 +84,7 @@ type Quarantine struct {
 // loadControl reads the control file once. A missing file is an empty one.
 // It is called with d.mu held.
 func (d *Daemon) loadControl() {
-	d.ctl = control{Drained: map[string]time.Time{}, Held: map[string]time.Time{}, Retries: map[string]string{}, Canary: map[string]*CanaryRecord{}, Campaigns: map[string]*CampaignState{}, Cells: map[string]*CellSpec{}, Capture: map[string]bool{}, Heldout: map[string]bool{}, Limits: map[string]*run.Override{}, Quarantined: map[string]Quarantine{}, LaneHeld: map[string]time.Time{}, InfraStreak: map[string][]InfraEnd{}, Priority: map[string]int{}, Reserved: map[string]Reservation{}, CellBatches: map[string]string{}, Idem: map[string]*IdemEntry{}, Rescores: map[string]*RescoreJob{}}
+	d.ctl = control{Drained: map[string]time.Time{}, Held: map[string]time.Time{}, Retries: map[string]string{}, Canary: map[string]*CanaryRecord{}, Campaigns: map[string]*CampaignState{}, Cells: map[string]*CellSpec{}, Capture: map[string]bool{}, Heldout: map[string]bool{}, Limits: map[string]*run.Override{}, Quarantined: map[string]Quarantine{}, LaneHeld: map[string]time.Time{}, InfraStreak: map[string][]InfraEnd{}, Priority: map[string]int{}, Reserved: map[string]Reservation{}, CellBatches: map[string]string{}, Idem: map[string]*IdemEntry{}, Rescores: map[string]*RescoreJob{}, Cohorts: map[string]*Cohort{}}
 	if d.ControlFile == "" {
 		return
 	}
@@ -137,6 +139,9 @@ func (d *Daemon) loadControl() {
 	}
 	if d.ctl.Priority == nil {
 		d.ctl.Priority = map[string]int{}
+	}
+	if d.ctl.Cohorts == nil {
+		d.ctl.Cohorts = map[string]*Cohort{}
 	}
 	if d.ctl.Rescores == nil {
 		d.ctl.Rescores = map[string]*RescoreJob{}

@@ -137,6 +137,8 @@ type Request struct {
 	Batch string
 	// Campaign is the campaign the batch belongs to, if any.
 	Campaign string
+	// Cohort is the cohort the batch is a cell of, if any (D120).
+	Cohort string
 	// OnStart is called once the container runs, with the record so far
 	// and the container's id, so a restarted daemon can clean up.
 	OnStart func(r *store.Run, containerID string)
@@ -316,7 +318,7 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 	}
 	a, t := req.Arm, req.Task
 	r := &store.Run{
-		ID: req.ID, Batch: req.Batch, Campaign: req.Campaign, Suite: t.Suite, TaskID: t.ID, TaskVersion: t.Version,
+		ID: req.ID, Batch: req.Batch, Campaign: req.Campaign, Cohort: req.Cohort, Suite: t.Suite, TaskID: t.ID, TaskVersion: t.Version,
 		ArmID: a.ID, Lane: req.Lane, StartedAt: now.UTC(),
 		Provider: a.Model.Provider, Model: a.Model.Model, Endpoint: a.Endpoint,
 		Thinking: thinkingWord(a), Arm: a.Resolved(),

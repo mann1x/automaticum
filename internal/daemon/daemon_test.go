@@ -216,7 +216,7 @@ func (f *fakeRunner) Execute(ctx context.Context, req run.Request) (*store.Run, 
 	f.reqs = append(f.reqs, req)
 	hold := f.hold
 	f.mu.Unlock()
-	r := &store.Run{ID: req.ID, Batch: req.Batch, Campaign: req.Campaign, Suite: req.Task.Suite, TaskID: req.Task.ID, Lane: req.Lane, ArmID: req.Arm.ID,
+	r := &store.Run{ID: req.ID, Batch: req.Batch, Campaign: req.Campaign, Cohort: req.Cohort, Suite: req.Task.Suite, TaskID: req.Task.ID, Lane: req.Lane, ArmID: req.Arm.ID,
 		StartedAt: time.Now().UTC(), Harness: req.Arm.Harness.SDKRelease, Verdict: store.Pass, VerdictReason: "oracle passed"}
 	if req.OnStart != nil {
 		req.OnStart(r, "container-"+req.ID)
@@ -1455,6 +1455,9 @@ func TestCampaign(t *testing.T) {
 	g := newRig(t, false)
 	g.d.Repo = campaignRepo(t, "c1", `
 description = "two batches"
+[cohort]
+name = "tasks"
+variable = "task"
 [[batch]]
 name = "first"
 arms = ["stub"]
@@ -1499,10 +1502,15 @@ on_invalid = true
 			t.Errorf("%s: %d runs", b.Name, len(runs))
 		}
 		for _, r := range runs {
-			if r.Campaign != "c1" || r.Verdict != store.Pass {
+			if r.Campaign != "c1" || r.Cohort != "tasks" || r.Verdict != store.Pass {
 				t.Errorf("%s: %+v", r.ID, r)
 			}
 		}
+	}
+	// Every batch of the campaign is a cell of its cohort (D120).
+	var co CohortView
+	if g.call("GET", "/v1/cohorts/tasks", nil, &co); len(co.Cells) != 2 || co.Variable != "task" {
+		t.Errorf("the campaign's cohort: %+v", co)
 	}
 	if code := g.call("POST", "/v1/campaigns/c1/pause", nil, nil); code != 409 {
 		t.Errorf("a finished campaign was paused: %d", code)

@@ -55,8 +55,10 @@ func cellRun(ctx context.Context, args []string) (err error) {
 	basisFacts := fs.String("basis-facts", "", "mode C: the caller's facts of the server, as JSON or a JSON file")
 	lanes := fs.Int("lanes", 1, "mode C: how many lanes run the cell at once; part of the basis")
 	dry := fs.Bool("dry-run", false, "say what the cell would queue, and whether the gates let it; queue nothing and write nothing")
+	cohort := fs.String("cohort", "", "the cohort the cell belongs to (D120); with --declared-variable")
+	variable := fs.String("declared-variable", "", "the one basis fact or arm field in which the cohort's cells differ")
 	if rest := parse(fs, args); len(rest) > 0 || *suite == "" || *arm == "" || *out == "" || *key == "" {
-		return errors.New("usage: automaticum cell run --suite <suite[:subset]> --arm <arm> --out <dir> --idempotency-key <key> [-n 1] [--lane L] [--json]\n" +
+		return errors.New("usage: automaticum cell run --suite <suite[:subset]> --arm <arm> --out <dir> --idempotency-key <key> [-n 1] [--lane L] [--cohort N --declared-variable V] [--json]\n" +
 			"  mode C: --endpoint-url <url> --served-model <name> [--endpoint-kind openai-compatible] [--caller-values <file>] [--basis-facts <json|file>] [--lanes 1]")
 	}
 	defer func() {
@@ -86,7 +88,7 @@ func cellRun(ctx context.Context, args []string) (err error) {
 	}
 	if *dry {
 		var plan daemon.StartResponse
-		req := daemon.StartRequest{Arm: *arm, Tasks: tasks, Count: *n, Lane: *lane, Key: *key, Cell: cell, DryRun: true}
+		req := daemon.StartRequest{Arm: *arm, Tasks: tasks, Count: *n, Lane: *lane, Key: *key, Cell: cell, DryRun: true, Cohort: *cohort, DeclaredVariable: *variable}
 		if err := c.do(ctx, "POST", "/v1/runs", req, &plan); err != nil {
 			var ae *apiErr
 			if errors.As(err, &ae) && ae.Gate != "" {
@@ -114,7 +116,7 @@ func cellRun(ctx context.Context, args []string) (err error) {
 		return err
 	}
 	var start daemon.StartResponse
-	req := daemon.StartRequest{Arm: *arm, Tasks: tasks, Count: *n, Lane: *lane, Key: *key, Cell: cell}
+	req := daemon.StartRequest{Arm: *arm, Tasks: tasks, Count: *n, Lane: *lane, Key: *key, Cell: cell, Cohort: *cohort, DeclaredVariable: *variable}
 	c.cell = *suite
 	if err := c.do(ctx, "POST", "/v1/runs", req, &start); err != nil {
 		// A gate that refuses the whole cell before anything is queued is

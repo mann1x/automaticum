@@ -71,6 +71,7 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   export conversations --out D  training runs' captured model requests, metadata and loop spans [--batch B|GLOB ...] [--run R ...] [--heldout]
   export cell <batch> --out D   a batch's cell files: runs.jsonl, basis.txt, automaticum_result.json [--format jsonl|csv]
   export campaign <name> --out D  every batch of a campaign as a cell, and campaign.json [--format jsonl|csv]
+  export cohort <name> --out D  every cell of a cohort, cohort.json, and every run's numbers in runs.jsonl [--format jsonl|csv]
   export run <run>... --out D   a run's record and its stored artefacts [--kind K ...]
   doctor                        every gate, on every lane, now [--lane L] [--arm A] [--task T] [--all]
   compare <batch> [<batch> ...] the arms of some batches side by side: every statistic, no conclusion [--all]
@@ -80,11 +81,13 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   report census [<batch>...]    tool calls by tool and model: failed, error classes, parse paths [--where ...]
   campaign start <name>         run campaigns/<name>.toml: its batches in order, with their stop conditions [--dry-run]
   campaign ls                   the campaigns
+  cohort ls                     the cohorts: cells declared to differ in one variable (a campaign's [cohort], cell run --cohort)
+  cohort show <name>            a cohort's cells side by side, the basis facts they differ in, and whether it is confounded
   campaign show <name>          where a campaign is, and each batch compared: the campaign's report [--all]
   campaign pause|resume|stop <name>
                                 hold the campaign (its run in flight held, the endpoint freed), let it go on, or end it
   cell run --suite S[:subset] --arm A --out D --idempotency-key K
-                                one cell, blocking, safe to re-run: the result file, runs.jsonl, exit 0/10/20/30/70 [-n 1]
+                                one cell, blocking, safe to re-run: the result file, runs.jsonl, exit 0/10/20/30/70 [-n 1] [--cohort N --declared-variable V]
   basis show <batch> ...        every fact that must be equal for two arms to be compared, per arm [--arm A]
   basis diff <b[/arm]> <b[/arm]>  exactly the facts in which two bases differ
   reanalyse                     derive metrics and findings again from what is stored [--run R | --batch B] [--imported]
@@ -164,6 +167,9 @@ func main() {
 		"export conversations": exportConversations,
 		"export cell":          exportCell,
 		"export campaign":      exportCampaign,
+		"export cohort":        exportCohort,
+		"cohort ls":            cohortLs,
+		"cohort show":          cohortShow,
 		"export run":           exportRunArtefacts,
 		"report run":           reportRun,
 		"report cell":          reportCell,

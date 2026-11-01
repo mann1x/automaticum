@@ -124,6 +124,10 @@ type StartRequest struct {
 	// Priority orders the batch's runs against the others' (D125): higher
 	// first; equal priorities keep the queue's order.
 	Priority int `json:"priority,omitempty"`
+	// Cohort and DeclaredVariable make the batch a cell of a cohort that
+	// differs in that variable, a basis fact or an arm field (D120).
+	Cohort           string `json:"cohort,omitempty"`
+	DeclaredVariable string `json:"declared_variable,omitempty"`
 }
 
 // StartResponse says what was, or would be, queued.
@@ -355,6 +359,8 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/campaigns/{name}/abort", d.handleCampaignControl("abort"))
 	mux.HandleFunc("POST /v1/campaigns/{name}/retry", d.handleCampaignControl("retry"))
 	mux.HandleFunc("GET /v1/batches/{batch}/cell", d.handleCell)
+	mux.HandleFunc("GET /v1/cohorts", d.handleCohorts)
+	mux.HandleFunc("GET /v1/cohorts/{name}", d.handleCohort)
 	mux.HandleFunc("POST /v1/batches/{batch}/rescore", d.handleRescore)
 	mux.HandleFunc("GET /v1/batches/{batch}/rescore", d.handleRescore)
 	mux.HandleFunc("POST /v1/batches/{batch}/pause", d.handleBatchPause)
@@ -542,6 +548,12 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 	}
 	if req.Order == "" {
 		req.Order = "interleaved"
+	}
+	d.mu.Lock()
+	err := d.checkCohort(req.Cohort, req.DeclaredVariable)
+	d.mu.Unlock()
+	if err != nil {
+		return resp, http.StatusUnprocessableEntity, err
 	}
 	taskNames := req.Tasks
 	if req.Task != "" {
@@ -788,7 +800,7 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 			return resp, http.StatusInternalServerError, err
 		}
 	}
-	if req.CaptureRequests || req.Heldout || !req.Limits.Empty() || req.Priority != 0 {
+	if req.CaptureRequests || req.Heldout || !req.Limits.Empty() || req.Priority != 0 || req.Cohort != "" {
 		// Kept with the control state, so a restarted daemon still knows.
 		d.mu.Lock()
 		if req.CaptureRequests {
@@ -802,6 +814,9 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 		}
 		if req.Priority != 0 {
 			d.ctl.Priority[resp.Batch] = req.Priority
+		}
+		if req.Cohort != "" {
+			d.addToCohort(req.Cohort, req.DeclaredVariable, resp.Batch)
 		}
 		err := d.saveControl()
 		d.mu.Unlock()
