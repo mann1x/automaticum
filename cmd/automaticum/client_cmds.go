@@ -920,6 +920,7 @@ func detectCmd(ctx context.Context, args []string) error {
 	p, dial := addClient(fs)
 	self := fs.Bool("self-test", false, "run the library's controls")
 	size := fs.Int("runaway", 0, "the block size, in characters, that counts as a runaway (a file only; 0 reports none)")
+	sdkRel := fs.String("sdk", "", "a file only: the SDK release whose reasoning-loop rules to read with (4.100.258 on have the block cycle); empty reads with the 4.100.250 rules")
 	first := fs.Bool("first-match", false, "a file only: look at the first repeat alone, as the older reference code did (a blind spot; for reproducing older counts)")
 	rest := parse(fs, args)
 	if *self {
@@ -951,6 +952,9 @@ func detectCmd(ctx context.Context, args []string) error {
 	}
 	if text, err := os.ReadFile(rest[0]); err == nil {
 		opt := detect.Options{RunawayChars: *size, FirstMatch: *first}
+		if *sdkRel != "" {
+			opt.Rules = detect.RulesFor(*sdkRel)
+		}
 		hits := detect.Block(string(text), opt)
 		if *p.json {
 			if hits == nil {

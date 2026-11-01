@@ -14,7 +14,7 @@ import (
 
 // Version is the version of the library's definitions. It changes when any
 // detector's answer on some input changes, and findings are then recomputed.
-const Version = "2"
+const Version = "3"
 
 // The detectors, by name.
 const (
@@ -58,6 +58,12 @@ type Options struct {
 	// after. It is a blind spot, kept only so that older counts can be
 	// reproduced; the reference is every match (D76).
 	FirstMatch bool
+	// Rules is the reasoning-loop guard's rule set (RulesFor the run's SDK
+	// release); empty is Rules250. Given is what the model was given
+	// before the block (the task and the tool results), which the guard
+	// of Rules258 passes over when the repetition is already in it.
+	Rules string
+	Given string
 }
 
 // The two ways of matching; every finding says which one made it.
@@ -228,6 +234,13 @@ type Call struct {
 	Tool string
 	// Input is the call's arguments, as the model wrote them.
 	Input string
+	// What the call gave, for the call guard (callguard.go): its result,
+	// whether it failed, whether the tool refused it in advance, and the
+	// files it names.
+	Result  string
+	Failed  bool
+	Refused bool
+	Paths   []string
 }
 
 // The SDK's own thresholds for identical calls in a row
@@ -250,19 +263,25 @@ type RepeatedCall struct {
 }
 
 // RepeatedCalls finds every sequence of n or more calls in a row with the
-// same name and the same arguments; n of 0 means RepeatedCallsSoft.
+// same name and the same arguments; n of 0 means RepeatedCallsSoft. As in
+// the SDK's guard (from library version 3), a second identical call in the
+// same turn, a parallel sibling, is not counted (turn 0 is a turn not
+// known, as in an imported run's stream, where no call is a sibling).
 func RepeatedCalls(calls []Call, n int) []RepeatedCall {
 	if n <= 0 {
 		n = RepeatedCallsSoft
 	}
 	var out []RepeatedCall
 	for i := 0; i < len(calls); {
-		j := i + 1
+		j, count := i+1, 1
 		for j < len(calls) && calls[j].Tool == calls[i].Tool && calls[j].Input == calls[i].Input {
+			if calls[j].Turn == 0 || calls[j].Turn != calls[j-1].Turn {
+				count++
+			}
 			j++
 		}
-		if j-i >= n {
-			out = append(out, RepeatedCall{Tool: calls[i].Tool, Input: cut(calls[i].Input), Count: j - i, Turn: calls[i].Turn, Index: i})
+		if count >= n {
+			out = append(out, RepeatedCall{Tool: calls[i].Tool, Input: cut(calls[i].Input), Count: count, Turn: calls[i].Turn, Index: i})
 		}
 		i = j
 	}

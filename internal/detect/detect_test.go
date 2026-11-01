@@ -185,7 +185,7 @@ func TestRunaway(t *testing.T) {
 }
 
 func TestRepeatedCalls(t *testing.T) {
-	c := func(turn int, tool, in string) Call { return Call{turn, tool, in} }
+	c := func(turn int, tool, in string) Call { return Call{Turn: turn, Tool: tool, Input: in} }
 	calls := []Call{c(1, "a", "1"), c(2, "a", "1"), c(3, "b", "1"), c(4, "b", "1"), c(5, "b", "1"), c(6, "b", "1"), c(7, "b", "2"), c(8, "b", "1")}
 	// From the second identical call in a row, as the SDK warns.
 	got := RepeatedCalls(calls, 0)

@@ -234,7 +234,7 @@ const (
 // and every repeat of a tool call in the arguments of the calls that
 // repeat it. The cuts come back with the response each one is in, or why
 // none was found.
-func Spans(resps []Response, cuts []Cut) ([]Line, []Cut) {
+func Spans(resps []Response, cuts []Cut, opt detect.Options) ([]Line, []Cut) {
 	var out []Line
 	placed := make([]Cut, len(cuts))
 	used := map[string]bool{}
@@ -251,7 +251,7 @@ func Spans(resps []Response, cuts []Cut) ([]Line, []Cut) {
 			if !ok {
 				continue
 			}
-			for _, h := range detect.Block(text, detect.Options{}) {
+			for _, h := range detect.Block(text, opt) {
 				detail := h.Detector
 				if h.Kind != "" {
 					detail += ":" + h.Kind

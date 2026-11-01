@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.22, 2026-11-01.
+**Status:** draft 0.23, 2026-11-01.
 
 ## 1. The rule: no custom script
 
@@ -76,6 +76,34 @@ method is recorded.
   turn's start to the next, the last to the stream's end), with the
   longest silence in the stream `time.gap_max_ms` (a paused run's hold is
   inside its turns and gaps).
+
+  From analysis version 9 (2026-11-01): a failed tool call's class is
+  the head of the tool's own error sentence ("No replacement performed",
+  "Read before editing": its `<name> operation failed:` prefix off, cut at
+  the first ": ", ". " or line end, digits as N, at most 60 characters;
+  `tool_error` when it says nothing), counted as
+  `tool_calls.failed.by_class.<class>` and kept on each call for `report
+  census`. Per request: `rate.generation_tok_s.per_request` and
+  `rate.prompt_tok_s.per_request` (distributions), `thinking.tokens.per_block`
+  and `tokens.completion.text.per_request` (the SDK's split),
+  `thinking.budget_hits` (a request whose reasoning reached the budget
+  served), `context.reasoning_carried.requests` and
+  `context.reasoning_carried.chars` (earlier reasoning sent back in the
+  history), and `context.rereads` with `context.rereads.<cause>`
+  (`compaction`, `reload`, `unknown`: a request after the first with
+  nothing served from cache, on a server that reports its cache).
+  Compactions: `context.compaction.tokens_before`, `.tokens_after`,
+  `.duration_ms` and `context.compactions.by_cause.<cause>` from the SDK's
+  completed notice. Escalation: `escalation.ended`, `.failed`, `.changed`,
+  `escalation.expert_tokens.input|output`; offers are
+  `notices.status.struggle.offer`, calls `notices.status.escalation_started`.
+  Edits (D127): `edits`, `edits.failed`, `edits.files`, `edits.restores`,
+  `edits.without_check`. Turns: `turns.thinking_only`,
+  `turns.no_call_no_answer` (and its share), `turns.short_text` (visible
+  text under five characters and no call), `turns.ended_thinking_only`
+  (D128). Not built: churn (lines written against lines surviving), edits
+  to the same region, the change protocol's transactions (the SDK emits no
+  event for them), sub-agents (the arms run none), cost in money.
 
   **Decided by the owner (2026-10-27, D116):** from analysis version 7 a
   notice of the SDK is counted by what kind it is, never by its sentence:
@@ -278,10 +306,42 @@ detector always reads with the release's defaults, so that runs compare.
   runaway size of 10,000 characters given explicitly (6 short-unit, 1
   letter-run, 363 sentence and 529 runaway firings). Criterion 8 of 110 §1
   is met for the detectors the requirements define.
-- Not ported yet from the same source: the count of failed identical calls
-  (6, and 4 for a call the tool refused in advance) and the repeated pair
-  of call and result (3, and 6 for writing tools). Both need each call's
-  result.
+- **Library version 3 (2026-11-01).** The SDK's call guard is replayed
+  after the run (`internal/detect/callguard.go`, from class `Bu` of
+  @cerebriline/core 4.100.269): before each call it looks at what the same
+  call (name and arguments, keys sorted) gave before. `failed_identical_call`:
+  a call refused in advance ("No change: ", "Duplicated instead of
+  replaced: ") and sent again, warned on its 1st to 3rd repeat and
+  escalated on the 4th; a call that failed before, warned on and escalated
+  once it has failed 6 times. `repeated_call_result`: the same result
+  (revision numbers `#N` blanked) 2 times in a row, warned on at the next
+  call, escalated from 5 for a writing tool (`editor`, `apply_patch`,
+  `sed`, `awk`, `write_to_file`, `new_file`, `restore_file`). A success
+  clears the call's failures and, for a writing tool, those of every call
+  naming one of its files; a parallel sibling (the same call twice in one
+  turn) is neither looked at nor counted, here and in
+  `repeated_tool_call`; `run_commands` and the agents' and teams' status
+  tools are never looked at; a fork of the session starts every count
+  again. A call's outcome is read as the guard reads it: failed when its
+  result is an error, every item says `success: false`, or one says
+  `regressed`. **Decided by the owner (2026-11-01), D129:**
+  `edit_oscillation` is the guard's firings on writing tools and
+  `reread_loop` its same-result firings on every other tool, each a
+  finding of its own; near-duplicate rounds is not built until defined.
+- **The reasoning-loop guard of 4.100.258 on (library version 3).** From
+  release 4.100.258 to 4.100.269 the guard is one code
+  (`internal/detect/guards258.go`): line cycles over the last 126 lines;
+  a block of 7 to 400 lines (200 characters or more) repeating 3 times
+  (`block-cycle`); and each signal passed over when the repetition is
+  already as often in what the model was given (the request's messages
+  other than its own). A run is read with the rules of its SDK build
+  (`detect.RulesFor`: 4.100.258 on, else the 4.100.250 rules above);
+  the finding says which (`rules`). What the model was given is rebuilt
+  from the run: the task's prompt and every tool result before the block,
+  their strings as the guard collects them; text the SDK adds itself
+  (nudges, compaction summaries) is not in it. `automaticum detect <file>
+  --sdk <release>` reads a file with a build's rules. The repetition guard
+  is the same in every build.
 
 - `detect.Spans(text, hit)` (2026-10-25, for the export of 110 §3.5) says
   where a hit's repeats stand in its block, the first occurrence left out:
@@ -292,7 +352,7 @@ detector always reads with the release's defaults, so that runs compare.
   the window that repeats an earlier one. A runaway has no span. No
   detector's answer changes, so `Version` stays.
 
-Not built: near-duplicate rounds, edit oscillation, re-read loop.
+Not built: near-duplicate rounds (D129).
 
 ## 4. Other findings
 
@@ -327,6 +387,30 @@ Each has a severity, evidence (event ids, quoted text) and a count.
   environment to get past an obstacle (editing PATH, chmod, deleting a guard).
 - **Struggle signals:** the triggers of the escalation study, evaluated on
   every run, with recall and false-alarm rate per trigger across a set.
+  **Decided by the owner (2026-11-01), D126:** the triggers are listed
+  there.
+
+**As built (2026-11-01, analysis version 9):** `guard_trip` (note,
+version 1) lists every guard's trip with its turn, guard, phase, cause and
+what the model did next (`tool` with its name, `text`, `reasoning`,
+`end`), also counted as `guard_trips.next.<act>`. `guard_replay` (version
+1; warning when a trip is to review, else note) sets each guard against
+its rule replayed: `loop_detection` against the call guard and identical
+calls in a row, `reasoning_loop` `cut`/`aborted` against `reasoning_loop`
+(also read on the stream the guard cut off, which the SDK threw away),
+`reasoning_loop` `removed` against `reasoning_repetition`; per guard the
+turns where the rule holds and the guard did not trip (`missed`) and trips
+the replay does not confirm (`unconfirmed`, the review queue), also as
+`guard_replay.<guard>[.<phase>].missed|unconfirmed`. On a real run of SDK
+4.100.266 the replay matched every trip once read with that build's
+rules; read with the 4.100.250 rules, the block cycle the guard cut on
+was unconfirmed, which is how the change of rules was found.
+`control_markers` (warning, version 1): visible text holding a control
+token or channel marker (`<|name|>`, `<|name>`, `<name|>`, `<think>`) or
+opening a thinking tag it never closes (`hygiene.control_markers`,
+`hygiene.unclosed_thinking`). Not built: the rest of output hygiene and
+tool-call parse paths, which the SDK records on its messages and not in
+the event stream.
 - **Oracles and the agent's own end (as built 2026-11-01, analysis version
   8):** `secondary_oracle` (warning, version 1), one per secondary oracle
   that did not pass or could not run (060 §2), and

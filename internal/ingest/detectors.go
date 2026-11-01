@@ -19,6 +19,43 @@ type Firing struct {
 	Matching string `json:"matching"`
 	// First is the firing on the first of those blocks.
 	First detect.Hit `json:"first"`
+	// Rules is the reasoning-loop guard's rule set the finding was read
+	// with: the run's SDK release decides it (detect.RulesFor).
+	Rules string `json:"rules,omitempty"`
+}
+
+// DetectOptions are the detector options a run is read with: the
+// reasoning-loop rules of its SDK build, and its task's prompt as the
+// start of what the model was given.
+func DetectOptions(r *store.Run) detect.Options {
+	var task struct {
+		Task struct {
+			Prompt string `json:"prompt"`
+		} `json:"task"`
+	}
+	json.Unmarshal(r.Provenance, &task)
+	return detect.Options{Rules: detect.RulesFor(r.Harness), Given: task.Task.Prompt}
+}
+
+// BlockOptions are the options for one of a run's blocks.
+func BlockOptions(opt detect.Options, ev *Events, b Block) detect.Options {
+	return blockOptions(opt, ev.Given.String(), b)
+}
+
+// blockOptions are the options for one block: with the rules of 4.100.258
+// on, what the model was given before it (opt.Given is the task's prompt).
+func blockOptions(opt detect.Options, given string, b Block) detect.Options {
+	if opt.Rules != detect.Rules258 {
+		return opt
+	}
+	o := opt
+	if b.GivenTo > 0 && b.GivenTo <= len(given) {
+		if o.Given != "" {
+			o.Given += "\n"
+		}
+		o.Given += given[:b.GivenTo]
+	}
+	return o
 }
 
 // maxTurns is how many turns a finding lists.
@@ -28,6 +65,24 @@ const maxTurns = 50
 // the calls it made. One finding per detector and channel; a detector's
 // result is never merged with another's (070 §3).
 func detectorFindings(runID string, ev *Events, opt detect.Options) ([]store.Finding, []store.Metric) {
+	f, m, _ := detectorRun(runID, ev, opt)
+	return f, m
+}
+
+// FiredTurns are, by detector, the turns it fired in; the call guard's by
+// "loop_detection", the guard it replays.
+type FiredTurns map[string]map[int]bool
+
+func (ft FiredTurns) add(d string, turn int) {
+	if ft[d] == nil {
+		ft[d] = map[int]bool{}
+	}
+	ft[d][turn] = true
+}
+
+// detectorRun is detectorFindings, with the turns each detector fired in.
+func detectorRun(runID string, ev *Events, opt detect.Options) ([]store.Finding, []store.Metric, FiredTurns) {
+	turns := FiredTurns{}
 	var findings []store.Finding
 	var metrics []store.Metric
 	m := func(name string, v float64) {
@@ -37,19 +92,27 @@ func detectorFindings(runID string, ev *Events, opt detect.Options) ([]store.Fin
 	fired := map[key]*Firing{}
 	blocks := map[string]int{}
 	looped := 0
+	given := ev.Given.String()
 	for _, b := range ev.Blocks {
 		blocks[b.Kind]++
 		loop := false
-		for _, h := range detect.Block(b.Text, opt) {
+		for _, h := range detect.Block(b.Text, blockOptions(opt, given, b)) {
 			if !detect.Available(h.Detector) {
 				continue
 			}
 			f := fired[key{h.Detector, b.Kind}]
 			if f == nil {
 				f = &Firing{Channel: b.Kind, Matching: opt.Matching(), First: h}
+				if h.Detector == detect.ReasoningLoop {
+					f.Rules = detect.Rules250
+					if opt.Rules != "" {
+						f.Rules = opt.Rules
+					}
+				}
 				fired[key{h.Detector, b.Kind}] = f
 			}
 			f.Blocks++
+			turns.add(h.Detector, b.Turn)
 			if len(f.Turns) < maxTurns {
 				f.Turns = append(f.Turns, b.Turn)
 			}
@@ -88,6 +151,15 @@ func detectorFindings(runID string, ev *Events, opt detect.Options) ([]store.Fin
 				Severity: sev, Turn: turn, Count: f.Blocks, Evidence: raw})
 		}
 	}
+	// What the reasoning-loop guard cut off, for its replay only: it is
+	// not a block of the run and is counted nowhere else.
+	for _, b := range ev.CutBlocks {
+		for _, h := range detect.Block(b.Text, blockOptions(opt, given, b)) {
+			if h.Detector == detect.ReasoningLoop && detect.Available(h.Detector) {
+				turns.add(h.Detector, b.Turn)
+			}
+		}
+	}
 	// Blocks on which a looping detector fired: derived here for reading,
 	// with its components above; the OR alone is never what is stored.
 	m("detector.looped_blocks", float64(looped))
@@ -99,6 +171,13 @@ func detectorFindings(runID string, ev *Events, opt detect.Options) ([]store.Fin
 		seqs := detect.RepeatedCalls(ev.Calls, 0)
 		m("detector."+d, float64(len(seqs)))
 		for _, s := range seqs {
+			// The SDK warns from the second call of the sequence; a
+			// sibling in the turn of the call before is not one.
+			for k := s.Index + 1; k < len(ev.Calls) && ev.Calls[k].Tool == s.Tool && ev.Calls[k].Input == ev.Calls[s.Index].Input; k++ {
+				if ev.Calls[k].Turn == 0 || ev.Calls[k].Turn != ev.Calls[k-1].Turn {
+					turns.add("loop_detection", ev.Calls[k].Turn)
+				}
+			}
 			raw, _ := json.Marshal(s)
 			sev := "info" // where the SDK would warn the model
 			if s.Count >= detect.RepeatedCallsHard {
@@ -108,5 +187,54 @@ func detectorFindings(runID string, ev *Events, opt detect.Options) ([]store.Fin
 				Severity: sev, Turn: s.Turn, Count: s.Count, Evidence: raw})
 		}
 	}
-	return findings, metrics
+	// The SDK's call guard replayed (070 §3.2), and the two views of it
+	// that 070 §3 names (D129).
+	firings := detect.CallGuard(ev.Calls, ev.ForkCalls)
+	views := map[string][]detect.GuardFiring{}
+	for _, f := range firings {
+		turns.add("loop_detection", f.Turn)
+		if f.Rule == "same_result" {
+			views[detect.RepeatedCallResult] = append(views[detect.RepeatedCallResult], f)
+		} else {
+			views[detect.FailedIdenticalCall] = append(views[detect.FailedIdenticalCall], f)
+		}
+		switch {
+		case detect.WritingTools[f.Tool]:
+			views[detect.EditOscillation] = append(views[detect.EditOscillation], f)
+		case f.Rule == "same_result":
+			views[detect.RereadLoop] = append(views[detect.RereadLoop], f)
+		}
+	}
+	for _, d := range []string{detect.FailedIdenticalCall, detect.RepeatedCallResult, detect.EditOscillation, detect.RereadLoop} {
+		base := d
+		switch d {
+		case detect.EditOscillation, detect.RereadLoop:
+			base = detect.RepeatedCallResult
+		}
+		if !detect.Available(base) || (d == detect.EditOscillation && !detect.Available(detect.FailedIdenticalCall)) {
+			m("detector."+d+".available", 0)
+			continue
+		}
+		m("detector."+d+".available", 1)
+		fs := views[d]
+		m("detector."+d, float64(len(fs)))
+		if len(fs) == 0 {
+			continue
+		}
+		sev, hard := "info", 0 // where the SDK would warn the model
+		for _, f := range fs {
+			if f.Kind == "hard" {
+				hard++
+				sev = "warning" // where it would escalate
+			}
+		}
+		keep := fs
+		if len(keep) > maxTurns {
+			keep = keep[:maxTurns]
+		}
+		raw, _ := json.Marshal(map[string]any{"firings": keep, "hard": hard})
+		findings = append(findings, store.Finding{RunID: runID, Detector: d, DetectorVersion: detect.Version,
+			Severity: sev, Turn: fs[0].Turn, Count: len(fs), Evidence: raw})
+	}
+	return findings, metrics, turns
 }

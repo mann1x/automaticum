@@ -1519,3 +1519,31 @@
 |------|--------|---------|---------|--------|
 | 21:32 | Created internal/daemon/cohort.go | — | ~2411 |
 | 21:36 | D120 cohorts built: campaign [cohort], cell run --cohort/--declared-variable, run records carry cohort, cohort ls|show with confounded label, export cohort; 020/030/065/090, audit | internal/daemon/cohort.go, cmd/automaticum/cohort_cmds.go | tests pass | ~35000 |
+
+## Session: 2026-11-01 21:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-01 21:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-01 21:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-01 21:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:23 | Created internal/detect/callguard.go | — | ~1506 |
+| 22:30 | Created internal/detect/guards258.go | — | ~2304 |
+
+## Session: 2026-11-01 22:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:40 | 070 tranche 1: call guard, 4.100.258 loop rules, turn pathologies, hygiene, guard trips/replay, edits, compaction/escalation metrics (D126-D129, analysis 9) | internal/detect, internal/ingest, docs | tests pass | ~40000 |

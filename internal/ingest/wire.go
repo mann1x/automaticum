@@ -42,6 +42,33 @@ type Request struct {
 	// Visible is the answer's text as the user would see it: not its
 	// thinking, not its calls.
 	Visible string
+	// HistoryReasoning is how many earlier assistant messages the request
+	// sent back with their reasoning, and HistoryReasoningChars how many
+	// characters of it (070 §2: reasoning carried between turns).
+	HistoryReasoning, HistoryReasoningChars int
+}
+
+// historyReasoning counts the assistant messages of a request that carry
+// their reasoning, in whichever field the protocol names it.
+func (q *Request) historyReasoning(raw json.RawMessage) {
+	var msgs []struct {
+		Role             string `json:"role"`
+		Thinking         string `json:"thinking"`
+		ReasoningContent string `json:"reasoning_content"`
+		Reasoning        string `json:"reasoning"`
+	}
+	if json.Unmarshal(raw, &msgs) != nil {
+		return
+	}
+	for _, m := range msgs {
+		if m.Role != "assistant" {
+			continue
+		}
+		if n := len([]rune(m.Thinking + m.ReasoningContent + m.Reasoning)); n > 0 {
+			q.HistoryReasoning++
+			q.HistoryReasoningChars += n
+		}
+	}
 }
 
 type wireLine struct {
@@ -120,6 +147,7 @@ func request(l *wireLine) Request {
 		return q
 	}
 	json.Unmarshal(body["options"], &q.Options)
+	q.historyReasoning(body["messages"])
 	delete(body, "messages")
 	delete(body, "tools")
 	q.Body = body
@@ -214,6 +242,9 @@ func openAIRequest(q *Request, l *wireLine) {
 		json.Unmarshal(raw, &v)
 		q.Options["think_budget_tokens"] = v
 		delete(body, "reasoning_budget_tokens")
+	}
+	if q.Agent {
+		q.historyReasoning(body["messages"])
 	}
 	delete(body, "messages")
 	delete(body, "tools")

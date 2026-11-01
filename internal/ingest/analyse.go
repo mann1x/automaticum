@@ -51,13 +51,13 @@ const SessionFork = "session_fork"
 // analysis records it as the metric analysis.version: the basis (020 §5)
 // says from it which detectors a run was analysed with, whether or not
 // they found anything.
-const AnalysisVersion = 8
+const AnalysisVersion = 9
 
 // Versions are the versions of the detectors this analysis applies:
 // ingest's own and the detector library's.
 var Versions = map[string]string{
 	"library": detect.Version, WireArm: WireArmVersion, CapHit: "2", GPUResidency: "1", ModelIdentity: "1", ModelReloaded: "2", SessionFork: "1",
-	SecondaryOracle: "1", ClaimedNotPassed: "1",
+	SecondaryOracle: "1", ClaimedNotPassed: "1", GuardTrip: "1", ControlMarkers: "1", GuardReplay: "1",
 }
 
 // VersionsText is Versions as one line, in order.
@@ -91,7 +91,8 @@ func Detectors() []string {
 // other detector are kept as they are.
 var owned = map[string]bool{WireArm: true, CapHit: true, GPUResidency: true, ModelReloaded: true, ModelIdentity: true, detect.ShortUnitRepeat: true, detect.CharRun: true,
 	detect.SentenceRepeat: true, detect.Runaway: true, detect.RepeatedToolCall: true,
-	detect.ReasoningRepetition: true, detect.ReasoningLoop: true, SecondaryOracle: true, ClaimedNotPassed: true}
+	detect.ReasoningRepetition: true, detect.ReasoningLoop: true, detect.FailedIdenticalCall: true, detect.RepeatedCallResult: true,
+	detect.EditOscillation: true, detect.RereadLoop: true, SecondaryOracle: true, ClaimedNotPassed: true, GuardTrip: true, ControlMarkers: true, GuardReplay: true}
 
 // Run derives metrics, tool calls and findings from a run's stored material
 // and writes them, replacing what an earlier ingest wrote. It is safe to run
@@ -261,6 +262,15 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 		}
 	}
 	m("tool_calls.failed", float64(failed))
+	byClass := map[string]int{}
+	for _, c := range ev.ToolCalls {
+		if !c.OK {
+			byClass[c.ErrorClass]++
+		}
+	}
+	for _, k := range sortedKeys(byClass) {
+		m("tool_calls.failed.by_class."+k, float64(byClass[k]))
+	}
 	for _, t := range sortedKeys(byTool) {
 		m("tool_calls.by_tool."+t, float64(byTool[t]))
 	}
@@ -355,6 +365,29 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 			m("rate.prompt_tok_s", float64(prompt-cached)/(float64(promptNS)/1e9))
 		}
 		distribution(m, "tokens.completion.per_request", perRequest)
+		// Rates request by request, each over its own time (070 §2).
+		var genRates, promptRates []float64
+		for _, q := range agent {
+			if q.EvalNS > 0 && q.EvalTokens > 0 {
+				genRates = append(genRates, float64(q.EvalTokens)/(float64(q.EvalNS)/1e9))
+			}
+			if q.PromptNS > 0 && q.PromptTokens > q.CachedTokens {
+				promptRates = append(promptRates, float64(q.PromptTokens-q.CachedTokens)/(float64(q.PromptNS)/1e9))
+			}
+		}
+		distribution(m, "rate.generation_tok_s.per_request", genRates)
+		distribution(m, "rate.prompt_tok_s.per_request", promptRates)
+		rereads(m, agent, ev.CompactionTimes)
+		// Reasoning sent back in the history (070 §2).
+		carried, carriedChars := 0, []float64{}
+		for _, q := range agent {
+			if q.HistoryReasoning > 0 {
+				carried++
+			}
+			carriedChars = append(carriedChars, float64(q.HistoryReasoningChars))
+		}
+		m("context.reasoning_carried.requests", float64(carried))
+		distribution(m, "context.reasoning_carried.chars", carriedChars)
 		for _, reason := range sortedKeys(done) {
 			m("finish."+reason, float64(done[reason]))
 		}
@@ -371,6 +404,16 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 		}
 		if t := agent[0].ThinkBudgetTokens; t > 0 {
 			m("thinking.budget_tokens.served", float64(t))
+			// A turn whose reasoning used the whole budget served.
+			hits := 0
+			for _, tt := range ev.TurnTokens {
+				if tt.Reasoning >= t {
+					hits++
+				}
+			}
+			if len(ev.TurnTokens) > 0 {
+				m("thinking.budget_hits", float64(hits))
+			}
 		}
 		// The cap audit, every turn (070 §5).
 		hits := CapHits(agent)
@@ -390,6 +433,18 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 		m("tokens.completion.reasoning", float64(ev.ReasoningTokens))
 		m("tokens.completion.text", float64(ev.TextTokens))
 		m("tokens.completion.tool_input", float64(ev.ToolInputTokens))
+		// Per request, reasoning alone and text alone; a request with no
+		// reasoning has no thinking block and is left out of its tokens
+		// per block.
+		var reasoning, text []float64
+		for _, tt := range ev.TurnTokens {
+			if tt.Reasoning > 0 {
+				reasoning = append(reasoning, float64(tt.Reasoning))
+			}
+			text = append(text, float64(tt.Text))
+		}
+		distribution(m, "thinking.tokens.per_block", reasoning)
+		distribution(m, "tokens.completion.text.per_request", text)
 	}
 	for _, name := range sortedKeys(ev.Derived) {
 		m("derived."+name, ev.Derived[name])
@@ -411,6 +466,46 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 	distribution(m, "text.chars", text)
 	if ev.Iterations > 0 {
 		m("thinking.turns_without", float64(ev.Iterations-len(thought)))
+	}
+	turnFindings(r.ID, ev, m, res)
+	edits(m, ev)
+	// Compactions, with what each left (070 §2).
+	if len(ev.CompactionLog) > 0 {
+		var before, after, ms []float64
+		causes := map[string]int{}
+		for _, c := range ev.CompactionLog {
+			before, after, ms = append(before, c.TokensBefore), append(after, c.TokensAfter), append(ms, c.DurationMS)
+			cause := c.Cause
+			if cause == "" {
+				cause = c.Kind
+			}
+			causes[cause]++
+		}
+		distribution(m, "context.compaction.tokens_before", before)
+		distribution(m, "context.compaction.tokens_after", after)
+		distribution(m, "context.compaction.duration_ms", ms)
+		for _, k := range sortedKeys(causes) {
+			m("context.compactions.by_cause."+k, float64(causes[k]))
+		}
+	}
+	// Escalations: offers, calls, the expert's spend and what it changed.
+	if n := len(ev.Escalations); n > 0 {
+		var in, out, changed, failedEsc float64
+		for _, e := range ev.Escalations {
+			in += e.Usage.InputTokens
+			out += e.Usage.OutputTokens
+			if e.Changed {
+				changed++
+			}
+			if e.Failed {
+				failedEsc++
+			}
+		}
+		m("escalation.ended", float64(n))
+		m("escalation.failed", failedEsc)
+		m("escalation.changed", changed)
+		m("escalation.expert_tokens.input", in)
+		m("escalation.expert_tokens.output", out)
 	}
 
 	// Context management, as the SDK announced it.
@@ -560,9 +655,13 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 
 	// What the model wrote and called, through the detector library. The
 	// runaway size is the library's default until suites declare their own.
-	found, counts := detectorFindings(r.ID, ev, detect.Options{})
+	// The reasoning-loop guard is read with the rules of the run's SDK
+	// build, and from 4.100.258 on with what the model was given: the
+	// task's prompt and the tool results before each block.
+	found, counts, fired := detectorRun(r.ID, ev, DetectOptions(r))
 	res.Findings = append(res.Findings, found...)
 	res.Metrics = append(res.Metrics, counts...)
+	guardReplay(r.ID, ev, fired, m, res)
 	return res
 }
 

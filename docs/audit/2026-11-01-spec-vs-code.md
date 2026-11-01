@@ -634,20 +634,20 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §2 | time: wall, first token, in tools vs model | BUILT | time.wall_ms, first_token_ms, tools_ms, model_ms, agent_ms |
 | 070 §2 | time per turn; idle gaps | BUILT | `time.turn_median_ms`, `time.turn_max_ms`, `time.gap_max_ms` (analysis 8); TestTurnTimes |
 | 070 §2 | volume: requests, turns, tool calls by tool, failures by tool | BUILT | tool_calls.by_tool.*, tool_calls.failed.by_tool.* |
-| 070 §2 | tool failures by error class | NOT BUILT | no metric |
+| 070 §2 | tool failures by error class | BUILT | `tool_calls.failed.by_class.<class>`, `ingest.ErrorClass` (analysis 9); TestErrorClass |
 | 070 §2 | completion split reasoning/text/tool input; rates prompt/gen | BUILT | tokens.completion.reasoning/text/tool_input, rate.*_tok_s |
-| 070 §2 | rates per request and with concurrency | NOT BUILT | overall only |
+| 070 §2 | rates per request and with concurrency | PARTIAL | per request built (`rate.*.per_request`, analysis 9); the concurrency measured at is not recorded |
 | 070 §2 | length distributions (tokens) n,sum,p10,p50,p90,max | BUILT | tokens.completion.per_request.* |
 | 070 §2 | length distributions in characters, reasoning alone, text alone | PARTIAL | thinking.chars(.max), text.chars; not full p10..p90 sets for each |
 | 070 §2 | finish reasons histogram; empty completions | BUILT | finish.*, completions.empty |
 | 070 §2 | thinking: blocks, turns without | BUILT | thinking.blocks, thinking.turns_without |
-| 070 §2 | thinking: tokens per block median/p90, budget hits, thinking-only turns | NOT BUILT | no metric |
+| 070 §2 | thinking: tokens per block median/p90, budget hits, thinking-only turns | BUILT | `thinking.tokens.per_block`, `thinking.budget_hits`, `turns.thinking_only` (analysis 9); TestTurnMetrics |
 | 070 §2 | context: first, last, peak, share, cached share, compactions count | BUILT | context.* |
-| 070 §2 | compaction size before/after, duration, tokens, trigger; overflow errors; full re-reads with cause | NOT BUILT | no metric |
-| 070 §2 | reasoning carried between turns | NOT BUILT | no metric |
-| 070 §2 | edits (count, churn, reverts, edit-without-check) | NOT BUILT | no metric |
-| 070 §2 | change protocol (transactions, checks, rollbacks) | NOT BUILT | no metric |
-| 070 §2 | escalation | NOT BUILT | no metric |
+| 070 §2 | compaction size before/after, duration, tokens, trigger; overflow errors; full re-reads with cause | BUILT | `context.compaction.*`, `context.compactions.by_cause.*`, `context.rereads.<cause>`; overflow as `notices.status.overflow_recovery_compaction.*` (analysis 9) |
+| 070 §2 | reasoning carried between turns | BUILT | `context.reasoning_carried.requests/chars` from the wire's history (in characters; the server gives no tokens for it) |
+| 070 §2 | edits (count, churn, reverts, edit-without-check) | PARTIAL | `edits`, `.failed`, `.files`, `.restores`, `.without_check` (D127); churn and same-region not built |
+| 070 §2 | change protocol (transactions, checks, rollbacks) | NOT BUILT | the SDK emits no event for transactions in the stream |
+| 070 §2 | escalation | BUILT | `escalation.*` from the SDK's expert_reply/escalation_failed notices; offers and calls as notices (analysis 9) |
 | 070 §2 | sub-agents | NOT BUILT | no metric |
 | 070 §2 | cost in tokens and money | NOT BUILT | no money/cost metric |
 | 070 §2 | scripted user `user.*`, hidden where zero (D88) | BUILT | user.actions/denials/failed/forks/mode_switches; compare.go:234,266 |
@@ -662,9 +662,9 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §3 | short-unit repeat, char run, sentence repeat (§3.1) | BUILT | internal/detect/detect.go, reference_test.go |
 | 070 §3 | runaway (per-suite declared size) | PARTIAL | detector exists; no suite/task field declares a size and ingest always passes `detect.Options{}` (analyse.go:124,514), so it never fires at ingest |
 | 070 §3 | repeated tool call | BUILT | detectors.go:103-105 |
-| 070 §3 | near-duplicate rounds | NOT BUILT | spec itself says not built; carried forward, no milestone |
-| 070 §3 | edit oscillation | NOT BUILT | same |
-| 070 §3 | re-read loop | NOT BUILT | same |
+| 070 §3 | near-duplicate rounds | NOT BUILT | D129: held until the owner defines it |
+| 070 §3 | edit oscillation | BUILT | D129: `edit_oscillation`, the call guard on writing tools (library 3) |
+| 070 §3 | re-read loop | BUILT | D129: `reread_loop`, the call guard's same-result rule on other tools (library 3) |
 | 070 §3 | per-block flags kept separate + looped OR | BUILT | detector.<name>.<channel>, detector.looped_blocks |
 | 070 §3 | detectors evaluated per run and per cell | PARTIAL | per run yes; per cell only `loop_rate` + degeneration counts (cell.go:242) |
 | 070 §3.1 | controls per domain, self-test at start, in result file | BUILT | detect controls; daemon start; cell.go:279 |
@@ -678,13 +678,13 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §3.2 | every match + `matching` field + `--first-match` (D76) | BUILT | detectors.go:19,49; client_cmds.go:722 |
 | 070 §3.2 | imported runs: blocks rebuilt, detector findings only | BUILT | ingest events (legacy stream mapping) |
 | 070 §3.2 | criterion 8 / TestCohorts | BUILT | internal/detect/reference_test.go |
-| 070 §3.2 | failed identical calls (6/4) and repeated call+result pair (3/6) | NOT BUILT | spec: "Not ported yet" |
+| 070 §3.2 | failed identical calls (6/4) and repeated call+result pair (3/6) | BUILT | `detect.CallGuard` (callguard.go), `failed_identical_call`, `repeated_call_result`; TestCallGuard |
 | 070 §3.2 | `detect.Spans` | BUILT | internal/detect/spans.go |
-| 070 §4 | guards: what fired, when, what it cut, what the model did next | PARTIAL | counts/metrics and notices only; no per-trip finding with "what happened next" |
-| 070 §4 | guards that should have fired (rule replayed); false-positive review queue | NOT BUILT | none |
+| 070 §4 | guards: what fired, when, what it cut, what the model did next | BUILT | `guard_trip` finding, `guard_trips.next.<act>` (analysis 9) |
+| 070 §4 | guards that should have fired (rule replayed); false-positive review queue | PARTIAL | `guard_replay` finding (missed, unconfirmed); the 4.100.258 loop rules ported (guards258.go); a queue across runs not yet |
 | 070 §4 | tool-call findings (parse path, unreadable, truncated, unknown names, schema violations, arrays as strings, intent scratch, 5xx apart, no-call turns) | NOT BUILT | only failed-by-tool metrics |
-| 070 §4 | output hygiene findings (empty turns, control tokens, leaks, unclosed thinking, fences...) | NOT BUILT | only the batch canary checks empty/length/control tokens on first 5 requests (ingest/canary.go:10) |
-| 070 §4 | turn pathologies | NOT BUILT | none |
+| 070 §4 | output hygiene findings (empty turns, control tokens, leaks, unclosed thinking, fences...) | PARTIAL | `control_markers`, `turns.short_text`, `completions.empty`; fences, answers only in reasoning, stop inside reasoning not built |
+| 070 §4 | turn pathologies | PARTIAL | D128: thinking-only turns, ended thinking-only, premature done = `claimed_success_oracle_no`; refusal and report-after-early-end held |
 | 070 §4 | parameter drift | BUILT | wire_arm `drift`/`differs`/`sent_not_stated` (070 §4.1) |
 | 070 §4 | server side: finish per request, reloads, GPU residency | PARTIAL | finish.*, model_reloaded, gpu_residency; no truncations/slot reuse/evictions/admission/restarts/server-log errors |
 | 070 §4 | integrity: oracle tampering, workspace not pristine | PARTIAL | tampering = verdict (run TestTamperedOracle), pristine = gate `workspace`; files outside workspace, sandbox escapes, PATH/chmod changes not detected |

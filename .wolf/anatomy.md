@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-01T20:32:19.953Z
-> Files: 541 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-01T21:30:32.586Z
+> Files: 545 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../tmp/claude-0/-srv-dev-disk-by-label-opt-dev-automaticum/b3252f5f-43ab-4bf3-a0a5-9eef085a7e35/scratchpad/
 
@@ -114,6 +114,7 @@
 - `campaign_cmds.go` (~1452 tok)
 - `cell_cmds.go` — exitCode: names (~2996 tok)
 - `client_cmds.go` — client (123 fields) (~9231 tok)
+- `cohort_cmds.go` — `automaticum cohort ls|show`, `export cohort --out D [--format jsonl|csv]` (~1700 tok)
 - `compare_cmds.go` — Declares list (~3430 tok)
 - `config_cmds_test.go` — TestParseInterspersed, TestCellTasks, TestNoticeMatch (~593 tok)
 - `config_cmds.go` — place (125 fields) (~3192 tok)
@@ -124,7 +125,6 @@
 - `main.go` — Command automaticum is the command line of automaticum. (~2528 tok)
 - `report_cmds_test.go` — runs.csv columns, positional args, export formats (~600 tok)
 - `report_cmds.go` — report run|cell|batch|ab|regression|census; export cell|campaign|run (runs.csv, artefacts), with --dry-run (~3194 tok)
-- `cohort_cmds.go` — `automaticum cohort ls|show`, `export cohort --out D [--format jsonl|csv]` (~1700 tok)
 - `rescore_cmds.go` — `automaticum rescore <batch> [--out D] [--no-wait] [--dry-run]`: queue, poll, rewrite cell files keeping automaticum_result.<time>.json (~1100 tok)
 - `sdk_cmds.go` — SDKEnv (~1197 tok)
 - `show_cmds.go` — lane show, batch ls, cell show|ls, arm ls, endpoint show|models|probe, task verify (~4501 tok)
@@ -279,6 +279,8 @@
 - `canary.go` — CanaryRecord (36 fields); methods: Error, Is (~1597 tok)
 - `cell_numbers_test.go` — TestVerdictNumbers, TestStreaks (~700 tok)
 - `cell.go` — CellResult (97 fields) (~4032 tok)
+- `cohort_test.go` — TestCohort (~1000 tok)
+- `cohort.go` — D120 cohorts: Cohort, cohortFacts (basis fact or arm field → facts), checkCohort, addToCohort, cohortOf, cohortView (cells, differs, confounded), armValue (~2600 tok)
 - `compare.go` — CompareView (97 fields) (~4257 tok)
 - `control.go` — control (94 fields) (~5756 tok)
 - `daemon_test.go` — memState (121 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~17224 tok)
@@ -298,8 +300,6 @@
 - `report_test.go` — TestReportRegressionAndCensus, TestEndpointCapacity, TestHeartbeat, TestAutoQuarantine, TestBusyCommand, TestLaneLabels, TestPriorityAndReservation (~3000 tok)
 - `report.go` — GET /v1/report/census: tool calls by tool and model, failures by error class, parse paths (~842 tok)
 - `rescore_test.go` — TestRescore (~1800 tok)
-- `cohort.go` — D120 cohorts: Cohort, cohortFacts (basis fact or arm field → facts), checkCohort, addToCohort, cohortOf, cohortView (cells, differs, confounded), armValue (~2600 tok)
-- `cohort_test.go` — TestCohort (~1000 tok)
 - `rescore.go` — D121 rescore: handleRescore (POST/GET /v1/batches/{batch}/rescore), startRescores (per-lane slot, takes turns with queued runs), rescoreOne (untar workspace_after/collected, d.Oracle, rescore/rescore_oracle blobs), latestRescore (~3500 tok)
 - `wait_test.go` — TestWait: hold, run started, batch next/done, lane idle, over, 404/400 (~1200 tok)
 - `wait_test.go` — Struct: answer (~1023 tok)
@@ -308,12 +308,18 @@
 
 ## internal/detect/
 
+- `callguard.go` — Struct: GuardFiring (~1506 tok)
 - `controls.go` — Control (39 fields) (~2450 tok)
 - `detect_test.go` — TestSelfTest, TestShortUnit, TestShortUnitAgainstPattern, TestCharRun + 5 more (~2754 tok)
 - `detect.go` — is the detector library (spec 070 §3): degeneration and (~2699 tok)
 - `guards.go` (~1829 tok)
+- `guards258.go` — Struct: given (~2304 tok)
 - `reference_test.go` — expected (52 fields) (~2243 tok)
 - `spans_test.go` — TestSpansShortUnit, TestSpansSentenceLaterOnly, TestCycleStart (~398 tok)
+- `callguard.go` — CallGuard: the SDK's call guard replayed (refused 4, failed 6, same result 3/6), Refusal, ResultSignature, WritingTools; edit_oscillation/reread_loop (D129) (~1600 tok)
+- `callguard_test.go` — TestCallGuard (~900 tok)
+- `guards258.go` — Rules250/Rules258, RulesFor(release), reasoningLoop258: 126-line cycle window, block-cycle, given-text discounts (~2800 tok)
+- `guards258_test.go` — TestReasoningLoop258, TestRulesFor (~900 tok)
 - `spans.go` — Span (51 fields) (~1138 tok)
 
 ## internal/docker/
@@ -348,6 +354,8 @@
 - `ingest_test.go` — TestNoticeLog, TestReadEvents, TestReadWire, TestCompareWireClean, TestCompareWire (~10465 tok)
 - `openai_test.go` — TestOpenAIWire, TestOpenAIWireFromStub, TestOpenAIThinkingBudget (~1625 tok)
 - `oracle_test.go` — TestPartialScore, TestOracleFindings (~800 tok)
+- `turns.go` — turnFindings (thinking-only, no call no answer, short text), control_markers, guard_trip + guard_trips.next, rereads by cause, edits/edits.without_check (D127), guardReplay (missed/unconfirmed) (~3500 tok)
+- `turns_test.go` — TestTurnMetrics, TestEditsWithoutCheck, TestErrorClass, TestRereadsAndCarried (~1500 tok)
 - `oracle.go` — PartialScore (checker JSON, pytest summary); secondary_oracle and claimed_success_oracle_no findings (~1226 tok)
 - `render_test.go` — TestRenderer (~587 tok)
 - `render.go` — Renderer: the runner event lines as a transcript (turns, blocks, tool calls, notices, end) (~986 tok)

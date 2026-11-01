@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"sort"
 	"strings"
 	"time"
 
@@ -22,6 +23,8 @@ type Block struct {
 	Turn int
 	Kind string // "reasoning" or "text"
 	Text string
+	// GivenTo is how much of Events.Given came before the block.
+	GivenTo int
 }
 
 // Events is what one pass over a run's event stream gives.
@@ -80,6 +83,86 @@ type Events struct {
 	Forks             []Fork
 	ModeSwitches      int
 	AgentModeSwitches int
+	// TurnTokens are the SDK's split of each usage report, in order: one
+	// per request the agent's loop made (070 §2).
+	TurnTokens []TurnTokens
+	// Turns says, by turn, what the model gave in it.
+	Turns map[int]*TurnActs
+	// CompactionTimes are when the compactions completed.
+	CompactionTimes []time.Time
+	// Trips are the guards' trips in order, each with what the model did
+	// next (070 §4).
+	Trips []Trip
+	// CompactionLog holds each completed compaction's numbers.
+	CompactionLog []Compaction
+	// Escalations are the escalations the SDK ended, with their spend.
+	Escalations []Escalation
+	// ForkCalls is, for each fork, how many calls came before it.
+	ForkCalls []int
+	// Given is what the tools gave the model, in order: the strings of each
+	// result, as the SDK's loop guard collects them from the request's
+	// messages (D75). A block's GivenTo says how much came before it.
+	Given strings.Builder
+	// CutBlocks are what the reasoning-loop guard cut off: the stream up
+	// to its trip, which the SDK threw away and asked for again. They are
+	// not part of Blocks; the guard's replay reads them (070 §4).
+	CutBlocks []Block
+}
+
+// Compaction is one compaction the SDK completed: what started it and the
+// prompt it left.
+type Compaction struct {
+	Turn         int     `json:"turn"`
+	Kind         string  `json:"kind"`
+	Cause        string  `json:"cause,omitempty"`
+	TokensBefore float64 `json:"tokens_before"`
+	TokensAfter  float64 `json:"tokens_after"`
+	DurationMS   float64 `json:"duration_ms"`
+}
+
+// EscalationUsage is an escalation's spend, as the SDK states it.
+type EscalationUsage struct {
+	InputTokens    float64 `json:"inputTokens"`
+	OutputTokens   float64 `json:"outputTokens"`
+	GenerateTokens float64 `json:"generateTokens"`
+	WallMS         float64 `json:"wallMs"`
+	Requests       float64 `json:"requests"`
+}
+
+// Escalation is one escalation that ended: failed or not, whether the
+// expert changed anything, and its spend.
+type Escalation struct {
+	Turn    int
+	Failed  bool
+	Changed bool
+	Usage   EscalationUsage
+}
+
+// TurnTokens is one usage report's split of the completion.
+type TurnTokens struct {
+	Turn                       int
+	Reasoning, Text, ToolInput int
+}
+
+// TurnActs is what one turn held: reasoning, visible text (its characters
+// without the space around it) and tool calls.
+type TurnActs struct {
+	Reasoning bool
+	TextChars int
+	Calls     int
+}
+
+// Trip is one guard's trip and the first thing the model did after it: a
+// call ("tool"), a reply ("text"), its reasoning ("reasoning") or the end
+// of the run ("end"); empty when nothing came.
+type Trip struct {
+	T     time.Time `json:"t"`
+	Turn  int       `json:"turn"`
+	Guard string    `json:"guard"`
+	Phase string    `json:"phase,omitempty"`
+	Cause string    `json:"cause,omitempty"`
+	Next  string    `json:"next,omitempty"`
+	Tool  string    `json:"tool,omitempty"`
 }
 
 // Fork is one session fork of a run (D86): when it started, the
@@ -148,6 +231,15 @@ type agentEvent struct {
 	Metadata    struct {
 		Kind  string `json:"kind"`
 		Phase string `json:"phase"`
+		// A compaction's numbers (070 §2), as the SDK states them at
+		// "completed", and what started it.
+		Cause        string   `json:"cause"`
+		TokensBefore *float64 `json:"tokensBefore"`
+		TokensAfter  *float64 `json:"tokensAfter"`
+		DurationMS   *float64 `json:"durationMs"`
+		// An escalation's spend and whether the expert changed anything.
+		Usage   *EscalationUsage `json:"usage"`
+		Changed *bool            `json:"changed"`
 	} `json:"metadata"`
 	Timings struct {
 		FirstTokenMS float64 `json:"firstTokenMs"`
@@ -264,6 +356,7 @@ func (ev *Events) line(line []byte, sc *scan) {
 			ev.UserFailed++
 		case "fork":
 			ev.Forks = append(ev.Forks, Fork{T: l.T, From: l.From, To: l.To, Checkpoint: l.Checkpoint, Workspace: l.Workspace, Restarted: l.Restarted})
+			ev.ForkCalls = append(ev.ForkCalls, len(ev.Calls))
 		case "guard_trip":
 			key := l.Guard
 			if l.Phase != "" {
@@ -272,6 +365,19 @@ func (ev *Events) line(line []byte, sc *scan) {
 			ev.GuardTrips[key]++
 			if l.Cause != "" {
 				ev.GuardCauses[key+"."+l.Cause]++
+			}
+			ev.Trips = append(ev.Trips, Trip{T: l.T, Turn: sc.turn, Guard: l.Guard, Phase: l.Phase, Cause: l.Cause})
+			if l.Guard == "reasoning_loop" && (l.Phase == "cut" || l.Phase == "aborted") {
+				// The stream so far was thrown away: keep it apart, and
+				// start the block again with what is asked for next.
+				kind := "reasoning"
+				if l.Cause == "answer_loop" {
+					kind = "text"
+				}
+				if buf := sc.partial[kind]; buf != nil && buf.Len() > 0 {
+					ev.CutBlocks = append(ev.CutBlocks, Block{Turn: sc.turn, Kind: kind, Text: buf.String(), GivenTo: ev.Given.Len()})
+					buf.Reset()
+				}
 			}
 		case "guard_stop":
 			ev.GuardStop = l.Guard
@@ -360,12 +466,23 @@ func (ev *Events) line(line []byte, sc *scan) {
 				}
 				buf.Reset()
 			}
-			ev.Blocks = append(ev.Blocks, Block{Turn: sc.turn, Kind: a.ContentType, Text: text})
+			ev.Blocks = append(ev.Blocks, Block{Turn: sc.turn, Kind: a.ContentType, Text: text, GivenTo: ev.Given.Len()})
+			t := ev.turn(sc.turn)
+			if a.ContentType == "reasoning" {
+				t.Reasoning = true
+			} else {
+				t.TextChars += len([]rune(strings.TrimSpace(text)))
+			}
+			if strings.TrimSpace(text) != "" {
+				ev.next(a.ContentType, "")
+			}
 		case "tool":
 			call := store.ToolCall{Turn: sc.turn, Seq: len(ev.ToolCalls), Tool: a.ToolName, OK: true}
 			if failed(&a) {
-				call.OK, call.ErrorClass = false, "tool_error"
+				call.OK, call.ErrorClass = false, ErrorClass(&a)
 			}
+			ev.turn(sc.turn).Calls++
+			ev.next("tool", a.ToolName)
 			switch t0, ok := sc.started[a.ToolCallID]; {
 			case a.DurationMS != nil:
 				call.DurationMS = int64(*a.DurationMS)
@@ -379,7 +496,10 @@ func (ev *Events) line(line []byte, sc *scan) {
 			delete(sc.started, a.ToolCallID)
 			delete(sc.inputs, a.ToolCallID)
 			ev.ToolCalls = append(ev.ToolCalls, call)
-			ev.Calls = append(ev.Calls, detect.Call{Turn: sc.turn, Tool: a.ToolName, Input: input})
+			givenStrings(&ev.Given, a.Output)
+			loopFailed := guardFailed(&a)
+			ev.Calls = append(ev.Calls, detect.Call{Turn: sc.turn, Tool: a.ToolName, Input: input, Result: compact(a.Output),
+				Failed: loopFailed, Refused: loopFailed && detect.Refusal(resultErrors(a.Output)), Paths: callPaths(input)})
 		}
 	case "usage":
 		if ev.FirstTokenMS == 0 {
@@ -390,6 +510,7 @@ func (ev *Events) line(line []byte, sc *scan) {
 			ev.TextTokens += s.TextTokens
 			ev.ToolInputTokens += s.ToolInputTokens
 			ev.SplitMethod = s.Method
+			ev.TurnTokens = append(ev.TurnTokens, TurnTokens{Turn: sc.turn, Reasoning: s.ReasoningTokens, Text: s.TextTokens, ToolInput: s.ToolInputTokens})
 		}
 	case "notice":
 		key := NoticeKey(a.NoticeType, a.Metadata.Kind, a.Metadata.Phase, a.Reason)
@@ -401,16 +522,286 @@ func (ev *Events) line(line []byte, sc *scan) {
 		case k == "auto_compaction" || k == "manual_compaction" || k == "overflow_recovery_compaction":
 			if a.Metadata.Phase == "completed" {
 				ev.Compactions++
+				ev.CompactionTimes = append(ev.CompactionTimes, l.T)
+				md := a.Metadata
+				c := Compaction{Turn: sc.turn, Kind: k, Cause: md.Cause}
+				for _, f := range []struct {
+					to   *float64
+					from *float64
+				}{{&c.TokensBefore, md.TokensBefore}, {&c.TokensAfter, md.TokensAfter}, {&c.DurationMS, md.DurationMS}} {
+					if f.from != nil {
+						*f.to = *f.from
+					}
+				}
+				ev.CompactionLog = append(ev.CompactionLog, c)
 			}
 		case k == "" && strings.Contains(a.Reason, "compact"):
 			ev.Compactions++
+			ev.CompactionTimes = append(ev.CompactionTimes, l.T)
+		}
+		// An escalation's end: an expert's reply, or a failure (the
+		// SDK's escalation_failed); escalation_ended closes either.
+		switch md := a.Metadata; md.Kind {
+		case "expert_reply", "escalation_failed":
+			e := Escalation{Turn: sc.turn, Failed: md.Kind == "escalation_failed"}
+			if md.Changed != nil {
+				e.Changed = *md.Changed
+			}
+			if md.Usage != nil {
+				e.Usage = *md.Usage
+			}
+			ev.Escalations = append(ev.Escalations, e)
 		}
 		if ev.KeepNotices {
 			ev.NoticeLog = append(ev.NoticeLog, Notice{T: l.T, Turn: sc.turn, Key: key, Message: a.Message})
 		}
 	case "done":
 		ev.AgentEnd = a.Reason
+		ev.next("end", "")
 	}
+}
+
+// turn is what a turn held so far.
+func (ev *Events) turn(n int) *TurnActs {
+	if ev.Turns == nil {
+		ev.Turns = map[int]*TurnActs{}
+	}
+	t := ev.Turns[n]
+	if t == nil {
+		t = &TurnActs{}
+		ev.Turns[n] = t
+	}
+	return t
+}
+
+// next gives every trip that has no next act yet this one.
+func (ev *Events) next(kind, tool string) {
+	for i := len(ev.Trips) - 1; i >= 0 && ev.Trips[i].Next == ""; i-- {
+		ev.Trips[i].Next, ev.Trips[i].Tool = kind, tool
+	}
+}
+
+// ErrorClass is the class of a failed tool call: the head of the tool's
+// own error sentence (the SDK's tools say what went wrong in fixed words,
+// "No replacement performed", "Read before editing"), with the tool's
+// "<name> operation failed:" prefix taken off, cut at the first ": ",
+// ". " or line end, digits written as N and at most 60 characters.
+// A failure that says nothing is "tool_error" (070 §2).
+func ErrorClass(a *agentEvent) string {
+	msg := errorText(a.Error)
+	if msg == "" {
+		msg = resultError(a.Output)
+	}
+	msg = strings.TrimSpace(msg)
+	// An error that is itself a JSON document with an error in it.
+	if strings.HasPrefix(msg, "{") {
+		if inner := errorText(json.RawMessage(msg)); inner != "" {
+			msg = strings.TrimSpace(inner)
+		}
+	}
+	if i := strings.Index(msg, " operation failed: "); i >= 0 && i < 40 {
+		msg = msg[i+len(" operation failed: "):]
+	}
+	for _, sep := range []string{": ", ". ", "\n"} {
+		if i := strings.Index(msg, sep); i >= 0 {
+			msg = msg[:i]
+		}
+	}
+	msg = strings.TrimSuffix(strings.TrimSuffix(msg, "."), ":")
+	var b strings.Builder
+	for _, r := range msg {
+		switch {
+		case r >= '0' && r <= '9':
+			if !strings.HasSuffix(b.String(), "N") {
+				b.WriteRune('N')
+			}
+		case r == '\n' || r == '\t':
+			b.WriteRune(' ')
+		default:
+			b.WriteRune(r)
+		}
+	}
+	out := strings.TrimSpace(b.String())
+	if r := []rune(out); len(r) > 60 {
+		out = strings.TrimSpace(string(r[:60]))
+	}
+	if out == "" {
+		return "tool_error"
+	}
+	return out
+}
+
+// errorText reads an error given as a string or as an object with a
+// message.
+func errorText(raw json.RawMessage) string {
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 || bytes.Equal(raw, []byte("null")) {
+		return ""
+	}
+	var s string
+	if json.Unmarshal(raw, &s) == nil {
+		return s
+	}
+	var o struct {
+		Message string `json:"message"`
+		Error   string `json:"error"`
+	}
+	if json.Unmarshal(raw, &o) == nil {
+		if o.Message != "" {
+			return o.Message
+		}
+		return o.Error
+	}
+	return ""
+}
+
+// resultError is the error a tool's result states, in its one result, the
+// first failed one of a list, or a JSON document inside a string.
+func resultError(raw json.RawMessage) string {
+	type result struct {
+		Error json.RawMessage `json:"error"`
+	}
+	raw = bytes.TrimSpace(raw)
+	switch {
+	case len(raw) == 0:
+		return ""
+	case raw[0] == '[':
+		var list []result
+		json.Unmarshal(raw, &list)
+		for _, r := range list {
+			if e := errorText(r.Error); e != "" {
+				return e
+			}
+		}
+	case raw[0] == '{':
+		var one result
+		json.Unmarshal(raw, &one)
+		return errorText(one.Error)
+	case raw[0] == '"':
+		var s string
+		if json.Unmarshal(raw, &s) == nil && strings.HasPrefix(s, "{") {
+			return resultError(json.RawMessage(s))
+		}
+	}
+	return ""
+}
+
+// givenStrings adds a tool result's strings to what the model was given,
+// as the SDK's guard reads a tool result: every non-empty string in it,
+// six levels deep, each on its own line; a result that is not JSON is its
+// own text.
+func givenStrings(b *strings.Builder, raw json.RawMessage) {
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 || bytes.Equal(raw, []byte("null")) {
+		return
+	}
+	var v any
+	if json.Unmarshal(raw, &v) != nil {
+		v = string(raw)
+	}
+	var walk func(x any, depth int)
+	walk = func(x any, depth int) {
+		switch t := x.(type) {
+		case string:
+			if t != "" {
+				if b.Len() > 0 {
+					b.WriteByte('\n')
+				}
+				b.WriteString(t)
+			}
+		case []any:
+			if depth < 6 {
+				for _, e := range t {
+					walk(e, depth+1)
+				}
+			}
+		case map[string]any:
+			if depth < 6 {
+				keys := make([]string, 0, len(t))
+				for k := range t {
+					keys = append(keys, k)
+				}
+				sort.Strings(keys)
+				for _, k := range keys {
+					walk(t[k], depth+1)
+				}
+			}
+		}
+	}
+	walk(v, 0)
+}
+
+// guardFailed is a call's outcome as the SDK's loop guard reads it: failed
+// when the result is an error, when every item of it says success false,
+// or when one says it regressed.
+func guardFailed(a *agentEvent) bool {
+	if errorText(a.Error) != "" {
+		return true
+	}
+	type item struct {
+		Success   *bool `json:"success"`
+		Regressed bool  `json:"regressed"`
+	}
+	var items []item
+	out := bytes.TrimSpace(a.Output)
+	if len(out) > 0 && out[0] == '"' {
+		var s string
+		if json.Unmarshal(out, &s) == nil {
+			out = []byte(strings.TrimSpace(s))
+		}
+	}
+	switch {
+	case len(out) == 0:
+		return false
+	case out[0] == '[':
+		json.Unmarshal(out, &items)
+	case out[0] == '{':
+		var one item
+		if json.Unmarshal(out, &one) == nil {
+			items = []item{one}
+		}
+	}
+	if len(items) == 0 {
+		return false
+	}
+	all := true
+	for _, it := range items {
+		if it.Regressed {
+			return true
+		}
+		all = all && it.Success != nil && !*it.Success
+	}
+	return all
+}
+
+// resultErrors is every error a tool's result states, joined.
+func resultErrors(raw json.RawMessage) string {
+	type result struct {
+		Error json.RawMessage `json:"error"`
+	}
+	raw = bytes.TrimSpace(raw)
+	if len(raw) > 0 && raw[0] == '"' {
+		var s string
+		if json.Unmarshal(raw, &s) == nil {
+			raw = []byte(strings.TrimSpace(s))
+		}
+	}
+	var list []result
+	switch {
+	case len(raw) == 0:
+	case raw[0] == '[':
+		json.Unmarshal(raw, &list)
+	case raw[0] == '{':
+		var one result
+		json.Unmarshal(raw, &one)
+		list = []result{one}
+	}
+	var b strings.Builder
+	for _, r := range list {
+		b.WriteString(errorText(r.Error))
+		b.WriteByte('\n')
+	}
+	return b.String()
 }
 
 // compact gives a call's arguments one spelling, so that the same arguments

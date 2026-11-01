@@ -79,3 +79,5 @@ The full list is in docs/specs/decisions.md; keep this log in step with it.
 - 2026-10-29 D118: arms and models live in `<config>/arms` and `<config>/models`; the repo ships examples only.
 - 2026-11-01 D119 (was O30): a drain (lane, quarantine, daemon, SIGTERM) releases a held run so it finishes with a verdict; the lane then stays drained.
 - 2026-11-01 D120-D125 (O31, O33-O36, O38, the recommendations): cohort in the campaign file `[cohort] name/variable` + `cell run --cohort`; rescore queued on the cell lane, records beside runs, old result file kept; `requires` labels on task and arm; lane `busy_command`; auto quarantine after 10 infrastructure ABORTs in a row (`quarantine_after`, 0 off); batch `--priority`, `lane reserve`. Not adopted: requeue (O32), driver watchdog (O37), level-based statistics (O39).
+
+- 2026-11-01: D126 struggle signals = SDK signals + owner study (2nd compaction) + SDK struggle detector replayed; D127 edit-without-check = run_commands after the edit; D128 turn pathologies: build what data defines; D129 edit oscillation & re-read loop = ported SDK call guard on writing/other tools, near-duplicate rounds held.

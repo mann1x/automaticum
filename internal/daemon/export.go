@@ -13,6 +13,7 @@ import (
 
 	"github.com/mann1x/automaticum/internal/detect"
 	"github.com/mann1x/automaticum/internal/export"
+	"github.com/mann1x/automaticum/internal/ingest"
 	"github.com/mann1x/automaticum/internal/store"
 	"github.com/mann1x/automaticum/internal/task"
 )
@@ -132,7 +133,12 @@ func (d *Daemon) handleExport(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	spans, cuts := export.Spans(resps, cuts)
+	// The run's reasoning-loop rules; what the model was given is not
+	// read from the capture, so the guard of 4.100.258 on is read without
+	// its excuse for repetition quoted from the tools.
+	opt := ingest.DetectOptions(rec)
+	opt.Given = ""
+	spans, cuts := export.Spans(resps, cuts, opt)
 	if cuts == nil {
 		cuts = []export.Cut{}
 	}

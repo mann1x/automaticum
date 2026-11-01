@@ -128,8 +128,8 @@ func SelfTest() (results []ControlResult, ok bool) {
 		results = append(results, res)
 	}
 	// The repeated-call detector's controls.
-	same := []Call{{1, "read_files", `{"path":"a"}`}, {2, "read_files", `{"path":"a"}`}, {3, "read_files", `{"path":"a"}`}}
-	varied := []Call{{1, "read_files", `{"path":"a"}`}, {2, "read_files", `{"path":"b"}`}, {3, "editor", `{"path":"a"}`}, {4, "read_files", `{"path":"a"}`}}
+	same := []Call{{Turn: 1, Tool: "read_files", Input: `{"path":"a"}`}, {Turn: 2, Tool: "read_files", Input: `{"path":"a"}`}, {Turn: 3, Tool: "read_files", Input: `{"path":"a"}`}}
+	varied := []Call{{Turn: 1, Tool: "read_files", Input: `{"path":"a"}`}, {Turn: 2, Tool: "read_files", Input: `{"path":"b"}`}, {Turn: 3, Tool: "editor", Input: `{"path":"a"}`}, {Turn: 4, Tool: "read_files", Input: `{"path":"a"}`}}
 	for _, c := range []struct {
 		name  string
 		calls []Call
@@ -146,12 +146,52 @@ func SelfTest() (results []ControlResult, ok bool) {
 		ok = ok && res.OK
 		results = append(results, res)
 	}
+	// The call guard's controls (callguard.go).
+	bad := func(turn int) Call {
+		return Call{Turn: turn, Tool: "editor", Input: `{"path":"a"}`, Result: `{"error":"x"}`, Failed: true, Paths: []string{"a"}}
+	}
+	var failing, reread, healthy []Call
+	for t := 1; t <= 8; t++ {
+		failing = append(failing, bad(t))
+		healthy = append(healthy, Call{Turn: t, Tool: "read_files", Input: `{"path":"f` + string(rune('0'+t)) + `"}`, Result: "ok"})
+	}
+	for t := 1; t <= 4; t++ {
+		reread = append(reread, Call{Turn: t, Tool: "read_files", Input: `{"path":"a"}`, Result: "same #12"})
+	}
+	for _, c := range []struct {
+		name  string
+		calls []Call
+		want  []string
+	}{{"a failing edit sent again and again", failing, []string{FailedIdenticalCall}},
+		{"the same read giving the same result", reread, []string{RepeatedCallResult}},
+		{"reads of different files", healthy, nil}} {
+		got := map[string]bool{}
+		for _, f := range CallGuard(c.calls, nil) {
+			if f.Rule == "same_result" {
+				got[RepeatedCallResult] = true
+			} else {
+				got[FailedIdenticalCall] = true
+			}
+		}
+		g, w := []string{}, []string{}
+		for _, d := range []string{FailedIdenticalCall, RepeatedCallResult} {
+			if got[d] {
+				g = append(g, d)
+			}
+		}
+		if c.want != nil {
+			w = c.want
+		}
+		res := ControlResult{Control: c.name, Domain: "tool calls", Want: w, Got: g, OK: strings.Join(g, ",") == strings.Join(w, ",")}
+		ok = ok && res.OK
+		results = append(results, res)
+	}
 	return results, ok
 }
 
 var available = sync.OnceValue(func() map[string]bool {
 	out := map[string]bool{}
-	for _, d := range append(append([]string{}, Text...), RepeatedToolCall) {
+	for _, d := range append(append([]string{}, Text...), RepeatedToolCall, FailedIdenticalCall, RepeatedCallResult) {
 		out[d] = true
 	}
 	results, _ := SelfTest()

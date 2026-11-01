@@ -1128,6 +1128,68 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-01T21:36:45+01:00"
+    },
+    {
+      "id": "bug-066",
+      "timestamp": "2026-11-01T22:40:15",
+      "error_message": "ErrorClass split file names at '.' and kept a JSON error whole",
+      "file": "internal/ingest/events.go",
+      "root_cause": "the class was cut at the first '.', which is inside file names; a JSON-encoded error string was never unwrapped",
+      "fix": "cut at ': ', '. ' and newline only; unwrap {\"error\":...} first",
+      "tags": [
+        "ingest",
+        "error-class"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T22:40:15"
+    },
+    {
+      "id": "bug-067",
+      "timestamp": "2026-11-01T22:40:15",
+      "error_message": "repeated_tool_call counted parallel siblings the SDK skips",
+      "file": "internal/detect/detect.go",
+      "root_cause": "the SDK passes over a second identical call in the same turn; our replay counted it",
+      "fix": "skip siblings in RepeatedCalls and CallGuard, but only when the turn is known (imported runs have turn 0)",
+      "tags": [
+        "detect",
+        "call-guard",
+        "siblings"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T22:40:15"
+    },
+    {
+      "id": "bug-068",
+      "timestamp": "2026-11-01T22:40:15",
+      "error_message": "guard replay: reasoning_loop trips unconfirmed on a real run",
+      "file": "internal/detect/guards258.go",
+      "root_cause": "the cut-off stream was dropped, and 4.100.258+ rules (block-cycle, 126-line window, given discounts) were not ported",
+      "fix": "keep CutBlocks; port Rules258 and pick by RulesFor(sdk release): 0 missed, 0 unconfirmed on run 008",
+      "tags": [
+        "detect",
+        "reasoning-loop",
+        "replay"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T22:40:15"
+    },
+    {
+      "id": "bug-069",
+      "timestamp": "2026-11-01T22:40:15",
+      "error_message": "tests edited repeatedly to match SDK call-guard semantics",
+      "file": "internal/detect/callguard_test.go",
+      "root_cause": "expectations written before reading class Bu (hard at 6 failures; success does not clear the same-result cycle)",
+      "fix": "expectations corrected from the bundle source",
+      "tags": [
+        "tests",
+        "call-guard"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T22:40:15"
     }
   ]
 }

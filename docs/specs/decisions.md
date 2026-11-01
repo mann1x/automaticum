@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-11-01 (revision 36).
+**Status:** current as of 2026-11-01 (revision 37).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -135,6 +135,10 @@ All dated 2026-10-12.
 | D123 | The external busy signal (O35, 2026-11-01): a lane may set `busy_command`, run before each start with a time limit; exit 0 means busy and the run waits as for the `free` gate (one notification, nothing unloaded, D64); its output is the reason `status` shows. | 050 §1, 030 §2 |
 | D124 | Automatic quarantine (O36, 2026-11-01): a lane whose last 10 runs in a row ended ABORTED for the harness's or the server's reason is quarantined by the daemon; the number is configurable (`quarantine_after`, 0 turns it off). Any other end resets the count. The quarantine notifies with each run and its reason, and only `lane resume` lifts it. | 050 §5 |
 | D125 | Priorities and reservations (O38, 2026-11-01): a batch takes `--priority N` (higher starts first; equal priority keeps queue order and A/B interleaving); `lane reserve <lane> --until T --for <batch or campaign>` reserves a lane, kept in `control.json`, and only that work starts on it until T (`lane unreserve` ends it). | 050 §1 |
+| D126 | Struggle signals (070 §4, 2026-11-01): the signals the SDK emits (its struggle `nudge` and `offer`, `compaction_budget_emergency`, `loop_detection` `hard`/`stopped`, `reasoning_loop` `aborted`), a second compaction (the owner's escalation study of 2026-09-16: the first compaction happens in successful runs, the second is the cliff), and the SDK's struggle detector replayed after the run with its own thresholds; each is evaluated on every run, with recall and false-alarm rate against "did not PASS". | 070 §4 |
+| D127 | Edit-without-check (070 §2, 2026-11-01): an edit is checked when a `run_commands` call follows it before the next edit of the same file or the run's end; otherwise it counts as an edit without check. | 070 §2 |
+| D128 | Turn pathologies (070 §4, 2026-11-01): thinking-only turns and a thinking-only last turn before the run ends ("a plan written to reasoning with an empty reply") are built from the data; "premature done" is the agent claiming success where the oracle said no (`claimed_success_oracle_no`); refusal to continue and a report after work that ended the run early stay unbuilt until the owner gives phrases or rules. | 070 §4 |
+| D129 | Near-duplicate rounds, edit oscillation, re-read loop (070 §3, 2026-11-01): edit oscillation is the SDK's call guard (same call, same result; refused in advance) on writing tools, the re-read loop its same-result rule on every other tool, each reported under its own name with the SDK's numbers; near-duplicate rounds stays unbuilt until the owner defines it. | 070 §3 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked

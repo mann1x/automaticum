@@ -35,7 +35,7 @@ func Spans(text string, h Hit) []Span {
 		switch h.Kind {
 		case PhraseCycle:
 			return clip(len(r), Span{h.Offset + h.Period, h.Offset + h.Count*h.Period})
-		case LineCycle:
+		case LineCycle, BlockCycle:
 			// The hit is at the start of the line after the cycle.
 			if s, ok := CycleStart(r[:min(h.Offset, len(r))], h.Period, h.Count); ok {
 				return clip(len(r), Span{s, h.Offset})

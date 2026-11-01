@@ -1252,8 +1252,13 @@ func (d *Daemon) handleDoctor(w http.ResponseWriter, r *http.Request) {
 func (d *Daemon) handleDetect(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := r.PathValue("id")
-	if _, err := d.State.GetRun(ctx, id); errors.Is(err, store.ErrNotFound) {
+	rec, err := d.State.GetRun(ctx, id)
+	if errors.Is(err, store.ErrNotFound) {
 		fail(w, http.StatusNotFound, "there is no finished run %s", id)
+		return
+	}
+	if err != nil {
+		fail(w, http.StatusInternalServerError, "%v", err)
 		return
 	}
 	refs, err := d.State.BlobRefs(ctx, id)
@@ -1278,8 +1283,14 @@ func (d *Daemon) handleDetect(w http.ResponseWriter, r *http.Request) {
 	}
 	v := DetectView{Run: id, Version: detect.Version, Blocks: len(ev.Blocks), Calls: len(ev.Calls),
 		Hits: []BlockHit{}, Repeated: detect.RepeatedCalls(ev.Calls, 0)}
+	opt := ingest.DetectOptions(rec)
+	given := ev.Given.String()
 	for _, b := range ev.Blocks {
-		for _, h := range detect.Block(b.Text, detect.Options{}) {
+		bo := opt
+		if b.GivenTo > 0 && b.GivenTo <= len(given) && opt.Rules == detect.Rules258 {
+			bo.Given = strings.TrimPrefix(opt.Given+"\n"+given[:b.GivenTo], "\n")
+		}
+		for _, h := range detect.Block(b.Text, bo) {
 			v.Hits = append(v.Hits, BlockHit{Turn: b.Turn, Channel: b.Kind, Chars: len([]rune(b.Text)), Hit: h})
 		}
 	}

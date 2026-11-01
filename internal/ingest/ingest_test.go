@@ -86,14 +86,18 @@ func TestReadEvents(t *testing.T) {
 	// The chunk line repeats a tool call as text and must not count.
 	want := []store.ToolCall{
 		{Turn: 1, Seq: 0, Tool: "read_files", OK: true, DurationMS: 2000},
-		{Turn: 2, Seq: 1, Tool: "editor", ErrorClass: "tool_error", DurationMS: 12},
-		{Turn: 2, Seq: 2, Tool: "run_commands", ErrorClass: "tool_error"},
+		{Turn: 2, Seq: 1, Tool: "editor", ErrorClass: "not read", DurationMS: 12},
+		{Turn: 2, Seq: 2, Tool: "run_commands", ErrorClass: "spawn failed"},
 		{Turn: 2, Seq: 3, Tool: "check_file", ErrorClass: "tool_error"},
 	}
 	if fmt.Sprint(ev.ToolCalls) != fmt.Sprint(want) {
 		t.Errorf("tool calls\n got %v\nwant %v", ev.ToolCalls, want)
 	}
-	if len(ev.Blocks) != 2 || ev.Blocks[0] != (Block{1, "reasoning", "think think"}) || ev.Blocks[1] != (Block{2, "text", "done"}) {
+	same := func(b Block, turn int, kind, text string) bool {
+		return b.Turn == turn && b.Kind == kind && b.Text == text
+	}
+	if len(ev.Blocks) != 2 || !same(ev.Blocks[0], 1, "reasoning", "think think") || !same(ev.Blocks[1], 2, "text", "done") ||
+		ev.Blocks[0].GivenTo != 0 || ev.Blocks[1].GivenTo == 0 {
 		t.Errorf("blocks %v", ev.Blocks)
 	}
 	if ev.FirstTokenMS != 900 || ev.ReasoningTokens != 11 || ev.TextTokens != 3 || ev.ToolInputTokens != 6 {
@@ -529,8 +533,12 @@ func TestRunImported(t *testing.T) {
 		old(`{"type":"iteration_start","iteration":2}`),
 		old(`{"type":"content_start","contentType":"tool","toolName":"read_files","toolCallId":"a","input":{"path":"x","n":1}}`),
 		old(`{"type":"content_end","contentType":"tool","toolName":"read_files","toolCallId":"a"}`),
+		// One call a turn: identical calls in one turn are parallel
+		// siblings, which the SDK's guard does not count (library 3).
+		old(`{"type":"iteration_start","iteration":3}`),
 		old(`{"type":"content_start","contentType":"tool","toolName":"read_files","toolCallId":"b","input":{"n":1,"path":"x"}}`),
 		old(`{"type":"content_end","contentType":"tool","toolName":"read_files","toolCallId":"b"}`),
+		old(`{"type":"iteration_start","iteration":4}`),
 		old(`{"type":"content_end","contentType":"tool","toolName":"read_files","toolCallId":"c","input":{"path": "x", "n": 1}}`),
 	}
 	h1, h2 := blob.Hash("1"), blob.Hash("2")
@@ -554,7 +562,9 @@ func TestRunImported(t *testing.T) {
 	for _, f := range m.findings {
 		got[f.Detector] = f
 	}
-	if len(m.findings) != 4 || got["legacy_oracle"].Count != 1 {
+	// The third identical read giving the same result is also the call
+	// guard's same-result rule, and so a re-read loop (D129).
+	if len(m.findings) != 6 || got["legacy_oracle"].Count != 1 || got[detect.RereadLoop].Count != 1 || got[detect.RepeatedCallResult].Turn != 4 {
 		t.Fatalf("findings: %+v", m.findings)
 	}
 	var fire Firing

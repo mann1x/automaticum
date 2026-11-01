@@ -3,6 +3,7 @@ package export
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/mann1x/automaticum/internal/detect"
 	"strings"
 	"testing"
 	"time"
@@ -41,7 +42,7 @@ func TestGuardSpan(t *testing.T) {
 		response(t, "0002", t0.Add(-40*time.Millisecond), false, sse(lead, block, block, block)),
 	}
 	cut := Cut{At: t0, Guard: "reasoning_loop", Phase: "cut", Channel: "reasoning", Kind: "block-cycle", Period: 2, Cycles: 3, Chars: chars}
-	lines, cuts := Spans(resps, []Cut{cut})
+	lines, cuts := Spans(resps, []Cut{cut}, detect.Options{})
 	if cuts[0].Request != "0002" || cuts[0].Unplaced != "" {
 		t.Fatalf("cut %+v", cuts[0])
 	}
@@ -63,7 +64,7 @@ func TestGuardSpan(t *testing.T) {
 func TestGuardSpanUnplaced(t *testing.T) {
 	t0 := time.Now()
 	resps := []Response{response(t, "0001", t0, false, sse("short\n"))}
-	_, cuts := Spans(resps, []Cut{{At: t0, Channel: "reasoning", Kind: "line-cycle", Period: 1, Cycles: 21, Chars: 99999}})
+	_, cuts := Spans(resps, []Cut{{At: t0, Channel: "reasoning", Kind: "line-cycle", Period: 1, Cycles: 21, Chars: 99999}}, detect.Options{})
 	if cuts[0].Unplaced == "" || cuts[0].Request != "" {
 		t.Fatalf("a cut with no response of its length was placed: %+v", cuts[0])
 	}
@@ -122,7 +123,7 @@ func TestRepeatedCallSpans(t *testing.T) {
 	if resps[4].Finish != "length" || resps[0].Finish != "tool_calls" {
 		t.Errorf("finish: %q %q", resps[4].Finish, resps[0].Finish)
 	}
-	spans, _ := Spans(resps, nil)
+	spans, _ := Spans(resps, nil, detect.Options{})
 	var got []string
 	for _, s := range spans {
 		got = append(got, fmt.Sprintf("%s %s %d-%d %s %s", s.Request, s.Field, s.Start, s.End, s.Source, s.Detail))

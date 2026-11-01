@@ -104,7 +104,10 @@ func repeatedParagraph(text string) (sample string, most int, share float64) {
 	return sample, most, float64(duplicates) / float64(total)
 }
 
-func reasoningLoop(r []rune, _ string, _ Options) *Hit {
+func reasoningLoop(r []rune, _ string, o Options) *Hit {
+	if o.Rules == Rules258 {
+		return reasoningLoop258(r, o)
+	}
 	if len(r) < loopMinChars {
 		return nil
 	}
