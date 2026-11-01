@@ -23,6 +23,7 @@ import (
 	"github.com/mann1x/automaticum/internal/human"
 	"github.com/mann1x/automaticum/internal/ingest"
 	"github.com/mann1x/automaticum/internal/run"
+	"github.com/mann1x/automaticum/internal/wait"
 )
 
 // client talks to the daemon of this installation.
@@ -78,17 +79,25 @@ func (c *client) open(ctx context.Context, method, path string, in any) (*http.R
 	}
 	if resp.StatusCode >= 400 {
 		defer resp.Body.Close()
-		var e struct {
-			Error string `json:"error"`
+		e := &apiErr{Status: resp.StatusCode}
+		json.NewDecoder(resp.Body).Decode(e)
+		if e.Msg == "" {
+			e.Msg = resp.Status
 		}
-		json.NewDecoder(resp.Body).Decode(&e)
-		if e.Error == "" {
-			e.Error = resp.Status
-		}
-		return nil, errors.New(e.Error)
+		return nil, e
 	}
 	return resp, nil
 }
+
+// apiErr is the daemon's refusal: its words, and the gate that refused when
+// one did.
+type apiErr struct {
+	Status int    `json:"-"`
+	Msg    string `json:"error"`
+	Gate   string `json:"gate"`
+}
+
+func (e *apiErr) Error() string { return e.Msg }
 
 func printJSON(v any) error {
 	enc := json.NewEncoder(os.Stdout)
@@ -391,7 +400,8 @@ func runShow(ctx context.Context, args []string) error {
 	return nil
 }
 
-// runTail prints what a run in flight prints, as it arrives.
+// runTail prints what a run in flight prints, as it arrives. A queued run
+// is waited for until it starts.
 func runTail(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("run tail", flag.ExitOnError)
 	_, dial := addClient(fs)
@@ -402,6 +412,17 @@ func runTail(ctx context.Context, args []string) error {
 	c, err := dial()
 	if err != nil {
 		return err
+	}
+	var rv daemon.RunView
+	if err := c.do(ctx, "GET", "/v1/runs/"+url.PathEscape(rest[0]), nil, &rv); err != nil {
+		return err
+	}
+	if rv.State == "queued" {
+		fmt.Fprintf(os.Stderr, "automaticum: run %s is queued; waiting for it to start\n", rv.ID)
+		wt := &waiter{c: c, poll: 5 * time.Second}
+		if _, err := wt.until(ctx, wait.KindRun, rv.ID, "started", -1); err != nil {
+			return err
+		}
 	}
 	resp, err := c.open(ctx, "GET", "/v1/runs/"+url.PathEscape(rest[0])+"/stream", nil)
 	if err != nil {

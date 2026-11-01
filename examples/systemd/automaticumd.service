@@ -14,8 +14,15 @@ WorkingDirectory=<root>/work
 ExecStart=<root>/bin/automaticumd --config <root>/config
 Restart=on-failure
 RestartSec=10
+# The first SIGTERM drains (050 §5): the run in flight finishes, which takes
+# up to its wall limit, and nothing else starts. So systemd waits as long as
+# that takes and never kills the daemon on its own; a second
+# `systemctl kill -s TERM automaticumd` aborts the run in flight, recorded
+# ABORTED(daemon stop). To restart without waiting, `automaticum lane drain`
+# each lane first and restart once `automaticum wait idle --until free` ends.
 KillSignal=SIGTERM
-TimeoutStopSec=120
+TimeoutStopSec=infinity
+SendSIGKILL=no
 
 [Install]
 WantedBy=multi-user.target

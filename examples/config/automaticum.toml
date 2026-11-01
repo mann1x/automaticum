@@ -11,4 +11,6 @@ repo = "/opt/automaticum"                   # the checkout with tasks/ and image
 private_tasks = ""                          # a second tasks root outside the public repo (D105); optional
 
 [notify]
-webhook = ""                                # a URL that gets one JSON object per refusing or waiting gate; empty: the log only
+webhook = ""                                # a URL that gets one JSON object per notification, by POST; empty: none
+command = []                                # a program and its arguments, run per notification with the JSON on stdin (a mailbox client); empty: none
+events = []                                 # gate, canary, campaign, batch, run; empty: all but run (050 §2)

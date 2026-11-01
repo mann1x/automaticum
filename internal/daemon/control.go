@@ -452,6 +452,12 @@ func (d *Daemon) stopBatch(ctx context.Context, batch, reason string, cause erro
 		return out, fmt.Errorf("the control file: %w", err)
 	}
 	d.Log.Info("batch stopped", "batch", batch, "stopped", len(out.Stopped), "in_flight", out.InFlight, "reason", reason)
+	detail := fmt.Sprintf("%s; %d queued runs taken off the queue", reason, len(out.Stopped))
+	if out.InFlight != "" {
+		detail += "; the run in flight " + out.InFlight + " " + out.Action
+	}
+	d.notify(ctx, Notification{Kind: "batch", Status: "stopped", Batch: batch, Run: out.InFlight, Detail: detail})
+	d.poke()
 	return out, nil
 }
 

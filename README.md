@@ -4,7 +4,8 @@ A test harness that runs coding agents against tasks with a verdict, on lanes it
 orchestrates itself, and answers the questions about those runs without a
 throwaway script.
 
-> **Status: milestone 3 of 7 built.** The daemon `automaticumd` and the
+> **Status: milestones 1 to 4 built, with the gaps listed in
+> [the spec-against-code audit](docs/audit/2026-11-01-spec-vs-code.md).** The daemon `automaticumd` and the
 > command line run an agent on a task in one Docker lane, on the SDK build
 > its arm names (several builds side by side, each reproducible with no
 > registry), with every request and response recorded, and give one of six
@@ -14,8 +15,11 @@ throwaway script.
 > detector library for loops and runaways, and a comparison of what was sent
 > with what the arm states. It has run against a scripted stub model server
 > and against a real model
-> ([first runs](docs/specs/110-acceptance-and-roadmap.md)). There are no
-> batches, statistics or dashboards yet. The design is the
+> ([first runs](docs/specs/110-acceptance-and-roadmap.md)). Batches, cells,
+> campaigns, their control and their statistics run; `automaticum wait`
+> blocks until a run, batch, cell, campaign or lane reaches a condition, and
+> notifications go to a webhook or a command. There are no dashboards yet.
+> The design is the
 > spec set in [`docs/specs/`](docs/specs/000-overview.md). Items a
 > spec marks **Open** are questions, not decisions; they are listed in
 > [`docs/specs/decisions.md`](docs/specs/decisions.md).
@@ -144,8 +148,11 @@ harnesses reach the agent through an engine adapter.
   terminal dashboard.
 - **HTTP API and live dashboard**: lanes, queue, live transcripts, A/B boards,
   log viewer, search.
-- **MCP server** for AI sessions: small paged outputs, server-side
-  wait-until primitives, dry-run and idempotency keys.
+- **Server-side waits** for AI sessions, built: `automaticum wait run|batch|cell|campaign|lane|idle`
+  with `--until "pass>=5 or fail>=3"`, `--next` and `--each`
+  ([090 §5.1](docs/specs/090-interfaces.md)).
+- **MCP server** for AI sessions: small paged outputs, the same waits,
+  dry-run and idempotency keys.
 - **Search**: full-text, regex and semantic search over transcripts, reasoning,
   tool arguments and logs, plus replay of a recorded request.
 
@@ -168,7 +175,7 @@ automaticum doctor
 ```
 docs/specs/            the spec set (start at 000-overview.md)
 docs/specs/archive/    the two input documents the set was refined from
-build/                 the Debian 11 build container for native (cgo) parts
+build/                 the build containers for native (cgo) parts: the manylinux_2_28 link image and the Debian 11 cross image (D45)
 spike/001-store/       the store spike: link checks, later the benchmarks and report
 ```
 

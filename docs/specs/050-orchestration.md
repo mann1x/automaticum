@@ -1,6 +1,6 @@
 # 050 — Orchestration: scheduling, gates, control
 
-**Status:** draft 0.16, 2026-10-25.
+**Status:** draft 0.17, 2026-11-01.
 
 ## 1. Scheduling
 
@@ -111,8 +111,24 @@ text, loads a model or unloads one**.
 **Notification.** A refusal is notified every time, a wait once per run: one
 line in the daemon's log and, when `[notify] webhook` is set in
 `automaticum.toml`, one JSON object by POST (`source`, `kind`, `status`,
-`gate`, `detail`, `lane`, `run`, `arm`, `task`, `time`). A webhook that fails
-is logged and stops nothing. A mailbox notifier is not built.
+`gate`, `detail`, `lane`, `run`, `arm`, `task`, `batch`, `counts`, `time`).
+A webhook that fails is logged and stops nothing.
+
+**As built (2026-11-01, 090 §5):** the kinds are `gate` (refuse, wait),
+`canary` (stop), `campaign` (finished, stopped; `gate` holds its name),
+`batch` (`finished` when its last run ends, once for each number of
+finished runs, with `counts` by verdict; `stopped` by `batch stop` or the
+canary, naming the run in flight) and `run` (its verdict, at its end).
+`[notify] events` lists the kinds sent; empty sends all but `run`, which a
+batch of many runs would make noisy. The log has every kind always.
+`[notify] command = ["program", "arg", ...]` runs once per notification with
+the JSON object on its standard input and `AUTOMATICUM_NOTIFY_KIND`,
+`_STATUS`, `_RUN`, `_BATCH`, `_LANE` and `_GATE` in its environment, for at
+most 30 s; a failure is logged with its first 300 characters of output and
+stops nothing. This is how the sessions' mailbox is reached: the
+installation names its own mailbox client there, so the public repository
+holds no mailbox of its own. A static-gate refusal of a whole start is the
+caller's 422, which names the gate (`gate`), and is not notified.
 
 `automaticum doctor [--lane L] [--arm A] [--task T] [--all]` asks every gate
 for every lane, every arm the lane may run and every task, and fails when a
@@ -221,7 +237,21 @@ later):
   done yet: it needs agent mode on the endpoint's host.
 - The daemon's first termination signal drains: the run in flight finishes and
   nothing else starts. A second signal aborts the run in flight, which is
-  recorded `ABORTED(daemon stop)`.
+  recorded `ABORTED(daemon stop)`. A service manager must not kill the
+  daemon on its own while it drains: the example unit
+  (`examples/systemd/automaticumd.service`) has `TimeoutStopSec=infinity`
+  and `SendSIGKILL=no` since 2026-11-01. Before, it had 120 s and SIGKILL,
+  so a restart with a run in flight killed the run after 2 minutes and the
+  next start recorded it `ABORTED(daemon restart)`. To restart without
+  waiting for a run: `lane drain` each lane, `automaticum wait idle --until
+  free`, restart, `lane resume`. Nothing queued is lost: the queue, the
+  drained lanes and the batches' limits are stored.
+- A run held by `run pause` or `batch pause` when the daemon stops is not
+  resumed by the next daemon (D83: a resume in a new process is not the same
+  run) and is recorded `ABORTED(daemon restart)`; the drain waits for it as
+  for any run in flight, so resume or abort it first. Re-attaching a run in
+  flight to a new daemon is not built. **Open** (O30): whether a drain should
+  release a held run, abort it, or wait for it, as now.
 - After a stop without warning, a run in flight is recorded
   `ABORTED(daemon restart)` from what the lane's state held, its container is
   removed by id, and it leaves the queue. A queued run that already has a
@@ -275,8 +305,10 @@ later):
 ## 6. Unattended operation
 
 - A heartbeat with counts every ten minutes, to the log and on request.
-- Server-side `wait` primitives so a caller does not poll (090 §5).
+- Server-side `wait` primitives so a caller does not poll (090 §5). **Built
+  2026-11-01:** `automaticum wait` and `GET /v1/wait/{kind}` (090 §5).
 - A mailbox message and a webhook on campaign end, on any refusing gate, and
-  on a stopped batch.
+  on a stopped batch. **Built 2026-11-01** through `[notify] webhook` and
+  `[notify] command` (§2), with a batch's end and each run's end besides.
 - A cell with any `SKIPPED` task is marked incomplete, and says so in its
   result file.

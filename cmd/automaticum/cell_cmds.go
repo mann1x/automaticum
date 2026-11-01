@@ -89,6 +89,17 @@ func cellRun(ctx context.Context, args []string) (err error) {
 	var start daemon.StartResponse
 	req := daemon.StartRequest{Arm: *arm, Tasks: tasks, Count: *n, Lane: *lane, Key: *key, Cell: cell}
 	if err := c.do(ctx, "POST", "/v1/runs", req, &start); err != nil {
+		// A gate that refuses the whole cell before anything is queued is
+		// a refusal (065 §2.1), not an internal error.
+		var ae *apiErr
+		if errors.As(err, &ae) && ae.Gate != "" {
+			b, _ := json.MarshalIndent(daemon.Refusal{Code: cellRefused, Gate: ae.Gate, Reason: ae.Msg}, "", "  ")
+			if werr := os.WriteFile(filepath.Join(*out, "refusal.json"), append(b, '\n'), 0o644); werr != nil {
+				return werr
+			}
+			fmt.Fprintln(os.Stderr, "automaticum:", ae.Msg)
+			return exitCode(cellRefused)
+		}
 		return err
 	}
 	if start.Repeated {

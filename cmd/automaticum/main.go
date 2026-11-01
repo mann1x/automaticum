@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/mann1x/automaticum/internal/wait"
 )
 
 // version is set at build time with -ldflags "-X main.version=...".
@@ -36,12 +38,17 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   run start --arm A --task T    queue runs [--task T2 ...] [--suite S ...] [-n 5] [--lane L] [--dry-run] [--wall-s S] [--idle-s S] [--capture-requests] [--heldout]
   run ls                        queued, running and finished runs
   run show <run>                one run's record
-  run tail <run>                what a run in flight prints, as it arrives
+  run tail <run>                what a run prints, as it arrives; a queued run is waited for until it starts
   run stop <run>                take a queued run off the queue
   run abort <run>               end a run in flight
   run pause <run>               hold a run in flight between two model requests and free the endpoint of its model
   run resume <run>              let a held run go on
   run retry <run>               queue a run again that ended SKIPPED, ABORTED or INVALID [--dry-run]
+  wait run <run> [<run>...]     until the run has finished, or --until "<condition>" holds [--any] [--timeout D]
+  wait batch <batch>            until the batch has finished, or --until "pass>=5 or fail>=3"; --next: the next run to finish; --each: every run as it finishes
+  wait cell|campaign <id>       until the cell or the campaign has finished [--until ...]
+  wait lane <lane> | wait idle  until the lane, or every lane, has no run in flight and none queued
+                                (exit 0 the condition holds, 4 timeout, 5 ended without it; automaticum wait run -h)
   lane drain <lane>             the run in flight finishes, then the lane starts nothing until resumed
   lane resume <lane>            the lane starts queued runs again
   batch show <batch>            a batch's runs by state, whether it is paused, and what the canary said
@@ -145,6 +152,9 @@ func main() {
 		"sdk verify":           sdkVerify,
 		"stub serve":           stubServe,
 		"endpoint ls":          endpointLs,
+	}
+	for _, kind := range wait.Kinds {
+		cmds["wait "+kind] = waitCmd(kind)
 	}
 	cmd, ok := cmds[args[0]+" "+args[1]]
 	if !ok {

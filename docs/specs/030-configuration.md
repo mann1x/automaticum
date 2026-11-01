@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.18, 2026-10-29.
+**Status:** draft 0.19, 2026-11-01.
 
 ## 1. Rules
 
@@ -30,7 +30,7 @@ never an address.
 
 ```
 <config>/                 local, not tracked
-  automaticum.toml        daemon: data root, archive root, bind address, token, [notify] webhook
+  automaticum.toml        daemon: data root, archive root, bind address, token, [notify] webhook, command and events (050 §2)
   lanes/*.toml
   endpoints/*.toml
   arms/*.toml             the installation's arms (D118)

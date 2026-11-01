@@ -1,15 +1,19 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-29T17:00:00.825Z
-> Files: 502 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-01T17:52:08.245Z
+> Files: 508 tracked | Anatomy hits: 0 | Misses: 0
+
+## ../../../../tmp/claude-0/-srv-dev-disk-by-label-opt-dev-automaticum/b3252f5f-43ab-4bf3-a0a5-9eef085a7e35/scratchpad/
+
+- `audit-C.md` — Audit C: spec vs code (070, 080, 090, 100, 110, README, decisions.md) (~10036 tok)
 
 ## ./
 
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
 - `.gitleaks.toml` (~581 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~3114 tok)
-- `CLAUDE.md` — automaticum (~4759 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~3219 tok)
+- `CLAUDE.md` — automaticum (~4762 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
 - `LICENSE` — Project license (~3029 tok)
@@ -20,7 +24,7 @@
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~118916 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~121120 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~211 tok)
 - `score-history.jsonl` (~1715 tok)
@@ -35,13 +39,13 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~97954 tok)
+- `fingerprint.json` — Declares usage (~97955 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` (~21930 tok)
+- `current-session.jsonl` (~13935 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~74833 tok)
+- `roi-stats.json` (~76744 tok)
 - `state.json` (~41 tok)
 
 ## .claude/
@@ -122,6 +126,11 @@
 - `store_nocgo.go` — go:build !cgo (~128 tok)
 - `stub_cmds.go` (~419 tok)
 - `suite_cmds.go` (~932 tok)
+- `wait_cmds_test.go` — Struct: oldDaemon (~906 tok)
+- `wait_cmds.go` — Struct: waiter (~4656 tok)
+
+- `wait_cmds.go` — `automaticum wait run|batch|cell|campaign|lane|idle`: --until/--next/--each/--any/--timeout, exit 0/4/5, fallback polling for an older daemon, waits out daemon restarts (~3800 tok)
+- `wait_cmds_test.go` — fallback against a fake old daemon; daemon away then back (~800 tok)
 
 ## cmd/automaticumd/
 
@@ -137,7 +146,7 @@
 - `010-architecture.md` — 010 — Architecture (~1615 tok)
 - `020-run-record.md` — 020 — The run record, verdicts and the basis (~3568 tok)
 - `030-configuration.md` — 030 — Configuration (~3572 tok)
-- `040-runner.md` — 040 — The runner (~9062 tok)
+- `040-runner.md` — 040 — The runner (~9106 tok)
 - `050-orchestration.md` — 050 — Orchestration: scheduling, gates, control (~4591 tok)
 - `060-tasks-and-suites.md` — 060 — Tasks, oracles and the suite interface (~2271 tok)
 - `061-suite-bfcl.md` — 061 — Suite: BFCL (Berkeley Function-Calling Leaderboard) (~551 tok)
@@ -151,7 +160,7 @@
 - `090-interfaces.md` — 090 — Interfaces (~2982 tok)
 - `100-legacy-import.md` — 100 — Import of the old harness's corpus (~3426 tok)
 - `110-acceptance-and-roadmap.md` — 110 — Acceptance and roadmap (~8001 tok)
-- `decisions.md` — Decisions and open questions (~8566 tok)
+- `decisions.md` — Decisions and open questions (~8683 tok)
 
 ## docs/specs/archive/
 
@@ -174,7 +183,7 @@
 - `stub-sdk-4.100.262.toml` — The stub arm on SDK release 4.100.262, for the harness's own tests of that (~40 tok)
 - `stub-sdk-4.100.266.toml` — The stub arm on SDK release 4.100.266, for the harness's own tests of that (~64 tok)
 - `stub-sdk-4.100.268.toml` — The stub arm on SDK release 4.100.268, for the harness's own tests of that (~73 tok)
-- `stub-sdk-4.100.269.toml` — The stub arm on SDK release 4.100.269: the first whose abort ends a turn waiting on the Ollama probes (X12, bug-047) (~75 tok)
+- `stub-sdk-4.100.269.toml` — The stub arm on SDK release 4.100.269, for the harness's own tests of that (~71 tok)
 - `stub-stop-sdk-4.100.258.toml` — The stub arm on SDK release 4.100.258 that ends a run at the first trip of (~66 tok)
 - `stub-stop-sdk-4.100.259.toml` — The stub arm on SDK release 4.100.259 that ends a run at the first trip of (~64 tok)
 - `stub.toml` — An arm for the stub model server: used by the harness's own tests and for (~99 tok)
@@ -255,6 +264,9 @@
 
 ## internal/daemon/
 
+- `wait.go` — GET /v1/wait/{kind}: held ≤55 s, woken by bump() on poke/flight start, 2 s recheck; batchRuns (dedup queued+written), statusSnapshot, WaitView (~1700 tok)
+- `wait_test.go` — TestWait: hold, run started, batch next/done, lane idle, over, 404/400 (~1200 tok)
+- `notify_test.go` — TestNotifyCommand: [notify] command gets run/batch finished/batch stopped; events filter (~700 tok)
 - `api.go` — HTTP handlers: reply, fail (~13391 tok)
 - `basis.go` — Basis (87 fields) (~4394 tok)
 - `campaign.go` — CampaignState (112 fields) (~3842 tok)
@@ -268,6 +280,9 @@
 - `export.go` — ExportMeta (48 fields) (~1711 tok)
 - `modec_test.go` — TestModeCCell, TestModeCBasis (~1727 tok)
 - `modec.go` — CellSpec (69 fields) (~2243 tok)
+- `notify_test.go` — TestNotifyCommand (~669 tok)
+- `wait_test.go` — Struct: answer (~1023 tok)
+- `wait.go` — Struct: WaitView (~1669 tok)
 
 ## internal/detect/
 
@@ -288,6 +303,10 @@
 
 - `export_test.go` — TestGuardSpan, TestGuardSpanUnplaced, TestReadCuts, TestRepeatedCallSpans (~1664 tok)
 - `export.go` — hands a run's model requests out as training traces (~3681 tok)
+
+## docs/audit/
+
+- `2026-11-01-spec-vs-code.md` — every spec item vs code at 180cc97 (three tables), with what was fixed the same day (~25000 tok)
 
 ## internal/gate/
 
@@ -349,6 +368,11 @@
 - `sdk_test.go` — TestDefinitions, TestInstallRebuild (~1726 tok)
 - `sdk.go` — provisions the SDK under test. A lane image holds no SDK: each (~5126 tok)
 
+## internal/wait/
+
+- `wait.go` — 090 §5.1: Parse conditions (counts op N, facts, and/or) per kind; Runs/Lane/Idle/Campaign snapshots; Over (~2400 tok)
+- `wait_test.go` — parse/eval, refusals, run/batch/lane/idle/campaign, Seen/Any (~900 tok)
+
 ## internal/stats/
 
 - `stats_test.go` — TestWilson, TestFisher, TestMannWhitney, TestSummarise (~581 tok)
@@ -390,8 +414,8 @@
 
 ## internal/stubmodel/
 
-- `stubmodel_test.go` — TestChatFollowsTheScript, TestProbesAndErrors, TestOpenAICompatible (~2075 tok)
-- `stubmodel.go` — is a model server that plays a script. It speaks enough (~3497 tok)
+- `stubmodel_test.go` — TestChatFollowsTheScript, TestProbesAndErrors, TestSDKProbeTakesNoTurn, TestHangProbe, TestOpenAICompatible (~2682 tok)
+- `stubmodel.go` — is a model server that plays a script. It speaks enough (~3789 tok)
 
 ## internal/suite/tbench2/
 
@@ -411,6 +435,11 @@
 - `task.go` — loads tasks from the tasks directory, builds what they need, (~5996 tok)
 - `user_test.go` — TestUserScript (~1060 tok)
 - `user.go` — User (45 fields) (~2600 tok)
+
+## internal/wait/
+
+- `wait_test.go` — TestParseAndEval, TestParseRefuses, TestRunsDone, TestRunKind, TestLaneIdleCampaign (~984 tok)
+- `wait.go` — decides when a wait is over (090 §5): a run, a batch, a (~3118 tok)
 
 ## runner/
 
@@ -472,12 +501,12 @@
 - `package.json` — Node.js package manifest (~64 tok)
 - `sdk.toml` — SDK release 4.100.268, from the registry: as 4.100.266, and an abort now (~115 tok)
 
-
 ## runner/sdk/4.100.269/
 
 - `package-lock.json` — npm lock file (~52537 tok)
 - `package.json` — Node.js package manifest (~64 tok)
-- `sdk.toml` — SDK release 4.100.269, from the registry: as 4.100.268, and the Ollama probes take the run's signal (~120 tok)
+- `sdk.toml` — SDK release 4.100.269, from the registry: as 4.100.268, and the Ollama (~110 tok)
+
 ## runner/test/
 
 - `arm-stub.json` (~287 tok)
@@ -904,18 +933,3 @@
 ## tasks/train-game/space_invaders/seed/
 
 - `space_invaders.html` — Space Invaders (~3512 tok)
-
-## tasks/train-ml/c_parser_bugfix/
-
-- `checker.json` (~312 tok)
-- `NOTES.md` — c_parser_bugfix — notes (~412 tok)
-- `task.toml` — c_parser_bugfix: fix a small C INI-parser library so it follows its README (training task, bm-889 rollout pool). (~790 tok)
-
-## tasks/train-ml/c_parser_bugfix/checker/
-
-- `check.c` — define _GNU_SOURCE (~4515 tok)
-
-## tasks/train-ml/c_parser_bugfix/fixtures/bad-quote/src/
-
-- `ini_doc.c` — include <stdlib.h> (~597 tok)
-- `ini_get.c` — include <ctype.h> (~275 tok)

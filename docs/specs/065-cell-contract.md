@@ -1,6 +1,6 @@
 # 065 — The cell contract and exports
 
-**Status:** draft 0.9, 2026-10-16.
+**Status:** draft 0.10, 2026-11-01.
 
 ## 1. Purpose
 
@@ -141,7 +141,10 @@ fields are those of §3 plus `arm` and `batch`. As built:
   the cell, a task whose files changed, a failed self-test, runs of more
   than one arm.
 - Exit codes are those of §2.1: 20 when every run of the cell was refused
-  by a gate (`refusal.json` names the gate), 30 when a run has no result
+  by a gate (`refusal.json` names the gate), also when a static gate
+  refuses the whole start before anything is queued (the daemon's 422
+  names the gate in `gate`; fixed 2026-11-01, before which this exited 70
+  with no `refusal.json`), 30 when a run has no result
   (`refusal.json` lists them), 10 when finished with warnings, 0 when clean,
   70 for anything else.
 

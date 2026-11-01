@@ -839,6 +839,104 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-10-29T19:45:00+01:00"
+    },
+    {
+      "id": "bug-049",
+      "timestamp": "2026-11-01T18:30:00Z",
+      "error_message": "Owner: `automaticum wait` is in spec 090 §1/§5 but not built; sessions wrote their own waiters (`run tail > /dev/null`) and re-armed them after every run; `run tail` of a queued run answered 410 'has finished'",
+      "file": "cmd/automaticum/wait_cmds.go, internal/wait/wait.go, internal/daemon/wait.go",
+      "root_cause": "090 §5 listed the wait primitives and the mailbox notifications as requirements with no milestone; nobody built them and the spec never said 'not built'. handleStream treats any run without a flight that the store knows as finished, and a queued run's lookup reached that branch.",
+      "fix": "Built internal/wait (conditions, snapshots), GET /v1/wait/{kind} held up to 55 s and woken by poke/bump, and `automaticum wait run|batch|cell|campaign|lane|idle` with --until/--next/--each/--any/--timeout, exit 0/4/5, a fallback that polls an older daemon, and retries while the daemon restarts. run tail waits for a queued run to start.",
+      "tags": [
+        "wait",
+        "spec-drift",
+        "cli",
+        "daemon",
+        "sessions"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T18:30:00Z"
+    },
+    {
+      "id": "bug-050",
+      "timestamp": "2026-11-01T18:30:00Z",
+      "error_message": "Notification only for gates, canary and campaign end; no mailbox, no batch end, no stopped batch (050 §6, 090 §5)",
+      "file": "internal/daemon/daemon.go, internal/daemon/control.go, internal/config/local.go",
+      "root_cause": "Milestone 3 built the webhook and the log only (D62); the rest was carried forward with no milestone.",
+      "fix": "[notify] command (JSON on stdin, AUTOMATICUM_NOTIFY_* env) and [notify] events; notifyEnd sends run end and batch finished (once per finished count), stopBatch sends batch stopped.",
+      "tags": [
+        "notify",
+        "mailbox",
+        "spec-drift"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T18:30:00Z"
+    },
+    {
+      "id": "bug-051",
+      "timestamp": "2026-11-01T18:30:00Z",
+      "error_message": "Example systemd unit TimeoutStopSec=120 + SIGKILL kills a draining daemon after 2 minutes; the 30-minute run in flight is then ABORTED(daemon restart), against 050 §5 (first signal drains)",
+      "file": "examples/systemd/automaticumd.service",
+      "root_cause": "The unit's stop timeout was set without the drain semantics in mind.",
+      "fix": "TimeoutStopSec=infinity, SendSIGKILL=no, with the drain-then-restart recipe in a comment; 050 §5 says so.",
+      "tags": [
+        "systemd",
+        "drain",
+        "spec-drift"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T18:30:00Z"
+    },
+    {
+      "id": "bug-052",
+      "timestamp": "2026-11-01T18:30:00Z",
+      "error_message": "`cell run` exits 70 with no refusal.json when a static gate refuses the whole start (422), against 065 §2.1 (exit 20)",
+      "file": "cmd/automaticum/cell_cmds.go, internal/daemon/api.go",
+      "root_cause": "The 2026-10-25 static-gate refusal returned a plain error string; the CLI could not tell a gate refusal from an internal error.",
+      "fix": "The 422 carries `gate` (gateRefusal, apiError.Gate); the client returns *apiErr; cell run writes refusal.json with code 20 and exits 20.",
+      "tags": [
+        "cell",
+        "exit-code",
+        "spec-drift"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T18:30:00Z"
+    },
+    {
+      "id": "bug-053",
+      "timestamp": "2026-11-01T18:30:00Z",
+      "error_message": "Every binary records `automaticum dev`: the basis 'harness build' fact cannot see a daemon change",
+      "file": "Makefile",
+      "root_cause": "make build passed no -ldflags, so main.version stayed 'dev'.",
+      "fix": "VERSION from git describe --always --dirty, -X main.version in make build.",
+      "tags": [
+        "basis",
+        "version",
+        "build"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T18:30:00Z"
+    },
+    {
+      "id": "bug-054",
+      "timestamp": "2026-11-01T18:30:00Z",
+      "error_message": "GET /v1/runs and a batch's runs could list a run twice (queued and finished) in the moment between its record being written and its unqueue",
+      "file": "internal/daemon/api.go, internal/daemon/wait.go",
+      "root_cause": "fly writes the record before Unqueue; handleRuns listed the queue first without checking records.",
+      "fix": "A queued entry whose id has a record is dropped (handleRuns, batchRuns, and the CLI fallback).",
+      "tags": [
+        "runs",
+        "race",
+        "listing"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T18:30:00Z"
     }
   ]
 }

@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -26,6 +27,7 @@ import (
 	"github.com/mann1x/automaticum/internal/store"
 	"github.com/mann1x/automaticum/internal/store/blob"
 	"github.com/mann1x/automaticum/internal/task"
+	"github.com/mann1x/automaticum/internal/wait"
 )
 
 // Runner executes one run. *run.Executor is one.
@@ -87,14 +89,20 @@ type Daemon struct {
 	flights  map[string]*flight // by lane
 	draining bool
 	wake     chan struct{}
-	started  time.Time
+	// changed is closed, and replaced, whenever the queue or a run in
+	// flight changes, so a wait reads the state again (090 §5).
+	changed chan struct{}
+	started time.Time
 	// reanalysis is the one running, or the last that ran.
 	reanalysis *ReanalyseStatus
 	// holds says until when a lane's waiting run is left alone, and
 	// notified which waiting runs were already told about.
 	holds    map[string]time.Time
 	notified map[string]bool
-	ctl      control
+	// batchTold is how many finished runs a batch had when its end was
+	// last notified.
+	batchTold map[string]int
+	ctl       control
 	// campaignMu makes the campaigns move one step at a time.
 	campaignMu sync.Mutex
 }
@@ -209,7 +217,9 @@ func (d *Daemon) init() {
 		d.flights = map[string]*flight{}
 		d.holds = map[string]time.Time{}
 		d.notified = map[string]bool{}
+		d.batchTold = map[string]int{}
 		d.wake = make(chan struct{}, 1)
+		d.changed = make(chan struct{})
 		d.started = time.Now()
 		d.loadControl()
 	}
@@ -220,6 +230,28 @@ func (d *Daemon) poke() {
 	case d.wake <- struct{}{}:
 	default:
 	}
+	d.bump()
+}
+
+// bump tells every wait that something changed.
+func (d *Daemon) bump() {
+	d.mu.Lock()
+	if d.changed != nil {
+		close(d.changed)
+		d.changed = make(chan struct{})
+	}
+	d.mu.Unlock()
+}
+
+// change is the channel closed at the next change of the queue or of a run
+// in flight.
+func (d *Daemon) change() <-chan struct{} {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.changed == nil {
+		d.changed = make(chan struct{})
+	}
+	return d.changed
 }
 
 // LaneImage names the image a task runs in: the base image, or the one that
@@ -395,6 +427,7 @@ func (d *Daemon) startReady(ctx context.Context, wg *sync.WaitGroup) {
 		if busy {
 			continue
 		}
+		d.bump()
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -418,6 +451,7 @@ func (d *Daemon) startReady(ctx context.Context, wg *sync.WaitGroup) {
 			d.mu.Unlock()
 			if !waiting {
 				d.poke()
+				d.notifyEnd(context.WithoutCancel(ctx), f.item)
 			}
 		}()
 	}
@@ -640,30 +674,43 @@ func (d *Daemon) laneFor(arm *config.Arm, asked string) (string, error) {
 	return names[0], nil
 }
 
-// Notification is what a refusing or waiting gate sends (050 §2).
+// Notification is what the daemon tells the installation (050 §2, 090 §5):
+// a refusing or waiting gate, a canary stop, a campaign's end, a batch that
+// finished or was stopped, a run's end.
 type Notification struct {
-	Source string    `json:"source"`
-	Kind   string    `json:"kind"`   // gate or canary
-	Status string    `json:"status"` // refuse or wait; for the canary, stop
-	Gate   string    `json:"gate"`
-	Detail string    `json:"detail"`
-	Lane   string    `json:"lane"`
-	Run    string    `json:"run"`
-	Arm    string    `json:"arm"`
-	Task   string    `json:"task"`
-	Time   time.Time `json:"time"`
+	Source string `json:"source"`
+	Kind   string `json:"kind"`   // gate, canary, campaign, batch or run
+	Status string `json:"status"` // gate: refuse or wait; canary: stop; campaign: finished or stopped; batch: finished or stopped; run: its verdict
+	Gate   string `json:"gate"`   // the gate; the campaign's name for a campaign
+	Detail string `json:"detail"`
+	Lane   string `json:"lane"`
+	Run    string `json:"run"`
+	Arm    string `json:"arm"`
+	Task   string `json:"task"`
+	Batch  string `json:"batch,omitempty"`
+	// Counts are a batch's runs by verdict, and by state while unfinished.
+	Counts map[string]int `json:"counts,omitempty"`
+	Time   time.Time      `json:"time"`
 }
 
-// notify tells the configured webhook; the daemon's log always has it. A
-// webhook that fails is logged and stops nothing.
+// notify writes the notification in the daemon's log and, for the kinds
+// [notify] events sends, posts it to the webhook and gives it to the
+// command. Neither stops anything when it fails; the failure is logged.
 func (d *Daemon) notify(ctx context.Context, n Notification) {
 	n.Source, n.Time = "automaticum", time.Now().UTC()
-	d.Log.Warn(n.Kind+" "+n.Status, "gate", n.Gate, "run", n.Run, "lane", n.Lane, "detail", n.Detail)
-	hook := d.Local.Daemon.Notify.Webhook
-	if hook == "" {
+	d.Log.Warn(n.Kind+" "+n.Status, "gate", n.Gate, "run", n.Run, "batch", n.Batch, "lane", n.Lane, "detail", n.Detail)
+	cfg := d.Local.Daemon.Notify
+	if !cfg.Sends(n.Kind) {
 		return
 	}
 	body, _ := json.Marshal(n)
+	if len(cfg.Command) > 0 {
+		d.notifyCommand(ctx, cfg.Command, n, body)
+	}
+	hook := cfg.Webhook
+	if hook == "" {
+		return
+	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, "POST", hook, bytes.NewReader(body))
@@ -686,6 +733,81 @@ func (d *Daemon) notify(ctx context.Context, n Notification) {
 	if resp.StatusCode >= 300 {
 		d.Log.Error("the webhook refused the notification", "status", resp.StatusCode)
 	}
+}
+
+// notifyCommand runs the [notify] command with the notification on its
+// standard input and its main fields in the environment, for at most half
+// a minute.
+func (d *Daemon) notifyCommand(ctx context.Context, argv []string, n Notification, body []byte) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
+	cmd.Stdin = bytes.NewReader(append(body, '\n'))
+	cmd.Env = append(os.Environ(),
+		"AUTOMATICUM_NOTIFY_KIND="+n.Kind, "AUTOMATICUM_NOTIFY_STATUS="+n.Status,
+		"AUTOMATICUM_NOTIFY_RUN="+n.Run, "AUTOMATICUM_NOTIFY_BATCH="+n.Batch,
+		"AUTOMATICUM_NOTIFY_LANE="+n.Lane, "AUTOMATICUM_NOTIFY_GATE="+n.Gate)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		msg := strings.TrimSpace(string(out))
+		if len(msg) > 300 {
+			msg = msg[:300]
+		}
+		d.Log.Error("the notify command failed", "error", err, "output", msg)
+	}
+}
+
+// notifyEnd tells about a run that ended, and about its batch when that was
+// its last run. A batch is told about once for each number of finished
+// runs, so two lanes ending together tell once.
+func (d *Daemon) notifyEnd(ctx context.Context, it store.QueueItem) {
+	rec, err := d.State.GetRun(ctx, it.RunID)
+	if err != nil {
+		return
+	}
+	d.notify(ctx, Notification{Kind: "run", Status: string(rec.Verdict), Detail: rec.VerdictReason, Lane: it.Lane, Run: it.RunID,
+		Arm: it.Arm, Task: it.Task, Batch: it.Batch})
+	if it.Batch == "" {
+		return
+	}
+	runs, err := d.batchRuns(ctx, it.Batch)
+	if err != nil {
+		return
+	}
+	s := wait.Runs(wait.KindBatch, it.Batch, runs)
+	if !s.Over() || d.batchFlight(it.Batch) != nil {
+		return
+	}
+	d.mu.Lock()
+	told := d.batchTold[it.Batch] == s.Counts["finished"]
+	d.batchTold[it.Batch] = s.Counts["finished"]
+	d.mu.Unlock()
+	if told {
+		return
+	}
+	d.notify(ctx, Notification{Kind: "batch", Status: "finished", Batch: it.Batch, Lane: it.Lane, Arm: it.Arm, Task: it.Task,
+		Detail: verdictLine(s.Counts), Counts: verdictCounts(s.Counts)})
+}
+
+// verdictCounts are a snapshot's counts of the verdicts that occur.
+func verdictCounts(c map[string]int) map[string]int {
+	out := map[string]int{}
+	for _, k := range []string{"pass", "fail", "timeout", "aborted", "invalid", "skipped", "queued", "running"} {
+		if c[k] > 0 {
+			out[strings.ToUpper(k)] = c[k]
+		}
+	}
+	return out
+}
+
+func verdictLine(c map[string]int) string {
+	var parts []string
+	for _, k := range []string{"pass", "fail", "timeout", "aborted", "invalid", "skipped"} {
+		if c[k] > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", c[k], strings.ToUpper(k)))
+		}
+	}
+	return fmt.Sprintf("%s of %d runs", strings.Join(parts, ", "), c["total"])
 }
 
 // taskRoots are the repository's tasks/ and the private root the local

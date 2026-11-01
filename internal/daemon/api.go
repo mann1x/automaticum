@@ -264,7 +264,16 @@ func view(r *store.Run, full bool) RunView {
 
 type apiError struct {
 	Error string `json:"error"`
+	// Gate names the gate that refused, when one did (090 §3).
+	Gate string `json:"gate,omitempty"`
 }
+
+// gateRefusal is an error that a gate caused: the answer names the gate.
+type gateRefusal struct {
+	gate, msg string
+}
+
+func (g gateRefusal) Error() string { return g.msg }
 
 func reply(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
@@ -273,7 +282,7 @@ func reply(w http.ResponseWriter, status int, v any) {
 }
 
 func fail(w http.ResponseWriter, status int, format string, args ...any) {
-	reply(w, status, apiError{fmt.Sprintf(format, args...)})
+	reply(w, status, apiError{Error: fmt.Sprintf(format, args...)})
 }
 
 // Handler returns the API.
@@ -306,6 +315,7 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/lanes/{lane}/drain", d.handleLane(true))
 	mux.HandleFunc("POST /v1/lanes/{lane}/resume", d.handleLane(false))
 	mux.HandleFunc("GET /v1/batches/{batch}", d.handleBatch)
+	mux.HandleFunc("GET /v1/wait/{kind}", d.handleWait)
 	mux.HandleFunc("POST /v1/campaigns", d.handleCampaignStart)
 	mux.HandleFunc("GET /v1/campaigns", d.handleCampaigns)
 	mux.HandleFunc("GET /v1/campaigns/{name}", d.handleCampaign)
@@ -348,7 +358,16 @@ func (d *Daemon) allowed(r *http.Request) bool {
 }
 
 func (d *Daemon) handleStatus(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	st, err := d.status(r.Context())
+	if err != nil {
+		fail(w, http.StatusInternalServerError, "%v", err)
+		return
+	}
+	reply(w, http.StatusOK, st)
+}
+
+// status is the lanes, what each is doing, and the queue.
+func (d *Daemon) status(ctx context.Context) (Status, error) {
 	d.mu.Lock()
 	st := Status{Version: d.Version, Started: d.started, Draining: d.draining}
 	flying := map[string]*flight{}
@@ -358,8 +377,7 @@ func (d *Daemon) handleStatus(w http.ResponseWriter, r *http.Request) {
 	d.mu.Unlock()
 	states, err := d.State.LaneStates(ctx)
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "%v", err)
-		return
+		return st, err
 	}
 	stored := map[string]store.LaneState{}
 	for _, ls := range states {
@@ -396,8 +414,7 @@ func (d *Daemon) handleStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	queue, err := d.State.Queue(ctx)
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "%v", err)
-		return
+		return st, err
 	}
 	st.Queue = []QueueEntry{}
 	for _, it := range queue {
@@ -412,7 +429,7 @@ func (d *Daemon) handleStatus(w http.ResponseWriter, r *http.Request) {
 		d.mu.Unlock()
 		st.Queue = append(st.Queue, e)
 	}
-	reply(w, http.StatusOK, st)
+	return st, nil
 }
 
 func (d *Daemon) handleStart(w http.ResponseWriter, r *http.Request) {
@@ -424,6 +441,11 @@ func (d *Daemon) handleStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp, code, err := d.start(r.Context(), req)
+	var g gateRefusal
+	if errors.As(err, &g) {
+		reply(w, code, apiError{Error: g.msg, Gate: g.gate})
+		return
+	}
 	if err != nil {
 		fail(w, code, "%v", err)
 		return
@@ -550,15 +572,19 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 	// not, rather than queued only to be skipped.
 	if d.Static != nil {
 		var refused []string
+		first := ""
 		for _, a := range arms {
 			for _, t := range tks {
 				if w := gate.Worst(d.Static(ctx, a, t, LaneImage(t.Layers))); w != nil && w.Status == gate.Refuse {
 					refused = append(refused, fmt.Sprintf("%s on %s: gate %s: %s", a.Name, t.Name(), w.Gate, w.Detail))
+					if first == "" {
+						first = w.Gate
+					}
 				}
 			}
 		}
 		if len(refused) > 0 {
-			return resp, http.StatusUnprocessableEntity, fmt.Errorf("nothing was queued: %s", strings.Join(refused, "; "))
+			return resp, http.StatusUnprocessableEntity, gateRefusal{gate: first, msg: "nothing was queued: " + strings.Join(refused, "; ")}
 		}
 	}
 	resp = StartResponse{Lane: lane, Lanes: cellLanes, ArmID: arm.ID, Task: tk.Name(), Image: LaneImage(tk.Layers), DryRun: req.DryRun}
@@ -767,6 +793,19 @@ func (d *Daemon) handleRuns(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusInternalServerError, "%v", err)
 		return
 	}
+	// A run is written before it is taken off the queue: in both, it is
+	// finished.
+	written := map[string]bool{}
+	for i := range runs {
+		written[runs[i].ID] = true
+	}
+	kept := out[:0]
+	for _, v := range out {
+		if !written[v.ID] {
+			kept = append(kept, v)
+		}
+	}
+	out = kept
 	for i := range runs {
 		out = append(out, view(&runs[i], false))
 	}

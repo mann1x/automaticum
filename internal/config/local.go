@@ -114,6 +114,25 @@ type Notify struct {
 	// Webhook is a URL that gets one JSON object per notification, by
 	// POST. Empty means the daemon's log only.
 	Webhook string `toml:"webhook"`
+	// Command is a program and its arguments, run once per notification
+	// with the JSON object on its standard input: the way to a mailbox or
+	// anything else the installation uses (090 §5). Empty runs nothing.
+	Command []string `toml:"command"`
+	// Events are the kinds sent (gate, canary, campaign, batch, run). Empty
+	// sends every kind but run; the daemon's log has them all.
+	Events []string `toml:"events"`
+}
+
+// NotifyEvents are the kinds of notification, in the order they are named.
+var NotifyEvents = []string{"gate", "canary", "campaign", "batch", "run"}
+
+// Sends says whether a notification of the kind goes to the webhook and the
+// command.
+func (n Notify) Sends(kind string) bool {
+	if len(n.Events) == 0 {
+		return kind != "run"
+	}
+	return slices.Contains(n.Events, kind)
 }
 
 // Lane is lanes/<name>.toml: an isolated place where one run executes.
@@ -221,6 +240,14 @@ func LoadLocal(dir string) (*Local, error) {
 	}
 	if d.FreeFloorGB <= 0 {
 		bad("automaticum.toml: free_floor_gb must be stated and positive")
+	}
+	if len(d.Notify.Command) > 0 && strings.TrimSpace(d.Notify.Command[0]) == "" {
+		bad("automaticum.toml: [notify] command must start with a program")
+	}
+	for _, e := range d.Notify.Events {
+		if !slices.Contains(NotifyEvents, e) {
+			bad("automaticum.toml: [notify] events: %q is not one of %s", e, strings.Join(NotifyEvents, ", "))
+		}
 	}
 
 	paths, _ := filepath.Glob(filepath.Join(dir, "endpoints", "*.toml"))

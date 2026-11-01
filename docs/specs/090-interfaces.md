@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.22, 2026-10-27.
+**Status:** draft 0.23, 2026-11-01.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -37,7 +37,7 @@ automaticum embed start|status|stop [--where ...]   # by hand only (080 §5.2)
 automaticum reanalyse [--run R | --batch B] [--imported] [--detector D] [--where ...]
 automaticum rescore <cell>
 automaticum export run|cell|cohort|campaign ...
-automaticum wait run|batch|cell <id> [--until "<condition>"]
+automaticum wait run|batch|cell|campaign|lane|idle [<id>] [--until "<condition>"] [--next|--each [--seen N]] [--any] [--timeout D]
 automaticum agent                           # agent mode on a remote host
 ```
 
@@ -83,6 +83,11 @@ now, so runs of an earlier version of it, another identity, are left out.
 The table has an ARM column, the arm's name as the record says it. The
 route is `GET /v1/runs?task=&suite=&model=&arm_id=`; a queued run, which
 has no model or arm id yet, is listed only when neither is asked.
+
+**Built on 2026-11-01 (§5):** `wait` and the route `GET
+/v1/wait/{kind}?id=&until=&seen=&hold=`; `run tail` of a queued run waits
+for it to start (before, the daemon answered 410 "has finished"); a
+static-gate refusal of a start answers 422 with `gate` beside `error`.
 
 **Decided by the owner (2026-10-27, D116):** `notices (<run> ... | --batch B
 ...) [--key K]` prints the SDK's notices of some runs, each with its run,
@@ -176,12 +181,64 @@ The primary user is often an AI session. Requirements:
   a megabyte of transcript unless asked for a range.
 - **"Wait for" primitives** that block server-side until a run, batch or cell
   ends or a condition holds, so an assistant does not poll:
-  `wait run <id>`, `wait batch <id> --until "pass>=5 or fail>=3"`.
+  `wait run <id>`, `wait batch <id> --until "pass>=5 or fail>=3"`. Built
+  2026-11-01 (§5.1).
 - A **`brief` report format** written for a reader with a context budget: the
   verdict, the three numbers that matter, the findings, and ids to drill into.
 - **Notifications** through the mailbox the sessions already use, and
-  webhooks: on campaign end, on a refusing gate, on a stopped batch.
+  webhooks: on campaign end, on a refusing gate, on a stopped batch. Built
+  2026-11-01 (§5.1, 050 §2).
 - Dry run and idempotency keys, as for the CLI.
+
+### 5.1 `wait` as built (2026-11-01)
+
+`internal/wait` decides; the daemon holds `GET /v1/wait/{kind}` until the
+condition holds, what is followed ends without it, or `hold` (at most 55 s)
+runs out, and reads the state again at every change of the queue or of a
+run in flight, and every 2 s. The command asks again until it has an
+answer, so a wait has no length of its own unless `--timeout` gives one. A
+daemon that does not answer, a restart for one, is waited for: the wait
+goes on once it is back. A daemon older than the route (a plain 404) is
+read through `GET /v1/runs`, `/v1/campaigns/{name}` and `/v1/status` every
+`--poll` (5 s) and decided in the command, with the same answers.
+
+| kind | follows | ends by default when | counts | facts |
+|---|---|---|---|---|
+| `run <id>...` | runs, queued or not | `done`: finished | `pass` `fail` `timeout` `aborted` `invalid` `skipped` `finished` `queued` `running` `total` | `started`, `done`, `finished` |
+| `batch <id>` | every run of a batch | `done`: none queued, none in flight | as `run` | `started`, `done` |
+| `cell <batch>` | a cell (065), as a batch; then prints its counts and headline | `done` | as `run` | as `batch` |
+| `campaign <name>` | a campaign (§1 of 050) | `done`: finished or stopped | `batches` `batches_finished` `batches_stopped` `batches_running` `batches_waiting` | `running` `paused` `stopped` `finished` `done` |
+| `lane <lane>` | one lane | `idle`: no run in flight, none queued for it | `running` `queued` | `idle`, `free` (no run in flight), `drained`, `paused` |
+| `idle` | every lane | `idle`: nothing in flight or queued | `running` `queued` | `idle`, `free` |
+
+A condition joins counts compared with a number (`>=`, `>`, `<=`, `<`,
+`==`, `!=`) and facts with `and` and `or` (`&&`, `||`), in parentheses where
+needed; `and` binds tighter. A name the kind does not have is refused when
+the command starts. Every finished record counts once, a retried run's first
+attempt too, so the counts only grow.
+
+- `wait batch <b> --next [--seen N]` ends when the batch has more than N
+  finished runs (N defaults to those finished when it starts), prints each
+  run finished since, and the `--seen` for the next wait: nothing is missed
+  between two waits.
+- `wait batch <b> --each [--seen N]` prints one line (with `--json`, one
+  JSON object) per run as it finishes, and the batch's counts when it has
+  finished: one command for the whole batch, never armed again.
+- `wait run <a> <b> ...` waits for every run named; `--any` for the first.
+- `run tail <run>` of a queued run waits for it to start, then streams it.
+
+Exit codes: **0** the condition holds; **4** `--timeout` ran out (the last
+state read is printed); **5** what is followed ended without the
+condition, so it never will (a batch done before `pass>=5`); **1** an error
+(an unknown id, a condition the kind cannot have). `--json` prints the
+answer: the snapshot (`kind`, `id`, `state`, `counts`, `facts`), `until`,
+`met`, `over`, and `new`, the runs finished past `seen`.
+
+**Notifications as built (050 §2):** the log, `[notify] webhook` and
+`[notify] command` get a gate's refusal or wait, a canary stop, a
+campaign's end, a batch's end or stop, and, when `[notify] events` names
+`run`, each run's end. The sessions' mailbox is reached through
+`[notify] command`, which the installation sets to its own mailbox client.
 
 ## 6. Logs: view, search, replay
 

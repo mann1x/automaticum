@@ -735,8 +735,12 @@ func TestGates(t *testing.T) {
 	if v.Verdict != "SKIPPED" || v.VerdictReason != "gate oracle: not proven" || v.ArmID == "" || v.ArmID != resp.ArmID {
 		t.Errorf("refused run: %+v", v)
 	}
+	// The refusal is told once; the batch's end, its one run SKIPPED,
+	// follows it.
+	waitFor("the batch's end told", func() bool { mu.Lock(); defer mu.Unlock(); return len(told) >= 2 })
 	mu.Lock()
-	if len(told) != 1 || told[0].Status != "refuse" || told[0].Gate != "oracle" {
+	if len(told) != 2 || told[0].Status != "refuse" || told[0].Gate != "oracle" ||
+		told[1].Kind != "batch" || told[1].Status != "finished" || told[1].Counts["SKIPPED"] != 1 {
 		t.Errorf("told %+v", told)
 	}
 	mu.Unlock()
@@ -1617,9 +1621,9 @@ func TestStartStaticGates(t *testing.T) {
 	}
 	for _, dry := range []bool{true, false} {
 		req := StartRequest{Arm: "stub", Tasks: []string{"answer", "train-sh/sh_logtriage"}, DryRun: dry}
-		var e struct{ Error string }
-		if code := g.call("POST", "/v1/runs", req, &e); code != 422 || !strings.Contains(e.Error, "stub on train-sh/sh_logtriage: gate oracle: not proven") {
-			t.Errorf("dry %v: %d %q", dry, code, e.Error)
+		var e struct{ Error, Gate string }
+		if code := g.call("POST", "/v1/runs", req, &e); code != 422 || !strings.Contains(e.Error, "stub on train-sh/sh_logtriage: gate oracle: not proven") || e.Gate != "oracle" {
+			t.Errorf("dry %v: %d %+v", dry, code, e)
 		}
 	}
 	if q, _ := g.state.Queue(context.Background()); len(q) != 0 {

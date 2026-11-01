@@ -9,6 +9,11 @@ CROSS_IMAGE ?= automaticum-build:deb11
 LANCE_C     ?= /work/lance-c
 LANCE_LIB   ?= /target/lance-c/x86_64-unknown-linux-gnu/release/liblance_c.a
 SPIKE_ROOT ?= $(error set SPIKE_ROOT to a directory for caches and sources)
+# The build's version: the commit, "-dirty" when the tree has changes. Every
+# run records it, and the basis carries it (020 §5, "harness build"), so a
+# binary that changes is seen.
+VERSION ?= $(shell git describe --always --dirty --abbrev=12 2>/dev/null || echo dev)
+LDFLAGS  = -ldflags "-X main.version=$(VERSION)"
 
 DOCKER_RUN = docker run --rm \
 	-v $(SPIKE_ROOT)/src:/work \
@@ -35,8 +40,8 @@ lance-c:
 
 # The command line (DuckDB and the blob store; no Lance yet) into bin/.
 build:
-	$(DOCKER_RUN) -w /src $(LINK_IMAGE) go build -o bin/automaticum ./cmd/automaticum
-	$(DOCKER_RUN) -w /src $(LINK_IMAGE) go build -o bin/automaticumd ./cmd/automaticumd
+	$(DOCKER_RUN) -w /src $(LINK_IMAGE) go build $(LDFLAGS) -o bin/automaticum ./cmd/automaticum
+	$(DOCKER_RUN) -w /src $(LINK_IMAGE) go build $(LDFLAGS) -o bin/automaticumd ./cmd/automaticumd
 
 # The spike's measurement program into bin/.
 bench:
@@ -45,7 +50,7 @@ bench:
 
 # Pure-Go packages: run on the host.
 test:
-	go test -race ./internal/store/blob/... ./internal/legacyimport/... ./internal/config/... ./internal/stubmodel/... ./internal/run/... ./internal/sdk/... ./internal/human/... ./internal/stats/... ./internal/detect/... ./internal/gate/... ./internal/ingest/... ./internal/export/... ./internal/suite/... ./internal/daemon/...
+	go test -race ./internal/store/blob/... ./internal/legacyimport/... ./internal/config/... ./internal/stubmodel/... ./internal/run/... ./internal/sdk/... ./internal/human/... ./internal/stats/... ./internal/detect/... ./internal/gate/... ./internal/ingest/... ./internal/export/... ./internal/suite/... ./internal/wait/... ./internal/daemon/...
 	go test -short ./internal/task/... ./internal/docker/...
 	CGO_ENABLED=0 go test ./cmd/automaticum/...
 
