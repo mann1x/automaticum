@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-01T19:30:45.104Z
-> Files: 530 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-01T19:39:56.743Z
+> Files: 532 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../tmp/claude-0/-srv-dev-disk-by-label-opt-dev-automaticum/b3252f5f-43ab-4bf3-a0a5-9eef085a7e35/scratchpad/
 
@@ -329,6 +329,7 @@
 - `human.go` — writes values the way a person reads them: a duration in (~1413 tok)
 
 ## internal/ingest/
+- `oracle_test.go` — TestPartialScore, TestOracleFindings (~800 tok)
 
 - `analyse.go` — Interface: Blobs (58 methods) (~5232 tok)
 - `canary_test.go` — TestCanary (~680 tok)
@@ -339,6 +340,7 @@
 - `events.go` — turns a run's stored raw material into what is queried: (~4069 tok)
 - `ingest_test.go` — TestNoticeLog, TestReadEvents, TestReadWire, TestCompareWireClean, TestCompareWire (~10465 tok)
 - `openai_test.go` — TestOpenAIWire, TestOpenAIWireFromStub, TestOpenAIThinkingBudget (~1625 tok)
+- `oracle.go` — PartialScore (checker JSON, pytest summary); secondary_oracle and claimed_success_oracle_no findings (~1226 tok)
 - `render_test.go` — TestRenderer (~587 tok)
 - `render.go` — Renderer: the runner event lines as a transcript (turns, blocks, tool calls, notices, end) (~986 tok)
 - `sample_test.go` — TestSample, TestDumpBlocks (~1010 tok)
@@ -365,8 +367,8 @@
 - `verify.go` — FileCheck (71 fields); methods: OK, String, String (~2664 tok)
 
 ## internal/run/
-- `fault_test.go` — TestFault: SDK error messages and their kind (~500 tok)
 
+- `fault_test.go` — TestFault: SDK error messages and their kind (~500 tok)
 - `fault.go` — Fault(message): the SDK refusal/transport patterns (llms Kr), ported; a run ending on one is ABORTED (~742 tok)
 - `identity_test.go` — m (37 fields) (~1878 tok)
 - `probe.go` — Identity (126 fields); methods: Changed (~4244 tok)

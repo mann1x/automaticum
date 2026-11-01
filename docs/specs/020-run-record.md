@@ -135,7 +135,11 @@ Rules:
   (`completed`, `aborted`, `max_iterations`, `stopped`, `mistake_limit`) and
   whether it claimed success. "Claimed success, oracle says no" is a finding.
 - **Partial score**, where a task has one (tests passed ÷ tests), is recorded
-  and is never the verdict.
+  and is never the verdict. **As built (2026-11-01):** the metrics
+  `oracle.tests_passed`, `oracle.tests_total` and `oracle.partial_share`,
+  read from the primary oracle's output (060 §2). The finding
+  `claimed_success_oracle_no` (note) is made when the agent claimed success
+  and the verdict is `FAIL` or `TIMEOUT`. Analysis version 8.
 - A run that was paused carries a `paused` flag and its paused intervals
   (050 §4).
 - An operator may mark a finished run `INVALID` with a reason

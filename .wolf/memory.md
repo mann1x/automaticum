@@ -1429,3 +1429,20 @@
 | 20:28 | Created internal/run/fault.go | — | ~742 |
 | 20:30 | Created internal/daemon/heartbeat.go | — | ~805 |
 | 20:46 | item 2: endpoint capacity in scheduler, heartbeat (log/status/GET /v1/heartbeat), infra faults ABORTED via run.Fault (SDK patterns); O34-O38 opened; 050/020 as built; audit rows | internal/daemon/{daemon,heartbeat,api}.go, internal/run/{fault,verdict,run}.go | tests pass | ~20000 |
+
+## Session: 2026-11-01 20:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-01 20:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-01 20:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:39 | Created internal/ingest/oracle.go | — | ~1226 |
+| 21:05 | item 3: secondary oracles run (run.go), partial score + secondary/claimed findings at ingest (oracle.go), analysis v8; specs 060/020/063/070; audit | internal/run/run.go, internal/ingest/{oracle,analyse}.go | tests pass | ~12000 |

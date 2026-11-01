@@ -1,6 +1,6 @@
 # 060 — Tasks, oracles and the suite interface
 
-**Status:** draft 0.13, 2026-10-25.
+**Status:** draft 0.14, 2026-11-01.
 
 ## 1. Scope
 
@@ -30,6 +30,22 @@ Needed beyond the old harness:
   ("did not touch files outside X", "the other tests still pass") recorded as
   findings.
 - **Partial scores**, recorded and never the verdict.
+
+**As built (2026-11-01):** every `[[oracle]]` that is not `primary` runs
+after the primary, on its own copy of the final workspace, with the same
+isolation. Its result is in the record (`provenance.oracles`) and its
+output is an `oracle` blob under its name. Ingest makes a
+`secondary_oracle` finding (warning) of each one that did not pass or could
+not run, with its exit code and the end of its output. It never changes
+the verdict. The partial score is read from the primary oracle's stored
+output at ingest, so `reanalyse` gives it to earlier runs too. Two forms
+are known: the last JSON line the harness's own checkers print (`passed`
+and `total`, at the top or under `game_logic`), and pytest's closing
+summary (the passed tests over those passed, failed and in error). It is
+stored as the metrics `oracle.tests_passed`, `oracle.tests_total` and
+`oracle.partial_share`. A task whose oracle prints neither has none (the
+demo tasks). No task declares a form of its own: adding a key to the
+existing tasks would change their hashes and so their basis.
 - **Multi-turn tasks** with a scripted user, since questions, steering and
   queued messages are product features that could not be tested unattended.
 - **Limits per task**, calibrated from the reference solution's run time on the

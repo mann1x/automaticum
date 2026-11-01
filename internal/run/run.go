@@ -295,6 +295,10 @@ type provenance struct {
 		Git bool `json:"git,omitempty"`
 	} `json:"workspace"`
 	Oracle *task.OracleResult `json:"oracle"`
+	// Oracles are the task's secondary oracles, each run after the primary
+	// on its own copy of the workspace; they never decide the verdict and
+	// ingest makes a finding of each that did not pass (060 §2).
+	Oracles []task.OracleResult `json:"oracles,omitempty"`
 	// NotRecorded says what a full record holds that this one does not,
 	// and why.
 	NotRecorded map[string]string `json:"not_recorded"`
@@ -677,6 +681,20 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 			facts.OracleRan, facts.OraclePassed = true, or.Passed
 		}
 		put("oracle", o.Name, strings.NewReader(or.Output))
+		for i := range t.Oracles {
+			s := &t.Oracles[i]
+			if s.Primary {
+				continue
+			}
+			sr, err := x.Tasks.RunOracle(octx, t, s, ws, collected)
+			if err != nil {
+				note("running the secondary oracle %s: %v", s.Name, err)
+				sr.Oracle, sr.Err = s.Name, err.Error()
+			}
+			put("oracle", s.Name, strings.NewReader(sr.Output))
+			sr.Output = ""
+			p.Oracles = append(p.Oracles, sr)
+		}
 	}
 	return finish()
 }

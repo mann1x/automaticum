@@ -1,6 +1,6 @@
 # 063 — Suite: our own multi-language agentic suite
 
-**Status:** draft 0.6, 2026-10-23. The tasks themselves are omnimergekit's to
+**Status:** draft 0.7, 2026-11-01. The tasks themselves are omnimergekit's to
 write. This file states what automaticum provides so that such a suite can
 exist.
 
@@ -44,7 +44,9 @@ the compiled task checkers need, comes from the base.
   suite is admitted only when `oracle verify` passes for all of them, and the
   reference is run several times to reject flaky tests.
 - **Partial credit** (tests passed ÷ tests) is recorded and is never the
-  headline. The headline is all-tests-pass.
+  headline. The headline is all-tests-pass. **As built (2026-11-01):** the
+  training pool's checkers print it, and ingest stores it as
+  `oracle.partial_share` (060 §2).
 
 ## 4. Structure
 

@@ -34,6 +34,11 @@ requests). Owner questions: O34 (labels), O35 (external busy signal), O36
 (automatic quarantine), O37 (driver watchdog), O38 (priorities and
 reservations).
 
+**Item 3, secondary oracles and partial scores (2026-11-01):** secondary
+oracles run and are findings; the partial score is read from the primary
+oracle's output; "claimed success, oracle says no" is a finding; analysis
+version 8.
+
 The other rows below are as found, before those fixes. Each table was written by
 one reader of a group of specs; a row's evidence is a path and line at
 180cc97.
@@ -151,8 +156,8 @@ Repo state: main at 180cc97, 2026-11-01. Paths are relative to the repo root. St
 | 020 §3 | INVALID: wrong build, setting not applied, not GPU-resident, endpoint changed | BUILT | run.go:599-645; ingest gpu_residency/model_reloaded |
 | 020 §3 | D99 guard stop -> FAIL with oracle answer kept | BUILT | verdict.go GuardStop case |
 | 020 §3 | Secondary outcome (agent end, claimed success) | BUILT | Run.AgentEnd, ClaimedSuccess (run.go:548) |
-| 020 §3 | "Claimed success, oracle says no" is a finding | NOT BUILT | no such finding in internal/ingest or detect |
-| 020 §3 | Partial score (tests passed / tests) | NOT BUILT | no field anywhere (grep partial score: none) |
+| 020 §3 | "Claimed success, oracle says no" is a finding | BUILT | ingest/oracle.go `claimed_success_oracle_no`, TestOracleFindings |
+| 020 §3 | Partial score (tests passed / tests) | BUILT | `oracle.tests_passed|tests_total|partial_share` from the primary oracle output (ingest/oracle.go PartialScore) |
 | 020 §3 | Paused flag and paused intervals | BUILT | Run.Paused; provenance holds/held_ms |
 | 020 §3 | `run invalidate` keeps original verdict | BUILT | POST /v1/runs/{id}/invalidate; Run.PriorVerdict |
 | 020 §4 | Task version recorded | BUILT | Run.TaskVersion |
@@ -401,8 +406,8 @@ It is not counted as BUILT below.
 | 060 §2 | Fixtures known-good/known-bad | BUILT | `task.go:153-155`, `exec.go:398` |
 | 060 §2 | Scripted user | BUILT | `internal/task/user.go`, `runner/user.mjs` |
 | 060 §2 | Hooks: per-task prepare and collect steps run by the harness | PARTIAL | `[workspace] collect` (D111) built; no prepare hook |
-| 060 §2 | Several oracles: secondary checks recorded as findings | PARTIAL | loader accepts several with exactly one primary (`task.go:429-434`), but the executor runs only `PrimaryOracle()` (`run.go:651`); secondaries never run, no findings |
-| 060 §2 | Partial scores, recorded, never the verdict | NOT BUILT | no code |
+| 060 §2 | Several oracles: secondary checks recorded as findings | BUILT | run.go runs every non-primary oracle (provenance.oracles, `oracle` blobs); ingest `secondary_oracle` finding; TestSecondaryOracle |
+| 060 §2 | Partial scores, recorded, never the verdict | BUILT | ingest/oracle.go PartialScore (checker JSON, pytest summary); TestPartialScore |
 | 060 §2 | Limits per task | BUILT | `task.go:71-75` |
 | 060 §2 | ... calibrated from the reference solution's run time on the lane | NOT BUILT | limits are hand-written in task.toml |
 | 060 §3 | Oracle run after agent stops, from a copy, hash checked | BUILT | `run.go:651-674` (tampered check `:663`), network none `exec.go:361` |
@@ -441,7 +446,7 @@ It is not counted as BUILT below.
 | 063 §2 | Language server in layers | SCHEDULED (m5) | spec: added with diagnostics work (emulated diagnostics are m5 per 110 §3) |
 | 063 §3 | Hidden tests run by harness; visible tests separate file set | PARTIAL | hidden: BUILT; visible as separate set: see 060 §2 |
 | 063 §3 | Reference + known-bad per task; admitted only if oracle verify passes; reference run several times | BUILT | fixtures + `oracle verify` repeats + gate `oracle` |
-| 063 §3 | Partial credit (tests passed / tests) recorded | NOT BUILT | no code |
+| 063 §3 | Partial credit (tests passed / tests) recorded | BUILT | `oracle.partial_share` (see 060 §2) |
 | 063 §4 | Problem id shared across languages; per-language and per-problem report views | NOT BUILT | no problem id field; `compare` groups by arm and task only (`daemon/compare.go:321`) |
 | 063 §4 | Tiers and families as labels | BUILT | e.g. `tasks/train-ml/go_workerpool/task.toml` `[labels]` |
 | 063 §4 | Attribution on balanced axes with per-category n | NOT BUILT | no label-axis grouping in compare (070 §6 territory) |

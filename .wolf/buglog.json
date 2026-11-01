@@ -1057,6 +1057,24 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-01T20:45:00+01:00"
+    },
+    {
+      "id": "bug-062",
+      "timestamp": "2026-11-01T21:05:00+01:00",
+      "error_message": "a task's secondary oracles were loaded but never run; no partial score; no 'claimed success, oracle says no' finding",
+      "file": "internal/run/run.go",
+      "root_cause": "the executor ran only PrimaryOracle(); ingest read no oracle output",
+      "fix": "run.go runs every non-primary oracle on its own copy (provenance.oracles, oracle blobs); ingest/oracle.go reads the oracle blobs: PartialScore metrics, secondary_oracle and claimed_success_oracle_no findings; analysis version 8",
+      "tags": [
+        "oracle",
+        "partial-score",
+        "findings",
+        "060",
+        "020"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T21:05:00+01:00"
     }
   ]
 }

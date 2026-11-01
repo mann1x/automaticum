@@ -309,6 +309,12 @@ Each has a severity, evidence (event ids, quoted text) and a count.
   environment to get past an obstacle (editing PATH, chmod, deleting a guard).
 - **Struggle signals:** the triggers of the escalation study, evaluated on
   every run, with recall and false-alarm rate per trigger across a set.
+- **Oracles and the agent's own end (as built 2026-11-01, analysis version
+  8):** `secondary_oracle` (warning, version 1), one per secondary oracle
+  that did not pass or could not run (060 §2), and
+  `claimed_success_oracle_no` (note, version 1), the agent claiming success
+  on a `FAIL` or `TIMEOUT` (020 §3). The partial score is the metrics
+  `oracle.tests_passed`, `oracle.tests_total` and `oracle.partial_share`.
 - **Session forks (D86, as built 2026-10-14, analysis version 4):** the
   finding `session_fork` (severity note, version 1) lists each fork a
   restore of messages started: its time, the session it left and the one it

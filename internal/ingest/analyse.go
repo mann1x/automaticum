@@ -50,12 +50,13 @@ const SessionFork = "session_fork"
 // analysis records it as the metric analysis.version: the basis (020 §5)
 // says from it which detectors a run was analysed with, whether or not
 // they found anything.
-const AnalysisVersion = 7
+const AnalysisVersion = 8
 
 // Versions are the versions of the detectors this analysis applies:
 // ingest's own and the detector library's.
 var Versions = map[string]string{
 	"library": detect.Version, WireArm: WireArmVersion, CapHit: "2", GPUResidency: "1", ModelIdentity: "1", ModelReloaded: "2", SessionFork: "1",
+	SecondaryOracle: "1", ClaimedNotPassed: "1",
 }
 
 // VersionsText is Versions as one line, in order.
@@ -89,7 +90,7 @@ func Detectors() []string {
 // other detector are kept as they are.
 var owned = map[string]bool{WireArm: true, CapHit: true, GPUResidency: true, ModelReloaded: true, ModelIdentity: true, detect.ShortUnitRepeat: true, detect.CharRun: true,
 	detect.SentenceRepeat: true, detect.Runaway: true, detect.RepeatedToolCall: true,
-	detect.ReasoningRepetition: true, detect.ReasoningLoop: true}
+	detect.ReasoningRepetition: true, detect.ReasoningLoop: true, SecondaryOracle: true, ClaimedNotPassed: true}
 
 // Run derives metrics, tool calls and findings from a run's stored material
 // and writes them, replacing what an earlier ingest wrote. It is safe to run
@@ -108,7 +109,21 @@ func Run(ctx context.Context, st store.State, blobs Blobs, runID string) (*Resul
 		return nil, err
 	}
 	ev, reqs := &Events{Notices: map[string]int{}, GuardTrips: map[string]int{}, GuardCauses: map[string]int{}}, []Request(nil)
+	outputs := map[string]string{}
 	for _, ref := range refs {
+		if ref.Kind == "oracle" {
+			rd, _, err := blobs.Reader(ctx, ref.Hash)
+			if err != nil {
+				return nil, fmt.Errorf("oracle %s of run %s: %w", ref.Name, runID, err)
+			}
+			b, err := io.ReadAll(io.LimitReader(rd, 8<<20))
+			rd.Close()
+			if err != nil {
+				return nil, fmt.Errorf("oracle %s of run %s: %w", ref.Name, runID, err)
+			}
+			outputs[ref.Name] = string(b)
+			continue
+		}
 		if ref.Kind != "events" && (ref.Kind != "wire" || r.Imported) {
 			continue
 		}
@@ -134,6 +149,11 @@ func Run(ctx context.Context, st store.State, blobs Blobs, runID string) (*Resul
 		res.Findings, _ = detectorFindings(r.ID, ev, detect.Options{})
 	} else {
 		res = Analyse(r, ev, reqs)
+	}
+	of, om := oracleFindings(r, outputs)
+	res.Findings = append(res.Findings, of...)
+	if !r.Imported {
+		res.Metrics = append(res.Metrics, om...)
 	}
 	old, err := st.Findings(ctx, runID)
 	if err != nil {

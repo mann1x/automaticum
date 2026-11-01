@@ -652,3 +652,58 @@ func TestRootLimitsCollect(t *testing.T) {
 		t.Errorf("%s: %s", r.Verdict, r.VerdictReason)
 	}
 }
+
+// A task's secondary oracle runs after the primary on its own copy, is kept
+// in the record and as a blob, and never decides the verdict (060 §2).
+func TestSecondaryOracle(t *testing.T) {
+	w := newWorld(t)
+	td := filepath.Join(t.TempDir(), "demo", "two")
+	os.MkdirAll(filepath.Join(td, "seed"), 0o755)
+	os.WriteFile(filepath.Join(td, "seed", "answer.txt"), []byte("The answer is 41.\n"), 0o644)
+	oracle := `image = "debian@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587"
+command = ["sh", "-c", "true"]
+timeout_s = 30
+`
+	os.WriteFile(filepath.Join(td, "task.toml"), []byte(`id = "two"
+suite = "demo"
+version = 1
+prompt = "p"
+[limits]
+wall_s = 60
+[workspace]
+seed = "seed"
+[[oracle]]
+name = "check"
+primary = true
+expect_pattern = "RESULT ok"
+`+oracle+`[[oracle]]
+name = "scope"
+expect_pattern = "RESULT wrong"
+`+oracle), 0o644)
+	tk, err := task.Load(td)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.req.Task = tk
+	w.engine.runner = func(_ context.Context, s docker.Spec, out io.Writer) (docker.Result, error) {
+		fix(s)
+		io.WriteString(out, `{"k":"event","event":{}}`+"\n"+endLine(OutcomeCompleted, ""))
+		return docker.Result{}, nil
+	}
+	r, p := w.run(t, context.Background())
+	if r.Verdict != store.Pass {
+		t.Fatalf("%s: %s", r.Verdict, r.VerdictReason)
+	}
+	if len(p.Oracles) != 1 || p.Oracles[0].Oracle != "scope" || p.Oracles[0].Passed {
+		t.Fatalf("secondary: %+v", p.Oracles)
+	}
+	names := map[string]bool{}
+	for _, ref := range w.state.refs {
+		if ref.RunID == r.ID && ref.Kind == "oracle" {
+			names[ref.Name] = true
+		}
+	}
+	if !names["check"] || !names["scope"] {
+		t.Errorf("oracle blobs: %v", names)
+	}
+}
