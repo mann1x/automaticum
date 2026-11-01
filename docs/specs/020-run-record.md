@@ -1,6 +1,6 @@
 # 020 — The run record, verdicts and the basis
 
-**Status:** draft 0.14, 2026-10-25.
+**Status:** draft 0.15, 2026-11-01.
 
 Nothing in this file is optional. Each item is here because its absence
 invalidated or blinded a real campaign. A value is recorded **as probed or as
@@ -229,6 +229,7 @@ different lane counts never share a basis.
 `automaticum basis diff <batch[/arm]> <batch[/arm]>` prints exactly the facts
 in which two differ; `automaticum compare` prints, above every number, the
 basis diff of each pair and every fact in which an arm's own runs differ.
-Not built yet: the cohort's declared variable and the **confounded** label,
-the refusal to put different bases in one table, and the export (065 §5):
-they come with cells and cohorts.
+Not built yet: the cohort's declared variable and the **confounded** label
+(**Open**, O31: how a cohort is declared), and the refusal to put different
+bases in one table. The cell's plain-text basis is exported with `export
+cell` (065 §5).

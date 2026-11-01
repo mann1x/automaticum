@@ -18,6 +18,7 @@ func campaignStart(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("campaign start", flag.ExitOnError)
 	_, dial := addClient(fs)
 	dry := fs.Bool("dry-run", false, "check every batch and start nothing")
+	m := keyOnly(fs, dry)
 	rest := parse(fs, args)
 	if len(rest) != 1 {
 		return errors.New("usage: automaticum campaign start <name> [--dry-run]")
@@ -27,7 +28,7 @@ func campaignStart(ctx context.Context, args []string) error {
 		return err
 	}
 	var v daemon.CampaignView
-	if err := c.do(ctx, "POST", "/v1/campaigns", daemon.CampaignRequest{Name: rest[0], DryRun: *dry}, &v); err != nil {
+	if err := c.do(ctx, "POST", m.on(c, "/v1/campaigns"), daemon.CampaignRequest{Name: rest[0], DryRun: *dry}, &v); err != nil {
 		return err
 	}
 	if c.json {
@@ -156,21 +157,39 @@ func campaignControl(verb string) func(context.Context, []string) error {
 	return func(ctx context.Context, args []string) error {
 		fs := flag.NewFlagSet("campaign "+verb, flag.ExitOnError)
 		_, dial := addClient(fs)
+		m := addMutation(fs)
 		keep := fs.Bool("keep-model", false, "pause: hold the run in flight but leave its model loaded")
 		rest := parse(fs, args)
 		if len(rest) != 1 {
-			return fmt.Errorf("usage: automaticum campaign %s <name>", verb)
+			return fmt.Errorf("usage: automaticum campaign %s <name> [--dry-run] [--idempotency-key K]", verb)
 		}
 		c, err := dial()
 		if err != nil {
 			return err
 		}
+		path := m.on(c, "/v1/campaigns/"+url.PathEscape(rest[0])+"/"+verb)
+		if verb == "retry" {
+			var rv daemon.CampaignRetryView
+			if err := c.do(ctx, "POST", path, nil, &rv); err != nil {
+				return err
+			}
+			if c.json {
+				return printJSON(rv)
+			}
+			for _, b := range rv.Batches {
+				fmt.Printf("%s%s: %d runs queued again\n", m.dryNote(), b.Batch, len(b.Retries))
+			}
+			return nil
+		}
 		var v daemon.CampaignView
-		if err := c.do(ctx, "POST", "/v1/campaigns/"+url.PathEscape(rest[0])+"/"+verb, map[string]bool{"keep_model": *keep}, &v); err != nil {
+		if err := c.do(ctx, "POST", path, map[string]bool{"keep_model": *keep}, &v); err != nil {
 			return err
 		}
 		if c.json {
 			return printJSON(v)
+		}
+		if *m.dry {
+			fmt.Printf("%scampaign %s would be %s\n\n", m.dryNote(), v.Name, v.State)
 		}
 		printCampaign(v)
 		return nil

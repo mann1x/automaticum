@@ -43,12 +43,29 @@ type control struct {
 	// Limits are the batches' own limits (D107), in place of the arm's and
 	// the task's, for the runs that start after they are set.
 	Limits map[string]*run.Override `json:"limits,omitempty"`
+	// Quarantined lanes start nothing until resumed, with the reason they
+	// were taken out (050 §5).
+	Quarantined map[string]Quarantine `json:"quarantined,omitempty"`
+	// LaneHeld are the lanes paused with their run in flight held, so a
+	// resume releases it.
+	LaneHeld map[string]time.Time `json:"lane_held,omitempty"`
+	// CellBatches are the batches started by `cell run`, with the suite
+	// (and subset) asked.
+	CellBatches map[string]string `json:"cell_batches,omitempty"`
+	// Idem are the kept answers of requests made with an idempotency key.
+	Idem map[string]*IdemEntry `json:"idempotency,omitempty"`
+}
+
+// Quarantine is why and since when a lane is out of use.
+type Quarantine struct {
+	At     time.Time `json:"at"`
+	Reason string    `json:"reason"`
 }
 
 // loadControl reads the control file once. A missing file is an empty one.
 // It is called with d.mu held.
 func (d *Daemon) loadControl() {
-	d.ctl = control{Drained: map[string]time.Time{}, Held: map[string]time.Time{}, Retries: map[string]string{}, Canary: map[string]*CanaryRecord{}, Campaigns: map[string]*CampaignState{}, Cells: map[string]*CellSpec{}, Capture: map[string]bool{}, Heldout: map[string]bool{}, Limits: map[string]*run.Override{}}
+	d.ctl = control{Drained: map[string]time.Time{}, Held: map[string]time.Time{}, Retries: map[string]string{}, Canary: map[string]*CanaryRecord{}, Campaigns: map[string]*CampaignState{}, Cells: map[string]*CellSpec{}, Capture: map[string]bool{}, Heldout: map[string]bool{}, Limits: map[string]*run.Override{}, Quarantined: map[string]Quarantine{}, LaneHeld: map[string]time.Time{}, CellBatches: map[string]string{}, Idem: map[string]*IdemEntry{}}
 	if d.ControlFile == "" {
 		return
 	}
@@ -92,6 +109,18 @@ func (d *Daemon) loadControl() {
 	if d.ctl.Cells == nil {
 		d.ctl.Cells = map[string]*CellSpec{}
 	}
+	if d.ctl.Quarantined == nil {
+		d.ctl.Quarantined = map[string]Quarantine{}
+	}
+	if d.ctl.LaneHeld == nil {
+		d.ctl.LaneHeld = map[string]time.Time{}
+	}
+	if d.ctl.Idem == nil {
+		d.ctl.Idem = map[string]*IdemEntry{}
+	}
+	if d.ctl.CellBatches == nil {
+		d.ctl.CellBatches = map[string]string{}
+	}
 	for batch, c := range d.ctl.Cells {
 		if err := d.addCell(batch, c); err != nil {
 			d.Log.Error("a cell's endpoint cannot be registered; its runs will be skipped", "batch", batch, "error", err)
@@ -118,6 +147,9 @@ func (d *Daemon) saveControl() error {
 // stopped says why a queued run may not start now, or "" when it may.
 // It is called with d.mu held.
 func (d *Daemon) stopped(it store.QueueItem) string {
+	if q, ok := d.ctl.Quarantined[it.Lane]; ok {
+		return "lane quarantined: " + q.Reason
+	}
 	if _, ok := d.ctl.Drained[it.Lane]; ok {
 		return "lane drained"
 	}
@@ -125,6 +157,59 @@ func (d *Daemon) stopped(it store.QueueItem) string {
 		return "batch paused"
 	}
 	return ""
+}
+
+// releaseHeld lets the runs in flight on the lanes (every lane when none
+// is named) go on if they are held by `run pause`, `batch pause` or `lane
+// pause`, so that a drain ends with their verdicts and never waits on a
+// hold (D119). A lane paused is drained only from then on. It is called
+// without d.mu held, and gives the runs that were held or asked to hold.
+func (d *Daemon) releaseHeld(lanes ...string) []string {
+	h, ok := d.Runner.(holder)
+	if !ok {
+		return nil
+	}
+	d.mu.Lock()
+	if len(lanes) == 0 {
+		for name := range d.flights {
+			lanes = append(lanes, name)
+		}
+	}
+	type target struct {
+		f      *flight
+		asked  bool
+		laneOf string
+	}
+	var ts []target
+	for _, name := range lanes {
+		f := d.flights[name]
+		if f == nil {
+			continue
+		}
+		_, lanePaused := d.ctl.LaneHeld[name]
+		_, batchPaused := d.ctl.Held[f.item.Batch]
+		ts = append(ts, target{f, lanePaused || batchPaused && f.item.Batch != "", name})
+		delete(d.ctl.LaneHeld, name)
+	}
+	if err := d.saveControl(); err != nil {
+		d.Log.Error("the control file", "error", err)
+	}
+	d.mu.Unlock()
+	var out []string
+	for _, t := range ts {
+		held, _ := t.f.holding()
+		// Release is a no-op on a run that is not held, and also takes
+		// back a hold asked for that the runner has not reached yet.
+		if err := h.Release(t.f.runID); err != nil {
+			d.Log.Error("a drain could not release a held run", "run", t.f.runID, "error", err)
+			continue
+		}
+		if held || t.asked {
+			d.Log.Info("a drain released a held run; it finishes", "run", t.f.runID, "lane", t.laneOf)
+			out = append(out, t.f.runID)
+		}
+	}
+	return out
 }
 
 // asked is what a run was asked to be, kept in the record of a run that
@@ -140,40 +225,151 @@ func askedProvenance(it store.QueueItem) json.RawMessage {
 	return b
 }
 
-// LaneControl is the answer to draining or resuming a lane.
+// LaneControl is the answer to a lane's control.
 type LaneControl struct {
 	Lane    string `json:"lane"`
+	State   string `json:"state"` // drained, paused, quarantined, resumed, aborting
 	Drained bool   `json:"drained"`
-	// InFlight is the run that finishes before a drained lane stops.
+	// InFlight is the run in flight on the lane, and Action what was, or
+	// would be, done to it.
 	InFlight string `json:"in_flight,omitempty"`
+	Action   string `json:"action,omitempty"`
+	Reason   string `json:"reason,omitempty"`
+	DryRun   bool   `json:"dry_run,omitempty"`
 }
 
-func (d *Daemon) handleLane(drain bool) http.HandlerFunc {
+// handleLane controls a lane (050 §4):
+//   - drain: the run in flight finishes, then nothing starts;
+//   - pause: drained, and the run in flight held before its next model
+//     request with the endpoint freed of its model (unless keep_model);
+//   - quarantine: drained with a reason, shown as quarantined (050 §5);
+//   - abort: the run in flight is aborted; the lane is otherwise left as it
+//     is;
+//   - resume: drained, paused or quarantined no more, a held run released.
+func (d *Daemon) handleLane(verb string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		name := r.PathValue("lane")
 		if _, ok := d.Local.Lanes[name]; !ok {
 			fail(w, http.StatusNotFound, "there is no lane %s", name)
 			return
 		}
-		d.mu.Lock()
-		if drain {
-			if _, ok := d.ctl.Drained[name]; !ok {
-				d.ctl.Drained[name] = time.Now().UTC()
-			}
-		} else {
-			delete(d.ctl.Drained, name)
+		var req struct {
+			KeepModel bool   `json:"keep_model"`
+			Reason    string `json:"reason"`
 		}
-		err := d.saveControl()
-		out := LaneControl{Lane: name, Drained: drain}
-		if f := d.flights[name]; f != nil {
+		json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&req)
+		req.Reason = strings.TrimSpace(req.Reason)
+		if verb == "quarantine" && req.Reason == "" {
+			fail(w, http.StatusBadRequest, "a quarantine needs a reason")
+			return
+		}
+		d.mu.Lock()
+		f := d.flights[name]
+		_, lanePaused := d.ctl.LaneHeld[name]
+		batchPaused := false
+		if f != nil && f.item.Batch != "" {
+			_, batchPaused = d.ctl.Held[f.item.Batch]
+		}
+		d.mu.Unlock()
+		out := LaneControl{Lane: name, DryRun: dryRun(r), Reason: req.Reason}
+		if f != nil {
 			out.InFlight = f.runID
 		}
+		h, canHold := d.Runner.(holder)
+		switch verb {
+		case "drain", "quarantine":
+			out.State, out.Drained = "drained", true
+			if verb == "quarantine" {
+				out.State = "quarantined"
+			}
+			if f != nil {
+				out.Action = "finishes, then nothing else starts"
+				if held, _ := f.holding(); (held || lanePaused || batchPaused) && canHold {
+					out.Action = "released from its hold; " + out.Action
+				}
+			}
+		case "pause":
+			out.State, out.Drained = "paused", true
+			switch {
+			case f == nil:
+			case !canHold:
+				out.Action = "this daemon cannot hold a run; it finishes"
+			default:
+				if held, _ := f.holding(); held {
+					out.Action = "already held"
+				} else {
+					out.Action = "held before its next model request"
+					if !req.KeepModel {
+						out.Action += ", then the endpoint freed of its model"
+					}
+				}
+			}
+		case "abort":
+			if f == nil {
+				fail(w, http.StatusNotFound, "lane %s has no run in flight", name)
+				return
+			}
+			out.State, out.Action = "aborting", "aborted; the lane is otherwise left as it is"
+			d.mu.Lock()
+			_, out.Drained = d.ctl.Drained[name]
+			d.mu.Unlock()
+		case "resume":
+			out.State = "resumed"
+			if f != nil && lanePaused && canHold {
+				out.Action = "released; its next request loads the model again"
+			}
+		}
+		if out.DryRun {
+			reply(w, http.StatusOK, out)
+			return
+		}
+		if verb == "abort" {
+			d.Abort(f.runID)
+			reply(w, http.StatusAccepted, out)
+			return
+		}
+		if verb == "pause" && f != nil && canHold && out.Action != "already held" {
+			if err := h.Hold(f.runID); err != nil {
+				out.Action = "not held: " + err.Error()
+			} else {
+				go d.afterHeld(f, !req.KeepModel)
+			}
+		}
+		if verb == "resume" && f != nil && lanePaused && canHold {
+			if err := h.Release(f.runID); err != nil {
+				out.Action = "not released: " + err.Error()
+			}
+		}
+		if verb == "drain" || verb == "quarantine" {
+			if released := d.releaseHeld(name); len(released) > 0 && !strings.HasPrefix(out.Action, "released") {
+				out.Action = "released from its hold; " + out.Action
+			}
+		}
+		now := time.Now().UTC()
+		d.mu.Lock()
+		switch verb {
+		case "drain", "pause", "quarantine":
+			if _, ok := d.ctl.Drained[name]; !ok {
+				d.ctl.Drained[name] = now
+			}
+			if verb == "pause" {
+				d.ctl.LaneHeld[name] = now
+			}
+			if verb == "quarantine" {
+				d.ctl.Quarantined[name] = Quarantine{At: now, Reason: req.Reason}
+			}
+		case "resume":
+			delete(d.ctl.Drained, name)
+			delete(d.ctl.LaneHeld, name)
+			delete(d.ctl.Quarantined, name)
+		}
+		err := d.saveControl()
 		d.mu.Unlock()
 		if err != nil {
 			fail(w, http.StatusInternalServerError, "the control file: %v", err)
 			return
 		}
-		d.Log.Info("lane control", "lane", name, "drained", drain)
+		d.Log.Info("lane control", "lane", name, "verb", verb, "reason", req.Reason)
 		d.poke()
 		reply(w, http.StatusOK, out)
 	}
@@ -192,6 +388,7 @@ type BatchControl struct {
 	Action   string `json:"action,omitempty"`
 	// Limits are the batch's own limits after `batch limits`.
 	Limits *run.Override `json:"limits,omitempty"`
+	DryRun bool          `json:"dry_run,omitempty"`
 }
 
 // batchFlight is the batch's run in flight, if it has one.
@@ -240,7 +437,19 @@ func (d *Daemon) handleBatchPause(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusNotFound, "batch %s has no run queued or in flight", batch)
 		return
 	}
-	out := BatchControl{Batch: batch, State: "paused", Queued: ids(queued)}
+	out := BatchControl{Batch: batch, State: "paused", Queued: ids(queued), DryRun: dryRun(r)}
+	if out.DryRun {
+		if f != nil {
+			out.InFlight, out.Action = f.runID, "held before its next model request"
+			if held, _ := f.holding(); held {
+				out.Action = "already held"
+			} else if !req.KeepModel {
+				out.Action += ", then the endpoint freed of its model"
+			}
+		}
+		reply(w, http.StatusOK, out)
+		return
+	}
 	if f != nil {
 		out.InFlight = f.runID
 		h, ok := d.Runner.(holder)
@@ -314,6 +523,15 @@ func (d *Daemon) handleBatchLimits(w http.ResponseWriter, r *http.Request) {
 	if req.IdleS != nil {
 		merged.IdleS = req.IdleS
 	}
+	if dryRun(r) {
+		d.mu.Unlock()
+		out := BatchControl{Batch: batch, State: "limits set", Queued: ids(queued), Limits: &merged, DryRun: true}
+		if f != nil {
+			out.InFlight, out.Action = f.runID, "keeps the limits it started with"
+		}
+		reply(w, http.StatusOK, out)
+		return
+	}
 	d.ctl.Limits[batch] = &merged
 	err = d.saveControl()
 	d.mu.Unlock()
@@ -342,6 +560,19 @@ func (d *Daemon) handleBatchResume(w http.ResponseWriter, r *http.Request) {
 	}
 	d.mu.Lock()
 	_, wasHeld := d.ctl.Held[batch]
+	if dryRun(r) {
+		d.mu.Unlock()
+		if !wasHeld && f == nil {
+			fail(w, http.StatusNotFound, "batch %s is not paused", batch)
+			return
+		}
+		out := BatchControl{Batch: batch, State: "resumed", Queued: ids(queued), DryRun: true}
+		if f != nil {
+			out.InFlight, out.Action = f.runID, "released; its next request loads the model again"
+		}
+		reply(w, http.StatusOK, out)
+		return
+	}
 	delete(d.ctl.Held, batch)
 	err = d.saveControl()
 	d.mu.Unlock()
@@ -378,8 +609,29 @@ func (d *Daemon) handleBatchStop(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&req)
 	var cause error
-	if req.Abort {
+	if req.Abort || strings.HasSuffix(r.URL.Path, "/abort") {
 		cause = run.ErrOperatorAbort
+	}
+	if dryRun(r) {
+		f := d.batchFlight(batch)
+		queued, err := d.batchQueued(r, batch, f)
+		if err != nil {
+			fail(w, http.StatusInternalServerError, "%v", err)
+			return
+		}
+		if f == nil && len(queued) == 0 {
+			fail(w, http.StatusNotFound, "batch %s has no run queued or in flight", batch)
+			return
+		}
+		out := BatchControl{Batch: batch, State: "stopped", Stopped: ids(queued), DryRun: true}
+		if f != nil {
+			out.InFlight, out.Action = f.runID, "finishes, then the batch is over"
+			if cause != nil {
+				out.Action = "aborting"
+			}
+		}
+		reply(w, http.StatusOK, out)
+		return
 	}
 	out, err := d.stopBatch(r.Context(), batch, "batch stopped by the operator before it started", cause)
 	switch {
@@ -480,7 +732,6 @@ type RetryView struct {
 // the same arm, task and lane, in the same batch. The old record stays as
 // it is; the new run says which one it retries.
 func (d *Daemon) handleRetry(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
 	var req struct {
 		DryRun bool `json:"dry_run"`
 		// Verdicts narrows a batch's retry to these verdicts, each of them
@@ -488,32 +739,39 @@ func (d *Daemon) handleRetry(w http.ResponseWriter, r *http.Request) {
 		Verdicts []store.Verdict `json:"verdicts"`
 	}
 	json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&req)
+	out, code, err := d.retry(r.Context(), r.PathValue("id"), r.PathValue("batch"), req.Verdicts, req.DryRun || dryRun(r))
+	if err != nil {
+		fail(w, code, "%v", err)
+		return
+	}
+	reply(w, code, out)
+}
+
+// retry queues a new run for one run, or for every retryable run of a
+// batch, and says how it went as an HTTP status.
+func (d *Daemon) retry(ctx context.Context, id, batch string, verdicts []store.Verdict, dry bool) (RetryView, int, error) {
 	var recs []store.Run
-	out := RetryView{Retries: map[string]string{}, Refused: map[string]string{}, DryRun: req.DryRun}
-	if id := r.PathValue("id"); id != "" {
+	out := RetryView{Retries: map[string]string{}, Refused: map[string]string{}, DryRun: dry}
+	if id != "" {
 		rec, err := d.State.GetRun(ctx, id)
 		if errors.Is(err, store.ErrNotFound) {
-			fail(w, http.StatusNotFound, "there is no finished run %s", id)
-			return
+			return out, http.StatusNotFound, fmt.Errorf("there is no finished run %s", id)
 		}
 		if err != nil {
-			fail(w, http.StatusInternalServerError, "%v", err)
-			return
+			return out, http.StatusInternalServerError, err
 		}
 		recs = []store.Run{*rec}
 	} else {
-		out.Batch = r.PathValue("batch")
+		out.Batch = batch
 		list, err := d.State.ListRuns(ctx, store.RunFilter{Batch: out.Batch})
 		if err != nil {
-			fail(w, http.StatusInternalServerError, "%v", err)
-			return
+			return out, http.StatusInternalServerError, err
 		}
 		if len(list) == 0 {
-			fail(w, http.StatusNotFound, "batch %s has no finished run", out.Batch)
-			return
+			return out, http.StatusNotFound, fmt.Errorf("batch %s has no finished run", out.Batch)
 		}
 		for _, rec := range list {
-			if retryable[rec.Verdict] && (len(req.Verdicts) == 0 || slices.Contains(req.Verdicts, rec.Verdict)) {
+			if retryable[rec.Verdict] && (len(verdicts) == 0 || slices.Contains(verdicts, rec.Verdict)) {
 				recs = append(recs, rec)
 			}
 		}
@@ -563,20 +821,17 @@ func (d *Daemon) handleRetry(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(items) == 0 {
 		if len(recs) == 0 {
-			fail(w, http.StatusConflict, "batch %s has no run to retry: none is SKIPPED, ABORTED or INVALID", out.Batch)
-			return
+			return out, http.StatusConflict, fmt.Errorf("batch %s has no run to retry: none is SKIPPED, ABORTED or INVALID", out.Batch)
 		}
 		var why []string
 		for old, reason := range out.Refused {
 			why = append(why, old+": "+reason)
 		}
 		sort.Strings(why)
-		fail(w, http.StatusConflict, "nothing to retry; %s", strings.Join(why, "; "))
-		return
+		return out, http.StatusConflict, fmt.Errorf("nothing to retry; %s", strings.Join(why, "; "))
 	}
-	if req.DryRun {
-		reply(w, http.StatusOK, out)
-		return
+	if dry {
+		return out, http.StatusOK, nil
 	}
 	d.mu.Lock()
 	for nu, old := range out.Retries {
@@ -585,16 +840,14 @@ func (d *Daemon) handleRetry(w http.ResponseWriter, r *http.Request) {
 	err := d.saveControl()
 	d.mu.Unlock()
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "the control file: %v", err)
-		return
+		return out, http.StatusInternalServerError, fmt.Errorf("the control file: %w", err)
 	}
 	if err := d.State.Enqueue(ctx, items); err != nil {
-		fail(w, http.StatusInternalServerError, "%v", err)
-		return
+		return out, http.StatusInternalServerError, err
 	}
 	d.Log.Info("runs retried", "batch", out.Batch, "runs", len(items))
 	d.poke()
-	reply(w, http.StatusAccepted, out)
+	return out, http.StatusAccepted, nil
 }
 
 // askedOf says which arm, task and lane a finished run was: from its

@@ -1379,3 +1379,30 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 19:03 | wait tried read-only on blackswan-2's live daemon (fallback path): found+fixed bug-055 (timeout printed empty state); CLI staged at work/automaticum-wait, installed CLI untouched | cmd/automaticum/wait_cmds.go | rc 0/4 correct | ~3000 |
+
+## Session: 2026-11-01 19:03
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-01 19:03
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:38 | Created internal/daemon/mutate.go | — | ~1136 |
+| 19:42 | Created internal/daemon/mutate_test.go | — | ~1353 |
+| 19:45 | Created internal/daemon/lists.go | — | ~1750 |
+| 19:47 | Created cmd/automaticum/show_cmds.go | — | ~4501 |
+| 19:49 | Created internal/ingest/render.go | — | ~986 |
+| 19:49 | Created internal/ingest/render_test.go | — | ~587 |
+| 19:52 | Created internal/daemon/lists_test.go | — | ~628 |
+
+## Session: 2026-11-01 19:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:03 | Created internal/daemon/report.go | — | ~842 |
+| 20:06 | Created cmd/automaticum/report_cmds.go | — | ~3194 |
+| 20:16 | O30 decided by owner -> D119: drain releases held run (releaseHeld), test, 050 §5, decisions rev 35 | internal/daemon/control.go, daemon.go, mutate_test.go, docs/specs | done | ~6000 |
+| 20:17 | item 1C: report regression (compare split=build), report census, report aliases, export cell/campaign/run, dry runs on local commands, wait fact quarantined, campaign abort/retry test | internal/daemon/{compare,report,cell}.go, cmd/automaticum/{report_cmds,compare_cmds,...}.go | make test + test-store pass | ~25000 |
+| 20:18 | specs 090/070/065/050/030/020 as built; O31 cohort, O32 requeue, O33 rescore opened; audit item-1 rows updated | docs/specs, docs/audit | done | ~8000 |

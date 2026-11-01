@@ -39,6 +39,7 @@ func sdkAdd(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("sdk add", flag.ExitOnError)
 	p := addPlace(fs)
 	packs := fs.String("packs", "", "for a local build: the directory of its packed packages")
+	dry := fs.Bool("dry-run", false, "say what would be installed and whether its hash is pinned; install nothing")
 	rest := parse(fs, args)
 	if len(rest) != 1 {
 		return errors.New("usage: automaticum sdk add <build> [--packs <dir>]")
@@ -50,6 +51,17 @@ func sdkAdd(ctx context.Context, args []string) error {
 	before, err := env.Def(rest[0])
 	if err != nil {
 		return err
+	}
+	if *dry {
+		pinned := "not pinned yet: the first install writes its hash into runner/sdk/" + rest[0] + "/sdk.toml"
+		if before.BundleSHA256 != "" {
+			pinned = "pinned to bundle " + before.BundleSHA256
+		}
+		if *p.json {
+			return printJSON(map[string]any{"build": rest[0], "definition": before, "dry_run": true})
+		}
+		fmt.Printf("would install SDK build %s; %s\n", rest[0], pinned)
+		return nil
 	}
 	rec, err := env.Add(ctx, rest[0], *packs, os.Stderr)
 	if err != nil {
@@ -82,6 +94,15 @@ func sdkLs(_ context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	type row struct {
+		Build   string `json:"build"`
+		Version string `json:"version,omitempty"`
+		Source  string `json:"source,omitempty"`
+		Bundle  string `json:"bundle_sha256,omitempty"`
+		State   string `json:"state"`
+		Usable  bool   `json:"usable"`
+	}
+	var rows []row
 	w := table()
 	fmt.Fprintln(w, "BUILD\tVERSION\tSOURCE\tBUNDLE\tSTATE")
 	for _, name := range names {
@@ -104,7 +125,15 @@ func sdkLs(_ context.Context, args []string) error {
 		case rec != nil && *deep:
 			state = "usable, files checked"
 		}
+		full := ""
+		if d != nil {
+			full = d.BundleSHA256
+		}
+		rows = append(rows, row{name, version, source, full, state, err == nil})
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", name, version, source, bundle, state)
+	}
+	if *p.json {
+		return printJSON(rows)
 	}
 	return w.Flush()
 }
@@ -129,6 +158,15 @@ func sdkVerify(ctx context.Context, args []string) error {
 	sum, err := env.Rebuild(ctx, rest[0], os.Stderr)
 	if err != nil {
 		return err
+	}
+	if *p.json {
+		if err := printJSON(map[string]any{"build": rest[0], "reproduced": sum == d.BundleSHA256, "bundle_sha256": sum, "pinned": d.BundleSHA256}); err != nil {
+			return err
+		}
+		if sum != d.BundleSHA256 {
+			return errFailed
+		}
+		return nil
 	}
 	if sum != d.BundleSHA256 {
 		return fmt.Errorf("SDK build %s is NOT reproduced: the archived packages install as %s, pinned %s", rest[0], sum, d.BundleSHA256)

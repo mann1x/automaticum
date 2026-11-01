@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.19, 2026-11-01.
+**Status:** draft 0.20, 2026-11-01.
 
 ## 1. Rules
 
@@ -53,6 +53,14 @@ it is bound to, the endpoints it may use, concurrency (default 1), labels
 
 A lane has a state: `idle`, `running`, `paused`, `draining`, `offline`,
 `quarantined` (repeated infrastructure failures).
+
+**As built (2026-11-01):** `status` shows `idle`, `running`, `waiting` (a
+gate holds its next run), `paused` (its run in flight held), `drained` (no
+run in flight, nothing starts) and `quarantined` (drained by `lane
+quarantine` with the operator's reason, 050 §4). A lane that is draining
+shows `running` with `drained: true` until its run ends. Not built:
+`offline`, and a quarantine the daemon sets itself after repeated
+infrastructure failures (050 §5).
 
 ## 3. Images
 

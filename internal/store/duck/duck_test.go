@@ -95,7 +95,7 @@ func TestFiltersAndDerivedTables(t *testing.T) {
 			v = store.Fail
 		}
 		r := store.Run{ID: fmt.Sprintf("run-%03d", i), Suite: "custom", TaskID: "t", ArmID: fmt.Sprintf("arm-%d", i%2),
-			Model: fmt.Sprintf("m%d", i%2), Verdict: v, StartedAt: base.Add(time.Duration(i) * time.Hour), WallMS: int64(i * 1000)}
+			Model: fmt.Sprintf("m%d", i%2), Lane: fmt.Sprintf("lane-%d", i%3), Verdict: v, StartedAt: base.Add(time.Duration(i) * time.Hour), WallMS: int64(i * 1000)}
 		if err := s.UpsertRun(ctx, &r); err != nil {
 			t.Fatal(err)
 		}
@@ -105,6 +105,9 @@ func TestFiltersAndDerivedTables(t *testing.T) {
 	}
 	if n, _ := s.CountRuns(ctx, store.RunFilter{Model: "m1", Since: base.Add(10 * time.Hour)}); n != 10 {
 		t.Fatalf("filtered count = %d, want 10", n)
+	}
+	if n, _ := s.CountRuns(ctx, store.RunFilter{Lane: "lane-1"}); n != 10 {
+		t.Fatalf("lane-1 count = %d, want 10", n)
 	}
 	page, err := s.ListRuns(ctx, store.RunFilter{Limit: 5, Offset: 5})
 	if err != nil || len(page) != 5 || page[0].ID != "run-005" {

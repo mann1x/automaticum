@@ -144,8 +144,11 @@ harnesses reach the agent through an engine adapter.
 
 ## Interfaces
 
-- **CLI** for everything, with `--json` and stable exit codes, and a full
-  terminal dashboard.
+- **CLI** for everything, with `--json`, stable exit codes, and `--dry-run`
+  and `--idempotency-key` on every command that changes something (built,
+  [090 §1](docs/specs/090-interfaces.md)); reports (`report regression`,
+  `report census`) and exports (`export cell|campaign|run`); a full terminal
+  dashboard is planned.
 - **HTTP API and live dashboard**: lanes, queue, live transcripts, A/B boards,
   log viewer, search.
 - **Server-side waits** for AI sessions, built: `automaticum wait run|batch|cell|campaign|lane|idle`

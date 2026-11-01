@@ -65,6 +65,12 @@ func (s *memState) ReplaceToolCalls(_ context.Context, id string, v []store.Tool
 	return nil
 }
 
+func (s *memState) ToolCalls(_ context.Context, id string) ([]store.ToolCall, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.calls[id], nil
+}
+
 func (s *memState) ReplaceFindings(_ context.Context, id string, v []store.Finding) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -105,11 +111,14 @@ func (s *memState) ListRuns(_ context.Context, f store.RunFilter) ([]store.Run, 
 		// As the store's own filter: each field given must equal the column.
 		if (f.Batch == "" || r.Batch == f.Batch) && (f.Verdict == "" || r.Verdict == f.Verdict) &&
 			(f.Suite == "" || r.Suite == f.Suite) && (f.TaskID == "" || r.TaskID == f.TaskID) &&
-			(f.ArmID == "" || r.ArmID == f.ArmID) && (f.Model == "" || r.Model == f.Model) {
+			(f.ArmID == "" || r.ArmID == f.ArmID) && (f.Model == "" || r.Model == f.Model) && (f.Lane == "" || r.Lane == f.Lane) {
 			out = append(out, r)
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID > out[j].ID })
+	if f.Limit > 0 && len(out) > f.Limit {
+		out = out[:f.Limit]
+	}
 	return out, nil
 }
 
@@ -1543,6 +1552,65 @@ runs = 1
 	}
 	if skipped != 2 || v.Batches[1].Batch != "" {
 		t.Errorf("after the stop: %d skipped, %+v", skipped, v.Batches)
+	}
+}
+
+// A campaign aborted stops its batch with the run in flight aborted; a
+// retry queues each run that ended without a result again; both take a dry
+// run that changes nothing.
+func TestCampaignAbortRetry(t *testing.T) {
+	g := newRig(t, false)
+	g.d.Repo = campaignRepo(t, "c3", `
+[[batch]]
+name = "only"
+arms = ["stub"]
+tasks = ["demo/answer"]
+runs = 2
+`)
+	g.d.CampaignEvery = 10 * time.Millisecond
+	g.runner.hold, g.runner.started = make(chan struct{}), make(chan string, 8)
+	go func() { g.d.Serve(g.ctx()); close(g.served) }()
+	if code := g.call("POST", "/v1/campaigns", CampaignRequest{Name: "c3"}, nil); code != 202 {
+		t.Fatalf("start: %d", code)
+	}
+	first := <-g.runner.started
+	if code := g.call("POST", "/v1/campaigns/c3/retry", nil, nil); code != 409 {
+		t.Errorf("retry with nothing to retry: %d", code)
+	}
+	var v CampaignView
+	if code := g.call("POST", "/v1/campaigns/c3/abort?dry_run=1", nil, &v); code != 200 || !v.DryRun || v.State != "stopped" {
+		t.Fatalf("abort, dry run: %d %+v", code, v)
+	}
+	if st := g.status(); len(st.Queue) != 2 {
+		t.Fatalf("a dry run changed the queue: %+v", st.Queue)
+	}
+	if code := g.call("POST", "/v1/campaigns/c3/abort", nil, &v); code != 200 || v.State != "stopped" {
+		t.Fatalf("abort: %d %+v", code, v)
+	}
+	r := g.waitFinished(first)
+	if r.Verdict != string(store.Aborted) {
+		t.Errorf("the run in flight: %s %s", r.Verdict, r.VerdictReason)
+	}
+	batch := v.Batches[0].Batch
+	var rv CampaignRetryView
+	// The run the abort skipped is retried; the fake runner's records name
+	// no arm, so the aborted one is refused here with that reason (a real
+	// record names its arm).
+	if code := g.call("POST", "/v1/campaigns/c3/retry?dry_run=1", nil, &rv); code != 200 || !rv.DryRun || len(rv.Batches) != 1 || len(rv.Batches[0].Retries) != 1 || rv.Batches[0].Refused[first] == "" {
+		t.Fatalf("retry, dry run: %d %+v", code, rv)
+	}
+	if q, _ := g.state.Queue(context.Background()); len(q) != 0 {
+		t.Fatalf("a dry run queued: %+v", q)
+	}
+	rv = CampaignRetryView{}
+	if code := g.call("POST", "/v1/campaigns/c3/retry", nil, &rv); code != 200 || len(rv.Batches) != 1 || rv.Batches[0].Batch != batch || len(rv.Batches[0].Retries) != 1 {
+		t.Fatalf("retry: %d %+v", code, rv)
+	}
+	close(g.runner.hold)
+	for id := range rv.Batches[0].Retries {
+		if r := g.waitFinished(id); r.Verdict != string(store.Pass) {
+			t.Errorf("retry %s: %s", id, r.Verdict)
+		}
 	}
 }
 

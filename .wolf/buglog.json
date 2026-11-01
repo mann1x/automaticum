@@ -955,6 +955,59 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-11-01T19:05:00Z"
+    },
+    {
+      "id": "bug-056",
+      "timestamp": "2026-11-01T20:15:00+01:00",
+      "error_message": "O30: a drain (lane drain, POST /v1/drain, SIGTERM) waited forever on a run held by run/batch/lane pause",
+      "file": "internal/daemon/control.go",
+      "root_cause": "the drain only stopped new starts; a held run never reached its next request, so the run in flight never ended",
+      "fix": "releaseHeld() releases every held run on the drained lanes (Release is idempotent); called by Drain() and handleLane drain/quarantine; lane pause marker cleared. Owner decision D119",
+      "tags": [
+        "daemon",
+        "drain",
+        "pause",
+        "hold",
+        "D119",
+        "O30"
+      ],
+      "related_bugs": [
+        "bug-054"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T20:15:00+01:00"
+    },
+    {
+      "id": "bug-057",
+      "timestamp": "2026-11-01T20:15:00+01:00",
+      "error_message": "cell view (GET /v1/batches/{b}/cell) always had empty suite and subset; only cell run's own file had them",
+      "file": "internal/daemon/cell.go",
+      "root_cause": "suite/subset were filled by the CLI from its own flags, never by the daemon",
+      "fix": "handleCell fills suite and subset from ctl.CellBatches (the Automaticum-Cell header cell run sends)",
+      "tags": [
+        "cell",
+        "result-file",
+        "065"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T20:15:00+01:00"
+    },
+    {
+      "id": "bug-058",
+      "timestamp": "2026-11-01T20:15:00+01:00",
+      "error_message": "audit table rows with a literal | in the item (`report run|batch...`) were cut by a split('|') rewrite",
+      "file": "docs/audit/2026-11-01-spec-vs-code.md",
+      "root_cause": "markdown table cells were split on every pipe, escaped or not",
+      "fix": "repaired the five rows by hand; split on unescaped pipes only (re.split(r'(?<!\\\\)\\|'))",
+      "tags": [
+        "audit",
+        "markdown",
+        "script"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T20:15:00+01:00"
     }
   ]
 }

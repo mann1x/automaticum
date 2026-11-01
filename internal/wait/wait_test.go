@@ -107,6 +107,11 @@ func TestLaneIdleCampaign(t *testing.T) {
 	if !free.Eval(Lane("l", "waiting", false, 2)) {
 		t.Error("lane free")
 	}
+	drained, _ := Parse(KindLane, "drained")
+	quar, err := Parse(KindLane, "quarantined")
+	if err != nil || !drained.Eval(Lane("l", "quarantined", false, 1)) || !quar.Eval(Lane("l", "quarantined", false, 1)) || quar.Eval(Lane("l", "drained", false, 1)) {
+		t.Errorf("a quarantined lane is drained and quarantined, a drained one only drained: %v", err)
+	}
 	d, _ := Parse(KindIdle, "")
 	if d.Eval(Idle(0, 1)) || !d.Eval(Idle(0, 0)) {
 		t.Error("idle")

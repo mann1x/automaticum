@@ -1,6 +1,6 @@
 # 065 — The cell contract and exports
 
-**Status:** draft 0.10, 2026-11-01.
+**Status:** draft 0.11, 2026-11-01.
 
 ## 1. Purpose
 
@@ -245,7 +245,9 @@ the layout of omnimergekit's result tree (§5).
 Results, raw transcripts and adapters are permanent (080 §5). A scorer or
 detector change can re-score a cell from stored material without the model:
 `automaticum reanalyse` for detectors and metrics, `automaticum rescore` for
-scorers. A re-scored cell gets a new result file and keeps the old one.
+scorers. A re-scored cell gets a new result file and keeps the old one. **Open**
+(O33): when a rescore runs (an oracle takes up to 15 minutes, on the lane
+host) and where the new verdicts are kept; not built until it is decided.
 
 ## 5. Exports
 
@@ -262,5 +264,18 @@ scorers. A re-scored cell gets a new result file and keeps the old one.
   exists on the master host too.
 - Any slice as JSONL, CSV or Parquet, and a self-contained HTML report
   (090 §6).
+
+**As built (2026-11-01):** `automaticum export cell <batch> --out D
+[--format jsonl|csv]` writes a batch's cell files as `cell run` does at
+its end (runs.jsonl, basis.txt, refusal.json when refused or unfinished,
+automaticum_result.json last), and with csv also runs.csv: one row per run,
+every per-run metric and every detector's count as a column. `export
+campaign <name> --out D` writes each started batch as `<D>/<batch>/` and
+the campaign's state as campaign.json, a directory to copy whole to another
+host. `export run <run>... --out D [--kind K]` writes each run's record and
+its stored artefacts (the transcript, the requests as sent, the workspace
+before and after, the oracle's output). Not built yet: Parquet (to be
+written by the daemon's DuckDB, no new library), the omnimergekit layout,
+slices and the HTML report; `export cohort` waits for **Open** O31.
 
 Private tasks are never exported to a cloud destination (060 §7).

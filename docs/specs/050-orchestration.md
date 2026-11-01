@@ -1,6 +1,6 @@
 # 050 — Orchestration: scheduling, gates, control
 
-**Status:** draft 0.17, 2026-11-01.
+**Status:** draft 0.18, 2026-11-01.
 
 ## 1. Scheduling
 
@@ -246,12 +246,20 @@ later):
   waiting for a run: `lane drain` each lane, `automaticum wait idle --until
   free`, restart, `lane resume`. Nothing queued is lost: the queue, the
   drained lanes and the batches' limits are stored.
-- A run held by `run pause` or `batch pause` when the daemon stops is not
-  resumed by the next daemon (D83: a resume in a new process is not the same
-  run) and is recorded `ABORTED(daemon restart)`; the drain waits for it as
-  for any run in flight, so resume or abort it first. Re-attaching a run in
-  flight to a new daemon is not built. **Open** (O30): whether a drain should
-  release a held run, abort it, or wait for it, as now.
+- **Decided by the owner (2026-11-01), D119:** a drain releases a held run.
+  When a lane or the daemon is drained (`lane drain`, `lane quarantine`,
+  `POST /v1/drain`, the first termination signal) while its run in flight
+  is held by `run pause`, `batch pause` or `lane pause`, the drain resumes
+  that run, the run finishes normally (oracle, ingest, verdict), and the
+  lane then stays drained: a drain never waits on a hold and never aborts.
+  A lane paused that is drained is shown drained; a batch paused keeps its
+  queued runs held. The answer of `lane drain` says `released from its
+  hold` (also under `--dry-run`). A held run whose endpoint was freed loads
+  the model again on its next request.
+- A run still held when the daemon stops without a drain (a second signal,
+  a kill) is not resumed by the next daemon (D83: a resume in a new process
+  is not the same run) and is recorded `ABORTED(daemon restart)`.
+  Re-attaching a run in flight to a new daemon is not built.
 - After a stop without warning, a run in flight is recorded
   `ABORTED(daemon restart)` from what the lane's state held, its container is
   removed by id, and it leaves the queue. A queued run that already has a
@@ -263,8 +271,8 @@ later):
 **As built in milestone 4 (control, 2026-10-14):**
 
 - `automaticum lane drain <lane>`: the run in flight finishes and is
-  analysed, then the lane starts nothing until `automaticum lane resume
-  <lane>`. `status` shows the lane `drained` and each queued run on it
+  analysed (released first if it is held, D119), then the lane starts
+  nothing until `automaticum lane resume <lane>`. `status` shows the lane `drained` and each queued run on it
   `lane drained`.
 - `automaticum batch pause <batch>`: none of the batch's queued runs starts,
   and its run in flight is paused as `run pause` does (held before its next
@@ -293,7 +301,21 @@ later):
   read drains every lane, so nothing the operator stopped starts by
   accident.
 - `requeue` is not built: with retry and the queue's order it had no use of
-  its own yet. Pause at campaign level: `campaign pause|resume|stop` (§1).
+  its own yet. **Open** (O32): whether it is built at all. Pause at campaign
+  level: `campaign pause|resume|stop` (§1).
+
+**As built (2026-11-01, control):** the matrix's other cells. `lane pause`
+(drained, its run in flight held, the endpoint freed unless
+`--keep-model`), `lane quarantine --reason R` (drained, shown
+`quarantined`, each queued run on it stopped by `lane quarantined: R`),
+`lane abort` (its run in flight; the lane is otherwise left as it is), all
+kept in `control.json`; `batch abort`; `campaign abort` (each started batch
+stopped with its run in flight aborted) and `campaign retry` (each batch's
+retry). Every one of these, and every other mutating request, takes a dry
+run (`?dry_run=1`) and an idempotency key (the `Idempotency-Key` header,
+answers kept 30 days, 090 §1). Daemon-level pause and resume are lane
+pause and resume with `--all`. Not built: a quarantine set by the daemon
+itself after repeated infrastructure failures (item 2 of the audit).
 
 ## 5. Watchdogs
 

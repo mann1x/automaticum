@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -30,6 +31,50 @@ import (
 type client struct {
 	base, token string
 	json        bool
+	// key is sent as the Idempotency-Key of a request that changes
+	// something.
+	key string
+	// cell names a cell's suite on the request that starts it.
+	cell string
+}
+
+// mutation is what every command that changes something takes (090 §1,
+// 050 §4): a dry run, and an idempotency key that makes it safe to repeat.
+type mutation struct {
+	dry *bool
+	key *string
+}
+
+func addMutation(fs *flag.FlagSet) mutation {
+	return mutation{
+		dry: fs.Bool("dry-run", false, "say what would be done; change nothing"),
+		key: fs.String("idempotency-key", "", "safe to repeat: the same key gets the first answer back and changes nothing more"),
+	}
+}
+
+// keyOnly is a mutation for a command whose dry run is a flag of its own.
+func keyOnly(fs *flag.FlagSet, dry *bool) mutation {
+	return mutation{dry: dry, key: fs.String("idempotency-key", "", "safe to repeat: the same key gets the first answer back and changes nothing more")}
+}
+
+// on sets the client's key and gives the path with the dry run asked.
+func (m mutation) on(c *client, path string) string {
+	c.key = *m.key
+	if !*m.dry {
+		return path
+	}
+	if strings.Contains(path, "?") {
+		return path + "&dry_run=1"
+	}
+	return path + "?dry_run=1"
+}
+
+// dryNote prefixes what a dry run prints.
+func (m mutation) dryNote() string {
+	if *m.dry {
+		return "dry run, nothing changed: "
+	}
+	return ""
 }
 
 func addClient(fs *flag.FlagSet) (place, func() (*client, error)) {
@@ -73,9 +118,15 @@ func (c *client) open(ctx context.Context, method, path string, in any) (*http.R
 	if c.token != "" {
 		req.Header.Set("Authorization", "Bearer "+c.token)
 	}
+	if c.key != "" && method != "GET" {
+		req.Header.Set("Idempotency-Key", c.key)
+	}
+	if c.cell != "" && method == "POST" && path == "/v1/runs" {
+		req.Header.Set("Automaticum-Cell", c.cell)
+	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, errors.New("the daemon does not answer; is automaticumd running?")
+		return nil, errDown
 	}
 	if resp.StatusCode >= 400 {
 		defer resp.Body.Close()
@@ -88,6 +139,9 @@ func (c *client) open(ctx context.Context, method, path string, in any) (*http.R
 	}
 	return resp, nil
 }
+
+// errDown is a daemon that does not answer.
+var errDown = errors.New("the daemon does not answer; is automaticumd running?")
 
 // apiErr is the daemon's refusal: its words, and the gate that refused when
 // one did.
@@ -115,11 +169,35 @@ func ago(t time.Time) string {
 func status(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("status", flag.ExitOnError)
 	_, dial := addClient(fs)
+	watch := fs.Duration("watch", 0, "show it again every this often (e.g. 5s) until interrupted")
 	parse(fs, args)
 	c, err := dial()
 	if err != nil {
 		return err
 	}
+	if *watch > 0 {
+		for {
+			if !c.json {
+				fmt.Print("\033[H\033[2J")
+			}
+			if err := statusOnce(ctx, c); err != nil {
+				fmt.Fprintln(os.Stderr, "automaticum:", err)
+			}
+			if !c.json {
+				fmt.Printf("\n%s, every %s; ctrl-c ends\n", human.Time(time.Now()), human.Duration(*watch))
+			}
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-time.After(*watch):
+			}
+		}
+	}
+	return statusOnce(ctx, c)
+}
+
+// statusOnce prints the lanes, what each does and the queue.
+func statusOnce(ctx context.Context, c *client) error {
 	var st daemon.Status
 	if err := c.do(ctx, "GET", "/v1/status", nil, &st); err != nil {
 		return err
@@ -144,6 +222,9 @@ func status(ctx context.Context, args []string) error {
 		}
 		if l.Drained && l.RunID != "" {
 			fmt.Printf("\n%s is drained: %s finishes, then nothing else starts\n", l.Lane, l.RunID)
+		}
+		if l.Quarantined != "" {
+			fmt.Printf("\n%s is quarantined: %s\n", l.Lane, l.Quarantined)
 		}
 	}
 	waiting := 0
@@ -405,9 +486,11 @@ func runShow(ctx context.Context, args []string) error {
 func runTail(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("run tail", flag.ExitOnError)
 	_, dial := addClient(fs)
+	raw := fs.Bool("raw", false, "print the event lines as the runner wrote them (also with --json)")
+	max := fs.Int("max", 2000, "cut a block or a tool's arguments longer than this many characters; 0 keeps everything")
 	rest := parse(fs, args)
 	if len(rest) != 1 {
-		return errors.New("usage: automaticum run tail <run>")
+		return errors.New("usage: automaticum run tail <run> [--raw] [--max 2000]")
 	}
 	c, err := dial()
 	if err != nil {
@@ -430,10 +513,17 @@ func runTail(ctx context.Context, args []string) error {
 	}
 	defer resp.Body.Close()
 	rd := bufio.NewReaderSize(resp.Body, 1<<20)
+	render := &ingest.Renderer{Max: *max}
 	for {
 		line, err := rd.ReadString('\n')
 		if data, ok := strings.CutPrefix(strings.TrimRight(line, "\n"), "data: "); ok && data != "{}" {
-			fmt.Println(data)
+			if *raw || c.json {
+				fmt.Println(data)
+			} else {
+				for _, out := range render.Line([]byte(data)) {
+					fmt.Println(out)
+				}
+			}
 		}
 		if err != nil {
 			return nil
@@ -445,25 +535,38 @@ func runPost(verb, done string) func(context.Context, []string) error {
 	return func(ctx context.Context, args []string) error {
 		fs := flag.NewFlagSet("run "+verb, flag.ExitOnError)
 		_, dial := addClient(fs)
+		m := addMutation(fs)
 		reason := fs.String("reason", "", "why (needed to mark a run invalid)")
+		keep := fs.Bool("keep-model", false, "pause: hold the run but leave its model loaded")
 		rest := parse(fs, args)
 		if len(rest) != 1 {
-			return fmt.Errorf("usage: automaticum run %s <run>", verb)
+			return fmt.Errorf("usage: automaticum run %s <run> [--dry-run] [--idempotency-key K]", verb)
 		}
 		c, err := dial()
 		if err != nil {
 			return err
 		}
 		var in any
-		if verb == "invalidate" {
+		switch verb {
+		case "invalidate":
 			in = map[string]string{"reason": *reason}
+		case "pause":
+			in = map[string]bool{"keep_model": *keep}
 		}
 		var out map[string]any
-		if err := c.do(ctx, "POST", "/v1/runs/"+url.PathEscape(rest[0])+"/"+verb, in, &out); err != nil {
+		if err := c.do(ctx, "POST", m.on(c, "/v1/runs/"+url.PathEscape(rest[0])+"/"+verb), in, &out); err != nil {
 			return err
 		}
 		if c.json {
 			return printJSON(out)
+		}
+		if *m.dry {
+			detail, _ := out["detail"].(string)
+			if detail == "" {
+				detail = done
+			}
+			fmt.Printf("%s%s would be %s\n", m.dryNote(), rest[0], strings.TrimPrefix(detail, "is "))
+			return nil
 		}
 		fmt.Printf("%s: %s\n", rest[0], done)
 		return nil
@@ -482,9 +585,20 @@ func logs(ctx context.Context, args []string) error {
 	}
 	kind := fs.String("kind", "", "any other kind, as `run show` lists them")
 	name := fs.String("name", "", "the name, when a run has several of one kind")
+	grep := fs.String("grep", "", "only the lines that match this regular expression (on the transcript with --render)")
+	turn := fs.Int("turn", 0, "events: only the lines of this turn; wire: only the turn-th request")
+	rendered := fs.Bool("render", false, "events: the transcript as `run tail` prints it, not the raw lines")
+	max := fs.Int("max", 0, "with --render, cut a block longer than this many characters; 0 keeps everything")
 	rest := parse(fs, args)
 	if len(rest) != 1 {
-		return errors.New("usage: automaticum logs <run> [--events|--wire|--runner|--oracle|--kind K]")
+		return errors.New("usage: automaticum logs <run> [--events|--wire|--runner|--oracle|--kind K] [--grep RE] [--turn N] [--render]")
+	}
+	var re *regexp.Regexp
+	if *grep != "" {
+		var err error
+		if re, err = regexp.Compile(*grep); err != nil {
+			return fmt.Errorf("--grep: %v", err)
+		}
 	}
 	chosen := *kind
 	for k, set := range kinds {
@@ -508,8 +622,44 @@ func logs(ctx context.Context, args []string) error {
 		return err
 	}
 	defer resp.Body.Close()
-	_, err = io.Copy(os.Stdout, resp.Body)
-	return err
+	if re == nil && *turn == 0 && !*rendered {
+		_, err = io.Copy(os.Stdout, resp.Body)
+		return err
+	}
+	if *turn > 0 && chosen != "events" && chosen != "wire" {
+		return errors.New("--turn reads the events or the wire")
+	}
+	if *rendered && chosen != "events" {
+		return errors.New("--render reads the events")
+	}
+	// The turn of an event line is the last iteration_start before it; a
+	// wire line is one request, the turn-th of the run.
+	render := &ingest.Renderer{Max: *max}
+	sc := bufio.NewScanner(resp.Body)
+	sc.Buffer(make([]byte, 1<<20), 512<<20)
+	n := 0
+	for sc.Scan() {
+		line := sc.Bytes()
+		n++
+		out := []string{string(line)}
+		if chosen == "events" {
+			shown := render.Line(line)
+			if *rendered {
+				out = shown
+			}
+			if *turn > 0 && render.Turn() != *turn {
+				continue
+			}
+		} else if *turn > 0 && n != *turn {
+			continue
+		}
+		for _, o := range out {
+			if re == nil || re.MatchString(o) {
+				fmt.Println(o)
+			}
+		}
+	}
+	return sc.Err()
 }
 
 // notices prints the SDK's notices of some runs with their sentences: a
@@ -666,16 +816,26 @@ func reanalyse(ctx context.Context, args []string) error {
 	fs.StringVar(&req.Run, "run", "", "one run")
 	fs.StringVar(&req.Batch, "batch", "", "the runs of one batch")
 	fs.BoolVar(&req.Imported, "imported", false, "also the imported runs, which get the detectors' findings only")
+	fs.StringVar(&req.Where, "where", "", "only runs whose fields match: key=value,... (suite, task, arm_id, model, verdict, lane, batch, since, until)")
+	fs.StringVar(&req.Detector, "detector", "", "say how this detector's firings changed on each run")
+	m := addMutation(fs)
 	if rest := parse(fs, args); len(rest) != 0 {
-		return errors.New("usage: automaticum reanalyse [--run <run> | --batch <batch>] [--imported]")
+		return errors.New("usage: automaticum reanalyse [--run <run> | --batch <batch>] [--where k=v,...] [--detector D] [--imported]")
 	}
 	c, err := dial()
 	if err != nil {
 		return err
 	}
 	var st daemon.ReanalyseStatus
-	if err := c.do(ctx, "POST", "/v1/reanalyse", req, &st); err != nil {
+	if err := c.do(ctx, "POST", m.on(c, "/v1/reanalyse"), req, &st); err != nil {
 		return err
+	}
+	if *m.dry {
+		if c.json {
+			return printJSON(st)
+		}
+		fmt.Printf("%s%d runs would be analysed again\n", m.dryNote(), st.Total)
+		return nil
 	}
 	// The daemon does the work; this only watches it.
 	shown := time.Now()
@@ -701,6 +861,17 @@ func reanalyse(ctx context.Context, args []string) error {
 		return printJSON(st)
 	}
 	fmt.Printf("%d runs analysed again in %s\n", st.Done-len(st.Failed), human.Duration(st.Ended.Sub(st.Started)))
+	if req.Detector != "" {
+		fmt.Printf("%s: its firings changed on %d runs\n", req.Detector, len(st.Changed))
+		ids := make([]string, 0, len(st.Changed))
+		for id := range st.Changed {
+			ids = append(ids, id)
+		}
+		sort.Strings(ids)
+		for _, id := range ids {
+			fmt.Printf("  %s: %s\n", id, st.Changed[id])
+		}
+	}
 	for id, why := range st.Failed {
 		fmt.Printf("  %s: %s\n", id, why)
 	}

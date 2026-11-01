@@ -74,7 +74,7 @@ func Names(kind string) (counts, facts []string) {
 		facts = []string{"running", "paused", "stopped", "finished", "done"}
 	case KindLane:
 		counts = []string{"running", "queued"}
-		facts = []string{"idle", "free", "drained", "paused"}
+		facts = []string{"idle", "free", "drained", "quarantined", "paused"}
 	case KindIdle:
 		counts = []string{"running", "queued"}
 		facts = []string{"idle", "free"}
@@ -149,7 +149,9 @@ func Lane(name, state string, inFlight bool, queued int) Snapshot {
 	}
 	s.Facts["free"] = !inFlight
 	s.Facts["idle"] = !inFlight && queued == 0
-	s.Facts["drained"] = state == "drained"
+	// A quarantine is a drain with a reason (050 §4).
+	s.Facts["drained"] = state == "drained" || state == "quarantined"
+	s.Facts["quarantined"] = state == "quarantined"
 	s.Facts["paused"] = state == "paused"
 	return s
 }

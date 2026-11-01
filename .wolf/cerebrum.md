@@ -18,6 +18,9 @@
 - (2026-10-29) This session only develops automaticum. Client sessions (e.g. backup_models) write their own arms, models, endpoints and lanes, confirm their gates and start their own batches.
 
 ## Key Learnings
+- (2026-11-01) Daemon tests: the fakeRunner's records carry no `Arm` JSON, so a retry of a run it ended is refused ("the record does not say which arm it was"); only runs that never started (SKIPPED, with `provenance.asked`) retry in the rig. `batch pause` answers 202 when it holds a run in flight. `RunView.Verdict` is a string: compare with `string(store.Pass)`.
+- (2026-11-01) `Executor.Release` is a no-op on a run that is not held, and also cancels a hold asked for that the runner has not reached: safe to call on every run a drain touches (D119).
+- (2026-11-01) The regression view is `compareView(..., split="build")`: groups by arm NAME + task + the basis "harness build" fact, because an SDK change changes the arm id.
 
 - **Project:** Go harness for coding agents on @cerebriline/sdk. Truth: docs/specs plus decisions.md. archive/ is input only; the old harness is READ-ONLY.
 - During a batch: no lane image or bin/ rebuild, no daemon restart.
@@ -72,3 +75,4 @@ The full list is in docs/specs/decisions.md; keep this log in step with it.
 - D109-D114: tbench2 held out; root by declaration; collect paths; task limits; runner under /opt/automaticum; vendor anything.
 - D115-D117: held-out batches; notice metric keys; tool-call export spans.
 - 2026-10-29 D118: arms and models live in `<config>/arms` and `<config>/models`; the repo ships examples only.
+- 2026-11-01 D119 (was O30): a drain (lane, quarantine, daemon, SIGTERM) releases a held run so it finishes with a verdict; the lane then stays drained.

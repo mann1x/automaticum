@@ -98,6 +98,7 @@ func legacyImport(ctx context.Context, args []string) error {
 	workers := fs.Int("workers", 1, "runs processed at once")
 	report := fs.String("report", "", "write the full report as JSON to this file")
 	quiet := fs.Bool("quiet", false, "no line per run")
+	asJSON := fs.Bool("json", false, "print the report and the verification as JSON")
 	fs.Parse(args)
 	if *root == "" {
 		return errors.New("no legacy root: pass -legacy-root or set AUTOMATICUM_LEGACY_ROOT")
@@ -120,8 +121,10 @@ func legacyImport(ctx context.Context, args []string) error {
 		opts.Sink = sink{blobs: blobs, State: s}
 	}
 	rep, err := legacyimport.Import(ctx, opts)
-	if rep != nil {
+	if rep != nil && !*asJSON {
 		fmt.Print(rep)
+	}
+	if rep != nil {
 		if *report != "" {
 			if b, jerr := json.MarshalIndent(rep, "", "  "); jerr == nil {
 				if werr := os.WriteFile(*report, b, 0o644); werr != nil {
@@ -142,7 +145,13 @@ func legacyImport(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Print(ver)
+	if *asJSON {
+		if err := printJSON(map[string]any{"report": rep, "verification": ver, "verified": ver.OK()}); err != nil {
+			return err
+		}
+	} else {
+		fmt.Print(ver)
+	}
 	if !ver.OK() {
 		return errors.New("the old verdict counts were not reproduced")
 	}
@@ -155,7 +164,14 @@ func legacyImport(ctx context.Context, args []string) error {
 func storeCheck(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("store check", flag.ExitOnError)
 	sf := addStoreFlags(fs)
+	asJSON := fs.Bool("json", false, "print JSON")
 	fs.Parse(args)
+	out := map[string]any{}
+	say := func(format string, a ...any) {
+		if !*asJSON {
+			fmt.Printf(format, a...)
+		}
+	}
 	blobs, st, err := sf.open(ctx)
 	if err != nil {
 		return err
@@ -184,20 +200,26 @@ func storeCheck(ctx context.Context, args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("%s: %d\n", table, n)
+		say("%s: %d\n", table, n)
+		out[table] = n
 	}
-	fmt.Printf("runs: %s\nblobs verified: %s live, %s archived, %s uncompressed\n", human.Count(int64(runs)), human.Count(int64(rep.Live)), human.Count(int64(rep.Archived)), human.Bytes(int64(rep.Bytes)))
+	say("runs: %s\nblobs verified: %s live, %s archived, %s uncompressed\n", human.Count(int64(runs)), human.Count(int64(rep.Live)), human.Count(int64(rep.Archived)), human.Bytes(int64(rep.Bytes)))
+	out["runs"], out["blobs_live"], out["blobs_archived"], out["bytes"] = runs, rep.Live, rep.Archived, rep.Bytes
+	var corrupt []string
 	for _, f := range rep.Corrupt {
-		fmt.Printf("corrupt: %s (%s) %s: %v\n", f.Hash, f.Tier, f.Path, f.Err)
+		say("corrupt: %s (%s) %s: %v\n", f.Hash, f.Tier, f.Path, f.Err)
+		corrupt = append(corrupt, fmt.Sprintf("%s (%s) %s: %v", f.Hash, f.Tier, f.Path, f.Err))
 	}
 	for _, p := range rep.StrayTemps {
-		fmt.Println("stray temporary file:", p)
+		say("stray temporary file: %s\n", p)
 	}
 	for _, p := range rep.StrayFiles {
-		fmt.Println("stray file:", p)
+		say("stray file: %s\n", p)
 	}
+	out["corrupt"], out["stray_temporary_files"], out["stray_files"] = corrupt, rep.StrayTemps, rep.StrayFiles
 	if rep.ArchiveErr != nil {
-		fmt.Println("archive not checked:", rep.ArchiveErr)
+		say("archive not checked: %v\n", rep.ArchiveErr)
+		out["archive_not_checked"] = rep.ArchiveErr.Error()
 	}
 
 	// Every reference must point at a blob one of the tiers holds.
@@ -219,13 +241,23 @@ func storeCheck(ctx context.Context, args []string) error {
 		}
 		if !ok {
 			missing++
-			fmt.Println("missing blob:", h)
+			say("missing blob: %s\n", h)
 		}
 	}
 	if err := rows.Err(); err != nil {
 		return err
 	}
-	fmt.Printf("distinct blobs referenced: %d, missing: %d\n", refs, missing)
+	say("distinct blobs referenced: %d, missing: %d\n", refs, missing)
+	out["blobs_referenced"], out["blobs_missing"], out["ok"] = refs, missing, rep.OK() && missing == 0
+	if *asJSON {
+		if err := printJSON(out); err != nil {
+			return err
+		}
+		if !rep.OK() || missing > 0 {
+			return errFailed
+		}
+		return nil
+	}
 	if !rep.OK() || missing > 0 {
 		return errors.New("the store is not consistent")
 	}

@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-11-01 (revision 34).
+**Status:** current as of 2026-11-01 (revision 35).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -128,6 +128,7 @@ All dated 2026-10-12.
 | D116 | A notice of the SDK is counted by what kind it is (`notices.<type>.<kind>.<phase>`, else its reason, else its type), never by its sentence, from analysis version 7; a compaction counts once, at `completed`. Its sentences are read with `automaticum notices (<run> ... | --batch B ...) [--key K]`, by the key a report prints. | 070 §2, 090 §1 |
 | D117 | The export marks a tool call that repeats the one before it (`repeated_tool_call`, the analysis's own detector and threshold) as a span over its arguments, `field` `tool_calls[<index>].function.arguments`, the first call of a sequence left out; the runaway detector gives no span, and `meta.json` names the requests whose response hit its output limit in `capped`. | 110 §3.5 |
 | D118 | An installation's arms and model catalogue live in its configuration directory (`<config>/arms/`, `<config>/models/`), beside its lanes and endpoints, and are read from there only. The repository is the program and carries no arm or model of anyone's experiments: `examples/config/` holds `base.toml`, the stub arms and the stub model, to copy and for the harness's own tests. An arm keeps its id when it moves. | 030 §1, §4.1 |
+| D119 | A drain releases a held run (O30, 2026-11-01): when a lane or the daemon is drained while its run in flight is held by `run pause`, `batch pause` or `lane pause`, the drain resumes the run, the run finishes normally (oracle, ingest, verdict), and the lane then stays drained. A drain never waits on a hold and never aborts. A run still held at a stop without a drain is `ABORTED(daemon restart)` (D83). | 050 §4, §5 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked
@@ -157,12 +158,14 @@ Each of these waits for a measurement or for the planning of its milestone.
 | O5 | Which published C/C++ SWE-bench-style set, at which version; the order of languages after it. | 062 §6 | milestone 5 |
 | O6 | Which external harnesses need the offline event path. | 064 §3.2 | milestone 5, per harness |
 | O29 | How a `tbench2` verifier gets large binary packages (`path-tracing`'s numpy and pillow, 23 MB of wheels, over the import's 8 MB a task): vendored into the repository, or downloaded when the verifier is built, by the hashes `oracle/requirements.txt` pins (an artefact build with the network). Recommendation: download at build time; the repository keeps only what PyPI does not publish (wheels built from source). | 066 §5 | the owner |
-| O30 | What a daemon drain does with a run held by `run pause` or `batch pause`: wait for it (as built: the drain never ends until someone resumes or aborts it), release it so it finishes, or abort it. A held run that is still held at a restart is `ABORTED(daemon restart)` either way (D83). Recommendation: release it, so a drain always ends with a verdict. | 050 §5 | the owner |
+| O31 | How a cohort (000 §3: cells meant to be compared, with one declared variable) is declared, so that the result file's `cohort` and `declared_variable` (065 §3), `cohort ls\|show`, `export cohort` and the **confounded** label (020 §5) have a source. Recommendation: a campaign file may carry `[cohort] name = "..."`, `variable = "<basis fact or arm field>"`; every batch of the campaign is a cell of the cohort; `cell run --cohort N --declared-variable V` does the same for a mode C caller; `cohort show` prints each cell's headline and the basis diff, and labels the cohort confounded when any fact other than the variable differs. | 020 §5, 065 §3 | the owner |
+| O32 | Whether `requeue` (050 §4's control matrix) is built. 050 §4 says it "had no use of its own yet" beside `retry` and the queue's order; no decision dropped it. Recommendation: drop it (Not adopted), since `retry` re-runs and `lane drain` plus `run start --lane` moves work; or, if kept, define it as moving the queued runs of a batch or a lane to another lane. | 050 §4 | the owner |
+| O33 | When `rescore <cell>` (065 §4) runs and where the new verdicts live. The oracle runs again on each run's stored `workspace_after` (and collected trees) with the task's current oracle, without the model; an oracle can take 15 minutes, so a cell takes hours of containers on the lane host. Recommendation: rescore is queued work on the lane that ran the cell, one oracle at a time and never beside a run, so a live batch's numbers are not disturbed; each new verdict is kept as a rescore record beside the run (the run record and its verdict unchanged, 080 §5); `rescore` writes a new `automaticum_result.json` and keeps the old one as `automaticum_result.<time>.json`; `cell show` gives the latest scoring and says that it was rescored. | 065 §4 | the owner |
 
 Closed since the first revision: O2 (D32), O4 (D30), O7 (S4, then D34), O9
 (D31), O10 (D42), O11 (D33), O12 (D28), O13 (D29), O14 (D46), O8 (D47), O15
 (D48), O16 (D49), O17 (D50), O18 (D51), O3 (D57), O22 (D84), O23 (D108), O24 (D113), O25 (D110), O26
-(D111), O27 (D112), O28 (D114).
+(D111), O27 (D112), O28 (D114), O30 (D119).
 
 ## 4. External dependencies
 

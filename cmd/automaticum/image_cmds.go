@@ -77,6 +77,7 @@ func imageNames(root string) ([]string, error) {
 func imageBuild(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("image build", flag.ExitOnError)
 	p := addPlace(fs)
+	dry := fs.Bool("dry-run", false, "say which images would be built, from which Dockerfile; build nothing")
 	rest := parse(fs, args)
 	l, err := p.local()
 	if err != nil {
@@ -92,6 +93,12 @@ func imageBuild(ctx context.Context, args []string) error {
 		names = all
 	}
 	engine := docker.New(l.Daemon.DockerSocket)
+	type built struct {
+		Image string `json:"image"`
+		Tag   string `json:"tag"`
+		ID    string `json:"id"`
+	}
+	var done []built
 	for _, name := range names {
 		file := "images/base/Dockerfile"
 		opts := docker.BuildOptions{Tag: daemon.LaneImage(nil)}
@@ -103,6 +110,10 @@ func imageBuild(ctx context.Context, args []string) error {
 			return fmt.Errorf("there is no image %q; there are: %s", name, strings.Join(all, ", "))
 		}
 		opts.Dockerfile = file
+		if *dry {
+			done = append(done, built{Image: name, Tag: opts.Tag, ID: "(dry run) " + file})
+			continue
+		}
 		pr, pw := io.Pipe()
 		go func() { pw.CloseWithError(buildContext(root, pw)) }()
 		fmt.Fprintf(os.Stderr, "building %s\n", opts.Tag)
@@ -115,7 +126,13 @@ func imageBuild(ctx context.Context, args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("%s  %s\n", opts.Tag, im.ID)
+		done = append(done, built{name, opts.Tag, im.ID})
+		if !*p.json {
+			fmt.Printf("%s  %s\n", opts.Tag, im.ID)
+		}
+	}
+	if *p.json {
+		return printJSON(done)
 	}
 	return nil
 }
@@ -133,6 +150,14 @@ func imageLs(ctx context.Context, args []string) error {
 		return err
 	}
 	engine := docker.New(l.Daemon.DockerSocket)
+	type row struct {
+		Image   string `json:"image"`
+		Tag     string `json:"tag"`
+		ID      string `json:"id,omitempty"`
+		Created string `json:"created,omitempty"`
+		Built   bool   `json:"built"`
+	}
+	var rows []row
 	w := table()
 	fmt.Fprintln(w, "IMAGE\tTAG\tID\tCREATED")
 	for _, name := range names {
@@ -142,9 +167,11 @@ func imageLs(ctx context.Context, args []string) error {
 		}
 		im, err := engine.ImageInspect(ctx, tag)
 		if err != nil {
+			rows = append(rows, row{Image: name, Tag: tag})
 			fmt.Fprintf(w, "%s\t%s\tnot built\t\n", name, tag)
 			continue
 		}
+		rows = append(rows, row{name, tag, im.ID, im.Created, true})
 		id := strings.TrimPrefix(im.ID, "sha256:")
 		if len(id) > 12 {
 			id = id[:12]
@@ -154,6 +181,9 @@ func imageLs(ctx context.Context, args []string) error {
 			created = created[:19]
 		}
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", name, tag, id, created)
+	}
+	if *p.json {
+		return printJSON(rows)
 	}
 	return w.Flush()
 }

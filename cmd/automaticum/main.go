@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/mann1x/automaticum/internal/wait"
@@ -62,8 +63,15 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   logs <run>                    a run's raw material [--events|--wire|--runner|--oracle]
   notices <run>... | --batch B  the SDK's notices with their sentences [--key K, as compare prints it]
   export conversations --out D  training runs' captured model requests, metadata and loop spans [--batch B|GLOB ...] [--run R ...] [--heldout]
+  export cell <batch> --out D   a batch's cell files: runs.jsonl, basis.txt, automaticum_result.json [--format jsonl|csv]
+  export campaign <name> --out D  every batch of a campaign as a cell, and campaign.json [--format jsonl|csv]
+  export run <run>... --out D   a run's record and its stored artefacts [--kind K ...]
   doctor                        every gate, on every lane, now [--lane L] [--arm A] [--task T] [--all]
   compare <batch> [<batch> ...] the arms of some batches side by side: every statistic, no conclusion [--all]
+  report run|cell <id>          the same as run show, cell show
+  report batch|ab <b> [<b>]     compare of one batch, or of two
+  report regression <batch>...  the runs side by side by harness build (SDK, image, automaticum), one arm at a time [--all]
+  report census [<batch>...]    tool calls by tool and model: failed, error classes, parse paths [--where ...]
   campaign start <name>         run campaigns/<name>.toml: its batches in order, with their stop conditions [--dry-run]
   campaign ls                   the campaigns
   campaign show <name>          where a campaign is, and each batch compared: the campaign's report [--all]
@@ -78,6 +86,11 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   stub serve --script F         a scripted model server, for trying the harness without a GPU
   legacy import                 import the old harness's corpus (spec 100)
   store check                   verify every blob and every blob reference
+
+Exit codes: 0 done; 1 done with a failing answer, or an error; 2 wrong arguments;
+3 the daemon refused; 6 the daemon does not answer; 7 the daemon does not know
+what was named; wait adds 4 (timeout) and 5 (ended without the condition), cell
+run 10, 20, 30 and 70 (spec 065). --json prints JSON on every command.
 
 Commands about runs talk to the daemon. The checkout with tasks/ and images/ is
 --repo, AUTOMATICUM_REPO, the "repo" of the configuration, or the current directory. The configuration directory is
@@ -115,9 +128,13 @@ func main() {
 		"run resume":           runPost("resume", "released; its next request loads the model again"),
 		"run invalidate":       runPost("invalidate", "marked INVALID"),
 		"run retry":            retry("run"),
-		"lane drain":           laneControl(true),
-		"lane resume":          laneControl(false),
+		"lane drain":           laneControl("drain"),
+		"lane resume":          laneControl("resume"),
+		"lane pause":           laneControl("pause"),
+		"lane quarantine":      laneControl("quarantine"),
+		"lane abort":           laneControl("abort"),
 		"batch show":           batchShow,
+		"batch start":          runStart,
 		"cell run":             cellRun,
 		"campaign start":       campaignStart,
 		"campaign ls":          campaignLs,
@@ -125,14 +142,26 @@ func main() {
 		"campaign pause":       campaignControl("pause"),
 		"campaign resume":      campaignControl("resume"),
 		"campaign stop":        campaignControl("stop"),
+		"campaign abort":       campaignControl("abort"),
+		"campaign retry":       campaignControl("retry"),
 		"basis show":           basisShow,
 		"basis diff":           basisDiff,
 		"batch pause":          batchControl("pause"),
 		"batch resume":         batchControl("resume"),
 		"batch stop":           batchControl("stop"),
+		"batch abort":          batchControl("abort"),
 		"batch retry":          retry("batch"),
 		"batch limits":         batchLimits,
 		"export conversations": exportConversations,
+		"export cell":          exportCell,
+		"export campaign":      exportCampaign,
+		"export run":           exportRunArtefacts,
+		"report run":           reportRun,
+		"report cell":          reportCell,
+		"report batch":         reportBatch,
+		"report ab":            reportAB,
+		"report regression":    reportRegression,
+		"report census":        reportCensus,
 		"run identify":         runPost("identify", "where and on what it ran is now in the record, marked as added later"),
 		"legacy import":        legacyImport,
 		"store check":          storeCheck,
@@ -145,6 +174,15 @@ func main() {
 		"oracle verify":        oracleVerify,
 		"suite import":         suiteImport,
 		"lane ls":              laneLs,
+		"lane show":            laneShow,
+		"batch ls":             batchLs,
+		"cell show":            cellShow,
+		"cell ls":              cellLs,
+		"arm ls":               armLs,
+		"endpoint show":        endpointShow,
+		"endpoint models":      endpointModels,
+		"endpoint probe":       endpointProbe,
+		"task verify":          taskVerify,
 		"image build":          imageBuild,
 		"image ls":             imageLs,
 		"sdk add":              sdkAdd,
@@ -164,7 +202,19 @@ func main() {
 	fail(cmd(ctx, args[2:]))
 }
 
-// fail ends the command when err is one.
+// The exit codes every command keeps (090 §1). `cell run` (0/10/20/30/70,
+// 065 §2.1) and `wait` (4 timeout, 5 ended without the condition) add their
+// own on top.
+const (
+	exitOK       = 0 // done
+	exitFailed   = 1 // done, and the answer is a failure, or an error of its own
+	exitUsage    = 2 // the arguments are wrong; nothing was done
+	exitRefused  = 3 // the daemon refused the request
+	exitDown     = 6 // the daemon does not answer
+	exitNotFound = 7 // the daemon does not know what was named
+)
+
+// fail ends the command when err is one, with the code that says why.
 func fail(err error) {
 	if err == nil {
 		return
@@ -176,5 +226,21 @@ func fail(err error) {
 	if err != errFailed {
 		fmt.Fprintln(os.Stderr, "automaticum:", err)
 	}
-	os.Exit(1)
+	os.Exit(exitOf(err))
+}
+
+// exitOf is the code of an error that names none.
+func exitOf(err error) int {
+	var ae *apiErr
+	switch {
+	case errors.As(err, &ae) && ae.Status == 404:
+		return exitNotFound
+	case errors.As(err, &ae):
+		return exitRefused
+	case errors.Is(err, errDown):
+		return exitDown
+	case strings.HasPrefix(err.Error(), "usage:"):
+		return exitUsage
+	}
+	return exitFailed
 }

@@ -105,6 +105,8 @@ type Daemon struct {
 	ctl       control
 	// campaignMu makes the campaigns move one step at a time.
 	campaignMu sync.Mutex
+	// idemMu serves requests with an idempotency key one at a time.
+	idemMu sync.Mutex
 }
 
 // flight is a run in flight on a lane.
@@ -369,12 +371,14 @@ func (d *Daemon) Serve(ctx context.Context) {
 }
 
 // Drain makes Serve return once the runs in flight have finished. No queued
-// run is started after it.
+// run is started after it. A run held by a pause is released first, so the
+// drain ends with its verdict (D119).
 func (d *Daemon) Drain() {
 	d.init()
 	d.mu.Lock()
 	d.draining = true
 	d.mu.Unlock()
+	d.releaseHeld()
 	d.poke()
 }
 

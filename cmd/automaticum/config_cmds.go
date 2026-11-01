@@ -114,22 +114,45 @@ func armValidate(_ context.Context, args []string) error {
 			return fmt.Errorf("no arms in %s", local.ArmsDir())
 		}
 	}
+	type result struct {
+		Arm      string `json:"arm"`
+		Valid    bool   `json:"valid"`
+		Template bool   `json:"template,omitempty"`
+		ID       string `json:"id,omitempty"`
+		Problem  string `json:"problem,omitempty"`
+	}
+	var results []result
 	bad := 0
 	for _, name := range names {
 		a, err := config.LoadArm(local.ArmsDir(), name)
 		if err == nil && !a.Template && local.Endpoints[a.Endpoint] == nil {
 			err = fmt.Errorf("arm %s names endpoint %q, which this installation does not have", name, a.Endpoint)
 		}
-		if err != nil {
+		switch {
+		case err != nil:
 			bad++
-			fmt.Println(err)
-			continue
+			results = append(results, result{Arm: name, Problem: err.Error()})
+		case a.Template:
+			results = append(results, result{Arm: name, Valid: true, Template: true})
+		default:
+			results = append(results, result{Arm: name, Valid: true, ID: a.ID})
 		}
-		if a.Template {
-			fmt.Printf("%s: template, checked through the arms that extend it\n", name)
-			continue
+	}
+	if *p.json {
+		if err := printJSON(results); err != nil {
+			return err
 		}
-		fmt.Printf("%s: valid, %s\n", name, a.ID[:12])
+	} else {
+		for _, r := range results {
+			switch {
+			case r.Problem != "":
+				fmt.Println(r.Problem)
+			case r.Template:
+				fmt.Printf("%s: template, checked through the arms that extend it\n", r.Arm)
+			default:
+				fmt.Printf("%s: valid, %s\n", r.Arm, r.ID[:12])
+			}
+		}
 	}
 	if bad > 0 {
 		return errFailed
@@ -194,6 +217,9 @@ func armDiff(_ context.Context, args []string) error {
 		return err
 	}
 	lines := config.Diff(a, b)
+	if *p.json {
+		return printJSON(map[string]any{"a": a.Name, "b": b.Name, "a_id": a.ID, "b_id": b.ID, "same": len(lines) == 0, "differences": lines})
+	}
 	if len(lines) == 0 && !a.Template && !b.Template {
 		fmt.Printf("%s and %s resolve to the same arm, %s\n", a.Name, b.Name, a.ID[:12])
 		return nil
@@ -211,6 +237,23 @@ func taskLs(_ context.Context, args []string) error {
 	all, err := task.LoadAll(p.tasks())
 	if err != nil {
 		return err
+	}
+	if *p.json {
+		type row struct {
+			Task     string   `json:"task"`
+			Version  int      `json:"version"`
+			Layers   []string `json:"layers"`
+			Oracles  int      `json:"oracles"`
+			Fixtures int      `json:"fixtures"`
+			Hash     string   `json:"hash"`
+			Training bool     `json:"training,omitempty"`
+			Private  bool     `json:"private,omitempty"`
+		}
+		rows := []row{}
+		for _, t := range all {
+			rows = append(rows, row{t.Name(), t.Version, t.Layers, len(t.Oracles), len(t.Fixtures), t.Hash, t.Training, t.Private})
+		}
+		return printJSON(rows)
 	}
 	w := table()
 	fmt.Fprintln(w, "TASK\tVERSION\tLAYERS\tORACLES\tFIXTURES\tHASH")
@@ -230,6 +273,9 @@ func taskShow(_ context.Context, args []string) error {
 	t, err := task.Find(p.tasks(), args[0])
 	if err != nil {
 		return err
+	}
+	if *p.json {
+		return printJSON(t)
 	}
 	fmt.Printf("task     %s\nversion  %d\nhash     %s\nlayers   %s\n", t.Name(), t.Version, t.Hash, strings.Join(t.Layers, ", "))
 	fmt.Printf("limits   wall %s, idle %s, oracle %s\n", human.Seconds(float64(t.Limits.WallS)), human.Seconds(float64(t.Limits.IdleS)), human.Seconds(float64(t.Limits.OracleS)))
@@ -284,6 +330,7 @@ func taskEnv(p place) (*task.Env, error) {
 func taskBuild(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("task build", flag.ExitOnError)
 	p := addPlace(fs)
+	dry := fs.Bool("dry-run", false, "say which artefacts would be built, where, and whether each is there; build nothing")
 	args = parse(fs, args)
 	if len(args) != 1 {
 		return errors.New("usage: automaticum task build <task>")
@@ -296,12 +343,41 @@ func taskBuild(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	if len(t.Artefacts) == 0 {
-		fmt.Printf("%s has no artefacts to build\n", t.Name())
+	if *dry {
+		for i := range t.Artefacts {
+			a := &t.Artefacts[i]
+			what := "missing: would be built"
+			if sum, err := task.HashFile(env.ArtefactPath(a)); err == nil && sum == a.SHA256 {
+				what = "present and as pinned: nothing to do"
+			} else if err == nil {
+				what = "present but not as pinned: would be built again"
+			}
+			fmt.Printf("%s: %s, pinned sha256 %s, %s\n", a.Name, env.ArtefactPath(a), a.SHA256, what)
+		}
+		if len(t.Artefacts) == 0 {
+			fmt.Printf("%s has no artefacts to build\n", t.Name())
+		}
 		return nil
 	}
 	if err := env.BuildAll(ctx, t, os.Stderr); err != nil {
 		return err
+	}
+	if *p.json {
+		type built struct {
+			Name   string `json:"name"`
+			Path   string `json:"path"`
+			SHA256 string `json:"sha256"`
+		}
+		out := []built{}
+		for i := range t.Artefacts {
+			a := &t.Artefacts[i]
+			out = append(out, built{a.Name, env.ArtefactPath(a), a.SHA256})
+		}
+		return printJSON(map[string]any{"task": t.Name(), "artefacts": out})
+	}
+	if len(t.Artefacts) == 0 {
+		fmt.Printf("%s has no artefacts to build\n", t.Name())
+		return nil
 	}
 	for i := range t.Artefacts {
 		a := &t.Artefacts[i]
@@ -334,6 +410,27 @@ func oracleVerify(ctx context.Context, args []string) error {
 		return err
 	}
 	bad := 0
+	for _, r := range results {
+		if !r.OK {
+			bad++
+		}
+	}
+	if *p.json {
+		proven := bad == 0
+		if proven {
+			if err := env.RecordProof(t, len(results), *repeats); err != nil {
+				return fmt.Errorf("the oracle is proven, but the record of it could not be written: %w", err)
+			}
+		}
+		if err := printJSON(map[string]any{"task": t.Name(), "proven": proven, "repeats": *repeats, "fixtures": results}); err != nil {
+			return err
+		}
+		if !proven {
+			return errFailed
+		}
+		return nil
+	}
+	bad = 0
 	w := table()
 	fmt.Fprintln(w, "FIXTURE\tEXPECT\tRUNS\tRESULT")
 	for _, r := range results {
@@ -380,6 +477,13 @@ func laneLs(_ context.Context, args []string) error {
 		names = append(names, n)
 	}
 	sort.Strings(names)
+	if *p.json {
+		out := []*config.Lane{}
+		for _, n := range names {
+			out = append(out, l.Lanes[n])
+		}
+		return printJSON(out)
+	}
 	w := table()
 	fmt.Fprintln(w, "LANE\tHOST\tENDPOINTS\tUSER\tCPUS\tMEMORY GB\tPIDS")
 	for _, n := range names {
@@ -405,6 +509,26 @@ func endpointLs(_ context.Context, args []string) error {
 		names = append(names, n)
 	}
 	sort.Strings(names)
+	if *p.json {
+		type row struct {
+			Name     string `json:"name"`
+			Kind     string `json:"kind"`
+			Host     string `json:"host"`
+			Capacity int    `json:"capacity"`
+			Key      bool   `json:"api_key"`
+			Address  string `json:"address,omitempty"`
+		}
+		out := []row{}
+		for _, n := range names {
+			e := l.Endpoints[n]
+			r := row{n, e.Kind, e.Host, e.Capacity, e.APIKeyFile != "", ""}
+			if *address {
+				r.Address = e.BaseURL
+			}
+			out = append(out, r)
+		}
+		return printJSON(out)
+	}
 	w := table()
 	head := "ENDPOINT\tKIND\tHOST\tCAPACITY\tKEY"
 	if *address {

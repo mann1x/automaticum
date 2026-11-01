@@ -54,6 +54,7 @@ func cellRun(ctx context.Context, args []string) (err error) {
 	callerValues := fs.String("caller-values", "", "mode C: a JSON or TOML file with sampler, thinking, output_tokens and context_window, which replace the arm's")
 	basisFacts := fs.String("basis-facts", "", "mode C: the caller's facts of the server, as JSON or a JSON file")
 	lanes := fs.Int("lanes", 1, "mode C: how many lanes run the cell at once; part of the basis")
+	dry := fs.Bool("dry-run", false, "say what the cell would queue, and whether the gates let it; queue nothing and write nothing")
 	if rest := parse(fs, args); len(rest) > 0 || *suite == "" || *arm == "" || *out == "" || *key == "" {
 		return errors.New("usage: automaticum cell run --suite <suite[:subset]> --arm <arm> --out <dir> --idempotency-key <key> [-n 1] [--lane L] [--json]\n" +
 			"  mode C: --endpoint-url <url> --served-model <name> [--endpoint-kind openai-compatible] [--caller-values <file>] [--basis-facts <json|file>] [--lanes 1]")
@@ -79,15 +80,42 @@ func cellRun(ctx context.Context, args []string) (err error) {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(*out, 0o755); err != nil {
-		return err
-	}
 	c, err := dial()
 	if err != nil {
 		return err
 	}
+	if *dry {
+		var plan daemon.StartResponse
+		req := daemon.StartRequest{Arm: *arm, Tasks: tasks, Count: *n, Lane: *lane, Key: *key, Cell: cell, DryRun: true}
+		if err := c.do(ctx, "POST", "/v1/runs", req, &plan); err != nil {
+			var ae *apiErr
+			if errors.As(err, &ae) && ae.Gate != "" {
+				fmt.Fprintln(os.Stderr, "automaticum:", ae.Msg)
+				return exitCode(cellRefused)
+			}
+			return err
+		}
+		if c.json {
+			return printJSON(plan)
+		}
+		what := "would start"
+		if plan.Repeated {
+			what = "is already started; running the command again resumes it"
+		}
+		lanesUsed := plan.Lanes
+		if len(lanesUsed) == 0 {
+			lanesUsed = []string{plan.Lane}
+		}
+		fmt.Printf("dry run, nothing queued: cell %s %s: %d runs, %d tasks, arm %s (id %s), lanes %s\n", *key, what,
+			len(plan.RunIDs), len(tasks), *arm, plan.ArmID, strings.Join(lanesUsed, " "))
+		return nil
+	}
+	if err := os.MkdirAll(*out, 0o755); err != nil {
+		return err
+	}
 	var start daemon.StartResponse
 	req := daemon.StartRequest{Arm: *arm, Tasks: tasks, Count: *n, Lane: *lane, Key: *key, Cell: cell}
+	c.cell = *suite
 	if err := c.do(ctx, "POST", "/v1/runs", req, &start); err != nil {
 		// A gate that refuses the whole cell before anything is queued is
 		// a refusal (065 §2.1), not an internal error.

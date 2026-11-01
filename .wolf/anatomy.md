@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-01T17:52:08.245Z
-> Files: 508 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-01T19:06:04.617Z
+> Files: 525 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../tmp/claude-0/-srv-dev-disk-by-label-opt-dev-automaticum/b3252f5f-43ab-4bf3-a0a5-9eef085a7e35/scratchpad/
 
@@ -121,20 +121,27 @@
 - `export_cmds.go` — manifestLine (88 fields); methods: Error (~2253 tok)
 - `image_cmds.go` (~1096 tok)
 - `main.go` — Command automaticum is the command line of automaticum. (~2528 tok)
+- `report_cmds.go` — report run|cell|batch|ab|regression|census; export cell|campaign|run (runs.csv, artefacts), with --dry-run (~3194 tok)
+- `report_cmds_test.go` — runs.csv columns, positional args, export formats (~600 tok)
 - `sdk_cmds.go` — SDKEnv (~1197 tok)
+- `show_cmds.go` — lane show, batch ls, cell show|ls, arm ls, endpoint show|models|probe, task verify (~4501 tok)
+- `exit_test.go` — TestExitOf: the exit code of each kind of error (~300 tok)
 - `store_cgo.go` — go:build cgo (~1850 tok)
 - `store_nocgo.go` — go:build !cgo (~128 tok)
 - `stub_cmds.go` (~419 tok)
 - `suite_cmds.go` (~932 tok)
 - `wait_cmds_test.go` — Struct: oldDaemon (~906 tok)
-- `wait_cmds.go` — Struct: waiter (~4656 tok)
-
-- `wait_cmds.go` — `automaticum wait run|batch|cell|campaign|lane|idle`: --until/--next/--each/--any/--timeout, exit 0/4/5, fallback polling for an older daemon, waits out daemon restarts (~3800 tok)
 - `wait_cmds_test.go` — fallback against a fake old daemon; daemon away then back (~800 tok)
+- `wait_cmds.go` — Struct: waiter (~4656 tok)
+- `wait_cmds.go` — `automaticum wait run|batch|cell|campaign|lane|idle`: --until/--next/--each/--any/--timeout, exit 0/4/5, fallback polling for an older daemon, waits out daemon restarts (~3800 tok)
 
 ## cmd/automaticumd/
 
 - `main.go` — Command automaticumd is the daemon: it owns the store, works the queue on (~1656 tok)
+
+## docs/audit/
+
+- `2026-11-01-spec-vs-code.md` — every spec item vs code at 180cc97 (three tables), with what was fixed the same day (~25000 tok)
 
 ## docs/local/
 
@@ -264,9 +271,6 @@
 
 ## internal/daemon/
 
-- `wait.go` — GET /v1/wait/{kind}: held ≤55 s, woken by bump() on poke/flight start, 2 s recheck; batchRuns (dedup queued+written), statusSnapshot, WaitView (~1700 tok)
-- `wait_test.go` — TestWait: hold, run started, batch next/done, lane idle, over, 404/400 (~1200 tok)
-- `notify_test.go` — TestNotifyCommand: [notify] command gets run/batch finished/batch stopped; events filter (~700 tok)
 - `api.go` — HTTP handlers: reply, fail (~13391 tok)
 - `basis.go` — Basis (87 fields) (~4394 tok)
 - `campaign.go` — CampaignState (112 fields) (~3842 tok)
@@ -278,10 +282,19 @@
 - `daemon.go` — is automaticumd without its main: the queue, one worker (~5963 tok)
 - `export_test.go` — TestExport (~1366 tok)
 - `export.go` — ExportMeta (48 fields) (~1711 tok)
+- `lists_test.go` — TestBatchesAndLaneShow, TestWhereFilter (~628 tok)
+- `lists.go` — GET /v1/batches (BatchSummary) and GET /v1/lanes/{lane} (LaneView); atoiPositive (~1750 tok)
 - `modec_test.go` — TestModeCCell, TestModeCBasis (~1727 tok)
 - `modec.go` — CellSpec (69 fields) (~2243 tok)
+- `mutate_test.go` — TestDryRunAndIdempotency, TestLanePause (~1353 tok)
+- `mutate.go` — dryRun(), the Idempotency-Key middleware (answers kept 30 days in control.json), Done (~1136 tok)
+- `notify_test.go` — TestNotifyCommand: [notify] command gets run/batch finished/batch stopped; events filter (~700 tok)
 - `notify_test.go` — TestNotifyCommand (~669 tok)
+- `report.go` — GET /v1/report/census: tool calls by tool and model, failures by error class, parse paths (~842 tok)
+- `report_test.go` — TestReportRegressionAndCensus (~900 tok)
+- `wait_test.go` — TestWait: hold, run started, batch next/done, lane idle, over, 404/400 (~1200 tok)
 - `wait_test.go` — Struct: answer (~1023 tok)
+- `wait.go` — GET /v1/wait/{kind}: held ≤55 s, woken by bump() on poke/flight start, 2 s recheck; batchRuns (dedup queued+written), statusSnapshot, WaitView (~1700 tok)
 - `wait.go` — Struct: WaitView (~1669 tok)
 
 ## internal/detect/
@@ -304,10 +317,6 @@
 - `export_test.go` — TestGuardSpan, TestGuardSpanUnplaced, TestReadCuts, TestRepeatedCallSpans (~1664 tok)
 - `export.go` — hands a run's model requests out as training traces (~3681 tok)
 
-## docs/audit/
-
-- `2026-11-01-spec-vs-code.md` — every spec item vs code at 180cc97 (three tables), with what was fixed the same day (~25000 tok)
-
 ## internal/gate/
 
 - `gate_test.go` — server (42 fields); methods: ImageInspect, Check, Path (~3040 tok)
@@ -329,6 +338,8 @@
 - `events.go` — turns a run's stored raw material into what is queried: (~4069 tok)
 - `ingest_test.go` — TestNoticeLog, TestReadEvents, TestReadWire, TestCompareWireClean, TestCompareWire (~10465 tok)
 - `openai_test.go` — TestOpenAIWire, TestOpenAIWireFromStub, TestOpenAIThinkingBudget (~1625 tok)
+- `render_test.go` — TestRenderer (~587 tok)
+- `render.go` — Renderer: the runner event lines as a transcript (turns, blocks, tool calls, notices, end) (~986 tok)
 - `sample_test.go` — TestSample, TestDumpBlocks (~1010 tok)
 - `sampler.go` — Setting (43 fields) (~1398 tok)
 - `wire.go` — Request (110 fields) (~2797 tok)
@@ -367,11 +378,6 @@
 
 - `sdk_test.go` — TestDefinitions, TestInstallRebuild (~1726 tok)
 - `sdk.go` — provisions the SDK under test. A lane image holds no SDK: each (~5126 tok)
-
-## internal/wait/
-
-- `wait.go` — 090 §5.1: Parse conditions (counts op N, facts, and/or) per kind; Runs/Lane/Idle/Campaign snapshots; Over (~2400 tok)
-- `wait_test.go` — parse/eval, refusals, run/batch/lane/idle/campaign, Seen/Any (~900 tok)
 
 ## internal/stats/
 
@@ -438,7 +444,9 @@
 
 ## internal/wait/
 
+- `wait_test.go` — parse/eval, refusals, run/batch/lane/idle/campaign, Seen/Any (~900 tok)
 - `wait_test.go` — TestParseAndEval, TestParseRefuses, TestRunsDone, TestRunKind, TestLaneIdleCampaign (~984 tok)
+- `wait.go` — 090 §5.1: Parse conditions (counts op N, facts, and/or) per kind; Runs/Lane/Idle/Campaign snapshots; Over (~2400 tok)
 - `wait.go` — decides when a wait is over (090 §5): a run, a batch, a (~3118 tok)
 
 ## runner/

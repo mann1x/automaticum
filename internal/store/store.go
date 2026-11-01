@@ -169,6 +169,7 @@ type RunFilter struct {
 	Model    string
 	Verdict  Verdict
 	Batch    string
+	Lane     string
 	Imported *bool
 	Since    time.Time
 	Until    time.Time

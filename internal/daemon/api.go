@@ -51,6 +51,8 @@ type LaneStatus struct {
 	Waiting string `json:"waiting,omitempty"`
 	// Drained says the lane starts no run after the one in flight.
 	Drained bool `json:"drained,omitempty"`
+	// Quarantined is why the lane is out of use, when it is (050 §5).
+	Quarantined string `json:"quarantined,omitempty"`
 }
 
 // DoctorEntry is every gate's answer for one arm on one task on one lane.
@@ -179,6 +181,8 @@ type RunView struct {
 	// Settings are the run's sampling and thinking parameters as they
 	// were in effect (070 §4.1).
 	Settings []ingest.Setting `json:"settings,omitempty"`
+	// DryRun says the answer is what a control would do; nothing changed.
+	DryRun bool `json:"dry_run,omitempty"`
 }
 
 // MetricView is one number measured on a run.
@@ -205,6 +209,13 @@ type ReanalyseRequest struct {
 	// Imported also takes the runs of the older harness, which get the
 	// detectors' findings only.
 	Imported bool `json:"imported,omitempty"`
+	// Where narrows the runs by their fields: "key=value" joined by commas
+	// (suite, task, arm_id, model, verdict, lane, batch, since, until).
+	Where string `json:"where,omitempty"`
+	// Detector names one detector: every run is analysed whole, as always,
+	// and the answer says, for each run, how that detector's firings
+	// changed.
+	Detector string `json:"detector,omitempty"`
 }
 
 // DetectView is what the detector library says about one run, computed now
@@ -236,6 +247,10 @@ type ReanalyseStatus struct {
 	Failed  map[string]string `json:"failed,omitempty"` // by run, why
 	Started time.Time         `json:"started,omitzero"`
 	Ended   time.Time         `json:"ended,omitzero"`
+	DryRun  bool              `json:"dry_run,omitempty"`
+	// Changed is, with a detector named, each run whose firings of it
+	// changed: "before → after".
+	Changed map[string]string `json:"changed,omitempty"`
 }
 
 // BlobView is one piece of a run's raw material.
@@ -304,6 +319,7 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/runs/{id}/pause", d.handlePause)
 	mux.HandleFunc("POST /v1/runs/{id}/resume", d.handleResume)
 	mux.HandleFunc("GET /v1/compare", d.handleCompare)
+	mux.HandleFunc("GET /v1/report/census", d.handleCensus)
 	mux.HandleFunc("GET /v1/basis", d.handleBasis)
 	mux.HandleFunc("POST /v1/runs/{id}/invalidate", d.handleInvalidate)
 	mux.HandleFunc("POST /v1/runs/{id}/identify", d.handleIdentify)
@@ -312,9 +328,12 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/reanalyse", d.handleReanalyse)
 	mux.HandleFunc("GET /v1/reanalyse", func(w http.ResponseWriter, r *http.Request) { reply(w, http.StatusOK, d.reanalyseStatus()) })
 	mux.HandleFunc("POST /v1/runs/{id}/retry", d.handleRetry)
-	mux.HandleFunc("POST /v1/lanes/{lane}/drain", d.handleLane(true))
-	mux.HandleFunc("POST /v1/lanes/{lane}/resume", d.handleLane(false))
+	for _, verb := range []string{"drain", "resume", "pause", "quarantine", "abort"} {
+		mux.HandleFunc("POST /v1/lanes/{lane}/"+verb, d.handleLane(verb))
+	}
+	mux.HandleFunc("GET /v1/batches", d.handleBatches)
 	mux.HandleFunc("GET /v1/batches/{batch}", d.handleBatch)
+	mux.HandleFunc("GET /v1/lanes/{lane}", d.handleLaneShow)
 	mux.HandleFunc("GET /v1/wait/{kind}", d.handleWait)
 	mux.HandleFunc("POST /v1/campaigns", d.handleCampaignStart)
 	mux.HandleFunc("GET /v1/campaigns", d.handleCampaigns)
@@ -322,22 +341,30 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/campaigns/{name}/pause", d.handleCampaignControl("pause"))
 	mux.HandleFunc("POST /v1/campaigns/{name}/resume", d.handleCampaignControl("resume"))
 	mux.HandleFunc("POST /v1/campaigns/{name}/stop", d.handleCampaignControl("stop"))
+	mux.HandleFunc("POST /v1/campaigns/{name}/abort", d.handleCampaignControl("abort"))
+	mux.HandleFunc("POST /v1/campaigns/{name}/retry", d.handleCampaignControl("retry"))
 	mux.HandleFunc("GET /v1/batches/{batch}/cell", d.handleCell)
 	mux.HandleFunc("POST /v1/batches/{batch}/pause", d.handleBatchPause)
 	mux.HandleFunc("POST /v1/batches/{batch}/resume", d.handleBatchResume)
 	mux.HandleFunc("POST /v1/batches/{batch}/stop", d.handleBatchStop)
+	mux.HandleFunc("POST /v1/batches/{batch}/abort", d.handleBatchStop)
 	mux.HandleFunc("POST /v1/batches/{batch}/retry", d.handleRetry)
 	mux.HandleFunc("POST /v1/batches/{batch}/limits", d.handleBatchLimits)
 	mux.HandleFunc("POST /v1/drain", func(w http.ResponseWriter, r *http.Request) {
+		if dryRun(r) {
+			reply(w, http.StatusOK, map[string]bool{"draining": true, "dry_run": true})
+			return
+		}
 		d.Drain()
 		reply(w, http.StatusOK, map[string]bool{"draining": true})
 	})
+	keyed := d.idempotent(mux)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !d.allowed(r) {
 			fail(w, http.StatusUnauthorized, "this request needs the API token")
 			return
 		}
-		mux.ServeHTTP(w, r)
+		keyed.ServeHTTP(w, r)
 	})
 }
 
@@ -410,6 +437,15 @@ func (d *Daemon) status(ctx context.Context) (Status, error) {
 		if ls.Drained && flying[n] == nil {
 			ls.State, ls.RunID, ls.Arm, ls.Task, ls.Waiting = "drained", "", "", "", ""
 		}
+		d.mu.Lock()
+		q, quarantined := d.ctl.Quarantined[n]
+		d.mu.Unlock()
+		if quarantined {
+			ls.Quarantined = q.Reason
+			if flying[n] == nil {
+				ls.State = "quarantined"
+			}
+		}
 		st.Lanes = append(st.Lanes, ls)
 	}
 	queue, err := d.State.Queue(ctx)
@@ -449,6 +485,18 @@ func (d *Daemon) handleStart(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fail(w, code, "%v", err)
 		return
+	}
+	// `cell run` names its suite in a header, which an older daemon
+	// ignores, so `cell ls` can tell a cell from another batch.
+	if c := strings.TrimSpace(r.Header.Get("Automaticum-Cell")); c != "" && !resp.DryRun && resp.Batch != "" {
+		d.mu.Lock()
+		if d.ctl.CellBatches[resp.Batch] == "" {
+			d.ctl.CellBatches[resp.Batch] = c
+			if err := d.saveControl(); err != nil {
+				d.Log.Error("the control file: a cell's mark was not kept", "error", err)
+			}
+		}
+		d.mu.Unlock()
 	}
 	reply(w, code, resp)
 }
@@ -747,7 +795,7 @@ func dedupe(sorted []string) []string {
 func (d *Daemon) handleRuns(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	q := r.URL.Query()
-	f := store.RunFilter{Suite: q.Get("suite"), TaskID: q.Get("task"), ArmID: q.Get("arm_id"), Model: q.Get("model"), Batch: q.Get("batch"), Verdict: store.Verdict(strings.ToUpper(q.Get("verdict")))}
+	f := store.RunFilter{Suite: q.Get("suite"), TaskID: q.Get("task"), ArmID: q.Get("arm_id"), Model: q.Get("model"), Batch: q.Get("batch"), Lane: q.Get("lane"), Verdict: store.Verdict(strings.ToUpper(q.Get("verdict")))}
 	// A task is named as everywhere else, "suite/task"; the store keeps
 	// the two apart. A bare task id still matches it in every suite.
 	if suite, id, ok := strings.Cut(f.TaskID, "/"); ok {
@@ -782,7 +830,7 @@ func (d *Daemon) handleRuns(w http.ResponseWriter, r *http.Request) {
 		for i := len(queue) - 1; i >= 0; i-- {
 			it := queue[i]
 			suite, id, _ := strings.Cut(it.Task, "/")
-			if f.Batch != "" && it.Batch != f.Batch || f.Suite != "" && suite != f.Suite || f.TaskID != "" && id != f.TaskID {
+			if f.Batch != "" && it.Batch != f.Batch || f.Lane != "" && it.Lane != f.Lane || f.Suite != "" && suite != f.Suite || f.TaskID != "" && id != f.TaskID {
 				continue
 			}
 			out = append(out, d.queuedView(it))
@@ -916,6 +964,10 @@ func (d *Daemon) handleReanalyse(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusBadRequest, "the request is not readable: %v", err)
 		return
 	}
+	if req.Detector != "" && !slices.Contains(ingest.Detectors(), req.Detector) {
+		fail(w, http.StatusBadRequest, "there is no detector %q; there are %s", req.Detector, strings.Join(ingest.Detectors(), ", "))
+		return
+	}
 	var ids []string
 	if req.Run != "" {
 		if _, err := d.State.GetRun(ctx, req.Run); errors.Is(err, store.ErrNotFound) {
@@ -924,7 +976,14 @@ func (d *Daemon) handleReanalyse(w http.ResponseWriter, r *http.Request) {
 		}
 		ids = []string{req.Run}
 	} else {
-		f := store.RunFilter{Batch: req.Batch}
+		f, err := whereFilter(req.Where)
+		if err != nil {
+			fail(w, http.StatusBadRequest, "%v", err)
+			return
+		}
+		if req.Batch != "" {
+			f.Batch = req.Batch
+		}
 		if !req.Imported {
 			f.Imported = new(bool)
 		}
@@ -946,6 +1005,11 @@ func (d *Daemon) handleReanalyse(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusConflict, "a reanalysis is running: %d of %d runs done", st.Done, st.Total)
 		return
 	}
+	if dryRun(r) {
+		d.mu.Unlock()
+		reply(w, http.StatusOK, ReanalyseStatus{Request: req, Total: len(ids), DryRun: true})
+		return
+	}
 	job := &ReanalyseStatus{Running: true, Request: req, Total: len(ids), Started: time.Now().UTC()}
 	d.reanalysis = job
 	d.mu.Unlock()
@@ -963,9 +1027,17 @@ func (d *Daemon) reanalyse(job *ReanalyseStatus, ids []string) {
 		go func() {
 			defer wg.Done()
 			for id := range next {
+				before := d.firings(ctx, id, job.Request.Detector)
 				_, err := ingest.Run(ctx, d.State, d.Blobs, id)
+				after := d.firings(ctx, id, job.Request.Detector)
 				d.mu.Lock()
 				job.Done++
+				if err == nil && job.Request.Detector != "" && before != after {
+					if job.Changed == nil {
+						job.Changed = map[string]string{}
+					}
+					job.Changed[id] = fmt.Sprintf("%d → %d", before, after)
+				}
 				if err != nil {
 					if job.Failed == nil {
 						job.Failed = map[string]string{}
@@ -990,6 +1062,78 @@ func (d *Daemon) reanalyse(job *ReanalyseStatus, ids []string) {
 	}
 }
 
+// firings counts a detector's firings on a run; no detector, none.
+func (d *Daemon) firings(ctx context.Context, id, detector string) int {
+	if detector == "" {
+		return 0
+	}
+	fs, err := d.State.Findings(ctx, id)
+	if err != nil {
+		return -1
+	}
+	n := 0
+	for _, f := range fs {
+		if f.Detector == detector {
+			n += max(1, f.Count)
+		}
+	}
+	return n
+}
+
+// whereFilter reads "key=value,key=value" into a run filter.
+func whereFilter(where string) (store.RunFilter, error) {
+	var f store.RunFilter
+	for _, part := range strings.Split(where, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		k, v, ok := strings.Cut(part, "=")
+		k, v = strings.TrimSpace(k), strings.TrimSpace(v)
+		if !ok || v == "" {
+			return f, fmt.Errorf("--where: %q is not key=value", part)
+		}
+		switch k {
+		case "suite":
+			f.Suite = v
+		case "task":
+			if suite, id, ok := strings.Cut(v, "/"); ok {
+				f.Suite, f.TaskID = suite, id
+			} else {
+				f.TaskID = v
+			}
+		case "arm_id":
+			f.ArmID = v
+		case "model":
+			f.Model = v
+		case "verdict":
+			f.Verdict = store.Verdict(strings.ToUpper(v))
+			if !f.Verdict.Valid() {
+				return f, fmt.Errorf("--where: %q is not a verdict", v)
+			}
+		case "lane":
+			f.Lane = v
+		case "batch":
+			f.Batch = v
+		case "since", "until":
+			t, err := time.Parse("2006-01-02", v)
+			if err != nil {
+				if t, err = time.Parse(time.RFC3339, v); err != nil {
+					return f, fmt.Errorf("--where: %s is a date (2026-11-01) or a time (RFC 3339), not %q", k, v)
+				}
+			}
+			if k == "since" {
+				f.Since = t
+			} else {
+				f.Until = t
+			}
+		default:
+			return f, fmt.Errorf("--where: there is no field %q; there are suite, task, arm_id, model, verdict, lane, batch, since, until", k)
+		}
+	}
+	return f, nil
+}
+
 // reanalyseStatus is a copy of the reanalysis's state, safe to send.
 func (d *Daemon) reanalyseStatus() ReanalyseStatus {
 	d.mu.Lock()
@@ -999,6 +1143,7 @@ func (d *Daemon) reanalyseStatus() ReanalyseStatus {
 	}
 	st := *d.reanalysis
 	st.Failed = maps.Clone(st.Failed)
+	st.Changed = maps.Clone(st.Changed)
 	return st
 }
 
@@ -1190,6 +1335,12 @@ func (d *Daemon) handleStop(w http.ResponseWriter, r *http.Request) {
 		if suite, tid, ok := strings.Cut(it.Task, "/"); ok {
 			rec.Suite, rec.TaskID = suite, tid
 		}
+		if dryRun(r) {
+			v := view(rec, false)
+			v.DryRun = true
+			reply(w, http.StatusOK, v)
+			return
+		}
 		if err := d.State.UpsertRun(ctx, rec); err != nil {
 			fail(w, http.StatusInternalServerError, "%v", err)
 			return
@@ -1206,11 +1357,19 @@ func (d *Daemon) handleStop(w http.ResponseWriter, r *http.Request) {
 
 func (d *Daemon) handleAbort(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+	if dryRun(r) {
+		if d.flight(id) == nil {
+			fail(w, http.StatusNotFound, "run %s is not in flight", id)
+			return
+		}
+		reply(w, http.StatusOK, Done{RunID: id, State: "aborting", DryRun: true})
+		return
+	}
 	if !d.Abort(id) {
 		fail(w, http.StatusNotFound, "run %s is not in flight", id)
 		return
 	}
-	reply(w, http.StatusAccepted, map[string]string{"run_id": id, "state": "aborting"})
+	reply(w, http.StatusAccepted, Done{RunID: id, State: "aborting"})
 }
 
 // holder is what pausing needs of the runner of runs; *run.Executor is one.
@@ -1249,12 +1408,23 @@ func (d *Daemon) handlePause(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusNotFound, "run %s is not in flight", id)
 		return
 	}
+	if dryRun(r) {
+		detail := "held before its next model request, then the endpoint freed of its model"
+		if req.KeepModel {
+			detail = "held before its next model request; the model stays loaded"
+		}
+		if held, _ := f.holding(); held {
+			detail = "already held"
+		}
+		reply(w, http.StatusOK, Done{RunID: id, State: "pausing", DryRun: true, Detail: detail})
+		return
+	}
 	if err := h.Hold(id); err != nil {
 		fail(w, http.StatusConflict, "%v", err)
 		return
 	}
 	go d.afterHeld(f, !req.KeepModel)
-	reply(w, http.StatusAccepted, map[string]string{"run_id": id, "state": "pausing"})
+	reply(w, http.StatusAccepted, Done{RunID: id, State: "pausing"})
 }
 
 // afterHeld waits until the runner says the run is held, then frees the
@@ -1317,11 +1487,24 @@ func (d *Daemon) handleResume(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusNotImplemented, "this daemon cannot hold a run")
 		return
 	}
+	if dryRun(r) {
+		f := d.flight(id)
+		if f == nil {
+			fail(w, http.StatusNotFound, "run %s is not in flight", id)
+			return
+		}
+		detail := "released; its next request loads the model again"
+		if held, _ := f.holding(); !held {
+			detail = "not held now; a hold asked for is taken back"
+		}
+		reply(w, http.StatusOK, Done{RunID: id, State: "resuming", DryRun: true, Detail: detail})
+		return
+	}
 	if err := h.Release(id); err != nil {
 		fail(w, http.StatusInternalServerError, "%v", err)
 		return
 	}
-	reply(w, http.StatusAccepted, map[string]string{"run_id": id, "state": "resuming"})
+	reply(w, http.StatusAccepted, Done{RunID: id, State: "resuming"})
 }
 
 // handleIdentify adds to a finished run's record where and on what it ran,
@@ -1407,6 +1590,10 @@ func (d *Daemon) handleIdentify(w http.ResponseWriter, r *http.Request) {
 		inf.AddedLater = &run.AddedLater{At: now, Source: "today's configuration and catalogue; the server's answers are the run's own"}
 	}
 	prov["inference"], _ = json.Marshal(inf)
+	if dryRun(r) {
+		reply(w, http.StatusOK, Done{RunID: id, State: "identified", DryRun: true, Detail: inf.AddedLater.Source})
+		return
+	}
 	if rec.Provenance, err = json.Marshal(prov); err != nil {
 		fail(w, http.StatusInternalServerError, "%v", err)
 		return
@@ -1419,7 +1606,7 @@ func (d *Daemon) handleIdentify(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusInternalServerError, "the record is written, the analysis failed: %v", err)
 		return
 	}
-	reply(w, http.StatusOK, map[string]string{"run_id": id, "state": "identified"})
+	reply(w, http.StatusOK, Done{RunID: id, State: "identified"})
 }
 
 // handleInvalidate marks a finished run INVALID. What the verdict was is
@@ -1447,6 +1634,12 @@ func (d *Daemon) handleInvalidate(w http.ResponseWriter, r *http.Request) {
 		rec.PriorVerdict = rec.Verdict
 	}
 	rec.Verdict, rec.VerdictReason = store.Invalid, "operator: "+strings.TrimSpace(req.Reason)
+	if dryRun(r) {
+		v := view(rec, false)
+		v.DryRun = true
+		reply(w, http.StatusOK, v)
+		return
+	}
 	if err := d.State.UpsertRun(ctx, rec); err != nil {
 		fail(w, http.StatusInternalServerError, "%v", err)
 		return

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/mann1x/automaticum/internal/docker"
@@ -27,6 +28,7 @@ func suiteImport(ctx context.Context, args []string) error {
 	source := fs.String("source", "", "a checkout of terminal-bench-2")
 	commit := fs.String("commit", "", "the commit the checkout must be at")
 	repeats := fs.Int("repeats", 3, "how many times the oracle judges each fixture before a task is kept")
+	dry := fs.Bool("dry-run", false, "check the checkout and say which tasks would be imported where; write and build nothing")
 	names := parse(fs, args[1:])
 	if *source == "" || *commit == "" {
 		return errors.New("usage: automaticum suite import tbench2 -source DIR -commit SHA [<task>...]")
@@ -48,6 +50,24 @@ func suiteImport(ctx context.Context, args []string) error {
 	if dirty, err := exec.CommandContext(ctx, "git", "-C", *source, "status", "--porcelain").Output(); err != nil || len(dirty) > 0 {
 		return fmt.Errorf("%s has changes of its own: import from a clean checkout", *source)
 	}
+	if *dry {
+		type plan struct {
+			Task  string `json:"task"`
+			Dir   string `json:"dir"`
+			Layer string `json:"layer"`
+		}
+		var out []plan
+		for _, n := range names {
+			out = append(out, plan{n, filepath.Join("tasks", tbench2.Suite, n), filepath.Join("images", "layers", "tb2-"+n)})
+		}
+		if *p.json {
+			return printJSON(map[string]any{"dry_run": true, "commit": *commit, "tasks": out})
+		}
+		for _, pl := range out {
+			fmt.Printf("would import %s into %s and %s\n", pl.Task, pl.Dir, pl.Layer)
+		}
+		return nil
+	}
 	l, err := p.local()
 	if err != nil {
 		return err
@@ -61,8 +81,21 @@ func suiteImport(ctx context.Context, args []string) error {
 		Repo: p.root(), Config: cfg, Repeats: *repeats, Log: os.Stderr,
 	}
 	failed := 0
+	type imported struct {
+		Task  string `json:"task"`
+		OK    bool   `json:"ok"`
+		Hash  string `json:"hash,omitempty"`
+		Dir   string `json:"dir,omitempty"`
+		Error string `json:"error,omitempty"`
+	}
+	var results []imported
 	for _, name := range names {
 		r, err := im.Import(ctx, name)
+		if err != nil {
+			results = append(results, imported{Task: tbench2.Suite + "/" + name, Error: err.Error()})
+		} else {
+			results = append(results, imported{Task: tbench2.Suite + "/" + name, OK: true, Hash: r.Hash, Dir: r.Dir})
+		}
 		if err != nil {
 			failed++
 			fmt.Fprintln(os.Stderr, "automaticum:", err)
@@ -82,7 +115,18 @@ func suiteImport(ctx context.Context, args []string) error {
 			}
 			continue
 		}
-		fmt.Printf("%s/%s  %s  %s\n", tbench2.Suite, name, r.Hash, r.Dir)
+		if !*p.json {
+			fmt.Printf("%s/%s  %s  %s\n", tbench2.Suite, name, r.Hash, r.Dir)
+		}
+	}
+	if *p.json {
+		if err := printJSON(results); err != nil {
+			return err
+		}
+		if failed > 0 {
+			return errFailed
+		}
+		return nil
 	}
 	if failed > 0 {
 		return fmt.Errorf("%d of %d tasks not imported", failed, len(names))

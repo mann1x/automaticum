@@ -36,6 +36,7 @@ func exportConversations(ctx context.Context, args []string) error {
 	fs.Var(&runs, "run", "a run; give it several times for several")
 	heldout := fs.Bool("heldout", false, "also export runs of batches started held out (D115), for an eval set; never into a training set")
 	out := fs.String("out", "", "the directory to write into; a run already in it is refused")
+	dry := fs.Bool("dry-run", false, "say which runs would be exported; write nothing")
 	parse(fs, args)
 	if *out == "" || len(batches)+len(runs) == 0 {
 		return errors.New("usage: automaticum export conversations --out <dir> [--batch B|GLOB ...] [--run R ...] [--heldout]")
@@ -50,6 +51,16 @@ func exportConversations(ctx context.Context, args []string) error {
 	}
 	if len(ids) == 0 {
 		return errors.New("no finished run matches")
+	}
+	if *dry {
+		for _, id := range ids {
+			if _, err := os.Stat(filepath.Join(*out, "conversations", id)); err == nil {
+				fmt.Printf("%s: already in %s, would be refused\n", id, *out)
+			} else {
+				fmt.Printf("%s: would be exported (a run of a task not for training, INVALID or without a capture is passed over then)\n", id)
+			}
+		}
+		return nil
 	}
 	for _, d := range []string{"conversations", "runs", ".partial"} {
 		if err := os.MkdirAll(filepath.Join(*out, d), 0o755); err != nil {
@@ -72,12 +83,26 @@ func exportConversations(ctx context.Context, args []string) error {
 	}
 	defer manifestF.Close()
 	done, passed := 0, 0
+	type result struct {
+		Run        string `json:"run"`
+		Exported   bool   `json:"exported"`
+		Requests   int    `json:"requests,omitempty"`
+		Spans      int    `json:"spans,omitempty"`
+		PassedOver string `json:"passed_over,omitempty"`
+	}
+	var results []result
+	say := func(format string, args ...any) {
+		if !c.json {
+			fmt.Printf(format, args...)
+		}
+	}
 	for _, id := range ids {
 		x, err := exportRun(ctx, c, id, *out, *heldout)
 		if err != nil {
 			var refused *refusal
 			if errors.As(err, &refused) {
-				fmt.Printf("%s  passed over: %s\n", id, refused.msg)
+				say("%s  passed over: %s\n", id, refused.msg)
+				results = append(results, result{Run: id, PassedOver: refused.msg})
 				passed++
 				continue
 			}
@@ -91,10 +116,14 @@ func exportConversations(ctx context.Context, args []string) error {
 		if _, err := manifestF.Write(append(line, '\n')); err != nil {
 			return err
 		}
-		fmt.Printf("%s  %d requests, %d spans\n", id, x.manifest.Requests, x.manifest.Spans)
+		say("%s  %d requests, %d spans\n", id, x.manifest.Requests, x.manifest.Spans)
+		results = append(results, result{Run: id, Exported: true, Requests: x.manifest.Requests, Spans: x.manifest.Spans})
 		done++
 	}
 	os.Remove(filepath.Join(*out, ".partial"))
+	if c.json {
+		return printJSON(map[string]any{"out": *out, "exported": done, "passed_over": passed, "runs": results})
+	}
 	fmt.Printf("%d runs exported into %s, %d passed over\n", done, *out, passed)
 	return nil
 }

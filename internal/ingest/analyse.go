@@ -75,6 +75,16 @@ func VersionsText() string {
 // model in memory answers "load" in milliseconds; a load takes seconds.
 const reloadSeconds = 1.0
 
+// Detectors are the detectors whose findings ingest writes, sorted.
+func Detectors() []string {
+	out := make([]string, 0, len(owned))
+	for d := range owned {
+		out = append(out, d)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // owned names the detectors whose findings ingest writes. Findings of any
 // other detector are kept as they are.
 var owned = map[string]bool{WireArm: true, CapHit: true, GPUResidency: true, ModelReloaded: true, ModelIdentity: true, detect.ShortUnitRepeat: true, detect.CharRun: true,

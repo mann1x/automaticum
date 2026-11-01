@@ -23,7 +23,13 @@ func (l *list) Set(s string) error { *l = append(*l, s); return nil }
 // compare prints the runs of some batches side by side, one column per
 // arm: every number, and no conclusion (D78).
 func compare(ctx context.Context, args []string) error {
-	fs := flag.NewFlagSet("compare", flag.ExitOnError)
+	return compareAs(ctx, args, "compare", "")
+}
+
+// compareAs is compare under another name; split "build" is the regression
+// view (070 §6): one group per arm, task and harness build.
+func compareAs(ctx context.Context, args []string, name, split string) error {
+	fs := flag.NewFlagSet(name, flag.ExitOnError)
 	_, dial := addClient(fs)
 	var batches list
 	fs.Var(&batches, "batch", "a batch; give it several times to compare batches")
@@ -31,13 +37,16 @@ func compare(ctx context.Context, args []string) error {
 	rest := parse(fs, args)
 	batches = append(batches, rest...)
 	if len(batches) == 0 {
-		return errors.New("usage: automaticum compare <batch> [<batch> ...] [--all]")
+		return fmt.Errorf("usage: automaticum %s <batch> [<batch> ...] [--all]", name)
 	}
 	c, err := dial()
 	if err != nil {
 		return err
 	}
 	q := url.Values{"batch": batches}
+	if split != "" {
+		q.Set("split", split)
+	}
 	var v daemon.CompareView
 	if err := c.do(ctx, "GET", "/v1/compare?"+q.Encode(), nil, &v); err != nil {
 		return err
@@ -47,7 +56,10 @@ func compare(ctx context.Context, args []string) error {
 	}
 	letter := func(i int) string { return string(rune('A' + i)) }
 	for i, g := range v.Groups {
-		fmt.Printf("%s  arm %s (%s), task %s\n   model %s, SDK %s\n", letter(i), g.Arm, short(g.ArmID), g.Task, g.Model, g.SDK)
+		fmt.Printf("%s  arm %s (%s), task %s\n   model %s, SDK %s\n", letter(i), g.Arm, shortIDs(g.ArmID), g.Task, g.Model, g.SDK)
+		if g.Build != "" {
+			fmt.Printf("   build %s\n", g.Build)
+		}
 		ids := make([]string, 0, len(g.Excluded))
 		for id := range g.Excluded {
 			ids = append(ids, id)
@@ -261,6 +273,15 @@ func bare(s string) string {
 		s = strings.TrimSuffix(s, unit)
 	}
 	return s
+}
+
+// shortIDs shortens each of a comma-separated list of ids.
+func shortIDs(ids string) string {
+	parts := strings.Split(ids, ",")
+	for i, id := range parts {
+		parts[i] = short(id)
+	}
+	return strings.Join(parts, ", ")
 }
 
 func short(id string) string {

@@ -15,7 +15,18 @@ queued run; `cell run` exiting 70 instead of 20 on a static-gate refusal
 (050 §5); binaries built without their version, so the basis's "harness
 build" fact read `automaticum dev` for every build.
 
-The rows below are as found, before those fixes. Each table was written by
+**Item 1 of the follow-up, the CLI basics (2026-11-01, later the same
+day):** dry runs and idempotency keys on every mutating command, the exit
+codes, `--json` everywhere, the lane, batch, campaign, cell, arm, endpoint
+and task verbs of 090 §1, `run tail` rendered, `logs --grep|--turn`,
+`status --watch`, `reanalyse --where|--detector`, `report` (regression and
+census among them), `export run|cell|campaign`, and O30 decided as D119 (a
+drain releases a held run). Those rows are updated in place and name the
+new code. Three gaps became owner questions: O31 (how a cohort is
+declared), O32 (`requeue`), O33 (`rescore`). Count after item 1: about
+432 rows built, 109 partial, 144 not built, 93 scheduled, 12 open.
+
+The other rows below are as found, before those fixes. Each table was written by
 one reader of a group of specs; a row's evidence is a path and line at
 180cc97.
 
@@ -147,7 +158,7 @@ Repo state: main at 180cc97, 2026-11-01. Paths are relative to the repo root. St
 | 020 §5 | Basis field imatrix | NOT BUILT | basis.go records "not recorded" |
 | 020 §5 | Basis field GPU driver and power | SCHEDULED (m7) | needs agent mode |
 | 020 §5 | Basis field suite version, task-set sha256, task ids in order | PARTIAL | in CellResult (suite_version, task_set_sha256); basis `task` fact per task only |
-| 020 §5 | Cohort declared variable; **confounded** label | NOT BUILT | the spec itself says "not built yet"; cap-asymmetry `Confounded` is a different thing |
+| 020 §5 | Cohort declared variable; **confounded** label | OPEN | O31: how a cohort is declared (recommendation in decisions.md) |
 | 020 §5 | Refuse to put different bases in one table unless told; label differing columns | NOT BUILT | spec says not built |
 | 020 §5 | Greedy anchor; sampled cells in separate sampler cohort, never mixed | NOT BUILT | none (grep greedy: none) |
 | 020 §5 | Plain-text basis exported with every cell | BUILT | CellResult.BasisText (cell.go:90); the spec's "not built" line is out of date |
@@ -166,7 +177,7 @@ Repo state: main at 180cc97, 2026-11-01. Paths are relative to the repo root. St
 | 030 §2 | Lane: image (base plus layers) | CHANGED (not by a decision row) | no lane image field; the image comes from the task's layers (daemon.go:253 LaneImage) |
 | 030 §2 | Lane: GPU devices bound | NOT BUILT | no field; gpu_ownership gate m7 |
 | 030 §2 | Lane: concurrency (default 1) | PARTIAL | fixed at 1, no field |
-| 030 §2 | Lane states idle, running, paused, draining, offline, quarantined | PARTIAL | idle/running/waiting set (daemon.go:448-556), draining via lane drain; paused, offline, quarantined (repeated infra failures) not built |
+| 030 §2 | Lane states idle, running, paused, draining, offline, quarantined | PARTIAL | idle, running, waiting, paused, drained, quarantined (operator, `lane quarantine`) built (api.go status); offline and a quarantine set by the daemon after infra failures not built (item 2) |
 | 030 §3 | No SDK in any image (D66) | BUILT | images/base/Dockerfile: empty node_modules; bundle mounted (internal/sdk) |
 | 030 §3 | Base: runner, Node, git, shell tools | BUILT | images/base/Dockerfile |
 | 030 §3 | Base: sandbox prerequisites / sandbox binary (040 §1) | NOT BUILT | no sandbox binary or setup in images/base/Dockerfile |
@@ -340,8 +351,8 @@ It is not counted as BUILT below.
 | 050 §3.2 | Gate credentials (token in secret store before start) | NOT BUILT | only endpoint `api_key_file` read during probe (`gate.go:120`) |
 | 050 §3.3 | First-generations canary: first 5 finished requests, empty/length/control tokens, stops batch, notifies (D84) | BUILT | `internal/ingest/canary.go`, `internal/daemon/canary.go:102-118`; verdict in `batch show` |
 | 050 §3.3 | Median length within the band the suite/task declares | PARTIAL | check exists but always "unchecked": no task or suite field can declare a band (`ingest/canary.go:57`; no band key in `internal/task/task.go`) |
-| 050 §4 | Control matrix pause/resume/abort/drain/requeue/retry at run, batch, campaign, lane, daemon | PARTIAL | built: run pause/resume/abort/stop/retry; batch pause/resume/stop(--abort)/retry/limits; campaign pause/resume/stop; lane drain/resume; daemon drain (signal, `POST /v1/drain`, no CLI). Missing: `requeue` anywhere; campaign abort/retry; daemon pause/resume; daemon drain from CLI |
-| 050 §4 | `requeue` | NOT BUILT | spec: "not built: ... had no use of its own yet"; no D/O row drops it |
+| 050 §4 | Control matrix pause/resume/abort/drain/requeue/retry at run, batch, campaign, lane, daemon | PARTIAL | all built but `requeue` (O32): run, batch, campaign pause/resume/stop/abort/retry; lane drain/pause/quarantine/abort/resume (`--all` for the daemon); daemon drain (signal, `POST /v1/drain`) |
+| 050 §4 | `requeue` | OPEN | O32: build it or drop it (recommendation: drop) |
 | 050 §4 | Graceful by default | BUILT | `batch stop` graceful unless `--abort`; drain |
 | 050 §4 | Abort kills process tree by recorded id; aborted run still ingested | BUILT | container killed by id (`daemon.go:593`), oracle and ingest still run |
 | 050 §4 | Abort confirms on the server side that generation stopped | SCHEDULED (m7) | spec: needs agent mode |
@@ -349,12 +360,13 @@ It is not counted as BUILT below.
 | 050 §4 | Infrastructure errors (endpoint down, 429, network) wait and retry, recorded as such | NOT BUILT | runner sets `retryable:false, maxRetries:0` (`runner/plan.mjs:33-34`); no retry/classification in daemon; endpoint down at start -> gate refuse (SKIPPED) |
 | 050 §4 | Restart: runs in flight re-attached or marked ABORTED(daemon restart) | BUILT | `daemon.go:239` `Recover` (`:265` "daemon restart"); no re-attach (allowed by "or") |
 | 050 §4 | Immutability: arm/task read at run start | BUILT | `daemon.go` `fly` reads arm and task at start |
-| 050 §4 | Idempotency key on **every** mutating command | PARTIAL | `run start`, `cell run` keys; campaign start by name; retry won't retry twice. No key on stop/pause/resume/drain/limits/invalidate/campaign controls |
-| 050 §4 | Dry run for **every** mutating command | PARTIAL | `run start`, `campaign start`, `run/batch retry`, `legacy import`; none for stop/abort/pause/resume/drain/limits/invalidate/campaign controls/cell run |
+| 050 §4 | Idempotency key on **every** mutating command | BUILT | `Idempotency-Key` header on every mutating route (mutate.go `idempotent`), answers kept 30 days; local commands repeatable by construction (090 §1) |
+| 050 §4 | Dry run for **every** mutating command | BUILT | `?dry_run=1` on every mutating route; `--dry-run` on every mutating command incl. image build, sdk add, suite import, task build, exports |
 | 050 §4 (m2) | `run stop` (queued -> SKIPPED; refuses in-flight) | BUILT | `api.go:293` |
 | 050 §4 (m2) | First signal drains, second aborts (`ABORTED(daemon stop)`) | BUILT | `cmd/automaticumd/main.go:145-153` |
 | 050 §4 (m2) | Idempotency key names the batch | BUILT | `api.go` handleStart (`Repeated`) |
 | 050 §4 (m4) | `lane drain/resume`; status shows `drained` | BUILT | `control.go:151`, `api.go:306-307` |
+| 050 §5 (D119) | A drain (lane, quarantine, daemon, signal) releases a held run; it finishes and the lane stays drained | BUILT | `releaseHeld` (control.go), called by `Drain` and `handleLane`; TestDrainReleasesHeld |
 | 050 §4 (m4) | `batch pause/resume` (`--keep-model`) | BUILT | `control.go:227,335` |
 | 050 §4 (m4) | `batch stop [--abort]` | BUILT | `control.go:374,400` |
 | 050 §4 (m4) | `run retry` / `batch retry` rules (only SKIPPED/ABORTED/INVALID, not imported, not twice; `--dry-run`; retries/retried-by links) | BUILT | `control.go:476` `handleRetry`, `:632` `retryLinks` |
@@ -442,19 +454,19 @@ It is not counted as BUILT below.
 | 065 §2 | Resume: same key does not repeat finished runs | BUILT | `cell_cmds.go:94-102` |
 | 065 §2 | Progress stream started / n_done/n_total / finished | BUILT | `cell_cmds.go` |
 | 065 §2.1 | Exit codes 0/10/20/30/70 and `refusal.json` on 20/30 | PARTIAL | built for per-run gate refusals (`cell.go:296-300`); but a static-gate refusal at start (422 from `api.go:561`, since 2026-10-25) makes `cell run` exit **70** with no `refusal.json` (`cell_cmds.go:91-93` returns the plain error -> `cellInternal`) |
-| 065 §3 | Result file `automaticum.cell/1`, atomic, all listed fields | PARTIAL | written (`cell.go:26-66`), but `cohort`, `declared_variable` and `suite_version` are never set (always empty strings: no flag or source fills them) |
+| 065 §3 | Result file `automaticum.cell/1`, atomic, all listed fields | PARTIAL | written; `suite`/`subset` now filled from the cell header; `cohort`, `declared_variable` wait for O31; `suite_version` unset |
 | 065 §3 | Headline over n_expected; counts sum; errored tasks counted explicitly; warnings; complete=false implies warnings; runs.jsonl; UTC | BUILT | `cell.go:146-300` (`counted_as`) |
 | 065 §3 | Suite-declared headline (e.g. resolved_rate), `empty_patch_rate` | SCHEDULED (m5) | spec 065 §3.1 says milestone 5 |
 | 065 §3.1 | Mode C flags `--endpoint-kind`, `--caller-values`, `--basis-facts`, `--lanes`; `/props` contradiction -> SKIPPED `gate basis_facts`; 409 on reused key with other values; provenance `cell`; basis marks | BUILT | `daemon/modec.go:152-205`, `run/props.go:95-120`, `daemon.go:484-490` |
 | 065 §4 | `automaticum reanalyse` re-derives detectors/metrics | BUILT | `api.go:303` |
-| 065 §4 | `automaticum rescore` for scorers; re-scored cell gets new result file and keeps old | NOT BUILT | no command, no code |
+| 065 §4 | `automaticum rescore` for scorers; re-scored cell gets new result file and keeps old | OPEN | O33: when rescore runs and where new verdicts live |
 | 065 §5 | `automaticum_result.json` + `runs.jsonl` per cell | BUILT | `cell_cmds.go:289` |
 | 065 §5 | Basis in plain text per cell | BUILT | `basis.txt` |
-| 065 §5 | Raw per-run artefacts by run id (transcript, requests as sent, patch/diff, scorer logs) | PARTIAL | `logs <run>` and `GET /v1/runs/{id}/blobs/{kind}`; workspaces stored whole, no diff made (`run.go:338`) |
-| 065 §5 | `automaticum export cohort <name> --format parquet\|jsonl` | NOT BUILT | no command |
+| 065 §5 | Raw per-run artefacts by run id (transcript, requests as sent, patch/diff, scorer logs) | BUILT | `export run <run>... --out D [--kind K]` (report_cmds.go); no diff made, the workspaces are stored whole |
+| 065 §5 | `automaticum export cohort <name> --format parquet\|jsonl` | OPEN | waits for O31; `export cell --format jsonl\|csv` built, Parquet not yet (DuckDB in the daemon) |
 | 065 §5 | Layout option `<results>/<suite>/<served-model>/` (omnimergekit tree) | NOT BUILT | no code; 065 §3.1 lists the layout as still to agree |
-| 065 §5 | Per-campaign export mirrorable to another host | NOT BUILT | no code |
-| 065 §5 | Any slice as JSONL/CSV/Parquet; self-contained HTML report (090 §6) | NOT BUILT | no code (HTML report plausibly m6 interfaces; not stated) |
+| 065 §5 | Per-campaign export mirrorable to another host | BUILT | `export campaign <name> --out D` (report_cmds.go) |
+| 065 §5 | Any slice as JSONL/CSV/Parquet; self-contained HTML report (090 §6) | PARTIAL | a cell as JSONL and CSV (`export cell`); slices, Parquet and the HTML report not built |
 | 065 §5 | Private tasks never exported to cloud | BUILT | `daemon/export.go:63` (only export that exists) |
 | 066 §1 | Source pinned at commit, image tags pinned by digest, canary kept as label | BUILT | `suite_cmds.go:41-49` (HEAD check, clean checkout), `tbench2.go:157,217,351` |
 | 066 §1 | Never trained on: not a `train-*` suite, export refuses | BUILT | `daemon/export.go:63` |
@@ -485,26 +497,26 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | spec § | item | status | evidence / notes |
 |---|---|---|---|
 | 090 §1 | `<noun> <verb>` shape | BUILT | main.go:100-148 |
-| 090 §1 | `--json` on every command | PARTIAL | see note above: ignored by 15 commands, absent on 3 |
-| 090 §1 | stable exit codes | PARTIAL | only `cell run` has defined codes (exitCode, S4); everything else exits 1 (main.go:158-170) |
+| 090 §1 | `--json` on every command | BUILT | every command (config, image, sdk, suite, export, store, stub, client commands) |
+| 090 §1 | stable exit codes | BUILT | 0/1/2/3/6/7 (main.go exitOf, exit_test.go); wait 4/5; cell run 0/10/20/30/70 |
 | 090 §1 | `status` | BUILT | client_cmds.go `status`, GET /v1/status |
-| 090 §1 | `status --watch` (live output) | NOT BUILT | no `watch` flag anywhere |
+| 090 §1 | `status --watch` (live output) | BUILT | `status --watch` (client_cmds.go statusOnce) |
 | 090 §1 | progress bars | PARTIAL | reanalyse and cell run print progress; no general progress bars |
 | 090 §1 | `sdk add` | BUILT | sdk_cmds.go:38 |
 | 090 §1 | `sdk ls` | BUILT | sdk_cmds.go:72 (`--json` ignored) |
 | 090 §1 | `sdk verify` | BUILT | sdk_cmds.go:114 (`--json` ignored) |
 | 090 §1 | `doctor [--lane][--arm][--task][--all]` | BUILT | client_cmds.go:810-813, GET /v1/doctor |
 | 090 §1 | `lane ls` | BUILT | config_cmds.go `laneLs` (`--json` ignored) |
-| 090 §1 | `lane show` | NOT BUILT | no dispatch entry |
-| 090 §1 | `lane pause` | NOT BUILT | no dispatch entry (drain exists, not pause) |
+| 090 §1 | `lane show` | BUILT | `GET /v1/lanes/{lane}` (lists.go), show_cmds.go |
+| 090 §1 | `lane pause` | BUILT | handleLane("pause"), TestLanePause |
 | 090 §1 | `lane resume` | BUILT | control_cmds.go laneControl(false), POST /v1/lanes/{lane}/resume |
 | 090 §1 | `lane drain` | BUILT | laneControl(true), POST /v1/lanes/{lane}/drain |
-| 090 §1 | `lane quarantine` | NOT BUILT | no dispatch entry |
+| 090 §1 | `lane quarantine` | BUILT | handleLane("quarantine"), mutate_test.go |
 | 090 §1 | `endpoint ls` | BUILT | config_cmds.go `endpointLs` (`--json` ignored) |
-| 090 §1 | `endpoint probe` | NOT BUILT | no dispatch entry |
-| 090 §1 | `endpoint show` | NOT BUILT | no dispatch entry |
-| 090 §1 | `endpoint models` | NOT BUILT | no dispatch entry |
-| 090 §1 | `arm ls` | NOT BUILT | no dispatch entry |
+| 090 §1 | `endpoint probe` | BUILT | show_cmds.go endpointProbe (run.Probe) |
+| 090 §1 | `endpoint show` | BUILT | show_cmds.go endpointShow |
+| 090 §1 | `endpoint models` | BUILT | show_cmds.go endpointModels |
+| 090 §1 | `arm ls` | BUILT | show_cmds.go armLs |
 | 090 §1 | `arm show` | BUILT | config_cmds.go armShow |
 | 090 §1 | `arm diff` | BUILT | armDiff (`--json` ignored) |
 | 090 §1 | `arm validate` | BUILT | armValidate (`--json` ignored) |
@@ -516,39 +528,39 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 090 §1 | `run start --arm --task [--task..] [--suite..] [-n] [--lane] [--wall-s] [--idle-s] [--capture-requests]` (+ `--order`, `--heldout`, `--dry-run`, `--idempotency-key`) | BUILT | client_cmds.go:172-181, POST /v1/runs |
 | 090 §1 | `run ls` (with `--task suite/task`, `--suite`, `--model`, `--arm`, `--arm-id`) | BUILT | client_cmds.go:238-239, GET /v1/runs |
 | 090 §1 | `run show` | BUILT | runShow, GET /v1/runs/{id} |
-| 090 §1 | `run tail` (renders the transcript as it streams) | PARTIAL | runTail (client_cmds.go:395-421) prints raw SSE JSON lines, no transcript rendering |
+| 090 §1 | `run tail` (renders the transcript as it streams) | BUILT | ingest/render.go Renderer; `--raw`, `--max` |
 | 090 §1 | `run stop|abort|pause|resume|invalidate|identify` | BUILT | main.go:105-109,129 + routes api.go:293-300 |
 | 090 §1 | `run retry` | BUILT | control_cmds.go retry("run"), POST /v1/runs/{id}/retry |
 | 090 §1 | `compare <batch> ...` | BUILT | compare_cmds.go:26, GET /v1/compare |
-| 090 §1 | `batch start` | NOT BUILT | batches are started by `run start`; no `batch start` entry |
-| 090 §1 | `batch ls` | NOT BUILT | no entry |
+| 090 §1 | `batch start` | BUILT | alias of `run start` |
+| 090 §1 | `batch ls` | BUILT | `GET /v1/batches` (lists.go), TestBatchesAndLaneShow |
 | 090 §1 | `batch show|pause|resume` | BUILT | main.go:113,123-124 |
 | 090 §1 | `batch abort` | CHANGED (undocumented) | `batch stop` (+`--abort` flag, control_cmds.go:57) instead; no D row |
 | 090 §1 | `batch stop|retry|limits` (extras in "Built" paragraphs) | BUILT | main.go:125-127 |
 | 090 §1 | `campaign start|ls|show|pause|resume` | BUILT | campaign_cmds.go, routes api.go:309-314 |
 | 090 §1 | `campaign abort` | CHANGED (undocumented) | `campaign stop` instead; no D row |
 | 090 §1 | `cell run` | BUILT | cell_cmds.go |
-| 090 §1 | `cell show` | NOT BUILT | GET /v1/batches/{batch}/cell exists, no CLI verb |
-| 090 §1 | `cell ls` | NOT BUILT | no entry |
-| 090 §1 | `cohort ls|show` | NOT BUILT | no cohort code anywhere |
-| 090 §1 | `report run|batch|cell|ab|regression|census` | NOT BUILT | no `report` noun; `compare` covers part of `ab` |
+| 090 §1 | `cell show` | BUILT | show_cmds.go cellShow |
+| 090 §1 | `cell ls` | BUILT | show_cmds.go cellLs (`GET /v1/batches?cell=1`) |
+| 090 §1 | `cohort ls\|show` | OPEN | O31 |
+| 090 §1 | `report run\|batch\|cell\|ab\|regression\|census` | BUILT | report_cmds.go; regression `GET /v1/compare?split=build`, census `GET /v1/report/census` (report.go), TestReportRegressionAndCensus |
 | 090 §1 | `find "<query>" [--semantic] [--where]` | SCHEDULED | M6 (search); no code |
 | 090 §1 | `logs <run>` with `--events`, `--wire` (+ `--runner`, `--oracle`, `--kind`) | BUILT | client_cmds.go:457-463 |
 | 090 §1 | `logs --server` / `--runtime` | NOT BUILT | no flags; server/runtime logs are not collected |
-| 090 §1 | `logs --grep` / `--turn N` | NOT BUILT | no flags |
+| 090 §1 | `logs --grep` / `--turn N` | BUILT | client_cmds.go logs (`--grep`, `--turn`, `--render`, `--max`) |
 | 090 §1 | `notices (<run>... | --batch B...) [--key K]` | BUILT | client_cmds.go:501-503 (D116) |
 | 090 §1 | `replay <run> --turn N [--endpoint E]` | SCHEDULED | M6 (replay); no code |
 | 090 §1 | `detect <file|run> [--runaway N]`, `--self-test` (+`--first-match`) | BUILT | client_cmds.go:720-722, GET /v1/runs/{id}/detect |
 | 090 §1 | `embed start|status|stop [--where]` | SCHEDULED | M6 (semantic search); no code; also D52 |
 | 090 §1 | `reanalyse [--run|--batch] [--imported]` | BUILT | client_cmds.go:645-647, POST/GET /v1/reanalyse |
-| 090 §1 | `reanalyse --detector D` / `--where` | NOT BUILT | not in flags; carried forward from M3 (110 §3.2) with no milestone |
-| 090 §1 | `rescore <cell>` | NOT BUILT | no entry |
-| 090 §1 | `export run|cell|cohort|campaign` | NOT BUILT | only `export conversations` exists (export_cmds.go) |
+| 090 §1 | `reanalyse --detector D` / `--where` | BUILT | ReanalyseRequest.Where/Detector, whereFilter, TestWhereFilter |
+| 090 §1 | `rescore <cell>` | OPEN | O33 |
+| 090 §1 | `export run\|cell\|cohort\|campaign` | PARTIAL | run, cell, campaign built (report_cmds.go); cohort waits for O31 |
 | 090 §1 | `export conversations --out [--batch][--run][--heldout]` | BUILT | export_cmds.go:35-38, GET /v1/runs/{id}/export |
-| 090 §1, §5 | `wait run|batch|cell <id> [--until]` | NOT BUILT | no dispatch, no route; only an untracked, unwired WIP package `internal/wait/wait.go` |
+| 090 §1, §5 | `wait run\|batch\|cell <id> [--until]` | BUILT | bbdd18f, ec5de3c: internal/wait, `GET /v1/wait/{kind}`, wait_cmds.go |
 | 090 §1 | `agent` (agent mode) | SCHEDULED | M7 |
-| 090 §1 | every mutating command has `--dry-run` | PARTIAL | only `run start`, `run retry`, `batch retry`, `campaign start`, `legacy import`; missing on run stop/abort/pause/resume/invalidate/identify, lane drain/resume, batch pause/resume/stop/limits, campaign pause/resume/stop, cell run, sdk add, image build, suite import, export |
-| 090 §1 | every mutating command accepts `--idempotency-key` | PARTIAL | only `run start` (client_cmds.go:178) and `cell run` (cell_cmds.go:49) |
+| 090 §1 | every mutating command has `--dry-run` | BUILT | every mutating command (see 050 §4 row) |
+| 090 §1 | every mutating command accepts `--idempotency-key` | BUILT | every daemon command; local commands repeatable by construction (090 §1 as built) |
 | 090 §1 | listed extras: `legacy import`, `store check`, `image build|ls`, `stub serve`, `task build` | BUILT | main.go:130-147 |
 | 090 §1 | API: HTTP+JSON on loopback; token for changes; local reads without it | BUILT | api.go:325-348 `allowed` |
 | 090 §1 | a run in flight streamed as SSE | BUILT | api.go:1079-1097 GET /v1/runs/{id}/stream |
@@ -663,8 +675,8 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §6 | zero/null result carries its power | NOT BUILT | none |
 | 070 §6 | distributions on request | PARTIAL | `--all` shows every metric, not distributions |
 | 070 §6 | group by any arm field, task label or finding | NOT BUILT | compare groups by arm id + task only (compare.go:321) |
-| 070 §6 | census of tool failures | NOT BUILT | no command (also `report census`) |
-| 070 §6 | regression view across SDK versions | NOT BUILT | no command (also `report regression`) |
+| 070 §6 | census of tool failures | PARTIAL | `report census` built; error classes are `tool_error` only and parse paths unrecorded until the 070 §4 classes (item 4) |
+| 070 §6 | regression view across SDK versions | BUILT | `report regression` (compare split by harness build) |
 | 070 §6 | comparability: refusal to pool across task/oracle/scoring/basis | PARTIAL | groups never pool across tasks; basis differences are shown, not refused; no exclusion list for oracle/scoring boundaries |
 | 070 §6 | lane skew | NOT BUILT | none |
 | 070 §6 | served-model facts per arm and change between runs (D82) | BUILT | compare.go:58 `Served` |

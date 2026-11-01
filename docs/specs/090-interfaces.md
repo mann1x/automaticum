@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.23, 2026-11-01.
+**Status:** draft 0.24, 2026-11-01.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -88,6 +88,75 @@ has no model or arm id yet, is listed only when neither is asked.
 /v1/wait/{kind}?id=&until=&seen=&hold=`; `run tail` of a queued run waits
 for it to start (before, the daemon answered 410 "has finished"); a
 static-gate refusal of a start answers 422 with `gate` beside `error`.
+
+**Built on 2026-11-01 (the CLI basics, after the spec audit):**
+
+- **`--dry-run` on every command that changes something in the daemon:**
+  `run stop|abort|pause|resume|invalidate|identify|retry`, `lane
+  drain|pause|quarantine|abort|resume`, `batch pause|resume|stop|abort|
+  retry|limits`, `campaign pause|resume|stop|abort|retry`, `cell run`,
+  `reanalyse`, and `POST /v1/drain` (`?dry_run=1`). A dry run changes
+  nothing and answers with what would be done (`dry_run: true`, and the
+  run in flight's action where there is one). The commands that change
+  something on the host without the daemon have one too: `image build`,
+  `sdk add`, `suite import`, `task build` (each artefact present and as
+  pinned, present and different, or missing), `legacy import` and every
+  `export`.
+- **`--idempotency-key K` on every such command**, sent as the
+  `Idempotency-Key` header. The daemon keeps each answer below 500 for 30
+  days in its control file. The same key on the same request answers the
+  same, with `Idempotent-Replay: true`, and does nothing again. The same key
+  on another request is refused (422). Requests with a key are served one
+  at a time. The commands that do not talk to the daemon take no key: there
+  is nothing to remember it, and each is repeatable by construction (an
+  image or an artefact built again is the same; an SDK build is checked
+  against its pin; an import at the same commit writes the same files; an
+  export refuses or replaces whole files).
+- **Exit codes** every command keeps: 0 done, 1 failed, 2 usage, 3 refused
+  by the daemon, 6 the daemon does not answer, 7 not found. `wait` adds 4
+  (timeout) and 5 (ended without the condition), and `cell run` keeps
+  0/10/20/30/70 (065 §2.1).
+- **`--json` on every command**, unformatted (§1.1).
+- **Lanes:** `lane pause` (drained, the run in flight held, the endpoint
+  freed unless `--keep-model`), `lane quarantine --reason R` (drained, shown
+  quarantined with its reason; each queued run says `lane quarantined:
+  R`), `lane abort` (the run in flight; the lane otherwise as it was), and
+  `lane show <lane> [--recent N]` (its configuration, state, queue, last
+  runs and since when it is drained, paused or quarantined). `--all` acts on
+  every lane. A drain releases a held run (D119).
+- **Batches and campaigns:** `batch abort` (`batch stop --abort`), `batch ls
+  [--campaign C] [--limit N]` (`GET /v1/batches`: runs by state and verdict,
+  arms, tasks, lanes, first and last times), `batch start` (`run start`),
+  and `campaign abort|retry`.
+- **Cells:** `cell show <batch> [--runs]` and `cell ls`. The batch a `cell
+  run` starts carries its suite (the `Automaticum-Cell` header), and the
+  cell view's `suite` and `subset` are filled from it.
+- **Configuration:** `arm ls`, `endpoint show|models|probe`, and `task
+  verify` (the artefacts' pinned hashes, and whether the environment is
+  proven).
+- **Reading:** `run tail` renders the transcript (turns, reasoning, text,
+  tool calls with how they ended, notices, the runner's notes, the scripted
+  user and the end; `--raw` for the lines, `--max N` to cut long blocks).
+  `logs` takes `--grep RE`, `--turn N`, `--render` and `--max`. `status
+  --watch`. `run ls --lane L`.
+- **`reanalyse --where`** (`suite=, task=, arm_id=, model=, verdict=, lane=,
+  batch=, since=, until=`) and `--detector D`.
+- **Reports (070 §6):** `report run` (`run show`), `report cell` (`cell
+  show`), `report batch <b>` and `report ab <a> <b>` (`compare`), `report
+  regression <batch>...` (`GET /v1/compare?split=build`), and `report census
+  [<batch>...] [--where ...]` (`GET /v1/report/census`).
+- **Exports (065 §5):** `export cell <batch> --out D [--format jsonl|csv]`
+  writes a batch's cell files as `cell run` does, and with csv also
+  `runs.csv`, one row per run with every per-run number as a column. `export
+  campaign <name> --out D` writes every started batch as `<D>/<batch>/` and
+  the campaign as `campaign.json`; the directory can be copied whole to
+  another host. `export run <run>... --out D [--kind K]` writes each run's
+  record (`run.json`) and its stored artefacts under `<D>/<run>/`.
+- Not built yet: `--format parquet`, to be written by the daemon's DuckDB
+  (no new library); the omnimergekit layout
+  (`<results>/<suite>/<served-model>/`); slices and the HTML report (065
+  §5). `cohort ls|show` and `export cohort` wait for **Open** O31, `rescore`
+  for **Open** O33, and `requeue` for **Open** O32.
 
 **Decided by the owner (2026-10-27, D116):** `notices (<run> ... | --batch B
 ...) [--key K]` prints the SDK's notices of some runs, each with its run,
@@ -208,7 +277,7 @@ read through `GET /v1/runs`, `/v1/campaigns/{name}` and `/v1/status` every
 | `batch <id>` | every run of a batch | `done`: none queued, none in flight | as `run` | `started`, `done` |
 | `cell <batch>` | a cell (065), as a batch; then prints its counts and headline | `done` | as `run` | as `batch` |
 | `campaign <name>` | a campaign (§1 of 050) | `done`: finished or stopped | `batches` `batches_finished` `batches_stopped` `batches_running` `batches_waiting` | `running` `paused` `stopped` `finished` `done` |
-| `lane <lane>` | one lane | `idle`: no run in flight, none queued for it | `running` `queued` | `idle`, `free` (no run in flight), `drained`, `paused` |
+| `lane <lane>` | one lane | `idle`: no run in flight, none queued for it | `running` `queued` | `idle`, `free` (no run in flight), `drained` (also when quarantined), `quarantined`, `paused` |
 | `idle` | every lane | `idle`: nothing in flight or queued | `running` `queued` | `idle`, `free` |
 
 A condition joins counts compared with a number (`>=`, `>`, `<=`, `<`,

@@ -267,6 +267,14 @@ type CampaignView struct {
 	CampaignState
 	Name     string `json:"name"`
 	Repeated bool   `json:"repeated,omitempty"`
+	DryRun   bool   `json:"dry_run,omitempty"`
+}
+
+// CampaignRetryView is a campaign's retry: each batch's.
+type CampaignRetryView struct {
+	Name    string      `json:"name"`
+	Batches []RetryView `json:"batches"`
+	DryRun  bool        `json:"dry_run,omitempty"`
 }
 
 func (d *Daemon) handleCampaignStart(w http.ResponseWriter, r *http.Request) {
@@ -366,12 +374,57 @@ func (d *Daemon) handleCampaignControl(verb string) http.HandlerFunc {
 		}
 		state := c.State
 		current := ""
+		var started []string
 		for _, b := range c.Batches {
 			if b.State == "running" {
 				current = b.Batch
 			}
+			if b.Batch != "" {
+				started = append(started, b.Batch)
+			}
 		}
 		d.mu.Unlock()
+		allowed := map[string]bool{
+			"pause":  state == "running",
+			"resume": state == "paused",
+			"stop":   state == "running" || state == "paused",
+			"abort":  state == "running" || state == "paused",
+			"retry":  len(started) > 0,
+		}
+		if !allowed[verb] {
+			fail(w, http.StatusConflict, "campaign %s is %s: it cannot be %s", name, state,
+				map[string]string{"pause": "paused", "resume": "resumed", "stop": "stopped", "abort": "aborted", "retry": "retried before a batch started"}[verb])
+			return
+		}
+		if verb == "retry" {
+			// Every started batch's runs that ended without a result of the
+			// arm on the task are queued again in their batch.
+			out := CampaignRetryView{Name: name, DryRun: dryRun(r)}
+			for _, b := range started {
+				rv, code, err := d.retry(ctx, "", b, nil, out.DryRun)
+				if err != nil && code >= 500 {
+					fail(w, code, "%v", err)
+					return
+				}
+				if err == nil {
+					out.Batches = append(out.Batches, rv)
+				}
+			}
+			if len(out.Batches) == 0 {
+				fail(w, http.StatusConflict, "campaign %s has no run to retry: none is SKIPPED, ABORTED or INVALID, or each was retried", name)
+				return
+			}
+			reply(w, http.StatusOK, out)
+			return
+		}
+		if dryRun(r) {
+			d.mu.Lock()
+			v := CampaignView{CampaignState: c.snapshot(), Name: name, DryRun: true}
+			d.mu.Unlock()
+			v.State = map[string]string{"pause": "paused", "resume": "running", "stop": "stopped", "abort": "stopped"}[verb]
+			reply(w, http.StatusOK, v)
+			return
+		}
 		var err error
 		switch {
 		case verb == "pause" && state == "running":
@@ -400,14 +453,20 @@ func (d *Daemon) handleCampaignControl(verb string) http.HandlerFunc {
 			}
 			d.poke()
 			d.pokeCampaigns()
-		case verb == "stop" && (state == "running" || state == "paused"):
+		case verb == "stop" || verb == "abort":
+			// Abort also ends the current batch's run in flight.
+			var cause error
+			reason := "stopped by the operator"
+			if verb == "abort" {
+				cause, reason = run.ErrOperatorAbort, "aborted by the operator"
+			}
 			if current != "" {
-				if _, err := d.stopBatch(ctx, current, "campaign "+name+" stopped by the operator before it started", nil); err != nil && !errors.Is(err, errNoBatch) {
+				if _, err := d.stopBatch(ctx, current, "campaign "+name+" "+reason+" before it started", cause); err != nil && !errors.Is(err, errNoBatch) {
 					fail(w, http.StatusInternalServerError, "%v", err)
 					return
 				}
 			}
-			err = d.endCampaign(ctx, name, "stopped", "stopped by the operator")
+			err = d.endCampaign(ctx, name, "stopped", reason)
 		default:
 			fail(w, http.StatusConflict, "campaign %s is %s: it cannot be %s", name, state, map[string]string{"pause": "paused", "resume": "resumed", "stop": "stopped"}[verb])
 			return

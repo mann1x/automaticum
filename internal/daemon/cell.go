@@ -263,7 +263,7 @@ func (d *Daemon) handleCell(w http.ResponseWriter, r *http.Request) {
 
 	// The numbers, over the runs that count.
 	if len(recs) > 0 {
-		cv, _, err := d.compareView(ctx, []string{batch}, leave)
+		cv, _, err := d.compareView(ctx, []string{batch}, leave, "")
 		if err == nil {
 			d.cellNumbers(res, cv)
 		}
@@ -300,6 +300,13 @@ func (d *Daemon) handleCell(w http.ResponseWriter, r *http.Request) {
 	} else if !res.Complete {
 		v.Refusal = &Refusal{Code: 30, Unfinished: v.Unfinished}
 	}
+	// The suite and subset the cell was started with (`cell run` sends
+	// them), so that `cell show` and `export cell` write the same file.
+	d.mu.Lock()
+	if c := d.ctl.CellBatches[batch]; c != "" {
+		res.Suite, res.Subset, _ = strings.Cut(c, ":")
+	}
+	d.mu.Unlock()
 	reply(w, http.StatusOK, v)
 }
 

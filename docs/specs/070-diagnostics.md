@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.21, 2026-10-27.
+**Status:** draft 0.22, 2026-11-01.
 
 ## 1. The rule: no custom script
 
@@ -491,3 +491,20 @@ run of each arm in turn (`--order blocks` for all of one, then the next).
   boundaries, with the excluded runs and the reason.
 - **Lane skew:** the same arm on two hosts, to separate the model from the
   machine.
+
+**As built (2026-11-01):** `automaticum report regression <batch>...` is
+`compare` with the runs grouped by arm name, task and harness build (SDK
+release and package, runner protocol, lane image, automaticum version, 020
+§5) instead of arm id, so an arm whose id changed with its SDK release
+stays one arm. Only the groups of one arm are paired, each pair with every
+metric's rank test and the basis diff. Every group names its build.
+`automaticum report census [<batch>...] [--where ...]` counts the tool calls
+of the runs it selects by tool and model: calls, runs, failures by error
+class, and calls by parse path, most failures first, and the runs that made
+no call. Ingest records one error class so far (`tool_error`, a call the
+SDK said failed) and no parse path (`not recorded`). The finer classes of
+§4 (unreadable calls, unknown tool names, schema violations, arrays sent as
+strings, server parse errors) come with the metrics of §2 and §4. `report
+run|cell|batch|ab` are `run show`, `cell show` and `compare`. Not built yet:
+McNemar on paired task ids, the jitter band, power of a null result,
+group-by, and lane skew.

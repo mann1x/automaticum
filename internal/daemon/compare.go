@@ -23,9 +23,11 @@ import (
 // (D78): with small sets the swing from run to run is large, and whether a
 // difference is real is the reader's call.
 type CompareView struct {
-	Batches []string       `json:"batches"`
-	Groups  []CompareGroup `json:"groups"`
-	Pairs   []ComparePair  `json:"pairs"`
+	Batches []string `json:"batches"`
+	// Split is "build" in the regression view.
+	Split  string         `json:"split,omitempty"`
+	Groups []CompareGroup `json:"groups"`
+	Pairs  []ComparePair  `json:"pairs"`
 	// NeverStarted are the runs of these batches that were taken off the
 	// queue or refused before they started, with the reason: they belong
 	// to no arm's numbers.
@@ -41,6 +43,9 @@ type CompareGroup struct {
 	Task  string `json:"task"`
 	Model string `json:"model"`
 	SDK   string `json:"sdk_release"`
+	// Build is the harness build fact of the group's runs, in the
+	// regression view only.
+	Build string `json:"build,omitempty"`
 	// Runs are the runs counted; Excluded those left out, with the reason:
 	// a run that never started or was not valid says nothing of the arm.
 	Runs     []string          `json:"runs"`
@@ -278,7 +283,12 @@ func counter(name string) bool {
 }
 
 func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
-	v, code, err := d.compareView(r.Context(), r.URL.Query()["batch"], nil)
+	split := r.URL.Query().Get("split")
+	if split != "" && split != "build" {
+		fail(w, http.StatusBadRequest, "split %q: only build", split)
+		return
+	}
+	v, code, err := d.compareView(r.Context(), r.URL.Query()["batch"], nil, split)
 	if err != nil {
 		fail(w, code, "%v", err)
 		return
@@ -292,11 +302,17 @@ func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
 //
 // leave names runs that are not counted at all, such as a run a retry
 // replaced.
-func (d *Daemon) compareView(ctx context.Context, batches []string, leave map[string]bool) (CompareView, int, error) {
+//
+// split "build" is the regression view (070 §6): the runs are grouped by
+// arm name, task and harness build (SDK release and package, runner
+// protocol, lane image, automaticum version), so an arm whose id changed
+// with its SDK release is still one arm, and only the groups of one arm
+// are paired.
+func (d *Daemon) compareView(ctx context.Context, batches []string, leave map[string]bool, split string) (CompareView, int, error) {
 	if len(batches) == 0 {
 		return CompareView{}, http.StatusBadRequest, errors.New("name at least one batch")
 	}
-	v := CompareView{Batches: batches, Level: 0.95, Groups: []CompareGroup{}, Pairs: []ComparePair{}}
+	v := CompareView{Batches: batches, Split: split, Level: 0.95, Groups: []CompareGroup{}, Pairs: []ComparePair{}}
 	index := map[string]int{}
 	arms := map[int]*config.Arm{}
 	for _, b := range batches {
@@ -319,18 +335,28 @@ func (d *Daemon) compareView(ctx context.Context, batches []string, leave map[st
 				continue
 			}
 			task := run.Suite + "/" + run.TaskID
-			key := run.ArmID + " " + task
+			var a config.Arm
+			named := json.Unmarshal(run.Arm, &a) == nil
+			key, build := run.ArmID+" "+task, ""
+			if split == "build" {
+				build = basisOfRun(&run, nil)["harness build"]
+				if build == "" {
+					build = "not recorded"
+				}
+				key = a.Name + " " + task + " " + build
+			}
 			i, ok := index[key]
 			if !ok {
 				i = len(v.Groups)
 				index[key] = i
-				g := CompareGroup{ArmID: run.ArmID, Task: task, Model: run.Model, SDK: run.Harness, Runs: []string{},
+				g := CompareGroup{ArmID: run.ArmID, Task: task, Model: run.Model, SDK: run.Harness, Build: build, Runs: []string{},
 					Verdicts: map[string]int{}, Metrics: map[string]stats.Summary{}, Findings: map[string]int{}, Served: map[string][]string{}, values: map[string][]float64{}}
-				var a config.Arm
-				if json.Unmarshal(run.Arm, &a) == nil {
+				if named {
 					g.Arm, arms[i] = a.Name, &a
 				}
 				v.Groups = append(v.Groups, g)
+			} else if g := &v.Groups[i]; !slices.Contains(strings.Split(g.ArmID, ","), run.ArmID) {
+				g.ArmID += "," + run.ArmID
 			}
 			g := &v.Groups[i]
 			g.Verdicts[string(run.Verdict)]++
@@ -407,7 +433,7 @@ func (d *Daemon) compareView(ctx context.Context, batches []string, leave map[st
 	for i := range v.Groups {
 		for j := i + 1; j < len(v.Groups); j++ {
 			a, b := &v.Groups[i], &v.Groups[j]
-			if a.Task != b.Task {
+			if a.Task != b.Task || split == "build" && a.Arm != b.Arm {
 				continue
 			}
 			p := ComparePair{A: i, B: j, Differs: []string{}, Metrics: map[string]stats.Rank{},

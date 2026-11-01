@@ -12,37 +12,75 @@ import (
 	"github.com/mann1x/automaticum/internal/human"
 )
 
-// laneControl drains a lane or lets it start runs again.
-func laneControl(drain bool) func(context.Context, []string) error {
-	verb := "resume"
-	if drain {
-		verb = "drain"
-	}
+// laneControl drains, pauses, quarantines or resumes a lane, or aborts its
+// run in flight (050 §4); --all does it to every lane, the daemon's level.
+func laneControl(verb string) func(context.Context, []string) error {
 	return func(ctx context.Context, args []string) error {
 		fs := flag.NewFlagSet("lane "+verb, flag.ExitOnError)
 		_, dial := addClient(fs)
+		m := addMutation(fs)
+		all := fs.Bool("all", false, "every lane of this installation")
+		reason := fs.String("reason", "", "quarantine: why the lane is taken out of use")
+		keep := fs.Bool("keep-model", false, "pause: hold the run in flight but leave its model loaded")
 		rest := parse(fs, args)
-		if len(rest) != 1 {
-			return fmt.Errorf("usage: automaticum lane %s <lane>", verb)
+		if *all == (len(rest) == 1) || len(rest) > 1 {
+			return fmt.Errorf("usage: automaticum lane %s <lane> | --all [--dry-run] [--idempotency-key K]", verb)
 		}
 		c, err := dial()
 		if err != nil {
 			return err
 		}
-		var out daemon.LaneControl
-		if err := c.do(ctx, "POST", "/v1/lanes/"+url.PathEscape(rest[0])+"/"+verb, nil, &out); err != nil {
-			return err
+		lanes := rest
+		if *all {
+			var st daemon.Status
+			if err := c.do(ctx, "GET", "/v1/status", nil, &st); err != nil {
+				return err
+			}
+			lanes = nil
+			for _, l := range st.Lanes {
+				lanes = append(lanes, l.Lane)
+			}
+		}
+		key := *m.key
+		var outs []daemon.LaneControl
+		for _, lane := range lanes {
+			// One key per lane: the same command again repeats nothing.
+			if key != "" && *all {
+				*m.key = key + "/" + lane
+			}
+			var out daemon.LaneControl
+			err := c.do(ctx, "POST", m.on(c, "/v1/lanes/"+url.PathEscape(lane)+"/"+verb), map[string]any{"reason": *reason, "keep_model": *keep}, &out)
+			if err != nil && *all && verb == "abort" && strings.Contains(err.Error(), "no run in flight") {
+				continue
+			}
+			if err != nil {
+				return err
+			}
+			outs = append(outs, out)
 		}
 		if c.json {
-			return printJSON(out)
+			if *all {
+				return printJSON(outs)
+			}
+			return printJSON(outs[0])
 		}
-		switch {
-		case drain && out.InFlight != "":
-			fmt.Printf("%s: drained; %s finishes, then nothing else starts until `automaticum lane resume %s`\n", out.Lane, out.InFlight, out.Lane)
-		case drain:
-			fmt.Printf("%s: drained; nothing starts until `automaticum lane resume %s`\n", out.Lane, out.Lane)
-		default:
-			fmt.Printf("%s: starts queued runs again\n", out.Lane)
+		for _, out := range outs {
+			line := out.Lane + ": " + out.State
+			switch out.State {
+			case "drained", "paused":
+				line += "; nothing starts until `automaticum lane resume " + out.Lane + "`"
+			case "quarantined":
+				line += " (" + out.Reason + "); nothing starts until `automaticum lane resume " + out.Lane + "`"
+			case "resumed":
+				line += "; starts queued runs again"
+			}
+			fmt.Println(m.dryNote() + line)
+			if out.InFlight != "" && out.Action != "" {
+				fmt.Printf("%s%s: %s\n", m.dryNote(), out.InFlight, out.Action)
+			}
+		}
+		if *all && len(outs) == 0 {
+			fmt.Println("no lane had a run in flight")
 		}
 		return nil
 	}
@@ -53,11 +91,12 @@ func batchControl(verb string) func(context.Context, []string) error {
 	return func(ctx context.Context, args []string) error {
 		fs := flag.NewFlagSet("batch "+verb, flag.ExitOnError)
 		_, dial := addClient(fs)
+		m := addMutation(fs)
 		keep := fs.Bool("keep-model", false, "pause: hold the run in flight but leave its model loaded")
-		abort := fs.Bool("abort", false, "stop: end the run in flight too, instead of letting it finish")
+		abort := fs.Bool("abort", false, "stop: end the run in flight too, instead of letting it finish (as batch abort)")
 		rest := parse(fs, args)
 		if len(rest) != 1 {
-			return fmt.Errorf("usage: automaticum batch %s <batch>", verb)
+			return fmt.Errorf("usage: automaticum batch %s <batch> [--dry-run] [--idempotency-key K]", verb)
 		}
 		c, err := dial()
 		if err != nil {
@@ -71,22 +110,23 @@ func batchControl(verb string) func(context.Context, []string) error {
 			in = map[string]bool{"abort": *abort}
 		}
 		var out daemon.BatchControl
-		if err := c.do(ctx, "POST", "/v1/batches/"+url.PathEscape(rest[0])+"/"+verb, in, &out); err != nil {
+		if err := c.do(ctx, "POST", m.on(c, "/v1/batches/"+url.PathEscape(rest[0])+"/"+verb), in, &out); err != nil {
 			return err
 		}
 		if c.json {
 			return printJSON(out)
 		}
+		note := m.dryNote()
 		switch verb {
 		case "pause":
-			fmt.Printf("%s: paused; %d queued runs wait until `automaticum batch resume %s`\n", out.Batch, len(out.Queued), out.Batch)
+			fmt.Printf("%s%s: paused; %d queued runs wait until `automaticum batch resume %s`\n", note, out.Batch, len(out.Queued), out.Batch)
 		case "resume":
-			fmt.Printf("%s: resumed; %d queued runs may start\n", out.Batch, len(out.Queued))
-		case "stop":
-			fmt.Printf("%s: stopped; %d queued runs taken off the queue and recorded SKIPPED\n", out.Batch, len(out.Stopped))
+			fmt.Printf("%s%s: resumed; %d queued runs may start\n", note, out.Batch, len(out.Queued))
+		case "stop", "abort":
+			fmt.Printf("%s%s: stopped; %d queued runs taken off the queue and recorded SKIPPED\n", note, out.Batch, len(out.Stopped))
 		}
 		if out.InFlight != "" {
-			fmt.Printf("%s: %s\n", out.InFlight, out.Action)
+			fmt.Printf("%s%s: %s\n", note, out.InFlight, out.Action)
 		}
 		return nil
 	}
@@ -99,6 +139,7 @@ func retry(noun string) func(context.Context, []string) error {
 		fs := flag.NewFlagSet(noun+" retry", flag.ExitOnError)
 		_, dial := addClient(fs)
 		dry := fs.Bool("dry-run", false, "say what would be queued, queue nothing")
+		m := keyOnly(fs, dry)
 		rest := parse(fs, args)
 		if len(rest) != 1 {
 			return fmt.Errorf("usage: automaticum %s retry <%s> [--dry-run]", noun, noun)
@@ -112,7 +153,7 @@ func retry(noun string) func(context.Context, []string) error {
 			path = "/v1/batches/" + url.PathEscape(rest[0]) + "/retry"
 		}
 		var out daemon.RetryView
-		if err := c.do(ctx, "POST", path, map[string]bool{"dry_run": *dry}, &out); err != nil {
+		if err := c.do(ctx, "POST", m.on(c, path), map[string]bool{"dry_run": *dry}, &out); err != nil {
 			return err
 		}
 		if c.json {
@@ -203,6 +244,7 @@ func batchLimits(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("batch limits", flag.ExitOnError)
 	_, dial := addClient(fs)
 	limits := addLimits(fs)
+	m := addMutation(fs)
 	rest := parse(fs, args)
 	o := limits()
 	if len(rest) != 1 || o == nil {
@@ -213,7 +255,7 @@ func batchLimits(ctx context.Context, args []string) error {
 		return err
 	}
 	var out daemon.BatchControl
-	if err := c.do(ctx, "POST", "/v1/batches/"+url.PathEscape(rest[0])+"/limits", o, &out); err != nil {
+	if err := c.do(ctx, "POST", m.on(c, "/v1/batches/"+url.PathEscape(rest[0])+"/limits"), o, &out); err != nil {
 		return err
 	}
 	if c.json {
@@ -230,7 +272,7 @@ func batchLimits(ctx context.Context, args []string) error {
 			set = append(set, "idle "+human.Seconds(float64(*l.IdleS)))
 		}
 	}
-	fmt.Printf("%s: %s for its %d queued runs, in place of the arm's and the task's\n", out.Batch, strings.Join(set, ", "), len(out.Queued))
+	fmt.Printf("%s%s: %s for its %d queued runs, in place of the arm's and the task's\n", m.dryNote(), out.Batch, strings.Join(set, ", "), len(out.Queued))
 	if out.InFlight != "" {
 		fmt.Printf("%s: %s\n", out.InFlight, out.Action)
 	}

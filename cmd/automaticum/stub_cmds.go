@@ -20,6 +20,7 @@ func stubServe(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("stub serve", flag.ExitOnError)
 	listen := fs.String("listen", "127.0.0.1:7412", "address to listen on; a lane's container reaches the host through the bridge's gateway")
 	script := fs.String("script", "", "the script: a JSON file with the turns the stub answers")
+	asJSON := fs.Bool("json", false, "say where it listens as one JSON line on standard output")
 	parse(fs, args)
 	if *script == "" {
 		return errors.New("usage: automaticum stub serve --script <file> [--listen <address>]")
@@ -43,7 +44,12 @@ func stubServe(ctx context.Context, args []string) error {
 		defer cancel()
 		srv.Shutdown(shut)
 	}()
-	fmt.Fprintf(os.Stderr, "stub model server: %d turns, listening on %s\n", len(sc.Turns), ln.Addr())
+	if *asJSON {
+		b, _ := json.Marshal(map[string]any{"listening": ln.Addr().String(), "turns": len(sc.Turns)})
+		fmt.Println(string(b))
+	} else {
+		fmt.Fprintf(os.Stderr, "stub model server: %d turns, listening on %s\n", len(sc.Turns), ln.Addr())
+	}
 	if err := srv.Serve(ln); !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}

@@ -266,6 +266,9 @@ func where(f store.RunFilter) (string, []any) {
 	if f.Batch != "" {
 		add("batch = ?", f.Batch)
 	}
+	if f.Lane != "" {
+		add("lane = ?", f.Lane)
+	}
 	if f.Imported != nil {
 		add("imported = ?", *f.Imported)
 	}
