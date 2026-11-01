@@ -1483,3 +1483,22 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 21:12 | D122-D125 built: lane labels/requires, busy_command, auto quarantine (10, quarantine_after), priorities and reservations; specs 030/050/060/090, audit, examples | daemon, config, task, cmd, specs | tests pass | ~40000 |
+
+## Session: 2026-11-01 21:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-01 21:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-01 21:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:19 | Created internal/run/rescore.go | — | ~700 |
+| 21:19 | Created internal/daemon/rescore.go | — | ~3507 |
+| 21:22 | Created cmd/automaticum/rescore_cmds.go | — | ~975 |
+| 21:25 | D121 rescore built: queued per lane, one oracle at a time, records beside the run (rescore/rescore_oracle blobs), cell view takes the latest, `automaticum rescore <batch> [--out D]`; 065 §4, 090 §1, audit | internal/daemon/rescore.go, internal/run/rescore.go, cmd/automaticum/rescore_cmds.go | tests pass | ~30000 |

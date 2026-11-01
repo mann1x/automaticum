@@ -355,6 +355,8 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/campaigns/{name}/abort", d.handleCampaignControl("abort"))
 	mux.HandleFunc("POST /v1/campaigns/{name}/retry", d.handleCampaignControl("retry"))
 	mux.HandleFunc("GET /v1/batches/{batch}/cell", d.handleCell)
+	mux.HandleFunc("POST /v1/batches/{batch}/rescore", d.handleRescore)
+	mux.HandleFunc("GET /v1/batches/{batch}/rescore", d.handleRescore)
 	mux.HandleFunc("POST /v1/batches/{batch}/pause", d.handleBatchPause)
 	mux.HandleFunc("POST /v1/batches/{batch}/resume", d.handleBatchResume)
 	mux.HandleFunc("POST /v1/batches/{batch}/stop", d.handleBatchStop)
@@ -412,6 +414,10 @@ func (d *Daemon) status(ctx context.Context) (Status, error) {
 	for lane, f := range d.flights {
 		flying[lane] = f
 	}
+	rescoring := map[string]rescoreSlot{}
+	for lane, s := range d.rescoring {
+		rescoring[lane] = s
+	}
 	d.mu.Unlock()
 	states, err := d.State.LaneStates(ctx)
 	if err != nil {
@@ -435,6 +441,10 @@ func (d *Daemon) status(ctx context.Context) (Status, error) {
 			if s.State == "waiting" && json.Unmarshal(s.Detail, &det) == nil {
 				ls.RunID, ls.Arm, ls.Task, ls.Waiting = s.RunID, det.Item.Arm, det.Item.Task, det.Waiting
 			}
+		}
+		if s, ok := rescoring[n]; ok {
+			// The run's oracle, again, for its cell's rescore (D121).
+			ls.State, ls.RunID, ls.Task = "rescoring", s.run, "rescore of "+s.batch
 		}
 		if f := flying[n]; f != nil {
 			ls.State, ls.RunID, ls.Arm, ls.Task, ls.Since = "running", f.runID, f.item.Arm, f.item.Task, f.started

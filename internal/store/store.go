@@ -103,7 +103,7 @@ type Run struct {
 // BlobRef attaches a blob to a run under a kind and a name.
 type BlobRef struct {
 	RunID string
-	Kind  string // events, wire, session, server_log, runtime_log, workspace_before, workspace_after, oracle, runner_stdout, ...
+	Kind  string // events, wire, session, server_log, runtime_log, workspace_before, workspace_after, oracle, runner_stdout, rescore, rescore_oracle, ...
 	Name  string // distinguishes several blobs of one kind; may be empty
 	Hash  blob.Hash
 	Size  int64 // uncompressed bytes

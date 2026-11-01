@@ -62,9 +62,10 @@ type control struct {
 	CellBatches map[string]string `json:"cell_batches,omitempty"`
 	// Idem are the kept answers of requests made with an idempotency key.
 	Idem map[string]*IdemEntry `json:"idempotency,omitempty"`
+	// Rescores are the cells' rescores, by batch (D121).
+	Rescores map[string]*RescoreJob `json:"rescores,omitempty"`
 }
 
-// Quarantine is why and since when a lane is out of use.
 // Reservation is a lane kept for one batch or campaign until a time.
 type Reservation struct {
 	For   string    `json:"for"`
@@ -72,6 +73,7 @@ type Reservation struct {
 	At    time.Time `json:"at"`
 }
 
+// Quarantine is why and since when a lane is out of use.
 type Quarantine struct {
 	At     time.Time `json:"at"`
 	Reason string    `json:"reason"`
@@ -80,7 +82,7 @@ type Quarantine struct {
 // loadControl reads the control file once. A missing file is an empty one.
 // It is called with d.mu held.
 func (d *Daemon) loadControl() {
-	d.ctl = control{Drained: map[string]time.Time{}, Held: map[string]time.Time{}, Retries: map[string]string{}, Canary: map[string]*CanaryRecord{}, Campaigns: map[string]*CampaignState{}, Cells: map[string]*CellSpec{}, Capture: map[string]bool{}, Heldout: map[string]bool{}, Limits: map[string]*run.Override{}, Quarantined: map[string]Quarantine{}, LaneHeld: map[string]time.Time{}, InfraStreak: map[string][]InfraEnd{}, Priority: map[string]int{}, Reserved: map[string]Reservation{}, CellBatches: map[string]string{}, Idem: map[string]*IdemEntry{}}
+	d.ctl = control{Drained: map[string]time.Time{}, Held: map[string]time.Time{}, Retries: map[string]string{}, Canary: map[string]*CanaryRecord{}, Campaigns: map[string]*CampaignState{}, Cells: map[string]*CellSpec{}, Capture: map[string]bool{}, Heldout: map[string]bool{}, Limits: map[string]*run.Override{}, Quarantined: map[string]Quarantine{}, LaneHeld: map[string]time.Time{}, InfraStreak: map[string][]InfraEnd{}, Priority: map[string]int{}, Reserved: map[string]Reservation{}, CellBatches: map[string]string{}, Idem: map[string]*IdemEntry{}, Rescores: map[string]*RescoreJob{}}
 	if d.ControlFile == "" {
 		return
 	}
@@ -135,6 +137,9 @@ func (d *Daemon) loadControl() {
 	}
 	if d.ctl.Priority == nil {
 		d.ctl.Priority = map[string]int{}
+	}
+	if d.ctl.Rescores == nil {
+		d.ctl.Rescores = map[string]*RescoreJob{}
 	}
 	if d.ctl.Reserved == nil {
 		d.ctl.Reserved = map[string]Reservation{}

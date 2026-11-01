@@ -112,6 +112,7 @@ func serve(cfgDir string, log *slog.Logger) error {
 		return gate.Run(ctx, &gate.Input{Local: local, Lane: lane, Arm: arm, Task: tk, Image: image,
 			Engine: engine, Tasks: tasks, SDK: builds, RunsDir: runs, Free: free, Tmpfs: ramBacked})
 	}
+	dm.Oracle, dm.Store = tasks.RunOracle, blobs.Put
 	dm.Static = func(ctx context.Context, arm *config.Arm, tk *task.Task, image string) []gate.Result {
 		return gate.Static(ctx, &gate.Input{Local: local, Arm: arm, Task: tk, Image: image, Engine: engine, Tasks: tasks, SDK: builds})
 	}

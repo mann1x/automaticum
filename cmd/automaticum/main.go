@@ -88,6 +88,7 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   basis show <batch> ...        every fact that must be equal for two arms to be compared, per arm [--arm A]
   basis diff <b[/arm]> <b[/arm]>  exactly the facts in which two bases differ
   reanalyse                     derive metrics and findings again from what is stored [--run R | --batch B] [--imported]
+  rescore <batch>               score a finished cell again with its tasks' current oracles, on its lanes; --out D writes its files again, the old result kept [--no-wait] [--dry-run]
   detect <file|run>             the detector library on a text file or on a stored run; --self-test runs its controls
   stub serve --script F         a scripted model server, for trying the harness without a GPU
   legacy import                 import the old harness's corpus (spec 100)
@@ -114,7 +115,7 @@ func main() {
 		return
 	}
 	// Some commands are one word.
-	one := map[string]func(context.Context, []string) error{"status": status, "logs": logs, "reanalyse": reanalyse, "detect": detectCmd, "doctor": doctor, "compare": compare, "notices": notices}
+	one := map[string]func(context.Context, []string) error{"status": status, "logs": logs, "reanalyse": reanalyse, "detect": detectCmd, "doctor": doctor, "compare": compare, "notices": notices, "rescore": rescore}
 	if len(args) >= 1 && one[args[0]] != nil {
 		fail(one[args[0]](ctx, args[1:]))
 		return

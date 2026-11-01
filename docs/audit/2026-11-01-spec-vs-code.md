@@ -56,7 +56,7 @@ report's arm highlight and timeline.
 after 10 infrastructure failures in a row, `quarantine_after`), D125
 (priorities and reservations); `requeue` (O32), the driver watchdog (O37)
 and the level-based statistics (O39) not adopted. D122 to D125 are built
-and their rows updated; D120 and D121 follow.
+and their rows updated; D121 (rescore) is built; D120 follows.
 
 The other rows below are as found, before those fixes. Each table was written by
 one reader of a group of specs; a row's evidence is a path and line at
@@ -491,7 +491,7 @@ It is not counted as BUILT below.
 | 065 §3 | Suite-declared headline (e.g. resolved_rate), `empty_patch_rate` | SCHEDULED (m5) | spec 065 §3.1 says milestone 5 |
 | 065 §3.1 | Mode C flags `--endpoint-kind`, `--caller-values`, `--basis-facts`, `--lanes`; `/props` contradiction -> SKIPPED `gate basis_facts`; 409 on reused key with other values; provenance `cell`; basis marks | BUILT | `daemon/modec.go:152-205`, `run/props.go:95-120`, `daemon.go:484-490` |
 | 065 §4 | `automaticum reanalyse` re-derives detectors/metrics | BUILT | `api.go:303` |
-| 065 §4 | `automaticum rescore` for scorers; re-scored cell gets new result file and keeps old | OPEN | O33: when rescore runs and where new verdicts live |
+| 065 §4 | `automaticum rescore` for scorers; re-scored cell gets new result file and keeps old | BUILT | D121: `internal/daemon/rescore.go`, `run.Rescore`/`run.Untar` (`internal/run/rescore.go`), `rescore_cmds.go`; TestRescore, TestRescoreVerdict, TestUntar |
 | 065 §5 | `automaticum_result.json` + `runs.jsonl` per cell | BUILT | `cell_cmds.go:289` |
 | 065 §5 | Basis in plain text per cell | BUILT | `basis.txt` |
 | 065 §5 | Raw per-run artefacts by run id (transcript, requests as sent, patch/diff, scorer logs) | BUILT | `export run <run>... --out D [--kind K]` (report_cmds.go); no diff made, the workspaces are stored whole |
@@ -586,7 +586,7 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 090 §1 | `embed start|status|stop [--where]` | SCHEDULED | M6 (semantic search); no code; also D52 |
 | 090 §1 | `reanalyse [--run|--batch] [--imported]` | BUILT | client_cmds.go:645-647, POST/GET /v1/reanalyse |
 | 090 §1 | `reanalyse --detector D` / `--where` | BUILT | ReanalyseRequest.Where/Detector, whereFilter, TestWhereFilter |
-| 090 §1 | `rescore <cell>` | OPEN | O33 |
+| 090 §1 | `rescore <cell>` | BUILT | `rescore <batch> [--out D]` (rescore_cmds.go), D121 |
 | 090 §1 | `export run\|cell\|cohort\|campaign` | PARTIAL | run, cell, campaign built (report_cmds.go); cohort waits for O31 |
 | 090 §1 | `export conversations --out [--batch][--run][--heldout]` | BUILT | export_cmds.go:35-38, GET /v1/runs/{id}/export |
 | 090 §1, §5 | `wait run\|batch\|cell <id> [--until]` | BUILT | bbdd18f, ec5de3c: internal/wait, `GET /v1/wait/{kind}`, wait_cmds.go |

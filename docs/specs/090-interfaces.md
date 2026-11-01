@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.24, 2026-11-01.
+**Status:** draft 0.25, 2026-11-01.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -35,7 +35,7 @@ automaticum replay <run> --turn N [--endpoint E]
 automaticum detect <file|run> [--runaway N] # the detector library, standalone; --self-test runs its controls
 automaticum embed start|status|stop [--where ...]   # by hand only (080 §5.2)
 automaticum reanalyse [--run R | --batch B] [--imported] [--detector D] [--where ...]
-automaticum rescore <cell>
+automaticum rescore <batch> [--out D] [--no-wait]   # the cell scored again with its tasks' current oracles (D121, 065 §4)
 automaticum export run|cell|cohort|campaign ...
 automaticum wait run|batch|cell|campaign|lane|idle [<id>] [--until "<condition>"] [--next|--each [--seen N]] [--any] [--timeout D]
 automaticum agent                           # agent mode on a remote host

@@ -1,6 +1,6 @@
 # 065 — The cell contract and exports
 
-**Status:** draft 0.11, 2026-11-01.
+**Status:** draft 0.12, 2026-11-01.
 
 ## 1. Purpose
 
@@ -245,9 +245,28 @@ the layout of omnimergekit's result tree (§5).
 Results, raw transcripts and adapters are permanent (080 §5). A scorer or
 detector change can re-score a cell from stored material without the model:
 `automaticum reanalyse` for detectors and metrics, `automaticum rescore` for
-scorers. A re-scored cell gets a new result file and keeps the old one. **Open**
-(O33): when a rescore runs (an oracle takes up to 15 minutes, on the lane
-host) and where the new verdicts are kept; not built until it is decided.
+scorers. A re-scored cell gets a new result file and keeps the old one.
+
+**Decided by the owner (2026-11-01), D121, as built:** `automaticum rescore
+<batch>` is refused while the cell has a run queued or in flight. It is
+queued work: each counted run (PASS, FAIL or TIMEOUT, not one a retry
+replaced) is rescored on the lane that ran it, one oracle at a time on each
+lane and never beside a run (`status` shows the lane `rescoring`); a rescore
+and the lane's queued runs take turns. The task's current primary oracle
+runs on the run's stored `workspace_after` and `collected` copies, and the
+verdict is decided again from the run's recorded facts (the limit that
+fired, a guard stop, a server fault) with the new answer. Each answer is a
+rescore record beside the run: blobs of kind `rescore` (the record: verdict,
+reason, the run's own verdict, the task hash then and now) and
+`rescore_oracle` (the output), named by the time. The run's record and
+verdict stay as they were. An oracle that gives no answer leaves the verdict
+standing and says why. The cell's view (`cell show`, `export cell`) takes
+each run's latest rescore, keeps its own verdict beside it in `runs.jsonl`
+(`rescored`), and says it was rescored in the result's `rescored` and a
+warning; `compare` and `report` keep the runs' own verdicts. With `--out` the
+command writes the cell's files again and keeps the old result file as
+`automaticum_result.<time>.json`. The rescore is kept in `control.json`, so
+a restarted daemon goes on with it.
 
 ## 5. Exports
 

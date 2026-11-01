@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-01T19:39:56.743Z
-> Files: 532 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-01T20:22:09.369Z
+> Files: 538 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../tmp/claude-0/-srv-dev-disk-by-label-opt-dev-automaticum/b3252f5f-43ab-4bf3-a0a5-9eef085a7e35/scratchpad/
 
@@ -110,6 +110,7 @@
 - `stub-demo.toml` — A campaign on the stub model server, for trying campaigns without a GPU: (~121 tok)
 
 ## cmd/automaticum/
+- `rescore_cmds.go` — `automaticum rescore <batch> [--out D] [--no-wait] [--dry-run]`: queue, poll, rewrite cell files keeping automaticum_result.<time>.json (~1100 tok)
 
 - `campaign_cmds.go` (~1452 tok)
 - `cell_cmds.go` — exitCode: names (~2996 tok)
@@ -270,12 +271,12 @@
 - `runner_fixture_test.go` — TestRunnerFixtureIsTheResolvedArm (~164 tok)
 
 ## internal/daemon/
-- `cell_numbers_test.go` — TestVerdictNumbers, TestStreaks (~700 tok)
 
 - `api.go` — HTTP handlers: reply, fail (~13391 tok)
 - `basis.go` — Basis (87 fields) (~4394 tok)
 - `campaign.go` — CampaignState (112 fields) (~3842 tok)
 - `canary.go` — CanaryRecord (36 fields); methods: Error, Is (~1597 tok)
+- `cell_numbers_test.go` — TestVerdictNumbers, TestStreaks (~700 tok)
 - `cell.go` — CellResult (97 fields) (~4032 tok)
 - `compare.go` — CompareView (97 fields) (~4257 tok)
 - `control.go` — control (94 fields) (~5756 tok)
@@ -284,6 +285,9 @@
 - `export_test.go` — TestExport (~1366 tok)
 - `export.go` — ExportMeta (48 fields) (~1711 tok)
 - `heartbeat.go` — Heartbeat every ten minutes to the log; kept for status and GET /v1/heartbeat (050 §6) (~805 tok)
+- `rescore.go` — D121 rescore: handleRescore (POST/GET /v1/batches/{batch}/rescore), startRescores (per-lane slot, takes turns with queued runs), rescoreOne (untar workspace_after/collected, d.Oracle, rescore/rescore_oracle blobs), latestRescore (~3500 tok)
+- `rescore_test.go` — TestRescore (~1800 tok)
+- `lanerules.go` — countInfra (D124 auto quarantine), laneBusy (D123 busy_command), handleReserve (D125 lane reserve/unreserve) (~1500 tok)
 - `lists_test.go` — TestBatchesAndLaneShow, TestWhereFilter (~628 tok)
 - `lists.go` — GET /v1/batches (BatchSummary) and GET /v1/lanes/{lane} (LaneView); atoiPositive (~1750 tok)
 - `modec_test.go` — TestModeCCell, TestModeCBasis (~1727 tok)
@@ -293,7 +297,6 @@
 - `notify_test.go` — TestNotifyCommand: [notify] command gets run/batch finished/batch stopped; events filter (~700 tok)
 - `notify_test.go` — TestNotifyCommand (~669 tok)
 - `report_test.go` — TestReportRegressionAndCensus, TestEndpointCapacity, TestHeartbeat, TestAutoQuarantine, TestBusyCommand, TestLaneLabels, TestPriorityAndReservation (~3000 tok)
-- `lanerules.go` — countInfra (D124 auto quarantine), laneBusy (D123 busy_command), handleReserve (D125 lane reserve/unreserve) (~1500 tok)
 - `report.go` — GET /v1/report/census: tool calls by tool and model, failures by error class, parse paths (~842 tok)
 - `wait_test.go` — TestWait: hold, run started, batch next/done, lane idle, over, 404/400 (~1200 tok)
 - `wait_test.go` — Struct: answer (~1023 tok)
@@ -331,7 +334,6 @@
 - `human.go` — writes values the way a person reads them: a duration in (~1413 tok)
 
 ## internal/ingest/
-- `oracle_test.go` — TestPartialScore, TestOracleFindings (~800 tok)
 
 - `analyse.go` — Interface: Blobs (58 methods) (~5232 tok)
 - `canary_test.go` — TestCanary (~680 tok)
@@ -342,6 +344,7 @@
 - `events.go` — turns a run's stored raw material into what is queried: (~4069 tok)
 - `ingest_test.go` — TestNoticeLog, TestReadEvents, TestReadWire, TestCompareWireClean, TestCompareWire (~10465 tok)
 - `openai_test.go` — TestOpenAIWire, TestOpenAIWireFromStub, TestOpenAIThinkingBudget (~1625 tok)
+- `oracle_test.go` — TestPartialScore, TestOracleFindings (~800 tok)
 - `oracle.go` — PartialScore (checker JSON, pytest summary); secondary_oracle and claimed_success_oracle_no findings (~1226 tok)
 - `render_test.go` — TestRenderer (~587 tok)
 - `render.go` — Renderer: the runner event lines as a transcript (turns, blocks, tool calls, notices, end) (~986 tok)
@@ -369,6 +372,8 @@
 - `verify.go` — FileCheck (71 fields); methods: OK, String, String (~2664 tok)
 
 ## internal/run/
+- `rescore.go` — Rescore (verdict decided again from recorded facts + new oracle answer, D121), Untar (os.Root-safe restore of tarTree) (~900 tok)
+- `rescore_test.go` — TestRescoreVerdict, TestUntar (~800 tok)
 
 - `fault_test.go` — TestFault: SDK error messages and their kind (~500 tok)
 - `fault.go` — Fault(message): the SDK refusal/transport patterns (llms Kr), ported; a run ending on one is ABORTED (~742 tok)

@@ -87,11 +87,18 @@ type Daemon struct {
 	// every five seconds.
 	CampaignEvery time.Duration
 	ControlTokens func(ctx context.Context, arm string) ([]string, error)
+	// Oracle runs a task's oracle on a workspace, for a rescore (D121);
+	// *task.Env's RunOracle is one. Store keeps what a rescore makes;
+	// *blob.Store's Put is one. Without both no rescore runs.
+	Oracle func(ctx context.Context, t *task.Task, o *task.Oracle, workspace string, collected map[string]string) (task.OracleResult, error)
+	Store  func(ctx context.Context, r io.Reader) (blob.Hash, int64, error)
 
-	mu       sync.Mutex
-	flights  map[string]*flight // by lane
-	draining bool
-	wake     chan struct{}
+	mu      sync.Mutex
+	flights map[string]*flight // by lane
+	// rescoring is the rescore oracle each lane runs, by lane (D121).
+	rescoring map[string]rescoreSlot
+	draining  bool
+	wake      chan struct{}
 	// changed is closed, and replaced, whenever the queue or a run in
 	// flight changes, so a wait reads the state again (090 §5).
 	changed chan struct{}
@@ -227,6 +234,7 @@ func (d *Daemon) init() {
 	}
 	if d.flights == nil {
 		d.flights = map[string]*flight{}
+		d.rescoring = map[string]rescoreSlot{}
 		d.holds = map[string]time.Time{}
 		d.notified = map[string]bool{}
 		d.atCapacity = map[string]string{}
@@ -365,7 +373,7 @@ func (d *Daemon) Serve(ctx context.Context) {
 	for {
 		d.mu.Lock()
 		draining := d.draining
-		busy := len(d.flights)
+		busy := len(d.flights) + len(d.rescoring)
 		d.mu.Unlock()
 		if ctx.Err() != nil || (draining && busy == 0) {
 			break
@@ -431,9 +439,13 @@ func (d *Daemon) startReady(ctx context.Context, wg *sync.WaitGroup) {
 			d.Log.Error("writing the lane's state", "error", err)
 		}
 	}
+	d.startRescores(ctx, wg)
 	for _, it := range queue {
 		d.mu.Lock()
 		_, busy := d.flights[it.Lane]
+		if _, r := d.rescoring[it.Lane]; r {
+			busy = true
+		}
 		if until, held := d.holds[it.Lane]; held && time.Now().Before(until) {
 			busy = true
 		}
@@ -451,6 +463,9 @@ func (d *Daemon) startReady(ctx context.Context, wg *sync.WaitGroup) {
 		endpoint, full := d.endpointFull(it)
 		d.mu.Lock()
 		if _, taken := d.flights[it.Lane]; taken {
+			busy = true
+		}
+		if _, r := d.rescoring[it.Lane]; r {
 			busy = true
 		}
 		if full != "" {

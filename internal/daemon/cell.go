@@ -70,6 +70,17 @@ type CellResult struct {
 	StartedAt  time.Time `json:"started_at,omitzero"`
 	FinishedAt time.Time `json:"finished_at,omitzero"`
 	DurationS  float64   `json:"duration_s"`
+	// Rescored says the cell was rescored (D121): its verdicts are the
+	// latest scoring, not the runs' own.
+	Rescored *CellRescored `json:"rescored,omitempty"`
+}
+
+// CellRescored is a cell's latest scoring: when, how many runs it took
+// from a rescore, and how many of those changed verdict.
+type CellRescored struct {
+	At      time.Time `json:"at"`
+	Runs    int       `json:"runs"`
+	Changed int       `json:"changed"`
 }
 
 // CellRow is one line of runs.jsonl: one run, its verdict, how it is
@@ -84,6 +95,17 @@ type CellRow struct {
 	SupersededBy  string             `json:"superseded_by,omitempty"`
 	Findings      map[string]int     `json:"findings,omitempty"`
 	Metrics       map[string]float64 `json:"metrics"`
+	// Rescored is the run's own verdict and reason, when the row's are a
+	// rescore's (D121).
+	Rescored *RowRescored `json:"rescored,omitempty"`
+}
+
+// RowRescored is what a run's record says, beside its rescore.
+type RowRescored struct {
+	At            time.Time `json:"at"`
+	Verdict       string    `json:"verdict"`
+	VerdictReason string    `json:"verdict_reason"`
+	TaskHash      string    `json:"task_hash"`
 }
 
 // LoopCross is one verdict's runs in a cell: how many, how many looped
@@ -268,6 +290,25 @@ func (d *Daemon) handleCell(w http.ResponseWriter, r *http.Request) {
 			} `json:"task"`
 		}
 		json.Unmarshal(rec.Provenance, &prov)
+		// The latest scoring: a rescore's verdict stands in for the run's
+		// own, which stays in the record (D121).
+		if rs, err := d.latestRescore(ctx, rec.ID); err != nil {
+			res.Warnings = append(res.Warnings, err.Error())
+		} else if rs != nil && rs.Verdict != "" {
+			row.Rescored = &RowRescored{At: rs.At, Verdict: row.Verdict, VerdictReason: row.VerdictReason, TaskHash: rs.TaskHash}
+			if res.Rescored == nil {
+				res.Rescored = &CellRescored{}
+			}
+			res.Rescored.Runs++
+			if rs.At.After(res.Rescored.At) {
+				res.Rescored.At = rs.At
+			}
+			if string(rs.Verdict) != row.Verdict {
+				res.Rescored.Changed++
+			}
+			rec.Verdict, row.Verdict, row.VerdictReason = rs.Verdict, string(rs.Verdict), rs.Reason+" (rescored)"
+			prov.Task.Hash = rs.TaskHash
+		}
 		if prov.Task.Hash != "" {
 			tasks[fmt.Sprintf("%s version %d %s", row.Task, rec.TaskVersion, prov.Task.Hash)] = row.Task
 		}
@@ -359,6 +400,10 @@ func (d *Daemon) handleCell(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// What makes the cell not clean, each said in the file.
+	if rs := res.Rescored; rs != nil {
+		res.Warnings = append(res.Warnings, fmt.Sprintf("rescored at %s: %d runs scored again with the task's current oracle, %d changed verdict; compare and report keep the runs' own verdicts",
+			rs.At.Format(time.RFC3339), rs.Runs, rs.Changed))
+	}
 	if c := res.Counts["invalid"]; c > 0 {
 		res.Warnings = append(res.Warnings, fmt.Sprintf("%d runs are INVALID: counted as invalid, not as failures", c))
 	}
