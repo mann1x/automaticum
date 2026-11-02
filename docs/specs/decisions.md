@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-11-02 (revision 38).
+**Status:** current as of 2026-11-02 (revision 39).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -141,6 +141,7 @@ All dated 2026-10-12.
 | D129 | Near-duplicate rounds, edit oscillation, re-read loop (070 §3, 2026-11-01): edit oscillation is the SDK's call guard (same call, same result; refused in advance) on writing tools, the re-read loop its same-result rule on every other tool, each reported under its own name with the SDK's numbers; near-duplicate rounds stays unbuilt until the owner defines it. | 070 §3 |
 | D130 | The per-run report's baseline (070 §1.1, O40, 2026-11-02): the baseline arm of the campaign or cohort the run's batch belongs to where there is one, else the arm the run's arm extends; the fields in which the run's arm differs from it are highlighted. | 070 §1.1 |
 | D131 | Swallowed arguments (070 §4, 2026-11-02, suggested by a client from its gates): a tool call one of whose string arguments holds the name of another argument of the same tool, taken from the tool's schema, followed by a colon, where that argument is missing from the call. A finding with its count per tool, a metric, and a column of `compare`. | 070 §4 |
+| D132 | Tokens stored hashed (010 §5, 2026-11-02): the daemon's `token_file` may hold the token or `sha256:<64 hex>`, and the daemon keeps only the hash, compared in constant time; the CLI reads the plain token from `client_token_file`, else from `token_file` when that is plain. Plain files keep working. | 010 §5 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked

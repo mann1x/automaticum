@@ -1,6 +1,8 @@
 package config
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/url"
@@ -94,8 +96,12 @@ type Daemon struct {
 	// Listen is the API's address. Anything but a loopback address needs
 	// a token.
 	Listen string `toml:"listen"`
-	// TokenFile holds the API's write token; relative to the directory.
+	// TokenFile holds the API's write token, or its hash as
+	// "sha256:<64 hex digits>" (010 §5); relative to the directory.
 	TokenFile string `toml:"token_file"`
+	// ClientTokenFile holds the plain token the CLI sends, for an
+	// installation whose token_file holds the hash; optional.
+	ClientTokenFile string `toml:"client_token_file"`
 	// Repo is the checkout holding tasks/ and images/.
 	Repo string `toml:"repo"`
 	// PrivateTasks is a second tasks root outside the public repository
@@ -387,10 +393,49 @@ func LoadLocal(dir string) (*Local, error) {
 	return l, nil
 }
 
-// Token returns the API's write token. The file must exist, be readable by
-// its owner only, and hold at least 32 characters.
+// tokenHashPrefix starts a token file that holds the token's hash.
+const tokenHashPrefix = "sha256:"
+
+// Token returns the plain write token the CLI sends: client_token_file's
+// when it is set, else token_file's, which must then hold the token and
+// not its hash.
 func (l *Local) Token() (string, error) {
-	p := l.Daemon.TokenFile
+	if l.Daemon.ClientTokenFile != "" {
+		return l.readToken(l.Daemon.ClientTokenFile)
+	}
+	t, err := l.readToken(l.Daemon.TokenFile)
+	if err == nil && strings.HasPrefix(t, tokenHashPrefix) {
+		return "", fmt.Errorf("config: %s holds the token's hash: give the plain token in client_token_file", l.Daemon.TokenFile)
+	}
+	return t, err
+}
+
+// TokenHash returns the hex sha256 of the write token, the only form the
+// daemon keeps (010 §5): token_file holds the token or "sha256:<hex>".
+func (l *Local) TokenHash() (string, error) {
+	t, err := l.readToken(l.Daemon.TokenFile)
+	if err != nil {
+		return "", err
+	}
+	if h, ok := strings.CutPrefix(t, tokenHashPrefix); ok {
+		h = strings.ToLower(h)
+		if b, err := hex.DecodeString(h); err != nil || len(b) != sha256.Size {
+			return "", fmt.Errorf("config: %s: a hashed token is sha256: and 64 hex digits", l.Daemon.TokenFile)
+		}
+		return h, nil
+	}
+	return HashToken(t), nil
+}
+
+// HashToken is the hex sha256 of a token.
+func HashToken(t string) string {
+	s := sha256.Sum256([]byte(t))
+	return hex.EncodeToString(s[:])
+}
+
+// readToken reads a token file. It must exist, be readable by its owner
+// only, and hold at least 32 characters.
+func (l *Local) readToken(p string) (string, error) {
 	if !filepath.IsAbs(p) {
 		p = filepath.Join(l.Dir, p)
 	}

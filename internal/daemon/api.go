@@ -404,7 +404,7 @@ func (d *Daemon) Handler() http.Handler {
 
 func (d *Daemon) allowed(r *http.Request) bool {
 	given := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-	if d.Token != "" && subtle.ConstantTimeCompare([]byte(given), []byte(d.Token)) == 1 {
+	if d.TokenHash != "" && subtle.ConstantTimeCompare([]byte(config.HashToken(given)), []byte(d.TokenHash)) == 1 {
 		return true
 	}
 	if r.Method != http.MethodGet {

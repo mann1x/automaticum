@@ -92,6 +92,12 @@ removes afterwards; a lightweight VM on macOS.
 
 - One **write token** for the operator and for assistants, and a **read-only
   mode** to share a result. Tokens are stored hashed.
+  **Decided by the owner (2026-11-02), D132:** the daemon's `token_file`
+  holds the token or `sha256:<64 hex digits>`; the daemon keeps only the
+  hash and compares hashes in constant time. The CLI reads the plain token
+  from `client_token_file`, else from `token_file` when that holds the
+  token itself, so a daemon host whose CLI runs elsewhere holds only the
+  hash. The hash is `printf '%s' "$TOKEN" | sha256sum`.
 - The API listens on loopback by default. Any other bind address is an explicit
   setting, and the daemon refuses to start on a non-loopback address without a
   token configured.

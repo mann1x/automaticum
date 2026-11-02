@@ -8,7 +8,8 @@ archive_root = ""                           # archive tier; optional
 free_floor_gb = 50                          # start no run with less free space
 # quarantine_after = 10                    # a lane with this many infrastructure failures in a row is quarantined (D124); 0 never
 listen = "127.0.0.1:7411"                   # loopback; anything else needs the token
-token_file = "token"                        # mode 0600, 32 characters or more
+token_file = "token"                        # mode 0600, 32 characters or more; or "sha256:<64 hex>", the token's hash (D132)
+# client_token_file = "client-token"       # the plain token the CLI sends, when token_file holds the hash
 repo = "/opt/automaticum"                   # the checkout with tasks/ and images/; arms/ and models/ are in this directory (D118)
 private_tasks = ""                          # a second tasks root outside the public repo (D105); optional
 

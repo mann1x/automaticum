@@ -452,3 +452,49 @@ func TestRequiresNotIdentity(t *testing.T) {
 		t.Error("a label without = was accepted")
 	}
 }
+
+// The daemon keeps only the token's hash (010 §5): token_file holds the
+// token or "sha256:<hex>", and the CLI's plain token comes from
+// client_token_file when token_file holds the hash.
+func TestTokenHash(t *testing.T) {
+	daemon := "data_root = \"/data\"\nfree_floor_gb = 10\nrepo = \"/repo\"\n"
+	tok := strings.Repeat("t", 40)
+	with := func(files map[string]string) map[string]string {
+		files["lanes/l.toml"] = "host = \"h\"\nendpoints = [\"e\"]\ncpus = 2\nmemory_gb = 4\npids = 256\n"
+		files["endpoints/e.toml"] = "kind = \"ollama\"\nbase_url = \"http://10.0.0.1:11434\"\nhost = \"h\"\ncapacity = 1\n"
+		return files
+	}
+	plain, err := LoadLocal(local(t, with(map[string]string{"automaticum.toml": daemon, "token": tok + "\n"})))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h, err := plain.TokenHash(); err != nil || h != HashToken(tok) {
+		t.Errorf("plain file: %q %v", h, err)
+	}
+	if c, err := plain.Token(); err != nil || c != tok {
+		t.Errorf("plain client: %q %v", c, err)
+	}
+
+	hashed := map[string]string{"automaticum.toml": daemon, "token": "sha256:" + strings.ToUpper(HashToken(tok)) + "\n"}
+	l, err := LoadLocal(local(t, with(hashed)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h, err := l.TokenHash(); err != nil || h != HashToken(tok) {
+		t.Errorf("hashed file: %q %v", h, err)
+	}
+	if _, err := l.Token(); err == nil || !strings.Contains(err.Error(), "client_token_file") {
+		t.Errorf("a hash given to the CLI: %v", err)
+	}
+	hashed["automaticum.toml"] = daemon + "client_token_file = \"client-token\"\n"
+	hashed["client-token"] = tok + "\n"
+	l, _ = LoadLocal(local(t, with(hashed)))
+	if c, err := l.Token(); err != nil || c != tok {
+		t.Errorf("client file: %q %v", c, err)
+	}
+
+	bad, _ := LoadLocal(local(t, with(map[string]string{"automaticum.toml": daemon, "token": "sha256:" + strings.Repeat("z", 64) + "\n"})))
+	if _, err := bad.TokenHash(); err == nil {
+		t.Error("a hash that is not hex was accepted")
+	}
+}

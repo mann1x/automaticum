@@ -91,3 +91,4 @@ The full list is in docs/specs/decisions.md; keep this log in step with it.
 
 - 2026-11-01: D126 struggle signals = SDK signals + owner study (2nd compaction) + SDK struggle detector replayed; D127 edit-without-check = run_commands after the edit; D128 turn pathologies: build what data defines; D129 edit oscillation & re-read loop = ported SDK call guard on writing/other tools, near-duplicate rounds held.
 - 2026-11-02: D130 (O40): the per-run report's baseline is the campaign's or cohort's baseline arm, else the parent arm. D131: swallowed-argument detector (a schema argument of the tool missing from the call, named with a colon inside a string argument), suggested by backup_models.
+- 2026-11-02: D132: tokens stored hashed: daemon token_file holds the token or sha256:<hex>, the daemon keeps only the hash; the CLI reads client_token_file, else a plain token_file.

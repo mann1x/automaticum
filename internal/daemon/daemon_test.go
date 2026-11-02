@@ -302,7 +302,7 @@ func newRig(t *testing.T, serve bool) *rig {
 			Endpoints: map[string]*config.Endpoint{"stub": {Name: "stub", Kind: "ollama"}},
 		},
 		State: state, Runner: g.runner, Containers: g.cont, Blobs: memBlobs{"h1": "the events"},
-		Repo: "../..", Version: "test", Token: token,
+		Repo: "../..", Version: "test", TokenHash: config.HashToken(token),
 	}
 	g.srv = httptest.NewServer(g.d.Handler())
 	t.Cleanup(g.srv.Close)

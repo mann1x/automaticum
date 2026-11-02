@@ -1611,3 +1611,19 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 12:40 | audit item 5: re-checked every NOT BUILT/PARTIAL row (17 stale built, 20 stale evidence, 16 now SCHEDULED); built mode C engine_note (000 §2), limits steps/output tokens (020 §1), --client attribution (010 §5), archive_after_days (D31), task-version pooling refusal --pool-versions (020 §4) | internal/daemon/{cell,compare,mutate,api,campaign,canary,archive}.go, internal/run/run.go, internal/config/local.go, cmd/automaticum, specs 000/010/020/030/050/065/070/080/090, audit | make test ok | ~60k |
+
+## Session: 2026-11-02 12:10
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-02 12:11
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-02 12:11
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:55 | D132 tokens stored hashed: token_file token or sha256:<hex>, daemon keeps TokenHash only, CLI client_token_file | internal/config/local.go, internal/daemon/{api,daemon}.go, cmd/automaticumd/main.go, 010, decisions rev 39, audit | tests ok | ~8k |

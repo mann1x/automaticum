@@ -62,8 +62,10 @@ type Daemon struct {
 	// RunsDir holds the directories of runs in flight.
 	RunsDir string
 	Version string
-	Token   string
-	Log     *slog.Logger
+	// TokenHash is the hex sha256 of the write token (010 §5): the daemon
+	// never holds the token itself.
+	TokenHash string
+	Log       *slog.Logger
 	// Gates asks every gate about one arm on one task on one lane. Nil
 	// means no gate is asked.
 	Gates func(ctx context.Context, lane string, arm *config.Arm, tk *task.Task, image string) []gate.Result

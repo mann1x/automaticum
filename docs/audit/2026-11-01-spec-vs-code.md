@@ -91,9 +91,9 @@ whose remaining gap is a later milestone now say SCHEDULED. Built: the
 mode C header (000 §2, `engine_note`), the limits in force (steps and the
 output budget, with their owner; 020 §1), who made each change (010 §5,
 `--client`), automatic archiving by age (D31, `archive_after_days`) and the
-task version boundary in reports (020 §4, `--pool-versions`). Owner
-question: how tokens are stored hashed while the CLI still authenticates
-(010 §5).
+task version boundary in reports (020 §4, `--pool-versions`). The owner's
+answer on how tokens are stored hashed while the CLI still authenticates is
+D132, built the same day.
 
 The other rows below are as found, before those fixes. Each table was written by
 one reader of a group of specs; a row's evidence is a path and line at
@@ -152,7 +152,7 @@ Repo state: main at 180cc97, 2026-11-01. Paths are relative to the repo root. St
 | 010 §4 | Native agent for Windows/macOS | SCHEDULED (m7) | D35 |
 | 010 §4 | How the native agent gets Node | OPEN | O1 |
 | 010 §5 | One write token | BUILT | config/local.go Token(); api.go allowed() |
-| 010 §5 | Tokens stored hashed | NOT BUILT | token read in plain text from token_file (local.go:293-313), compared directly (api.go allowed) |
+| 010 §5 | Tokens stored hashed | BUILT (2026-11-02, D132) | `token_file` holds the token or `sha256:<hex>`; the daemon keeps only the hash (config/local.go `TokenHash`, daemon `TokenHash`, api.go `allowed`); the CLI reads `client_token_file` (TestTokenHash) |
 | 010 §5 | Read-only mode to share a result | PARTIAL | only unauthenticated GET from loopback (api.go allowed); no read-only token/share mode |
 | 010 §5 | Loopback by default; refuse non-loopback without token | BUILT | local.go:206 default 127.0.0.1:7411; token always required at start (automaticumd main.go:70) |
 | 010 §5 | Every mutating call records who made it (client name) | BUILT (2026-11-02) | `Automaticum-Client` header, `--client` on the CLI (default <user>@<host>); daemon log line per change, `started_by` on batches and campaigns (internal/daemon/mutate.go `clientOf`, api.go; TestClientRecorded) |
