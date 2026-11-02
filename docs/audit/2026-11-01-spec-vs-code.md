@@ -58,6 +58,27 @@ after 10 infrastructure failures in a row, `quarantine_after`), D125
 and the level-based statistics (O39) not adopted. D122 to D125 are built
 and their rows updated; D121 (rescore) and D120 (cohorts) are built.
 
+**Item 4, second part (2026-11-01 to 2026-11-02, analysis versions 9 to
+11):** owner answers D126 to D129. Built: tool failures by error class,
+per-request rates, thinking per block and budget hits, compaction detail,
+re-reads by cause, reasoning carried, escalation, edits and edits without
+a check (D127), the change protocol's transactions, thinking-only turns
+and the other turn pathologies the data defines (D128), control markers,
+guard trips with what came next, guard replay with the 4.100.258 rules,
+the guards' review queue (`report guards`), the SDK's call guard
+(failed identical call, repeated call and result, edit oscillation,
+re-read loop, D129), struggle signals with recall and false alarms (D126,
+`report struggle`), cost in money for a priced endpoint, loop_rate's
+components, group-by and lane skew (`compare --group`, `report skew`),
+the run timeline, and files written outside the workspace
+(`outside_workspace`). Still open or waiting: the per-run report's arm
+highlight (O40), near-duplicate rounds (D129: undefined), refusal and a
+report after an early end (D128: no rule), the per-suite runaway size,
+visible-character floor and loop_rate headline (`suites/*.toml`,
+milestone 5), edit churn and same-region edits, parse paths and the
+output hygiene the SDK keeps on its messages and not in the stream,
+sandbox escapes, sub-agents (no arm runs them).
+
 The other rows below are as found, before those fixes. Each table was written by
 one reader of a group of specs; a row's evidence is a path and line at
 180cc97.
