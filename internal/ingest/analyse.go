@@ -51,13 +51,13 @@ const SessionFork = "session_fork"
 // analysis records it as the metric analysis.version: the basis (020 §5)
 // says from it which detectors a run was analysed with, whether or not
 // they found anything.
-const AnalysisVersion = 9
+const AnalysisVersion = 10
 
 // Versions are the versions of the detectors this analysis applies:
 // ingest's own and the detector library's.
 var Versions = map[string]string{
 	"library": detect.Version, WireArm: WireArmVersion, CapHit: "2", GPUResidency: "1", ModelIdentity: "1", ModelReloaded: "2", SessionFork: "1",
-	SecondaryOracle: "1", ClaimedNotPassed: "1", GuardTrip: "1", ControlMarkers: "1", GuardReplay: "1",
+	SecondaryOracle: "1", ClaimedNotPassed: "1", GuardTrip: "1", ControlMarkers: "1", GuardReplay: "1", StruggleSignals: "1",
 }
 
 // VersionsText is Versions as one line, in order.
@@ -92,7 +92,7 @@ func Detectors() []string {
 var owned = map[string]bool{WireArm: true, CapHit: true, GPUResidency: true, ModelReloaded: true, ModelIdentity: true, detect.ShortUnitRepeat: true, detect.CharRun: true,
 	detect.SentenceRepeat: true, detect.Runaway: true, detect.RepeatedToolCall: true,
 	detect.ReasoningRepetition: true, detect.ReasoningLoop: true, detect.FailedIdenticalCall: true, detect.RepeatedCallResult: true,
-	detect.EditOscillation: true, detect.RereadLoop: true, SecondaryOracle: true, ClaimedNotPassed: true, GuardTrip: true, ControlMarkers: true, GuardReplay: true}
+	detect.EditOscillation: true, detect.RereadLoop: true, SecondaryOracle: true, ClaimedNotPassed: true, GuardTrip: true, ControlMarkers: true, GuardReplay: true, StruggleSignals: true}
 
 // Run derives metrics, tool calls and findings from a run's stored material
 // and writes them, replacing what an earlier ingest wrote. It is safe to run
@@ -662,6 +662,8 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 	res.Findings = append(res.Findings, found...)
 	res.Metrics = append(res.Metrics, counts...)
 	guardReplay(r.ID, ev, fired, m, res)
+	struggleSignals(r.ID, ev, m, res)
+	transactions(ev, m)
 	return res
 }
 

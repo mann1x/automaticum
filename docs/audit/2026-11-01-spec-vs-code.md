@@ -646,7 +646,7 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §2 | compaction size before/after, duration, tokens, trigger; overflow errors; full re-reads with cause | BUILT | `context.compaction.*`, `context.compactions.by_cause.*`, `context.rereads.<cause>`; overflow as `notices.status.overflow_recovery_compaction.*` (analysis 9) |
 | 070 §2 | reasoning carried between turns | BUILT | `context.reasoning_carried.requests/chars` from the wire's history (in characters; the server gives no tokens for it) |
 | 070 §2 | edits (count, churn, reverts, edit-without-check) | PARTIAL | `edits`, `.failed`, `.files`, `.restores`, `.without_check` (D127); churn and same-region not built |
-| 070 §2 | change protocol (transactions, checks, rollbacks) | NOT BUILT | the SDK emits no event for transactions in the stream |
+| 070 §2 | change protocol (transactions, checks, rollbacks) | BUILT | `transactions.*` from the SDK's `atomic_transaction`, `atomic_empty_attempt`, `atomic_plan` notices (analysis 10); TestStruggleSignals |
 | 070 §2 | escalation | BUILT | `escalation.*` from the SDK's expert_reply/escalation_failed notices; offers and calls as notices (analysis 9) |
 | 070 §2 | sub-agents | NOT BUILT | no metric |
 | 070 §2 | cost in tokens and money | NOT BUILT | no money/cost metric |
@@ -681,14 +681,14 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §3.2 | failed identical calls (6/4) and repeated call+result pair (3/6) | BUILT | `detect.CallGuard` (callguard.go), `failed_identical_call`, `repeated_call_result`; TestCallGuard |
 | 070 §3.2 | `detect.Spans` | BUILT | internal/detect/spans.go |
 | 070 §4 | guards: what fired, when, what it cut, what the model did next | BUILT | `guard_trip` finding, `guard_trips.next.<act>` (analysis 9) |
-| 070 §4 | guards that should have fired (rule replayed); false-positive review queue | PARTIAL | `guard_replay` finding (missed, unconfirmed); the 4.100.258 loop rules ported (guards258.go); a queue across runs not yet |
+| 070 §4 | guards that should have fired (rule replayed); false-positive review queue | BUILT | `guard_replay` finding; `report guards` (`GET /v1/report/guards`); TestReportGuards |
 | 070 §4 | tool-call findings (parse path, unreadable, truncated, unknown names, schema violations, arrays as strings, intent scratch, 5xx apart, no-call turns) | NOT BUILT | only failed-by-tool metrics |
 | 070 §4 | output hygiene findings (empty turns, control tokens, leaks, unclosed thinking, fences...) | PARTIAL | `control_markers`, `turns.short_text`, `completions.empty`; fences, answers only in reasoning, stop inside reasoning not built |
 | 070 §4 | turn pathologies | PARTIAL | D128: thinking-only turns, ended thinking-only, premature done = `claimed_success_oracle_no`; refusal and report-after-early-end held |
 | 070 §4 | parameter drift | BUILT | wire_arm `drift`/`differs`/`sent_not_stated` (070 §4.1) |
 | 070 §4 | server side: finish per request, reloads, GPU residency | PARTIAL | finish.*, model_reloaded, gpu_residency; no truncations/slot reuse/evictions/admission/restarts/server-log errors |
 | 070 §4 | integrity: oracle tampering, workspace not pristine | PARTIAL | tampering = verdict (run TestTamperedOracle), pristine = gate `workspace`; files outside workspace, sandbox escapes, PATH/chmod changes not detected |
-| 070 §4 | struggle signals with recall / false alarm | NOT BUILT | none |
+| 070 §4 | struggle signals with recall / false alarm | BUILT | D126: `struggle_signals` finding, `detect.Struggle` (the SDK's detector replayed), `report struggle`; TestStruggle*, TestReportStruggle |
 | 070 §4 | session forks `session_fork` (D86) | BUILT | ingest/analyse.go:46 |
 | 070 §4 | outcome mismatches (claimed vs oracle, fixed then broken) | PARTIAL | claimed vs oracle built (`claimed_success_oracle_no`); fixed-then-broken needs periodic oracle sampling (060 §3.1) |
 | 070 §4.1 | `wire_arm` v2 kinds stated_not_sent / sent_not_stated / differs / drift (D63) | BUILT | ingest/wirearm.go |
@@ -707,7 +707,7 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §6 | zero/null result carries its power | NOT ADOPTED | O39 |
 | 070 §6 | distributions on request | PARTIAL | `--all` shows every metric, not distributions |
 | 070 §6 | group by any arm field, task label or finding | NOT BUILT | compare groups by arm id + task only (compare.go:321) |
-| 070 §6 | census of tool failures | PARTIAL | `report census` built; error classes are `tool_error` only and parse paths unrecorded until the 070 §4 classes (item 4) |
+| 070 §6 | census of tool failures | PARTIAL | `report census` with error classes (analysis 9); parse paths unrecorded: the SDK keeps them on its messages, not in the event stream |
 | 070 §6 | regression view across SDK versions | BUILT | `report regression` (compare split by harness build) |
 | 070 §6 | comparability: refusal to pool across task/oracle/scoring/basis | PARTIAL | groups never pool across tasks; basis differences are shown, not refused; no exclusion list for oracle/scoring boundaries |
 | 070 §6 | lane skew | NOT BUILT | none |
@@ -774,8 +774,8 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 100 §5 | A/B report and auto-score | PARTIAL | `compare`; no `report ab` |
 | 100 §5 | transaction watcher -> live events and watchdogs | PARTIAL | SSE stream + wall/idle limits; not separately verified |
 | 100 §5 | tool-failure census | NOT BUILT | see 070 §6 |
-| 100 §5 | escalation study -> struggle signals | NOT BUILT | see 070 §4 |
-| 100 §5 | struggle calibration -> reanalyse | PARTIAL | reanalyse exists; no struggle rules |
+| 100 §5 | escalation study -> struggle signals | BUILT | D126; see 070 §4 |
+| 100 §5 | struggle calibration -> reanalyse | BUILT | `reanalyse` applies analysis 10's signals; `report struggle` measures them |
 | 100 §5 | census scripts -> findings (leaks, missing paths) | NOT BUILT | see 070 §4 |
 | 100 §5 | server-log fetcher -> endpoint log source; server run recorder -> endpoint recorder | NOT BUILT | no server-log collection (also `logs --server`) |
 | 100 §5 | Windows log grabber -> native agent | SCHEDULED | M7 |
@@ -814,7 +814,7 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 110 §3 | M1 store spike and importer | BUILT | 080 §7.4, 100 §7 |
 | 110 §3 | M2 walking skeleton | BUILT | daemon, CLI, lane, runner, manic_miner, verdicts |
 | 110 §3 | M3 gates, metrics, detectors, doctor, reanalyse, run report | PARTIAL | built except carry-forwards: reanalyse --detector/--where, timeline/baseline, mailbox, 3 detectors, agent-mode gates (M7) |
-| 110 §3 | M4 batches, cells, statistics | PARTIAL | scheduler, interleave, campaigns, control, recovery, basis, cell run, cap audit built; paired statistics (McNemar) missing |
+| 110 §3 | M4 batches, cells, statistics | PARTIAL | scheduler, interleave, campaigns, control, recovery, basis, cell run, cap audit, paired statistics (McNemar) built; group-by, lane skew and bootstrap not yet |
 | 110 §3 | M5 suites and adapters (suite interface, SWE-bench, BFCL, in-container adapter, multi-language reqs, Gitea) | SCHEDULED | only tbench2 importer and train-* tasks exist; no BFCL/SWE-bench/adapter/Gitea |
 | 110 §3 | M6 interfaces | SCHEDULED | none built |
 | 110 §3 | M7 remote and native | SCHEDULED | none built |

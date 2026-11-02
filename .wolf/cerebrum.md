@@ -18,6 +18,8 @@
 - (2026-10-29) This session only develops automaticum. Client sessions (e.g. backup_models) write their own arms, models, endpoints and lanes, confirm their gates and start their own batches.
 
 ## Key Learnings
+- 2026-11-02: before writing "the SDK emits no event for X", search the bundle for notice kinds (`kind:"..."`); one run without the feature on proves nothing. The change protocol has atomic_transaction/atomic_empty_attempt/atomic_plan notices.
+- 2026-11-02: the SDK's struggle detector (core class Pa, observer Tl) is identical 4.100.250-269; it is only attached to the main agent when escalation tools or spawn_agent exist, and inspects only at content_end/iteration_end.
 - (2026-11-01) encoding/json decodes into an existing map by merging keys: a test that polls into one struct keeps stale keys. Decode into a fresh value each time.
 - (2026-11-01) The SDK already waits and retries infrastructure errors (llms stream wrapper 3 attempts, 250 ms / 2 s; agents provider_error_retry with backoff; turn_fault_recovery). automaticum's job is the verdict: `run.Fault` (ported from llms `Kr`) makes such an end ABORTED unless the oracle passed.
 - (2026-11-01) Daemon tests: the fakeRunner's records carry no `Arm` JSON, so a retry of a run it ended is refused ("the record does not say which arm it was"); only runs that never started (SKIPPED, with `provenance.asked`) retry in the rig. `batch pause` answers 202 when it holds a run in flight. `RunView.Verdict` is a string: compare with `string(store.Pass)`.
@@ -43,6 +45,7 @@
 - Lane layers `COPY --from` the oracle image digest; check its Debian release first (bug-032).
 
 ## Do-Not-Repeat
+- 2026-11-02: deploying to a lane host, copy binaries to `bin/<name>.new` and swap with `mv` after the idle check; never scp straight into `bin/` (it overwrote the CLI with no `.prev` copy; the busy daemon refused the write).
 
 - 2026-11-01: owner: "it can't be something is in the specs and not developed!" A spec requirement is built, or the spec says plainly "not built" with its milestone, or a decision drops it. Never leave a requirement (090 §5 wait, the mailbox) in the spec with no milestone and no code. Re-audit with docs/audit/ after each milestone.
 - 2026-11-01: automaticum must ship ready-made waiters for client sessions (`automaticum wait ...`, `--each` for a Monitor, `--next --seen N` for re-arming). Never make a session write its own polling loop.

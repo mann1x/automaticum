@@ -99,6 +99,104 @@ func reportCensus(ctx context.Context, args []string) error {
 	return nil
 }
 
+// reportStruggle evaluates the struggle signals of D126 on the runs a
+// filter selects, against "did not pass" (070 §4).
+func reportStruggle(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("report struggle", flag.ExitOnError)
+	_, dial := addClient(fs)
+	where := fs.String("where", "", "which runs: suite=, task=, arm_id=, model=, verdict=, lane=, batch=, since=, until=, comma-separated")
+	var batches list
+	fs.Var(&batches, "batch", "a batch; give it several times")
+	rest := parse(fs, args)
+	batches = append(batches, rest...)
+	c, err := dial()
+	if err != nil {
+		return err
+	}
+	q := url.Values{}
+	if *where != "" {
+		q.Set("where", *where)
+	}
+	if len(batches) > 0 {
+		q["batch"] = batches
+	}
+	var v daemon.StruggleReport
+	if err := c.do(ctx, "GET", "/v1/report/struggle?"+q.Encode(), nil, &v); err != nil {
+		return err
+	}
+	if c.json {
+		return printJSON(v)
+	}
+	fmt.Printf("%d runs passed, %d did not (FAIL or TIMEOUT); %d left out (ABORTED, INVALID, SKIPPED)\n", v.Passed, v.NotPassed, v.LeftOut)
+	if v.NotAnalysed > 0 {
+		fmt.Printf("%d runs were analysed before analysis version 10 and carry no signals: `automaticum reanalyse` them\n", v.NotAnalysed)
+	}
+	pct := func(p *float64) string {
+		if p == nil {
+			return "-"
+		}
+		return fmt.Sprintf("%.0f%%", *p*100)
+	}
+	fmt.Printf("%-22s %13s %10s %7s %12s %10s  %s\n", "signal", "not passed", "passed", "recall", "false alarm", "precision", "first turn (not passed): median, p10-p90")
+	for _, r := range v.Rows {
+		turn := "-"
+		if s := r.FirstTurn; s != nil {
+			turn = fmt.Sprintf("%g, %g-%g", s.Median, s.P10, s.P90)
+		}
+		fmt.Printf("%-22s %13d %10d %7s %12s %10s  %s\n", r.Trigger, r.HeldNotPassed, r.HeldPassed, pct(r.Recall), pct(r.FalseAlarmRate), pct(r.Precision), turn)
+	}
+	return nil
+}
+
+// reportGuards is the guards' review queue (070 §4): trips the guard's
+// rule, replayed, does not confirm, and turns where the rule holds and the
+// guard did not trip.
+func reportGuards(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("report guards", flag.ExitOnError)
+	_, dial := addClient(fs)
+	where := fs.String("where", "", "which runs: suite=, task=, arm_id=, model=, verdict=, lane=, batch=, since=, until=, comma-separated")
+	kind := fs.String("kind", "", "unconfirmed (possible false alarms) or missed; both when empty")
+	var batches list
+	fs.Var(&batches, "batch", "a batch; give it several times")
+	rest := parse(fs, args)
+	batches = append(batches, rest...)
+	c, err := dial()
+	if err != nil {
+		return err
+	}
+	q := url.Values{}
+	if *where != "" {
+		q.Set("where", *where)
+	}
+	if *kind != "" {
+		q.Set("kind", *kind)
+	}
+	if len(batches) > 0 {
+		q["batch"] = batches
+	}
+	var v daemon.GuardReview
+	if err := c.do(ctx, "GET", "/v1/report/guards?"+q.Encode(), nil, &v); err != nil {
+		return err
+	}
+	if c.json {
+		return printJSON(v)
+	}
+	fmt.Printf("%d runs read, %d turns to review\n", v.Runs, len(v.Rows))
+	if len(v.Rows) == 0 {
+		return nil
+	}
+	fmt.Printf("%-12s %-30s %-24s %-28s %6s  %s\n", "kind", "run", "guard", "model", "turn", "batch")
+	for _, r := range v.Rows {
+		guard := r.Guard
+		if r.Phase != "" {
+			guard += "." + r.Phase
+		}
+		fmt.Printf("%-12s %-30s %-24s %-28s %6d  %s\n", r.Kind, r.Run, guard, r.Model, r.Turn, r.Batch)
+	}
+	fmt.Println("\nlook at a turn with `automaticum logs <run> --render` and `automaticum detect <run>`")
+	return nil
+}
+
 // countList is "a 3, b 1", the largest first.
 func countList(m map[string]int) string {
 	if len(m) == 0 {

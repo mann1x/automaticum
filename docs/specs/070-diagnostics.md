@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.23, 2026-11-01.
+**Status:** draft 0.24, 2026-11-02.
 
 ## 1. The rule: no custom script
 
@@ -102,8 +102,17 @@ method is recorded.
   `turns.no_call_no_answer` (and its share), `turns.short_text` (visible
   text under five characters and no call), `turns.ended_thinking_only`
   (D128). Not built: churn (lines written against lines surviving), edits
-  to the same region, the change protocol's transactions (the SDK emits no
-  event for them), sub-agents (the arms run none), cost in money.
+  to the same region, sub-agents (the arms run none), cost in money.
+
+  From analysis version 10 (2026-11-02): the change protocol, from the
+  SDK's `atomic_transaction` notice (a transaction settled), its
+  `atomic_empty_attempt` and its `atomic_plan`: `transactions.settled`,
+  `.kept`, `.discarded` (put back: neither kept nor carried on),
+  `.carried`, `.checked` (its check gave output), `.files_put_back`,
+  `.empty_attempts`, `.plans` and `transactions.elapsed_ms`
+  (distribution). The struggle signals of §4 (D126): `struggle.<signal>`
+  and `struggle.<signal>.turn` where one held, `struggle.signals` (how
+  many held) on every run, and `struggle.replay.<nudge|suggest>.<reason>`.
 
   **Decided by the owner (2026-10-27, D116):** from analysis version 7 a
   notice of the SDK is counted by what kind it is, never by its sentence:
@@ -390,6 +399,36 @@ Each has a severity, evidence (event ids, quoted text) and a count.
   **Decided by the owner (2026-11-01), D126:** the triggers are listed
   there.
 
+  **As built (2026-11-02, analysis version 10):** `struggle_signals`
+  (note, version 1) lists the signals that held on a run, each with the
+  turn it first held: `sdk_nudge` and `sdk_offer` (the SDK's struggle
+  notices), `compaction_emergency`, `loop_hard` (`loop_detection` `hard`
+  or `stopped`), `reasoning_aborted`, `second_compaction`, and
+  `replay_nudge` and `replay_suggest`: the SDK's struggle detector
+  (`detect.Struggle`, the class of @cerebriline/core 4.100.250 to
+  4.100.269 with its own numbers: a window of 10 turns, 6 failed calls
+  with 2 distress phrases or hedging at the opening rate from turn 20, at
+  most 2 suggestions a task and one a transaction; a nudge one failure
+  short, on every 3rd failed edit in a row and on every 2nd attempt
+  thrown away) replayed over the event stream. The SDK runs its detector
+  only when the agent can escalate or spawn agents; the replay runs on
+  every run. The stream does not say when a transaction opens, so the
+  first notice naming it stands for that. `automaticum report struggle
+  [<batch>...] [--where ...]` (`GET /v1/report/struggle`) sets each signal
+  against "did not pass" over the runs it selects: the runs it held on
+  that did not pass and that passed, recall, false-alarm rate, precision,
+  and the turn it first held (median, p10, p90) on the runs that did not
+  pass; the row `any` is any signal. PASS against FAIL and TIMEOUT;
+  ABORTED, INVALID and SKIPPED runs are left out, and runs analysed before
+  version 10 are counted apart until they are reanalysed.
+
+  **The review queue (as built 2026-11-02):** `automaticum report guards
+  [<batch>...] [--kind unconfirmed|missed] [--where ...]` (`GET
+  /v1/report/guards`) gathers the `guard_replay` findings of the runs it
+  selects into one list, a row per turn: the trips the rule does not
+  confirm (possible false alarms) first, then the turns where the rule
+  holds and the guard did not trip.
+
 **As built (2026-11-01, analysis version 9):** `guard_trip` (note,
 version 1) lists every guard's trip with its turn, guard, phase, cause and
 what the model did next (`tool` with its name, `text`, `reasoning`,
@@ -619,10 +658,9 @@ metric's rank test and the basis diff. Every group names its build.
 `automaticum report census [<batch>...] [--where ...]` counts the tool calls
 of the runs it selects by tool and model: calls, runs, failures by error
 class, and calls by parse path, most failures first, and the runs that made
-no call. Ingest records one error class so far (`tool_error`, a call the
-SDK said failed) and no parse path (`not recorded`). The finer classes of
-§4 (unreadable calls, unknown tool names, schema violations, arrays sent as
-strings, server parse errors) come with the metrics of §2 and §4. `report
-run|cell|batch|ab` are `run show`, `cell show` and `compare`. Not built yet:
-McNemar on paired task ids, the jitter band, power of a null result,
-group-by, and lane skew.
+no call. Error classes come from analysis version 9 (§2); ingest records no
+parse path yet (`not recorded`): the SDK records it on its messages, not in
+the event stream. `report struggle` and `report guards` are in §4. `report
+run|cell|batch|ab` are `run show`, `cell show` and `compare`, whose paired
+test is McNemar's on the task ids the two groups share. Not built yet:
+group-by and lane skew.

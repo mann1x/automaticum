@@ -748,4 +748,10 @@ func TestGuardTrips(t *testing.T) {
 	if err := bare.Read(strings.NewReader(`{"t":"2026-10-23T10:00:00Z","k":"runner","note":"guard_trip","guard":"reasoning_loop","phase":"cut","cause":"reasoning_loop"}` + "\n")); err != nil || bare.GuardCauses["reasoning_loop.cut.reasoning_loop"] != 1 {
 		t.Errorf("bare: %v %v", err, bare.GuardCauses)
 	}
+	notice := `{"t":"2026-10-23T10:00:01Z","k":"event","event":{"type":"agent_event","payload":{"event":{"type":"notice","noticeType":"status","metadata":{"kind":"struggle","phase":"nudge"}}}}}`
+	if err := bare.Read(strings.NewReader(notice + "\n")); err != nil || bare.Notices["status.struggle.nudge"] != 1 {
+		t.Errorf("bare notice: %v %v %v", err, bare.Notices, bare.NoticeTurns)
+	} else if _, ok := bare.NoticeTurns["status.struggle.nudge"]; !ok {
+		t.Errorf("bare notice turns %v", bare.NoticeTurns)
+	}
 }

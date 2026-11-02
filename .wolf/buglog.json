@@ -1190,6 +1190,52 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-01T22:40:15"
+    },
+    {
+      "id": "bug-070",
+      "timestamp": "2026-11-02T08:53:36",
+      "error_message": "audit and 070 said the change protocol could not be measured: 'the SDK emits no event for transactions'",
+      "file": "docs/specs/070-diagnostics.md",
+      "root_cause": "claim written from one run (run 008, atomic protocol off) without searching the SDK bundle for notice kinds",
+      "fix": "searched the bundle: atomic_transaction (kept, carried, source, elapsedMs, output, filesPutBack), atomic_empty_attempt, atomic_plan; built transactions.* and corrected 070 and the audit",
+      "tags": [
+        "spec",
+        "sdk",
+        "transactions"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-02T08:53:36"
+    },
+    {
+      "id": "bug-071",
+      "timestamp": "2026-11-02T08:53:36",
+      "error_message": "TestStruggleSignals expected the replay nudge at turn 2; it came at turn 3",
+      "file": "internal/ingest/struggle_test.go",
+      "root_cause": "the SDK inspects only at content_end and iteration_end; turn 2 ended no block, call or iteration after the empty attempt",
+      "fix": "test expectation corrected to the SDK's inspection points",
+      "tags": [
+        "tests",
+        "struggle"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-02T08:53:36"
+    },
+    {
+      "id": "bug-072",
+      "timestamp": "2026-11-02T08:53:36",
+      "error_message": "deploy: scp straight into bin/ overwrote the CLI on blackswan-2 without a .prev copy",
+      "file": "bin/ (lane host)",
+      "root_cause": "copied to the final name instead of a staging name; the running daemon's binary refused with Text file busy",
+      "fix": "stage as bin/<name>.new and mv after the idle check (cerebrum Do-Not-Repeat 2026-11-02)",
+      "tags": [
+        "deploy",
+        "blackswan-2"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-02T08:53:36"
     }
   ]
 }

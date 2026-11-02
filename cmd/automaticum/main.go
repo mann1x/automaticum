@@ -79,6 +79,8 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   report batch|ab <b> [<b>]     compare of one batch, or of two
   report regression <batch>...  the runs side by side by harness build (SDK, image, automaticum), one arm at a time [--all]
   report census [<batch>...]    tool calls by tool and model: failed, error classes, parse paths [--where ...]
+  report struggle [<batch>...]  struggle signals (D126) against "did not pass": recall, false alarms [--where ...]
+  report guards [<batch>...]    the guards' review queue: unconfirmed trips, missed turns [--kind ...] [--where ...]
   campaign start <name>         run campaigns/<name>.toml: its batches in order, with their stop conditions [--dry-run]
   campaign ls                   the campaigns
   cohort ls                     the cohorts: cells declared to differ in one variable (a campaign's [cohort], cell run --cohort)
@@ -177,6 +179,8 @@ func main() {
 		"report ab":            reportAB,
 		"report regression":    reportRegression,
 		"report census":        reportCensus,
+		"report struggle":      reportStruggle,
+		"report guards":        reportGuards,
 		"run identify":         runPost("identify", "where and on what it ran is now in the record, marked as added later"),
 		"legacy import":        legacyImport,
 		"store check":          storeCheck,

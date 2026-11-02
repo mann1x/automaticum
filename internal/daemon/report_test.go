@@ -270,3 +270,91 @@ func TestPriorityAndReservation(t *testing.T) {
 	g.call("POST", "/v1/lanes/lane-1/unreserve", nil, nil)
 	g.waitFinished(other.RunIDs[0])
 }
+
+// The struggle report (D126) measures each signal against "did not pass":
+// recall over the runs that did not pass, false alarms over those that
+// passed; runs left out and runs not yet analysed are counted apart.
+func TestReportStruggle(t *testing.T) {
+	g := newRig(t, false)
+	ctx := context.Background()
+	put := func(id string, v store.Verdict, version float64, metrics map[string]float64) {
+		putRun(t, g, id, "b", "id", "4.100.266", "v1", "m")
+		rec, _ := g.state.GetRun(ctx, id)
+		rec.Verdict = v
+		g.state.UpsertRun(ctx, rec)
+		ms := []store.Metric{{RunID: id, Name: "analysis.version", Value: version}}
+		for k, x := range metrics {
+			ms = append(ms, store.Metric{RunID: id, Name: k, Value: x})
+		}
+		g.state.ReplaceMetrics(ctx, id, ms)
+	}
+	put("f1", store.Fail, 10, map[string]float64{"struggle.second_compaction": 1, "struggle.second_compaction.turn": 40, "struggle.replay_nudge": 1, "struggle.replay_nudge.turn": 25})
+	put("f2", store.Timeout, 10, map[string]float64{"struggle.second_compaction": 1, "struggle.second_compaction.turn": 60})
+	put("f3", store.Fail, 10, nil)
+	put("p1", store.Pass, 10, map[string]float64{"struggle.replay_nudge": 1, "struggle.replay_nudge.turn": 30})
+	put("p2", store.Pass, 10, nil)
+	put("old", store.Fail, 9, nil)
+	put("ab", store.Aborted, 10, nil)
+
+	var rep StruggleReport
+	if code := g.call("GET", "/v1/report/struggle?batch=b", nil, &rep); code != 200 {
+		t.Fatalf("code %d", code)
+	}
+	if rep.Passed != 2 || rep.NotPassed != 3 || rep.LeftOut != 1 || rep.NotAnalysed != 1 {
+		t.Fatalf("counts %+v", rep)
+	}
+	rows := map[string]StruggleRow{}
+	for _, r := range rep.Rows {
+		rows[r.Trigger] = r
+	}
+	if len(rep.Rows) != 9 || rep.Rows[8].Trigger != "any" {
+		t.Errorf("rows %+v", rep.Rows)
+	}
+	sc := rows["second_compaction"]
+	if sc.HeldNotPassed != 2 || sc.HeldPassed != 0 || sc.Recall == nil || *sc.Recall != 2.0/3 || sc.FalseAlarmRate == nil || *sc.FalseAlarmRate != 0 ||
+		sc.Precision == nil || *sc.Precision != 1 || sc.FirstTurn == nil || sc.FirstTurn.Median != 50 {
+		t.Errorf("second compaction %+v", sc)
+	}
+	rn := rows["replay_nudge"]
+	if rn.HeldNotPassed != 1 || rn.HeldPassed != 1 || *rn.FalseAlarmRate != 0.5 || *rn.Precision != 0.5 {
+		t.Errorf("replay nudge %+v", rn)
+	}
+	// Any signal: f1 (first at 25), f2, p1.
+	if a := rows["any"]; a.HeldNotPassed != 2 || a.HeldPassed != 1 || a.FirstTurn.Min != 25 {
+		t.Errorf("any %+v", a)
+	}
+	if r := rows["sdk_offer"]; r.HeldNotPassed != 0 || r.Precision != nil || r.Recall == nil || *r.Recall != 0 {
+		t.Errorf("never held %+v", r)
+	}
+}
+
+// The guard review queue gathers the guard_replay findings of the runs
+// selected: unconfirmed trips first, missed turns after, one row a turn.
+func TestReportGuards(t *testing.T) {
+	g := newRig(t, false)
+	ctx := context.Background()
+	putRun(t, g, "r1", "b", "id", "4.100.266", "v1", "m")
+	putRun(t, g, "r2", "b", "id", "4.100.266", "v1", "m")
+	ev := func(s string) json.RawMessage { return json.RawMessage(s) }
+	g.state.ReplaceFindings(ctx, "r1", []store.Finding{{RunID: "r1", Detector: "guard_replay", Severity: "warning", Count: 3,
+		Evidence: ev(`{"guards":[{"guard":"reasoning_loop","phase":"cut","missed":[40],"unconfirmed":[12,30]}]}`)}})
+	g.state.ReplaceFindings(ctx, "r2", []store.Finding{{RunID: "r2", Detector: "guard_replay", Severity: "note", Count: 1,
+		Evidence: ev(`{"guards":[{"guard":"loop_detection","missed":[7],"unconfirmed":[]}]}`)}})
+	var q GuardReview
+	if code := g.call("GET", "/v1/report/guards?batch=b", nil, &q); code != 200 || q.Runs != 2 || len(q.Rows) != 4 {
+		t.Fatalf("queue %d %+v", code, q)
+	}
+	if r := q.Rows[0]; r.Kind != "unconfirmed" || r.Run != "r1" || r.Turn != 12 || r.Guard != "reasoning_loop" || r.Phase != "cut" {
+		t.Errorf("first %+v", r)
+	}
+	if r := q.Rows[3]; r.Kind != "missed" || r.Run != "r2" || r.Turn != 7 {
+		t.Errorf("last %+v", r)
+	}
+	q = GuardReview{}
+	if g.call("GET", "/v1/report/guards?batch=b&kind=missed", nil, &q); len(q.Rows) != 2 {
+		t.Errorf("missed only %+v", q.Rows)
+	}
+	if code := g.call("GET", "/v1/report/guards?kind=other", nil, nil); code != 400 {
+		t.Errorf("bad kind %d", code)
+	}
+}

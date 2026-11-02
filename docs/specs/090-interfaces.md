@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.25, 2026-11-01.
+**Status:** draft 0.26, 2026-11-02.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -143,8 +143,11 @@ static-gate refusal of a start answers 422 with `gate` beside `error`.
   batch=, since=, until=`) and `--detector D`.
 - **Reports (070 §6):** `report run` (`run show`), `report cell` (`cell
   show`), `report batch <b>` and `report ab <a> <b>` (`compare`), `report
-  regression <batch>...` (`GET /v1/compare?split=build`), and `report census
-  [<batch>...] [--where ...]` (`GET /v1/report/census`).
+  regression <batch>...` (`GET /v1/compare?split=build`), `report census
+  [<batch>...] [--where ...]` (`GET /v1/report/census`), `report struggle
+  [<batch>...] [--where ...]` (`GET /v1/report/struggle`, D126) and `report
+  guards [<batch>...] [--kind unconfirmed|missed] [--where ...]` (`GET
+  /v1/report/guards`).
 - **Exports (065 §5):** `export cell <batch> --out D [--format jsonl|csv]`
   writes a batch's cell files as `cell run` does, and with csv also
   `runs.csv`, one row per run with every per-run number as a column. `export

@@ -949,7 +949,7 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-10-25 04:43
-> Consolidated session (4 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-25 04:56
 > Consolidated session (0 actions)
@@ -958,13 +958,13 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-10-25 04:58
-> Consolidated session (1 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-25 05:02
 > Consolidated session (0 actions)
 
 ## Session: 2026-10-25 05:02
-> Consolidated session (1 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-25 05:13
 > Consolidated session (0 actions)
@@ -973,7 +973,7 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-10-25 05:14
-> Consolidated session (2 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-25 05:25
 > Consolidated session (0 actions)
@@ -982,7 +982,7 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-10-25 05:27
-> Consolidated session (2 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-25 05:54
 > Consolidated session (0 actions)
@@ -994,13 +994,13 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-10-25 05:57
-> Consolidated session (1 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-25 06:07
 > Consolidated session (0 actions)
 
 ## Session: 2026-10-25 06:07
-> Consolidated session (1 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-25 06:40
 > Consolidated session (0 actions)
@@ -1009,13 +1009,13 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-10-25 06:41
-> Consolidated session (1 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-25 06:50
 > Consolidated session (0 actions)
 
 ## Session: 2026-10-25 06:50
-> Consolidated session (1 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-25 06:52
 > Consolidated session (0 actions)
@@ -1027,7 +1027,7 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-10-25 06:57
-> Consolidated session (13 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-25 07:59
 > Consolidated session (0 actions)
@@ -1042,7 +1042,7 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-10-25 08:57
-> Consolidated session (7 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-25 10:49
 > Consolidated session (0 actions)
@@ -1057,7 +1057,7 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-10-25 11:47
-> Consolidated session (4 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-25 22:50
 > Consolidated session (0 actions)
@@ -1069,83 +1069,43 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-10-26 04:00
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
-| 06:40 | Created models/gemma-4-26b-a4b-it-bm889-run1-bf16-eos106.toml | — | ~231 |
-| 06:40 | Created arms/g4-128e-bf16-c13-bm889-run1.toml | — | ~131 |
-| 06:55 | Twin arm g4-128e-bf16-c13-bm889-run1 (29e03a47c94e) + model entry for bm-889 run 1; endpoint g4-128e-bf16-oc2610231946001-bm889-run1 added to blackswan-2's config and lane-1 (live at the next idle restart) | arms/, models/, CLAUDE.md | validated on blackswan-2; diff = endpoint + model only | ~4k |
+> Consolidated session (3 actions)
 
 ## Session: 2026-10-26 06:41
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-26 06:41
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
-| 07:50 | D115 held-out batches: run start --heldout (ctl.Heldout), export 403 unless ?heldout=1 / --heldout; tests; decisions rev 29, 090 0.20, 110 0.24 | internal/daemon/{api,control,export}.go, cmd/automaticum/{client,export}_cmds.go, main.go, tests, specs | make test ok (17 pkgs) | ~12k |
+> Consolidated session (1 actions)
 
 ## Session: 2026-10-26 07:34
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-26 07:34
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-26 07:36
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-26 07:37
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-26 08:34
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
-| 10:55 | D115 deployed to blackswan-2 by the idle-gated watcher (09:54:34Z): 94534b4, binaries b35f49f1/bc8cc4c3, -heldout live; run1 gate b20261026-055105-f2436d stopped by the owner (7 TIMEOUT, 1 ABORTED, 2 SKIPPED, 0 PASS); mailed backup_models #1964 | blackswan-2 | done | ~3k |
-| 15:27 | Created models/gemma-4-26b-a4b-it-bm889-run2-s425-bf16-eos106.toml | — | ~246 |
-| 15:27 | Created arms/g4-128e-bf16-c13-bm889-run2-s425.toml | — | ~138 |
-| 15:35 | bm-889 run2-s425 twin: model entry, arm g4-128e-bf16-c13-bm889-run2-s425 (77437830d08c), endpoint + lane-1 entry on blackswan-2, idle daemon restart, doctor 10 pass; mailed backup_models #1969. Arm and model files copied UNTRACKED into the blackswan-2 repo: remove them before the next git checkout there | arms/, models/, CLAUDE.md | done | ~6k |
-| 15:28 | Session end: 2 writes across 2 files (gemma-4-26b-a4b-it-bm889-run2-s425-bf16-eos106.toml, g4-128e-bf16-c13-bm889-run2-s425.toml) | 0 reads | ~411 tok |
+> Consolidated session (5 actions)
 
 ## Session: 2026-10-26 16:57
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-26 16:58
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-26 16:58
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
-| 17:24 | Created .gitleaks.toml | — | ~542 |
-| 17:26 | gitleaks set up like opencoti (no push workflow): .gitleaks.toml (default rules + shell-credential-fallback rule + value allowlist for the daemon tests token, pinned to its file) and a fail-closed gitleaks block in .git/hooks/pre-commit after caliber; proved: shell-fallback, github-pat, test token elsewhere refused; clean passes; skip env warns; missing binary refuses; history and tree 0 | .gitleaks.toml, .git/hooks/pre-commit | done | ~8k |
-| 17:24 | Session end: 1 writes across 1 files (.gitleaks.toml) | 0 reads | ~581 tok |
+> Consolidated session (3 actions)
 
 ## Session: 2026-10-26 17:39
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-26 17:39
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
-| 06:36 | bm-889 run3 twin prepared ahead of the GGUF: arm g4-128e-bf16-c13-bm889-run3 (0ef3f29f5b09), model entry (sha256 to follow), endpoint + lane-1 entry on blackswan-2, idle restart; blackswan-2 repo moved to b7503f3 after removing the byte-identical untracked run2 files; run3 files are untracked there again; doctor and sha256 pending; mailed backup_models | arms/, models/, CLAUDE.md | partial | ~7k |
-| 07:05 | bm-889 run3 changed to its step-400 snapshot: arm renamed g4-128e-bf16-c13-bm889-run3-s400 (6c69d548751e), model entry with sha256 af324919 (checked on blackswan-2), endpoint -s400 there (run3 arm and endpoint removed, never used), idle restart, doctor 10 pass, /props template 6a1015c4; mailed backup_models confirmed (#1975). Run3-s400 files are untracked in the blackswan-2 repo; uncommitted here | arms/, models/, CLAUDE.md | done | ~6k |
+> Consolidated session (2 actions)
 
 ## Session: 2026-10-27 08:33
 
@@ -1547,3 +1507,37 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 22:40 | 070 tranche 1: call guard, 4.100.258 loop rules, turn pathologies, hygiene, guard trips/replay, edits, compaction/escalation metrics (D126-D129, analysis 9) | internal/detect, internal/ingest, docs | tests pass | ~40000 |
+
+## Session: 2026-11-01 22:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-01 22:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-01 22:42
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-01 22:43
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-02 04:00
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 08:38 | deployed e1b9d80 on blackswan-2 (daemon+CLI, unit TimeoutStopSec=infinity, repo checkout) after backup_models released the hold (#2104); mailed #2105 | bin/, unit | daemon up, detect library 3 live | ~6000 |
+| 08:43 | Created internal/detect/struggle.go | — | ~2723 |
+| 08:45 | Created internal/ingest/struggle.go | — | ~1282 |
+| 08:45 | Edited internal/ingest/struggle.go | 8→4 lines | ~18 |
+| 08:45 | Edited internal/ingest/struggle.go | 2→3 lines | ~27 |
+| 08:46 | Created internal/detect/struggle_test.go | — | ~1944 |
+| 08:46 | Edited internal/detect/struggle_test.go | 7→5 lines | ~71 |
+| 08:46 | Edited internal/detect/struggle_test.go | 7→8 lines | ~36 |
+| 08:52 | D126 struggle signals (SDK detector replayed, report struggle), change protocol transactions.*, report guards review queue; analysis 10 | internal/detect/struggle.go, internal/ingest/struggle.go, internal/daemon/report.go, cmd report_cmds.go, 070/090/audit | tests pass | ~30000 |

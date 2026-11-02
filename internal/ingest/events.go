@@ -107,6 +107,31 @@ type Events struct {
 	// to its trip, which the SDK threw away and asked for again. They are
 	// not part of Blocks; the guard's replay reads them (070 §4).
 	CutBlocks []Block
+	// Struggle is what the SDK's struggle detector observes, in order, for
+	// its replay (D126).
+	Struggle []detect.StruggleEvent
+	// NoticeTurns is the turn of each notice key's first notice.
+	NoticeTurns map[string]int
+	// Transactions are the change protocol's transactions as they settled,
+	// EmptyAttempts the attempts submitted with nothing changed and Plans
+	// the plans it recorded (070 §2).
+	Transactions  []Transaction
+	EmptyAttempts int
+	Plans         int
+}
+
+// Transaction is one transaction of the SDK's change protocol as it
+// settled: kept or put back, carried on, whether its check gave output,
+// how long it took and how many files were put back.
+type Transaction struct {
+	Turn         int
+	ID           int
+	Kept         bool
+	Carried      bool
+	Source       string
+	Checked      bool
+	ElapsedMS    float64
+	FilesPutBack int
 }
 
 // Compaction is one compaction the SDK completed: what started it and the
@@ -240,6 +265,14 @@ type agentEvent struct {
 		// An escalation's spend and whether the expert changed anything.
 		Usage   *EscalationUsage `json:"usage"`
 		Changed *bool            `json:"changed"`
+		// A transaction of the change protocol (atomic_*).
+		Transaction  *int            `json:"transaction"`
+		Kept         *bool           `json:"kept"`
+		Carried      bool            `json:"carried"`
+		Source       string          `json:"source"`
+		ElapsedMS    *float64        `json:"elapsedMs"`
+		Output       json.RawMessage `json:"output"`
+		FilesPutBack int             `json:"filesPutBack"`
 	} `json:"metadata"`
 	Timings struct {
 		FirstTokenMS float64 `json:"firstTokenMs"`
@@ -293,7 +326,7 @@ type scan struct {
 
 // ReadEvents reads a run's event stream: the JSON lines the runner printed.
 func ReadEvents(r io.Reader) (*Events, error) {
-	ev := &Events{Notices: map[string]int{}, GuardTrips: map[string]int{}, GuardCauses: map[string]int{}}
+	ev := &Events{Notices: map[string]int{}, GuardTrips: map[string]int{}, GuardCauses: map[string]int{}, NoticeTurns: map[string]int{}}
 	return ev, ev.Read(r)
 }
 
@@ -309,6 +342,9 @@ func (ev *Events) Read(r io.Reader) error {
 	}
 	if ev.GuardCauses == nil {
 		ev.GuardCauses = map[string]int{}
+	}
+	if ev.NoticeTurns == nil {
+		ev.NoticeTurns = map[string]int{}
 	}
 	rd := bufio.NewReaderSize(r, 1<<20)
 	sc := &scan{started: map[string]time.Time{}, inputs: map[string]string{}, partial: map[string]*bytes.Buffer{}}
@@ -441,6 +477,9 @@ func (ev *Events) line(line []byte, sc *scan) {
 		if a.Iteration > ev.Iterations {
 			ev.Iterations = a.Iteration
 		}
+		ev.Struggle = append(ev.Struggle, detect.StruggleEvent{Kind: "turn", Turn: a.Iteration})
+	case "iteration_end":
+		ev.Struggle = append(ev.Struggle, detect.StruggleEvent{Kind: "turn_end", Turn: a.Iteration})
 	case "content_start":
 		switch a.ContentType {
 		case "tool":
@@ -448,6 +487,7 @@ func (ev *Events) line(line []byte, sc *scan) {
 				sc.started[a.ToolCallID] = l.T
 				sc.inputs[a.ToolCallID] = compact(a.Input)
 			}
+			ev.Struggle = append(ev.Struggle, detect.StruggleEvent{Kind: "call", Turn: sc.turn, Tool: a.ToolName, Path: editorPath(a.Input)})
 		case "reasoning", "text":
 			buf := sc.partial[a.ContentType]
 			if buf == nil {
@@ -467,6 +507,7 @@ func (ev *Events) line(line []byte, sc *scan) {
 				buf.Reset()
 			}
 			ev.Blocks = append(ev.Blocks, Block{Turn: sc.turn, Kind: a.ContentType, Text: text, GivenTo: ev.Given.Len()})
+			ev.Struggle = append(ev.Struggle, detect.StruggleEvent{Kind: a.ContentType, Turn: sc.turn, Text: text})
 			t := ev.turn(sc.turn)
 			if a.ContentType == "reasoning" {
 				t.Reasoning = true
@@ -500,6 +541,13 @@ func (ev *Events) line(line []byte, sc *scan) {
 			loopFailed := guardFailed(&a)
 			ev.Calls = append(ev.Calls, detect.Call{Turn: sc.turn, Tool: a.ToolName, Input: input, Result: compact(a.Output),
 				Failed: loopFailed, Refused: loopFailed && detect.Refusal(resultErrors(a.Output)), Paths: callPaths(input)})
+			// The struggle detector reads a failure as the event's error,
+			// else as what the result states.
+			_, struggleFailed := detect.StruggleFailure(a.Output)
+			if e := bytes.TrimSpace(a.Error); len(e) > 0 && !bytes.Equal(e, []byte("null")) {
+				struggleFailed = true
+			}
+			ev.Struggle = append(ev.Struggle, detect.StruggleEvent{Kind: "tool", Turn: sc.turn, Tool: a.ToolName, Failed: struggleFailed})
 		}
 	case "usage":
 		if ev.FirstTokenMS == 0 {
@@ -515,6 +563,9 @@ func (ev *Events) line(line []byte, sc *scan) {
 	case "notice":
 		key := NoticeKey(a.NoticeType, a.Metadata.Kind, a.Metadata.Phase, a.Reason)
 		ev.Notices[key]++
+		if _, ok := ev.NoticeTurns[key]; !ok {
+			ev.NoticeTurns[key] = sc.turn
+		}
 		// A compaction is announced when it starts and when it ends; the
 		// SDK counts it once, at "completed", by these kinds. A notice
 		// without a kind, from an older SDK, is counted by its reason.
@@ -534,11 +585,14 @@ func (ev *Events) line(line []byte, sc *scan) {
 					}
 				}
 				ev.CompactionLog = append(ev.CompactionLog, c)
+				ev.Struggle = append(ev.Struggle, detect.StruggleEvent{Kind: "compaction", Turn: sc.turn})
 			}
 		case k == "" && strings.Contains(a.Reason, "compact"):
 			ev.Compactions++
 			ev.CompactionTimes = append(ev.CompactionTimes, l.T)
+			ev.Struggle = append(ev.Struggle, detect.StruggleEvent{Kind: "compaction", Turn: sc.turn})
 		}
+		ev.transaction(&a, sc.turn)
 		// An escalation's end: an expert's reply, or a failure (the
 		// SDK's escalation_failed); escalation_ended closes either.
 		switch md := a.Metadata; md.Kind {
@@ -559,6 +613,54 @@ func (ev *Events) line(line []byte, sc *scan) {
 		ev.AgentEnd = a.Reason
 		ev.next("end", "")
 	}
+}
+
+// transaction reads the change protocol's notices. The stream does not say
+// when a transaction opens: the first notice that names it stands for that.
+func (ev *Events) transaction(a *agentEvent, turn int) {
+	md := a.Metadata
+	if md.Transaction == nil || !strings.HasPrefix(md.Kind, "atomic_") {
+		return
+	}
+	id := *md.Transaction
+	ev.Struggle = append(ev.Struggle, detect.StruggleEvent{Kind: "transaction", Turn: turn, Transaction: id})
+	switch md.Kind {
+	case "atomic_plan":
+		ev.Plans++
+	case "atomic_empty_attempt":
+		ev.EmptyAttempts++
+		ev.Struggle = append(ev.Struggle, detect.StruggleEvent{Kind: "empty", Turn: turn, Transaction: id})
+	case "atomic_transaction":
+		out := bytes.TrimSpace(md.Output)
+		t := Transaction{Turn: turn, ID: id, Kept: md.Kept != nil && *md.Kept, Carried: md.Carried, Source: md.Source,
+			Checked: len(out) > 0 && !bytes.Equal(out, []byte("null")), FilesPutBack: md.FilesPutBack}
+		if md.ElapsedMS != nil {
+			t.ElapsedMS = *md.ElapsedMS
+		}
+		ev.Transactions = append(ev.Transactions, t)
+		if !t.Kept && !t.Carried {
+			ev.Struggle = append(ev.Struggle, detect.StruggleEvent{Kind: "discarded", Turn: turn, Transaction: id})
+		}
+	}
+}
+
+// editorPath is the file a file-changing call names, as the SDK reads it
+// (its `editorFilePath`): file_path, else path.
+func editorPath(raw json.RawMessage) string {
+	var in struct {
+		FilePath any `json:"file_path"`
+		Path     any `json:"path"`
+	}
+	if json.Unmarshal(raw, &in) != nil {
+		return ""
+	}
+	if s, ok := in.FilePath.(string); ok && s != "" {
+		return s
+	}
+	if s, ok := in.Path.(string); ok {
+		return s
+	}
+	return ""
 }
 
 // turn is what a turn held so far.

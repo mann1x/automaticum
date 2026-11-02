@@ -332,6 +332,8 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/runs/{id}/resume", d.handleResume)
 	mux.HandleFunc("GET /v1/compare", d.handleCompare)
 	mux.HandleFunc("GET /v1/report/census", d.handleCensus)
+	mux.HandleFunc("GET /v1/report/struggle", d.handleStruggle)
+	mux.HandleFunc("GET /v1/report/guards", d.handleGuards)
 	mux.HandleFunc("GET /v1/heartbeat", d.handleHeartbeat)
 	mux.HandleFunc("POST /v1/lanes/{lane}/reserve", d.handleReserve)
 	mux.HandleFunc("POST /v1/lanes/{lane}/unreserve", d.handleReserve)
