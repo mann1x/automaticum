@@ -4,6 +4,7 @@
 
 data_root = "/var/lib/automaticum"         # live tier, workspaces, artefacts
 archive_root = ""                           # archive tier; optional
+# archive_after_days = 0                   # move raw blobs older than this to archive_root, verified first (080 §5, D31); 0 or unset: never
 free_floor_gb = 50                          # start no run with less free space
 # quarantine_after = 10                    # a lane with this many infrastructure failures in a row is quarantined (D124); 0 never
 listen = "127.0.0.1:7411"                   # loopback; anything else needs the token
@@ -14,4 +15,4 @@ private_tasks = ""                          # a second tasks root outside the pu
 [notify]
 webhook = ""                                # a URL that gets one JSON object per notification, by POST; empty: none
 command = []                                # a program and its arguments, run per notification with the JSON on stdin (a mailbox client); empty: none
-events = []                                 # gate, canary, campaign, batch, run, lane; empty: all but run (050 §2)
+events = []                                 # gate, canary, campaign, batch, run, lane, archive; empty: all but run (050 §2)

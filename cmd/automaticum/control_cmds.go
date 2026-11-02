@@ -205,6 +205,9 @@ func batchShow(ctx context.Context, args []string) error {
 		return printJSON(v)
 	}
 	fmt.Printf("batch            %s\n", v.Batch)
+	if v.StartedBy != "" {
+		fmt.Printf("started by       %s\n", v.StartedBy)
+	}
 	if v.Paused {
 		fmt.Printf("state            paused\n")
 	}

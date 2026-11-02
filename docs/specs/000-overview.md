@@ -1,6 +1,6 @@
 # 000 — Overview, vocabulary and map of the spec set
 
-**Status:** draft 0.6, 2026-10-25. Refined from two input documents kept in
+**Status:** draft 0.7, 2026-11-02. Refined from two input documents kept in
 [`archive/`](archive/): the draft specification 0.4 (from the Cerebriline
 session, the first user) and the omnimergekit evaluation requirements 0.1 (from
 the omnimergekit session, the second user). Items marked **Open** are questions,
@@ -59,7 +59,8 @@ finding (see [110](110-acceptance-and-roadmap.md) §1, criterion 3):
 
 A score from mode B or C is a score of *model + Cerebriline build*. It is never
 comparable to a published number for the same suite under another engine, and
-every report says so in its header.
+every report says so in its header (for mode C, `engine_note` in the cell
+result and the compare view, printed first; 065 §3.1).
 
 ## 3. Vocabulary
 

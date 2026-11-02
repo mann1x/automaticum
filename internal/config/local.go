@@ -84,6 +84,11 @@ type Daemon struct {
 	DataRoot string `toml:"data_root"`
 	// ArchiveRoot is the store's archive tier; optional.
 	ArchiveRoot string `toml:"archive_root"`
+	// ArchiveAfterDays is the age in days past which the daemon moves raw
+	// blobs to the archive tier, verified before the live copy is freed
+	// (080 §5, D31). Unset or 0 moves nothing: nothing is archived by
+	// default.
+	ArchiveAfterDays int `toml:"archive_after_days"`
 	// FreeFloorGB is the free space under which the daemon starts no run.
 	FreeFloorGB int `toml:"free_floor_gb"`
 	// Listen is the API's address. Anything but a loopback address needs
@@ -137,13 +142,14 @@ type Notify struct {
 	// with the JSON object on its standard input: the way to a mailbox or
 	// anything else the installation uses (090 §5). Empty runs nothing.
 	Command []string `toml:"command"`
-	// Events are the kinds sent (gate, canary, campaign, batch, run, lane). Empty
+	// Events are the kinds sent (gate, canary, campaign, batch, run, lane,
+	// archive). Empty
 	// sends every kind but run; the daemon's log has them all.
 	Events []string `toml:"events"`
 }
 
 // NotifyEvents are the kinds of notification, in the order they are named.
-var NotifyEvents = []string{"gate", "canary", "campaign", "batch", "run", "lane"}
+var NotifyEvents = []string{"gate", "canary", "campaign", "batch", "run", "lane", "archive"}
 
 // Sends says whether a notification of the kind goes to the webhook and the
 // command.
@@ -280,6 +286,12 @@ func LoadLocal(dir string) (*Local, error) {
 	}
 	if d.ArchiveRoot != "" && !filepath.IsAbs(d.ArchiveRoot) {
 		bad("automaticum.toml: archive_root must be an absolute path")
+	}
+	if d.ArchiveAfterDays < 0 {
+		bad("automaticum.toml: archive_after_days must be 0 (never) or more")
+	}
+	if d.ArchiveAfterDays > 0 && d.ArchiveRoot == "" {
+		bad("automaticum.toml: archive_after_days needs archive_root")
 	}
 	if d.QuarantineAfter != nil && *d.QuarantineAfter < 0 {
 		bad("automaticum.toml: quarantine_after must be 0 (never) or more")

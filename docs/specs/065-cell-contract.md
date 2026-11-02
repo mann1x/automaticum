@@ -1,6 +1,6 @@
 # 065 — The cell contract and exports
 
-**Status:** draft 0.14, 2026-11-02.
+**Status:** draft 0.15, 2026-11-02.
 
 ## 1. Purpose
 
@@ -206,7 +206,11 @@ automaticum cell run --suite <suite[:subset]> --arm <arm> --out <dir> --idempote
   were checked against it or are the caller's word. The basis (020 §5)
   marks each fact `(checked against /props)`, `(from /props)` or
   `(caller)`; `concurrency` holds the lane count and the slots. The result
-  file has `mode_c`: the cell's endpoint, values, facts and lanes.
+  file has `mode_c`: the cell's endpoint, values, facts and lanes, and
+  `engine_note`, the header 000 §2 asks of every mode C report (a score of
+  model + Cerebriline build, never comparable to a published number under
+  another engine). `cell show`, `report cell`, `compare` and `report ab`
+  print it first whenever one of their batches ran in mode C.
 
 Proved on the stub model server speaking llama-server's protocol: a cell
 of two runs with the caller's sampler and facts that agree with `/props`

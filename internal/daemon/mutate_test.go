@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
@@ -223,4 +224,64 @@ func (h *holdRunner) released() string {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	return h.r
+}
+
+// lockedBuffer is a log sink the test can read while the daemon writes.
+type lockedBuffer struct {
+	mu sync.Mutex
+	b  bytes.Buffer
+}
+
+func (l *lockedBuffer) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.b.Write(p)
+}
+
+func (l *lockedBuffer) String() string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.b.String()
+}
+
+// Every change records who made it (010 §5): the log names the client of
+// each mutating call, and a batch keeps who started it.
+func TestClientRecorded(t *testing.T) {
+	g := newRig(t, false)
+	var logs lockedBuffer
+	g.d.Log = slog.New(slog.NewTextHandler(&logs, nil))
+	go func() { g.d.Serve(g.ctx()); close(g.served) }()
+
+	b, _ := json.Marshal(StartRequest{Arm: "stub", Task: "answer"})
+	req, _ := http.NewRequest("POST", g.srv.URL+"/v1/runs", bytes.NewReader(b))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set(ClientHeader, "  assistant\tsession  ")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sr StartResponse
+	json.NewDecoder(resp.Body).Decode(&sr)
+	resp.Body.Close()
+	if resp.StatusCode != 202 {
+		t.Fatalf("start: %d", resp.StatusCode)
+	}
+	g.waitFinished(sr.RunIDs[0])
+	var bv BatchView
+	if code := g.call("GET", "/v1/batches/"+sr.Batch, nil, &bv); code != 200 || bv.StartedBy != "assistant session" {
+		t.Errorf("batch: %d %+v", code, bv)
+	}
+	// Without the header the change is still logged, by "unnamed"; a dry
+	// run and a read change nothing and are not.
+	g.call("POST", "/v1/lanes/lane-1/pause", nil, nil)
+	g.call("POST", "/v1/lanes/lane-1/resume?dry_run=1", nil, nil)
+	out := logs.String()
+	for _, want := range []string{`msg=change client="assistant session" method=POST path=/v1/runs status=202`, `msg=change client=unnamed method=POST path=/v1/lanes/lane-1/pause status=200`} {
+		if !strings.Contains(out, want) {
+			t.Errorf("log lacks %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "resume") || strings.Contains(out, "path=/v1/batches/") {
+		t.Errorf("a dry run or a read was logged as a change:\n%s", out)
+	}
 }

@@ -3,6 +3,7 @@ package daemon
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -460,5 +461,30 @@ func TestArmBaseline(t *testing.T) {
 	g.call("GET", "/v1/runs/r1", nil, &v)
 	if b := v.Baseline; b == nil || b.Source != "campaign c" || b.Note != "this run is of the baseline arm" {
 		t.Errorf("campaign baseline %+v", b)
+	}
+}
+
+// A task version is a comparability boundary (020 §4): compare counts the
+// latest version's runs and names the others with the reason, unless asked
+// to pool them.
+func TestCompareVersionBoundary(t *testing.T) {
+	g := newRig(t, false)
+	ctx := context.Background()
+	for i, v := range []int{1, 1, 2} {
+		putRun(t, g, fmt.Sprintf("r%d", i), []string{"bA", "bA", "bB"}[i], "arm-1", "4.100.266", "v1", "m")
+		r, _ := g.state.GetRun(ctx, fmt.Sprintf("r%d", i))
+		r.TaskVersion = v
+		g.state.UpsertRun(ctx, r)
+	}
+	var cv CompareView
+	if code := g.call("GET", "/v1/compare?batch=bA&batch=bB", nil, &cv); code != 200 {
+		t.Fatalf("compare: %d", code)
+	}
+	if len(cv.Groups) != 1 || strings.Join(cv.Groups[0].Runs, ",") != "r2" || len(cv.Groups[0].Excluded) != 2 ||
+		!strings.Contains(cv.Groups[0].Excluded["r0"], "task version 1, not the latest here (2)") || fmt.Sprint(cv.MixedVersions["demo/answer"]) != "[1 2]" || cv.PooledVersions {
+		t.Fatalf("view: %+v", cv)
+	}
+	if code := g.call("GET", "/v1/compare?batch=bA&batch=bB&pool_versions=1", nil, &cv); code != 200 || len(cv.Groups[0].Runs) != 3 || !cv.PooledVersions {
+		t.Fatalf("pooled: %d %+v", code, cv)
 	}
 }

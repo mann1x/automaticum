@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"slices"
 	"sort"
@@ -37,6 +38,13 @@ type CompareView struct {
 	NeverStarted map[string]string `json:"never_started,omitempty"`
 	// Level is the level of every interval in the view.
 	Level float64 `json:"interval_level"`
+	// EngineNote is EngineNote when one of the batches ran in mode C.
+	EngineNote string `json:"engine_note,omitempty"`
+	// PooledVersions says runs at different task versions were counted
+	// together, as asked (020 §4); MixedVersions names each task whose runs
+	// in the view are at more than one version.
+	PooledVersions bool             `json:"pooled_versions,omitempty"`
+	MixedVersions  map[string][]int `json:"mixed_task_versions,omitempty"`
 }
 
 // CompareGroup is the runs of one arm on one task.
@@ -446,7 +454,7 @@ func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusBadRequest, "split %q: build, lane, arm.<field>, label.<name> or finding.<detector>", split)
 		return
 	}
-	v, code, err := d.compareView(r.Context(), r.URL.Query()["batch"], nil, split)
+	v, code, err := d.compareView(r.Context(), r.URL.Query()["batch"], nil, split, r.URL.Query().Get("pool_versions") == "1")
 	if err != nil {
 		fail(w, code, "%v", err)
 		return
@@ -466,11 +474,15 @@ func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
 // protocol, lane image, automaticum version), so an arm whose id changed
 // with its SDK release is still one arm, and only the groups of one arm
 // are paired.
-func (d *Daemon) compareView(ctx context.Context, batches []string, leave map[string]bool, split string) (CompareView, int, error) {
+//
+// Runs of a task at another version than the latest in the view are left
+// out, each with the reason, unless pool is set (020 §4): a task version is
+// a comparability boundary.
+func (d *Daemon) compareView(ctx context.Context, batches []string, leave map[string]bool, split string, pool bool) (CompareView, int, error) {
 	if len(batches) == 0 {
 		return CompareView{}, http.StatusBadRequest, errors.New("name at least one batch")
 	}
-	v := CompareView{Batches: batches, Split: split, Level: 0.95, Groups: []CompareGroup{}, Pairs: []ComparePair{}}
+	v := CompareView{Batches: batches, Split: split, Level: 0.95, Groups: []CompareGroup{}, Pairs: []ComparePair{}, PooledVersions: pool}
 	index := map[string]int{}
 	arms := map[int]*config.Arm{}
 	axis := groupAxis(split)
@@ -485,6 +497,8 @@ func (d *Daemon) compareView(ctx context.Context, batches []string, leave map[st
 			labels[t.Suite+"/"+t.ID] = t.Labels
 		}
 	}
+	var all []store.Run
+	latest := map[string]int{}
 	for _, b := range batches {
 		runs, err := d.State.ListRuns(ctx, store.RunFilter{Batch: b})
 		if err != nil {
@@ -493,7 +507,21 @@ func (d *Daemon) compareView(ctx context.Context, batches []string, leave map[st
 		if len(runs) == 0 {
 			return v, http.StatusNotFound, fmt.Errorf("batch %s has no finished run", b)
 		}
+		d.mu.Lock()
+		if d.ctl.Cells[b] != nil {
+			v.EngineNote = EngineNote
+		}
+		d.mu.Unlock()
 		for _, run := range runs {
+			if task := run.Suite + "/" + run.TaskID; run.Verdict != store.Skipped && run.TaskVersion > latest[task] {
+				latest[task] = run.TaskVersion
+			}
+		}
+		all = append(all, runs...)
+	}
+	versions := map[string]map[int]bool{}
+	{
+		for _, run := range all {
 			if leave[run.ID] {
 				continue
 			}
@@ -545,6 +573,17 @@ func (d *Daemon) compareView(ctx context.Context, batches []string, leave map[st
 				g.ArmID += "," + run.ArmID
 			}
 			g := &v.Groups[i]
+			if versions[task] == nil {
+				versions[task] = map[int]bool{}
+			}
+			versions[task][run.TaskVersion] = true
+			if !pool && run.TaskVersion != latest[task] {
+				if g.Excluded == nil {
+					g.Excluded = map[string]string{}
+				}
+				g.Excluded[run.ID] = fmt.Sprintf("task version %d, not the latest here (%d): not pooled across a version boundary unless asked (020 §4)", run.TaskVersion, latest[task])
+				continue
+			}
 			g.Verdicts[string(run.Verdict)]++
 			if run.Verdict == store.Invalid {
 				if g.Excluded == nil {
@@ -586,6 +625,14 @@ func (d *Daemon) compareView(ctx context.Context, batches []string, leave map[st
 				}
 			}
 			g.bases = append(g.bases, basisOfRun(&run, byName))
+		}
+	}
+	for task, vs := range versions {
+		if len(vs) > 1 {
+			if v.MixedVersions == nil {
+				v.MixedVersions = map[string][]int{}
+			}
+			v.MixedVersions[task] = slices.Sorted(maps.Keys(vs))
 		}
 	}
 	dropQuietUser(v.Groups)

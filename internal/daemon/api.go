@@ -128,6 +128,9 @@ type StartRequest struct {
 	// differs in that variable, a basis fact or an arm field (D120).
 	Cohort           string `json:"cohort,omitempty"`
 	DeclaredVariable string `json:"declared_variable,omitempty"`
+	// Client is who started the batch: the Automaticum-Client header of
+	// the request, or the campaign's starter (010 §5).
+	Client string `json:"-"`
 }
 
 // StartResponse says what was, or would be, queued.
@@ -388,7 +391,14 @@ func (d *Daemon) Handler() http.Handler {
 			fail(w, http.StatusUnauthorized, "this request needs the API token")
 			return
 		}
-		keyed.ServeHTTP(w, r)
+		if r.Method == http.MethodGet || dryRun(r) {
+			keyed.ServeHTTP(w, r)
+			return
+		}
+		// Every change is in the log with who asked for it (010 §5).
+		rec := &recorder{ResponseWriter: w}
+		keyed.ServeHTTP(rec, r)
+		d.Log.Info("change", "client", clientOf(r), "method", r.Method, "path", r.URL.Path, "status", rec.status)
 	})
 }
 
@@ -514,6 +524,7 @@ func (d *Daemon) handleStart(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusBadRequest, "the request is not understood: %v", err)
 		return
 	}
+	req.Client = clientOf(r)
 	resp, code, err := d.start(r.Context(), req)
 	var g gateRefusal
 	if errors.As(err, &g) {
@@ -805,7 +816,7 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 			return resp, http.StatusInternalServerError, err
 		}
 	}
-	if req.CaptureRequests || req.Heldout || !req.Limits.Empty() || req.Priority != 0 || req.Cohort != "" {
+	if req.CaptureRequests || req.Heldout || !req.Limits.Empty() || req.Priority != 0 || req.Cohort != "" || req.Client != "" {
 		// Kept with the control state, so a restarted daemon still knows.
 		d.mu.Lock()
 		if req.CaptureRequests {
@@ -822,6 +833,9 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 		}
 		if req.Cohort != "" {
 			d.addToCohort(req.Cohort, req.DeclaredVariable, resp.Batch)
+		}
+		if req.Client != "" {
+			d.ctl.StartedBy[resp.Batch] = req.Client
 		}
 		err := d.saveControl()
 		d.mu.Unlock()

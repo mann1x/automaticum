@@ -1,6 +1,6 @@
 # 080 — The store
 
-**Status:** draft 1.2, 2026-10-13. The spike has run (§7.4, and
+**Status:** draft 1.3, 2026-11-02. The spike has run (§7.4, and
 `spike/001-store/REPORT.md`) and the owner has confirmed the shape, with a
 review of the Lance binding at milestone 6.
 
@@ -83,6 +83,13 @@ DuckDB. They are not database columns.
   archive tier, and reports say when a query waited on it.
 - If the archive path is unreachable, nothing is moved and nothing is deleted;
   the daemon notifies and the free-space floor (010 §6) still stops new runs.
+- Built 2026-11-02: the age is `archive_after_days` in `automaticum.toml`,
+  beside `archive_root`; unset or 0 archives nothing, and a positive age
+  without `archive_root` is refused. The daemon runs a pass
+  (`blob.ArchiveOlderThan`) when it starts and once a day, logs what it
+  scanned, moved and freed, and notifies `archive` `unavailable` (nothing
+  moved) or `failed` (blobs left on the live tier, the first named). Not
+  built yet: a report saying a query waited on the archive.
 
 ### 5.1 Archived logs stay searchable
 

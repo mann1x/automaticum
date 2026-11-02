@@ -48,9 +48,12 @@ type BlobReader interface {
 
 // Daemon holds the queue and the lanes of one installation.
 type Daemon struct {
-	Local      *config.Local
-	State      store.State
-	Blobs      BlobReader
+	Local *config.Local
+	State store.State
+	Blobs BlobReader
+	// Archiver moves old blobs to the archive tier (080 §5); nil when the
+	// installation archives nothing.
+	Archiver   Archiver
 	Runner     Runner
 	Containers Containers
 	// Repo is the checkout with tasks/ and images/; arms and models are the
@@ -80,6 +83,9 @@ type Daemon struct {
 	// means every five seconds. ControlTokens, when set, replaces asking
 	// the endpoint for a model's control tokens.
 	CanaryEvery time.Duration
+	// ArchiveEvery is how often old blobs are looked for; zero means once
+	// a day.
+	ArchiveEvery time.Duration
 	// HeartbeatEvery is how often the heartbeat is logged; zero means ten
 	// minutes (050 §6).
 	HeartbeatEvery time.Duration
@@ -370,6 +376,7 @@ func (d *Daemon) Serve(ctx context.Context) {
 	go d.canaryLoop(canary)
 	go d.campaignLoop(canary)
 	go d.heartbeatLoop(canary)
+	go d.archiveLoop(canary)
 	for {
 		d.mu.Lock()
 		draining := d.draining

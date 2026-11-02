@@ -124,7 +124,11 @@ func printCampaign(v daemon.CampaignView) {
 		fmt.Printf("          %s\n", v.Def.Description)
 	}
 	if !v.Started.IsZero() {
-		fmt.Printf("started   %s\n", human.Time(v.Started))
+		fmt.Printf("started   %s", human.Time(v.Started))
+		if v.StartedBy != "" {
+			fmt.Printf(" by %s", v.StartedBy)
+		}
+		fmt.Println()
 	}
 	if !v.Ended.IsZero() {
 		fmt.Printf("ended     %s, after %s\n", human.Time(v.Ended), human.Millis(float64(v.Ended.Sub(v.Started).Milliseconds())))

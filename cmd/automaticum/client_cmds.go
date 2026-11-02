@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/user"
 	"regexp"
 	"sort"
 	"strings"
@@ -36,6 +37,8 @@ type client struct {
 	key string
 	// cell names a cell's suite on the request that starts it.
 	cell string
+	// name is who is calling, sent with every request (010 §5).
+	name string
 }
 
 // mutation is what every command that changes something takes (090 §1,
@@ -79,6 +82,7 @@ func (m mutation) dryNote() string {
 
 func addClient(fs *flag.FlagSet) (place, func() (*client, error)) {
 	p := addPlace(fs)
+	name := fs.String("client", "", "your name, recorded with every change you make (default <user>@<host>)")
 	return p, func() (*client, error) {
 		l, err := p.local()
 		if err != nil {
@@ -87,8 +91,23 @@ func addClient(fs *flag.FlagSet) (place, func() (*client, error)) {
 		// The token is only needed to change something; a command that
 		// reads works without the right to read the token file.
 		token, _ := l.Token()
-		return &client{base: "http://" + l.Daemon.Listen, token: token, json: *p.json}, nil
+		return &client{base: "http://" + l.Daemon.Listen, token: token, json: *p.json, name: clientName(*name)}, nil
 	}
+}
+
+// clientName is the name given, or <user>@<host> when none is.
+func clientName(given string) string {
+	if given != "" {
+		return given
+	}
+	who := "someone"
+	if u, err := user.Current(); err == nil && u.Username != "" {
+		who = u.Username
+	}
+	if h, err := os.Hostname(); err == nil && h != "" {
+		return who + "@" + h
+	}
+	return who
 }
 
 // do sends a request and decodes the answer into out. A refusal comes back
@@ -117,6 +136,9 @@ func (c *client) open(ctx context.Context, method, path string, in any) (*http.R
 	}
 	if c.token != "" {
 		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+	if c.name != "" {
+		req.Header.Set(daemon.ClientHeader, c.name)
 	}
 	if c.key != "" && method != "GET" {
 		req.Header.Set("Idempotency-Key", c.key)

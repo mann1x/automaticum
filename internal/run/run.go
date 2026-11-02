@@ -229,6 +229,24 @@ func lower(arm, tsk int) limit {
 	return limit{0, ""}
 }
 
+// count is a limit on a number of things, and who set it; zero means none.
+type count struct {
+	Value int    `json:"value"`
+	Owner string `json:"owner"`
+}
+
+// armCount is an arm value as a count limit: its owner is "caller" when a
+// mode C caller set it (065), "arm" otherwise, and empty when it is zero.
+func armCount(a *config.Arm, key string, v *int) count {
+	if v == nil || *v == 0 {
+		return count{}
+	}
+	if a.Origins[key] == "caller" {
+		return count{*v, "caller"}
+	}
+	return count{*v, "arm"}
+}
+
 // provenance is everything recorded about how a run was made that is not a
 // column of its own (spec 020 §1).
 type provenance struct {
@@ -273,10 +291,18 @@ type provenance struct {
 	EndpointBefore *Identity `json:"endpoint_before"`
 	EndpointAfter  *Identity `json:"endpoint_after"`
 	Limits         struct {
-		Wall    limit  `json:"wall"`
-		Idle    limit  `json:"idle"`
-		Fired   string `json:"fired"`
-		FiredBy string `json:"fired_by"`
+		Wall limit `json:"wall"`
+		Idle limit `json:"idle"`
+		// Steps is the agent's turn cap, OutputTokens the output budget
+		// of each request (020 §1). No arm or task can cap the number of
+		// requests or the tokens of a whole run: Requests and Tokens say
+		// so, always none.
+		Steps        count  `json:"steps"`
+		OutputTokens count  `json:"output_tokens_per_request"`
+		Requests     count  `json:"requests"`
+		Tokens       count  `json:"tokens"`
+		Fired        string `json:"fired"`
+		FiredBy      string `json:"fired_by"`
 	} `json:"limits"`
 	Container struct {
 		ID        string `json:"id"`
@@ -459,6 +485,8 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		}
 	}
 	p.Limits.Wall, p.Limits.Idle = wall, idle
+	p.Limits.Steps = armCount(a, "agent.max_iterations", a.Agent.MaxIterations)
+	p.Limits.OutputTokens = armCount(a, "model.output_tokens", a.Model.OutputTokens)
 	if wall.Seconds == 0 {
 		facts.Skipped = "neither the arm nor the task sets a wall limit"
 		return finish()

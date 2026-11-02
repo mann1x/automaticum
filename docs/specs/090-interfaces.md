@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.26, 2026-11-02.
+**Status:** draft 0.27, 2026-11-02.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -23,7 +23,7 @@ automaticum oracle verify <task>
 automaticum suite import tbench2 -source D -commit C <task>...   # Terminal-Bench 2.0 tasks as tbench2, kept only if the oracle holds (066 §3)
 automaticum run start --arm A --task T [--task T2 ...] [--suite S ...] [-n 5] [--lane L] [--wall-s S] [--idle-s S] [--capture-requests]
 automaticum run ls|show|tail|stop|abort|pause|resume|retry|invalidate|identify
-automaticum compare <batch> [<batch> ...]
+automaticum compare <batch> [<batch> ...] [--group AXIS] [--pool-versions] [--all]
 automaticum batch|campaign start|ls|show|pause|resume|abort
 automaticum cell run|show|ls
 automaticum cohort ls|show [<name>]        # cells declared to differ in one variable; confounded when another fact differs (D120)
@@ -112,6 +112,13 @@ static-gate refusal of a start answers 422 with `gate` beside `error`.
   image or an artefact built again is the same; an SDK build is checked
   against its pin; an import at the same commit writes the same files; an
   export refuses or replaces whole files).
+- **`--client NAME` on every command that talks to the daemon**, sent as
+  the `Automaticum-Client` header (010 §5); without it the CLI sends
+  `<user>@<host>`, and a request with no header is `unnamed`. The daemon
+  logs every change (`msg=change client=… method=… path=… status=…`; not a
+  read, not a dry run), keeps who started each batch (`started_by`, shown
+  by `batch show`) and each campaign (`campaign show`), and starts a
+  campaign's batches in its starter's name.
 - **Exit codes** every command keeps: 0 done, 1 failed, 2 usage, 3 refused
   by the daemon, 6 the daemon does not answer, 7 not found. `wait` adds 4
   (timeout) and 5 (ended without the condition), and `cell run` keeps

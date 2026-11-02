@@ -104,7 +104,7 @@ func serve(cfgDir string, log *slog.Logger) error {
 	}
 	builds := &sdk.Env{Exec: engine, Defs: filepath.Join(d.Repo, "runner", "sdk"), Root: filepath.Join(d.DataRoot, "sdk"), Archive: archive}
 	dm := &daemon.Daemon{
-		Local: local, State: state, Blobs: blobs, Containers: engine,
+		Local: local, State: state, Blobs: blobs, Archiver: blobs, Containers: engine,
 		Runner: &run.Executor{Engine: engine, Blobs: blobs, State: state, Tasks: tasks, SDK: builds, Local: local, RunsDir: runs, Version: version, Free: free},
 		Repo:   d.Repo, RunsDir: runs, Version: version, Token: token, Log: log, ControlFile: daemon.ControlFile(d.DataRoot),
 	}

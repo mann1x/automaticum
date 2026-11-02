@@ -1,6 +1,6 @@
 # 020 — The run record, verdicts and the basis
 
-**Status:** draft 0.17, 2026-11-01.
+**Status:** draft 0.18, 2026-11-02.
 
 Nothing in this file is optional. Each item is here because its absence
 invalidated or blinded a real campaign. A value is recorded **as probed or as
@@ -32,7 +32,13 @@ sent, never as configured**.
   set each (arm, task, batch, external harness). A batch's own limit (D107)
   replaces the arm's and the task's and may be longer than both; the basis's
   "agent settings" fact names it, so its runs never pool unseen with runs
-  under the arm's or the task's limit.
+  under the arm's or the task's limit. The record (`limits` in the
+  provenance) holds `wall` and `idle` in seconds, `steps` (the arm's
+  `agent.max_iterations`) and `output_tokens_per_request` (the arm's
+  `model.output_tokens`), each with its owner (`arm`, `task`, `batch`, or
+  `caller` for a mode C caller's value) and zero for no limit. No arm or
+  task field caps the requests or the tokens of a whole run, so `requests`
+  and `tokens` are recorded as no limit.
 
 ### 1.1 Where and on what the model ran
 
@@ -152,7 +158,8 @@ Rules:
 - A change to a scorer voids the comparability of every earlier cell of that
   suite until those cells are re-scored from stored material.
 - Reports refuse to pool across a boundary unless told to, and say which runs
-  were excluded and why.
+  were excluded and why. For the task version this is built (070 §6:
+  `--pool-versions`); a scorer change has no boundary of its own yet.
 
 ## 5. The basis
 

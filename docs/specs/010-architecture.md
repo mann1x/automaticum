@@ -1,6 +1,6 @@
 # 010 — Architecture
 
-**Status:** draft 0.8, 2026-10-13.
+**Status:** draft 0.9, 2026-11-02.
 
 ## 1. Fixed points
 
@@ -96,7 +96,10 @@ removes afterwards; a lightweight VM on macOS.
   setting, and the daemon refuses to start on a non-loopback address without a
   token configured.
 - Every mutating call records who made it (a client name the caller supplies),
-  so a campaign started by an assistant session is attributable.
+  so a campaign started by an assistant session is attributable. Built
+  2026-11-02: the `Automaticum-Client` header, `--client` on the CLI (090
+  §1); the daemon's log line for each change, and `started_by` on batches
+  and campaigns.
 - Secrets (endpoint credentials, dataset tokens, Gitea tokens) are held by
   reference to a secret store. Nothing secret appears in a run record, an
   export, a command line, a log or a mailbox message.

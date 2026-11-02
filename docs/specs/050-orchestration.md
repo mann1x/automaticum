@@ -1,6 +1,6 @@
 # 050 — Orchestration: scheduling, gates, control
 
-**Status:** draft 0.20, 2026-11-01.
+**Status:** draft 0.21, 2026-11-02.
 
 ## 1. Scheduling
 
@@ -146,7 +146,9 @@ A webhook that fails is logged and stops nothing.
 `canary` (stop), `campaign` (finished, stopped; `gate` holds its name),
 `batch` (`finished` when its last run ends, once for each number of
 finished runs, with `counts` by verdict; `stopped` by `batch stop` or the
-canary, naming the run in flight) and `run` (its verdict, at its end).
+canary, naming the run in flight), `run` (its verdict, at its end) and
+`archive` (`unavailable` when a pass moved nothing because the archive
+could not be reached, `failed` when blobs stayed on the live tier; 080 §5).
 `[notify] events` lists the kinds sent; empty sends all but `run`, which a
 batch of many runs would make noisy. The log has every kind always.
 `[notify] command = ["program", "arg", ...]` runs once per notification with

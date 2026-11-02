@@ -21,6 +21,10 @@ import (
 // removes or re-defines a field is a new version.
 const CellSchema = "automaticum.cell/1"
 
+// EngineNote is what every report of a mode B or C score says in its header
+// (000 §2): the score is of the model and the Cerebriline build together.
+const EngineNote = "a score of model + Cerebriline build (mode C): never comparable to a published number for this suite under another engine (000 §2)"
+
 // CellResult is automaticum_result.json: the only file a caller reads for
 // the score (065 §3). Fields may be added within a schema version.
 type CellResult struct {
@@ -35,9 +39,11 @@ type CellResult struct {
 	Batch         string `json:"batch"`
 	// ModeC is the caller's endpoint, values, facts and lanes, when the
 	// cell ran in mode C (065 §3.1).
-	ModeC            *CellSpec `json:"mode_c,omitempty"`
-	Cohort           string    `json:"cohort"`
-	DeclaredVariable string    `json:"declared_variable"`
+	ModeC *CellSpec `json:"mode_c,omitempty"`
+	// EngineNote is EngineNote when ModeC is set, and empty otherwise.
+	EngineNote       string `json:"engine_note,omitempty"`
+	Cohort           string `json:"cohort"`
+	DeclaredVariable string `json:"declared_variable"`
 	Headline         struct {
 		Metric         string  `json:"metric"`
 		Value          float64 `json:"value"`
@@ -299,6 +305,9 @@ func (d *Daemon) cellView(ctx context.Context, batch string) (CellView, int, err
 	res.Schema, res.Batch, res.Runs = CellSchema, batch, "runs.jsonl"
 	d.mu.Lock()
 	res.ModeC = d.ctl.Cells[batch]
+	if res.ModeC != nil {
+		res.EngineNote = EngineNote
+	}
 	if c := d.cohortOf(batch); c != nil {
 		res.Cohort, res.DeclaredVariable = c.Name, c.Variable
 	}
@@ -452,7 +461,9 @@ func (d *Daemon) cellView(ctx context.Context, batch string) (CellView, int, err
 	// The numbers, over the runs that count.
 	verdictNumbers(res, v.Rows)
 	if len(recs) > 0 {
-		cv, _, err := d.compareView(ctx, []string{batch}, leave, "")
+		// A cell is one batch: its numbers count every run, and a task
+		// that changed during it is a warning of its own above.
+		cv, _, err := d.compareView(ctx, []string{batch}, leave, "", true)
 		if err == nil {
 			d.cellNumbers(res, cv)
 		}

@@ -79,6 +79,22 @@ milestone 5), edit churn and same-region edits, parse paths and the
 output hygiene the SDK keeps on its messages and not in the stream,
 sandbox escapes, sub-agents (no arm runs them).
 
+**Item 5, the remaining rows (2026-11-02):** every NOT BUILT and PARTIAL
+row was checked again against the code. 17 rows were already built
+(cohorts, `task verify`, the server-side wait, `report ab`, `report
+census`, a SKIPPED run making its cell incomplete, the empty event stream,
+the mailbox through `[notify] command`, endpoint capacity, label group-by,
+re-reads, `--json` and exit codes, live events by SSE, and others), 20 had
+outdated evidence, four are decided or held by the spec (050 §2, D128,
+D129, O39) and 16
+whose remaining gap is a later milestone now say SCHEDULED. Built: the
+mode C header (000 §2, `engine_note`), the limits in force (steps and the
+output budget, with their owner; 020 §1), who made each change (010 §5,
+`--client`), automatic archiving by age (D31, `archive_after_days`) and the
+task version boundary in reports (020 §4, `--pool-versions`). Owner
+question: how tokens are stored hashed while the CLI still authenticates
+(010 §5).
+
 The other rows below are as found, before those fixes. Each table was written by
 one reader of a group of specs; a row's evidence is a path and line at
 180cc97.
@@ -103,28 +119,28 @@ Repo state: main at 180cc97, 2026-11-01. Paths are relative to the repo root. St
 | 000 §2 | Mode A autonomous | BUILT | run start / campaign / daemon queue |
 | 000 §2 | Mode B engine for external harness (engine adapters) | SCHEDULED (m5) | no adapter code; 110 §3 milestone 5 |
 | 000 §2 | Mode C backend of omk_eval (`cell run`, caller endpoint) | BUILT | internal/daemon/modec.go, cell.go; cmd/automaticum/cell_cmds.go |
-| 000 §2 | Every mode B/C report says in its header the score is model+Cerebriline build, not comparable to published numbers | NOT BUILT | no such header/warning in internal/daemon/cell.go CellResult or compare output (grep "comparable" finds only cap notes) |
+| 000 §2 | Every mode B/C report says in its header the score is model+Cerebriline build, not comparable to published numbers | BUILT (mode C; mode B is m5) | `engine_note` on the cell result and the compare view, printed first by `cell show`, `report cell`, `compare`, `report ab` (internal/daemon/cell.go `EngineNote`, compare.go; TestModeCCell); mode B has no adapter yet (064, m5) |
 | 000 §3 | Vocabulary: task, run, batch, arm, lane, endpoint, oracle, gate, finding, campaign, basis, cell | BUILT | store.Run fields; daemon cell.go/campaign.go/basis.go |
-| 000 §3 | `cohort` (named set of cells with one declared variable) | NOT BUILT | store.Run.Cohort and CellResult.Cohort/DeclaredVariable exist but nothing sets them (only duck.go read/write); no cohort entity or command |
-| 000 §3 | `headline metric` declared in the suite | PARTIAL | CellResult.Headline exists (cell.go); suite definitions (suites/*.toml) not built (m5) |
-| 000 §3 | `suite` with fetch/prepare/score | PARTIAL | tbench2 importer only (internal/suite/tbench2); suite interface is m5 |
+| 000 §3 | `cohort` (named set of cells with one declared variable) | BUILT (2026-11-02 re-check) | cohorts, D120: internal/daemon/cohort.go, `cohort ls|show`, `export cohort`; run, cell result and campaign carry the cohort |
+| 000 §3 | `headline metric` declared in the suite | PARTIAL, rest SCHEDULED (m5) | CellResult.Headline exists (cell.go); suite definitions (suites/*.toml) not built (m5) |
+| 000 §3 | `suite` with fetch/prepare/score | PARTIAL, rest SCHEDULED (m5) | tbench2 importer only (internal/suite/tbench2); suite interface is m5 |
 | 000 §3 | `agent mode` | SCHEDULED (m7) | no `automaticum agent` command in cmd/automaticum/main.go |
 | 000 §4-5 | Map and traceability tables | n/a | documentation only |
 | 010 §1 | Daemon and CLI in Go; host runs only Go; Node only in containers | BUILT | cmd/automaticumd, cmd/automaticum; runner only in images/base/Dockerfile |
 | 010 §1 | Lanes in Docker from slim base + one layer per language | BUILT | images/base, images/layers/{typescript,python,go,rust,cpp,dotnet}; internal/docker |
 | 010 §1 | Gitea provides git for tasks that need a remote | SCHEDULED (m5) | no Gitea code (grep gitea: none); 110 §3 m5 |
-| 010 §1 | Store is DuckDB + Lance + blobs | PARTIAL | daemon opens DuckDB + blobs only (cmd/automaticumd/main.go:84-91); internal/store/lance used only by tests/spike; Lance chunks/search = m6 |
+| 010 §1 | Store is DuckDB + Lance + blobs | PARTIAL, rest SCHEDULED (m6) | daemon opens DuckDB + blobs only (cmd/automaticumd/main.go:84-91); internal/store/lance used only by tests/spike; Lance chunks/search = m6 |
 | 010 §1 | Remote hosts via agent mode only | SCHEDULED (m7) | not built |
 | 010 §1 | One operator, no accounts | BUILT | single token, api.go allowed() |
 | 010 §2 | HTTP/JSON API + SSE stream | BUILT | api.go Handler (routes ~286-321); handleStream text/event-stream (api.go ~1076) |
-| 010 §2 | WebSocket | NOT BUILT | only SSE; diagram lists "SSE/WebSocket" |
+| 010 §2 | WebSocket | BUILT (SSE; 090 §3 asks SSE or WebSocket) | live events by SSE; only the 010 diagram says "SSE/WebSocket" |
 | 010 §2 | Scheduler, lane manager, gate engine, oracle runner, ingest + detectors, query + statistics | BUILT | daemon.go, gate.go, task/exec.go RunOracle, ingest/, stats/, compare.go |
 | 010 §2 | Embedder client, search | SCHEDULED (m6) | none |
 | 010 §2 | Gitea client | SCHEDULED (m5) | none |
 | 010 §2 | Engine adapters | SCHEDULED (m5) | none |
-| 010 §2 | Suite plugins | PARTIAL | tbench2 importer only; suite interface m5 |
+| 010 §2 | Suite plugins | PARTIAL, rest SCHEDULED (m5) | tbench2 importer only; suite interface m5 |
 | 010 §2 | Webhooks | BUILT | daemon.go:657 notify, config [notify] webhook |
-| 010 §2 | Mailbox | NOT BUILT | none; 110 §3.2 lists "a mailbox notifier" as carried forward from m3 with no milestone |
+| 010 §2 | Mailbox | BUILT (2026-11-02 re-check) | the mailbox is reached through `[notify] command` (daemon.go `notifyCommand`; 050 §2), as the spec now says: the repo holds no mailbox of its own |
 | 010 §2 | TUI, web dashboard, MCP clients | SCHEDULED (m6) | none |
 | 010 §2 | Every dashboard action exists as CLI command and API call | SCHEDULED (m6) | dashboard not built |
 | 010 §2 | Plugins have a name and a version | BUILT (gates, detectors) | gate.Gate{Name,Version}; Finding.DetectorVersion; adapters/suite plugins pending m5 |
@@ -139,7 +155,7 @@ Repo state: main at 180cc97, 2026-11-01. Paths are relative to the repo root. St
 | 010 §5 | Tokens stored hashed | NOT BUILT | token read in plain text from token_file (local.go:293-313), compared directly (api.go allowed) |
 | 010 §5 | Read-only mode to share a result | PARTIAL | only unauthenticated GET from loopback (api.go allowed); no read-only token/share mode |
 | 010 §5 | Loopback by default; refuse non-loopback without token | BUILT | local.go:206 default 127.0.0.1:7411; token always required at start (automaticumd main.go:70) |
-| 010 §5 | Every mutating call records who made it (client name) | NOT BUILT | no client/actor field in any handler or StartRequest (grep actor/client: none) |
+| 010 §5 | Every mutating call records who made it (client name) | BUILT (2026-11-02) | `Automaticum-Client` header, `--client` on the CLI (default <user>@<host>); daemon log line per change, `started_by` on batches and campaigns (internal/daemon/mutate.go `clientOf`, api.go; TestClientRecorded) |
 | 010 §5 | Secrets by reference to a secret store; never in record/export/command line/log | PARTIAL | api_key_file/token_file file references; wire.mjs masks headers as `[set]`; no secret store |
 | 010 §6 | Lane binds to named GPU devices; never use a device not given | PARTIAL | no device field on Lane (local.go:121-134); gate `gpu_ownership` returns Unchecked (m7) |
 | 010 §6 | Wait on external busy signal; never preempt | BUILT | gate `free` Wait (gate.go:198); D64 |
@@ -148,24 +164,24 @@ Repo state: main at 180cc97, 2026-11-01. Paths are relative to the repo root. St
 | 010 §6 | Never probe a busy endpoint disturbingly | BUILT | probe reads /api/ps,/api/show,/props only |
 | 010 §6 | Never use/start a server bound to all interfaces | PARTIAL | gate `bind_address` refuses only a 0.0.0.0 URL (gate.go:444-459); whether the server listens on all interfaces needs m7 agent; never starts servers (D97) |
 | 010 §6 | Large data to data root with free-space floor; never tmpfs | BUILT | free_floor_gb (local.go:88), run.go:739 floor check; Tmpfs check in automaticumd main.go |
-| 010 §6 | Never skip silently: SKIPPED with reason, cell marked incomplete | PARTIAL | SKIPPED+reason built (verdict.go); cell `complete` only counts unfinished runs, SKIPPED only gives a warning (cell.go:286-292) |
+| 010 §6 | Never skip silently: SKIPPED with reason, cell marked incomplete | BUILT (2026-11-02 re-check) | a SKIPPED run is in the cell's `unfinished`, so `complete` is false and the exit code 30 (internal/daemon/cell.go, `case store.Skipped`) |
 | 010 §6 | Timestamps UTC with offset | BUILT | StartedAt now.UTC() (run.go:316), RFC3339 JSON |
 | 010 §6 | Configuration immutable once a run started | BUILT | arm resolved once and job file mounted read-only |
 | 020 §1 | Run id sortable, batch, campaign, arm id, task id, task version, lane, host | BUILT | store.Run (store.go:55-101), run.go:314-325 |
-| 020 §1 | Run record cell and cohort columns | PARTIAL | Cell only in provenance (`cell`), store.Run.Cell/Cohort never set by internal/run |
+| 020 §1 | Run record cell and cohort columns | PARTIAL | `store.Run.Cohort` set from the request (D120, internal/run/run.go); `store.Run.Cell` still never set, the cell only in provenance |
 | 020 §1 | Arm fully resolved with value as sent | BUILT | Run.Arm = a.Resolved() (run.go:318) |
 | 020 §1 | ...plus where each value came from | PARTIAL | Arm.Origins is `json:"-"` (config/arm.go:50); shown by `arm show` only, not stored with the run |
 | 020 §1 | Harness build: SDK version, commit, sha256 of package; runner version; image digest; automaticum version | BUILT | provenance sdk/image/automaticum/runner_protocol (run.go:218-237, 726-738) |
-| 020 §1 | Harness build: SDK dirty flag | NOT BUILT | no dirty field anywhere (grep dirty: none) |
+| 020 §1 | Harness build: SDK dirty flag | PARTIAL | imported runs carry `.dirty` in Harness (legacyimport/mapping.go); a native run's SDK build has no dirty flag (registry builds are clean by construction; `source = "local"` packs are not marked) |
 | 020 §1 | Harness build: language layer digests | PARTIAL | only lane image ID + RepoDigests (run.go:726); no per-layer digests |
 | 020 §1 | Endpoint identity: kind, version, digest, capabilities, template sha/size, renderer, parser, parameters, context, slots, residency | BUILT | run/probe.go Identity; props.go (n_ctx, total_slots, template hash, build_info) |
-| 020 §1 | Endpoint identity: serving-library build time/hash (llama.cpp shared library), feature list, reasoning/tool-call parser flags, imatrix | PARTIAL | only llama.cpp build_info string; no library hash, no feature list, no parser flags for llama.cpp; imatrix not read (basis.go says so) |
-| 020 §1 | Weights: repo/path, revision, sha256 per file | PARTIAL | only model digest and GGUF metadata via server; not_recorded "weights: needs agent mode" (run.go:336) |
+| 020 §1 | Endpoint identity: serving-library build time/hash (llama.cpp shared library), feature list, reasoning/tool-call parser flags, imatrix | PARTIAL | mode C: caller-declared weights and imatrix sha256, /props facts (basis.go); Ollama renderer and parser recorded (probe.go); mode A: no library hash, feature list, llama.cpp parser flags or imatrix |
+| 020 §1 | Weights: repo/path, revision, sha256 per file | PARTIAL | mode C: caller's weights sha256 and the file name from /props (basis.go); mode A "needs agent mode"; no revision |
 | 020 §1 | Task identity: suite, sha256 of every input file, prompt, oracle hash, scorer image | BUILT | provenance task hash/files/prompt (run.go:333); OracleResult.ImageID |
 | 020 §1 | Task identity: suite version | NOT BUILT | not in run provenance (only CellResult.SuiteVersion) |
 | 020 §1 | Host facts: GPU, driver, power cap, free VRAM | SCHEDULED (m7) | GPU declared only; not_recorded host_facts (run.go:337) |
 | 020 §1 | Limits in force: wall, idle with owner (incl. batch D107) | BUILT | provenance limits wall/idle/fired/fired_by (run.go:199-263) |
-| 020 §1 | Limits in force: requests, tokens, steps | NOT BUILT | only wall and idle recorded; arm has no requests/tokens limit (max_iterations is in arm, not in limits record) |
+| 020 §1 | Limits in force: requests, tokens, steps | BUILT (2026-11-02) | `limits` holds wall, idle, steps (agent.max_iterations), output_tokens_per_request, requests and tokens (no field can cap them: recorded as none), each with its owner (internal/run/run.go `count`, `armCount`; TestArmCount); 020 §1 says so |
 | 020 §1.1 | `inference` object: endpoint, kind, version, engine, hosts, declared GPU, share, model as served, tag/digest, stated identity, not_stated | BUILT | run.go:50-93 Inference |
 | 020 §1.1 | GPU `measured` | SCHEDULED (m7) | stays empty (run.go:70) |
 | 020 §1.1 | Model queried before every run; compare shows distinct answers | BUILT | D82; compare.go Served |
@@ -192,7 +208,7 @@ Repo state: main at 180cc97, 2026-11-01. Paths are relative to the repo root. St
 | 020 §3 | Exit-0 oracles judged by declared pattern | BUILT | task.go:140 expect_pattern |
 | 020 §3 | TIMEOUT records which limit and owner | BUILT | verdict.go limitWho; LimitBy runner/harness |
 | 020 §3 | ABORTED causes: crash, OOM, operator kill, tampered oracle, scorer error, D89 | BUILT | run.go:580-612 |
-| 020 §3 | ABORTED on empty event stream | PARTIAL | missing end line is ABORTED (run.go:594); an end line with zero events is not checked |
+| 020 §3 | ABORTED on empty event stream | BUILT (2026-11-02 re-check) | an empty event stream is ABORTED (internal/run/run.go "the event stream is empty"; run_test.go) |
 | 020 §3 | INVALID: wrong build, setting not applied, not GPU-resident, endpoint changed | BUILT | run.go:599-645; ingest gpu_residency/model_reloaded |
 | 020 §3 | D99 guard stop -> FAIL with oracle answer kept | BUILT | verdict.go GuardStop case |
 | 020 §3 | Secondary outcome (agent end, claimed success) | BUILT | Run.AgentEnd, ClaimedSuccess (run.go:548) |
@@ -203,14 +219,14 @@ Repo state: main at 180cc97, 2026-11-01. Paths are relative to the repo root. St
 | 020 §4 | Task version recorded | BUILT | Run.TaskVersion |
 | 020 §4 | A change to a task/oracle/limits/toolchain/scoring creates a new task version | PARTIAL | version is hand-declared in task.toml (task.go:30); file hash recorded, nothing forces a bump |
 | 020 §4 | Scorer change voids comparability of earlier cells until re-scored | NOT BUILT | none |
-| 020 §4 | Reports refuse to pool across a version boundary unless told, and list exclusions | NOT BUILT | compare groups by arm+task only (compare.go:320-322); differing versions only show as a mixed `task` basis fact |
+| 020 §4 | Reports refuse to pool across a version boundary unless told, and list exclusions | PARTIAL (task version BUILT 2026-11-02) | compare, report ab and basis show count only the latest task version's runs and name the others; `--pool-versions` pools and says so (compare.go; TestCompareVersionBoundary); no scorer boundary |
 | 020 §5 | Basis object with canonical serialisation and sha256 | BUILT | daemon/basis.go basisFields; CellResult.BasisSHA256 |
 | 020 §5 | `basis diff`, `basis show`, `arm diff` | BUILT | routes GET /v1/basis; cmd basis show/diff; config_cmds arm diff |
 | 020 §5 | compare prints basis diff of each pair | BUILT | compare.go Basis []BasisDiff |
-| 020 §5 | Basis field weights per-file sha256/revision | PARTIAL | digest + general.finetune only |
-| 020 §5 | Basis field imatrix | NOT BUILT | basis.go records "not recorded" |
+| 020 §5 | Basis field weights per-file sha256/revision | PARTIAL | mode C: caller's weights sha256 in the basis (basis.go); mode A: digest + general.finetune only |
+| 020 §5 | Basis field imatrix | PARTIAL | mode C: caller-declared imatrix sha256 (basis.go); mode A: "not recorded" |
 | 020 §5 | Basis field GPU driver and power | SCHEDULED (m7) | needs agent mode |
-| 020 §5 | Basis field suite version, task-set sha256, task ids in order | PARTIAL | in CellResult (suite_version, task_set_sha256); basis `task` fact per task only |
+| 020 §5 | Basis field suite version, task-set sha256, task ids in order | PARTIAL | task_set_sha256 set (cell.go); `suite_version` exists but nothing sets it (suites/*.toml, m5) |
 | 020 §5 | Cohort declared variable; **confounded** label | BUILT | D120: campaign `[cohort]`, `cell run --cohort --declared-variable`; `internal/daemon/cohort.go` (`cohortFacts`, `cohortView`); TestCohort, TestCampaign |
 | 020 §5 | Refuse to put different bases in one table unless told; label differing columns | NOT BUILT | spec says not built |
 | 020 §5 | Greedy anchor; sampled cells in separate sampler cohort, never mixed | NOT BUILT | none (grep greedy: none) |
@@ -220,7 +236,7 @@ Repo state: main at 180cc97, 2026-11-01. Paths are relative to the repo root. St
 | 030 §1 | Unknown fields are errors | BUILT | md.Undecoded in arm.go:275, local.go:185, campaign.go:81, task.go:174, sdk.go:119, model.go decodeStrict |
 | 030 §1 | No environment-variable knobs | PARTIAL | CLI and daemon read AUTOMATICUM_CONFIG/REPO/DATA/ARCHIVE/LEGACY_* as flag defaults (config_cmds.go:31-32, store_cgo.go:28-93, automaticumd main.go:35); paths only, but not recorded |
 | 030 §1 | Validation commands `arm validate`, `doctor` | BUILT | main.go dispatch |
-| 030 §1 | Validation command `task verify` | NOT BUILT | no `task verify` in main.go (only `oracle verify`, `task show/build/ls`) |
+| 030 §1 | Validation command `task verify` | BUILT (2026-11-02 re-check) | `task verify` (cmd/automaticum/show_cmds.go, main.go dispatch) |
 | 030 §1 | Validation before anything is queued | BUILT | Static gates in start (api.go; endpoint-probe rule) |
 | 030 §1 | One `--config` directory with automaticum.toml, lanes, endpoints, arms, models (D118) | BUILT | config/local.go LoadLocal, ArmsDir/ModelsDir |
 | 030 §1 | automaticum.toml: data root, archive root, bind address, token, [notify] webhook | BUILT | local.go:84-116 |
@@ -247,8 +263,8 @@ Repo state: main at 180cc97, 2026-11-01. Paths are relative to the repo root. St
 | 030 §4 | Capability probe per kind | BUILT | run/probe.go per kind; props.go |
 | 030 §4 | Real one-token generation probe | NOT BUILT | probe.go:20 "without generating anything" |
 | 030 §4 | Detect restart, auto-update, reload | BUILT | Identity.Changed before/after; model_reloaded finding |
-| 030 §4 | Detect 429 Retry-After, context-size errors, evictions | PARTIAL | failed requests flagged (ingest/wire.go:97) but not classified |
-| 030 §4 | Capacity; scheduler respects it across lanes | PARTIAL | Endpoint.Capacity parsed, used only for mode C (modec.go:98); scheduler does not read it (gate `free` waits on any other model instead) |
+| 030 §4 | Detect 429 Retry-After, context-size errors, evictions | PARTIAL | an agent that ends on too many requests, exhausted allocation, eviction or a transport fault is classified ABORTED (internal/run/fault.go, verdict.go); requests on the wire not classified, Retry-After not read |
+| 030 §4 | Capacity; scheduler respects it across lanes | BUILT (2026-11-02 re-check) | the scheduler counts runs in flight per endpoint across lanes and holds a run at capacity, the reason in status (daemon.go `endpointFull`) |
 | 030 §4 | Caller-given endpoint (mode C), never loaded/unloaded | BUILT | modec.go; daemon.go:525 `!ep.Cell` |
 | 030 §4 | D79 unload_others and `unloaded_before_run` | BUILT | daemon.go:525; provenance Unloaded |
 | 030 §4.1 | Model catalogue fields, unknown field error, duplicate tag error | BUILT | config/model.go:17-73 |
@@ -376,8 +392,8 @@ It is not counted as BUILT below.
 | 050 §2 | Gates are plugins with name and version | BUILT | `internal/gate/gate.go:92-106` |
 | 050 §2 | ... "so a campaign can add one" | NOT BUILT | fixed built-in list; see campaign gates above |
 | 050 §2 | Refusing gate notifies via **webhook** | BUILT | `daemon.go:533,659` `notify`; `[notify] webhook` `local.go:116` |
-| 050 §2/§3.1.1/§6 | Refusing gate / campaign end / stopped batch notifies via **mailbox** | NOT BUILT | spec itself: "A mailbox notifier is not built"; D62 scoped m3 to webhook+log; 110 §3.2 carries it forward with no milestone; no mailbox code anywhere |
-| 050 §2 | Static-gate refusal at `run start` (422) notified | PARTIAL | `api.go:557-561` refuses the start but sends no notification (caller gets the 422; campaign batch start failure ends campaign, which is notified) |
+| 050 §2/§3.1.1/§6 | Refusing gate / campaign end / stopped batch notifies via **mailbox** | BUILT (2026-11-02 re-check) | notifications go to `[notify] command`, the mailbox client (daemon.go `notifyCommand`; 050 §2) |
+| 050 §2 | Static-gate refusal at `run start` (422) notified | CHANGED (050 §2) | 050 §2 decides a static refusal of a whole start is the caller's 422 naming the gate, and is not notified |
 | 050 §2 | `automaticum doctor` runs every gate on every lane | BUILT | `api.go:302` `/v1/doctor`, CLI `doctor [--lane --arm --task --all]` |
 | 050 §3.1 | Gate model tag (exists, digest matches pin) | BUILT | `gate.go:94` `modelTag` |
 | 050 §3.1 | Gate template (template, renderer, parser intact) | PARTIAL | checks tool capability, records hash/size; template text not parsed, weights file named not hashed (spec "not yet") |
@@ -392,13 +408,13 @@ It is not counted as BUILT below.
 | 050 §3.1 | Gate host: disk floor, inotify, user-namespace sysctl, clock sync | PARTIAL | disk floor and inotify only; `gate.go:390` "clock sync and the user-namespace setting are not read" (no milestone) |
 | 050 §3.1 | Gate oracle (verifies against fixtures, proof by task hash) | BUILT | `gate.go:101`; proof `internal/task/exec.go:575` |
 | 050 §3.1 | Gate workspace (pristine, hash-checked) | BUILT | `gate.go` workspace (writable, not tmpfs `:420`), copy+hash in run |
-| 050 §3.1 | Gate bind address (not bound to all interfaces, reachable) | PARTIAL | reachability only; all-interfaces check needs agent (m7) |
+| 050 §3.1 | Gate bind address (not bound to all interfaces, reachable) | PARTIAL, rest SCHEDULED (m7) | reachability only; all-interfaces check needs agent (m7) |
 | 050 §3.1.1 | Four answers pass/refuse/wait/unchecked; wait re-asked every 30 s; answers recorded in run | BUILT | `gate.go:30`, `daemon.go:409` (`GateRetry` 30 s), `Gates: answers` `daemon.go:579` |
 | 050 §3.1.1 | Notification: refusal every time, wait once per run; payload fields | BUILT | `daemon.go:519-533`, `Notification` struct `daemon.go:645` |
 | 050 §3.1.1 | Static gates refuse `run start`/campaign batch/dry run up front (422, nothing queued) | BUILT | `api.go:557-561` |
 | 050 §3.2 | Gate context per slot >= prompt + output budget of the suite's largest task | PARTIAL | only mode C: arm context window vs `/props` slot `n_ctx` (`run/props.go:95` `Contradictions`); no per-suite largest-task check, none for non-cell batches |
 | 050 §3.2 | Gate parse failures degrade (server does not 500 on tool-call parse failure) | NOT BUILT | no code |
-| 050 §3.2 | Gate scorer validation (gold passes on a sample) for external suites | PARTIAL | tbench2 gold validated at import (`suite/tbench2/import.go:148-172`); local tasks via `oracle` gate; no general pre-cell gate for external suites (m5 suites) |
+| 050 §3.2 | Gate scorer validation (gold passes on a sample) for external suites | PARTIAL, rest SCHEDULED (m5) | tbench2 gold validated at import (`suite/tbench2/import.go:148-172`); local tasks via `oracle` gate; no general pre-cell gate for external suites (m5 suites) |
 | 050 §3.2 | Gate detector self-test before cell/batch; failing detector marks metric unavailable | PARTIAL | self-test run when the cell result is read and a warning added (`daemon/cell.go:271`); not a gate before the batch, metric not marked unavailable |
 | 050 §3.2 | Gate disk for the suite (image + env size vs free) | NOT BUILT | only the generic `free_floor_gb` floor |
 | 050 §3.2 | Gate credentials (token in secret store before start) | NOT BUILT | only endpoint `api_key_file` read during probe (`gate.go:120`) |
@@ -469,7 +485,7 @@ It is not counted as BUILT below.
 | 060 §6 | Gitea instance per daemon, per-run repo/token/artefacts | SCHEDULED (m5) | no code |
 | 060 §7 | Tasks carry canary and `private` flag | BUILT | `task.go:47-48` |
 | 060 §7 | Private tasks root `private_tasks`; must be private; canary >= 16; same id in both roots refused | BUILT | `local.go:98`, `task.go:192-247` |
-| 060 §7 | Export / embedder / chat box never send private task text to cloud | PARTIAL | `export conversations` refuses private tasks (`daemon/export.go:63`); embedder and chat box do not exist (m6) |
+| 060 §7 | Export / embedder / chat box never send private task text to cloud | PARTIAL, rest SCHEDULED (m6) | `export conversations` refuses private tasks (`daemon/export.go:63`); embedder and chat box do not exist (m6) |
 | 060 §7 | Training pool `train-*` suites, `training = true`, loader refuses mismatch (D105) | BUILT | `task.go:53`; suites `tasks/train-ml`, `train-sh`, `train-game` |
 | 060 §7 | Oracle and lane `/tmp` allow exec | BUILT | `exec.go:140`, `run.go:512` |
 | 061 §1-5 | BFCL suite: pinned `inspect_evals/bfcl`, categories/subsets, V3 scorer, paired comparison, scorer container, gold validation, proxy cell and agent cell, per-entry records, report header note | SCHEDULED (m5) | no BFCL code anywhere |
@@ -487,9 +503,9 @@ It is not counted as BUILT below.
 | 063 §3 | Hidden tests run by harness; visible tests separate file set | PARTIAL | hidden: BUILT; visible as separate set: see 060 §2 |
 | 063 §3 | Reference + known-bad per task; admitted only if oracle verify passes; reference run several times | BUILT | fixtures + `oracle verify` repeats + gate `oracle` |
 | 063 §3 | Partial credit (tests passed / tests) recorded | BUILT | `oracle.partial_share` (see 060 §2) |
-| 063 §4 | Problem id shared across languages; per-language and per-problem report views | NOT BUILT | no problem id field; `compare` groups by arm and task only (`daemon/compare.go:321`) |
+| 063 §4 | Problem id shared across languages; per-language and per-problem report views | PARTIAL | per-language view by `compare --group label.language` (compare.go groupAxis); no problem-id field, no per-problem view |
 | 063 §4 | Tiers and families as labels | BUILT | e.g. `tasks/train-ml/go_workerpool/task.toml` `[labels]` |
-| 063 §4 | Attribution on balanced axes with per-category n | NOT BUILT | no label-axis grouping in compare (070 §6 territory) |
+| 063 §4 | Attribution on balanced axes with per-category n | BUILT (2026-11-02 re-check) | `compare --group label.<k>` shows each group's n and arm ids, so balance is seen (not enforced) |
 | 063 §4 | Versioning: any change = new task version | BUILT | task version + task hash in record/basis |
 | 063 §4 | Canary + private flag | BUILT | 060 §7 |
 | 063 §5 | Per language: compile errors, test failures, timeouts counted apart | NOT BUILT | no code |
@@ -506,7 +522,7 @@ It is not counted as BUILT below.
 | 065 §2 | Caller-resolved arm fields recorded as caller and verified on wire | BUILT | `--caller-values`, origin `caller` |
 | 065 §2 | Resume: same key does not repeat finished runs | BUILT | `cell_cmds.go:94-102` |
 | 065 §2 | Progress stream started / n_done/n_total / finished | BUILT | `cell_cmds.go` |
-| 065 §2.1 | Exit codes 0/10/20/30/70 and `refusal.json` on 20/30 | PARTIAL | built for per-run gate refusals (`cell.go:296-300`); but a static-gate refusal at start (422 from `api.go:561`, since 2026-10-25) makes `cell run` exit **70** with no `refusal.json` (`cell_cmds.go:91-93` returns the plain error -> `cellInternal`) |
+| 065 §2.1 | Exit codes 0/10/20/30/70 and `refusal.json` on 20/30 | BUILT (2026-11-02 re-check) | a 422 naming a gate exits 20 with refusal.json (cmd/automaticum/cell_cmds.go, fixed 2026-11-01) |
 | 065 §3 | Result file `automaticum.cell/1`, atomic, all listed fields | PARTIAL | written; `suite`/`subset` filled from the cell header; `cohort`, `declared_variable` filled (D120); `suite_version` unset |
 | 065 §3 | Headline over n_expected; counts sum; errored tasks counted explicitly; warnings; complete=false implies warnings; runs.jsonl; UTC | BUILT | `cell.go:146-300` (`counted_as`) |
 | 065 §3 | Suite-declared headline (e.g. resolved_rate), `empty_patch_rate` | SCHEDULED (m5) | spec 065 §3.1 says milestone 5 |
@@ -519,7 +535,7 @@ It is not counted as BUILT below.
 | 065 §5 | `automaticum export cohort <name> --format parquet\|jsonl` | PARTIAL | `export cohort --format jsonl\|csv` built (cohort_cmds.go, D120); Parquet not yet (DuckDB in the daemon) |
 | 065 §5 | Layout option `<results>/<suite>/<served-model>/` (omnimergekit tree) | NOT BUILT | no code; 065 §3.1 lists the layout as still to agree |
 | 065 §5 | Per-campaign export mirrorable to another host | BUILT | `export campaign <name> --out D` (report_cmds.go) |
-| 065 §5 | Any slice as JSONL/CSV/Parquet; self-contained HTML report (090 §6) | PARTIAL | a cell as JSONL and CSV (`export cell`); slices, Parquet and the HTML report not built |
+| 065 §5 | Any slice as JSONL/CSV/Parquet; self-contained HTML report (090 §6) | PARTIAL | `export run|cell|campaign|cohort` (JSONL, CSV); arbitrary slices, Parquet and the HTML report not built |
 | 065 §5 | Private tasks never exported to cloud | BUILT | `daemon/export.go:63` (only export that exists) |
 | 066 §1 | Source pinned at commit, image tags pinned by digest, canary kept as label | BUILT | `suite_cmds.go:41-49` (HEAD check, clean checkout), `tbench2.go:157,217,351` |
 | 066 §1 | Never trained on: not a `train-*` suite, export refuses | BUILT | `daemon/export.go:63` |
@@ -619,19 +635,19 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 090 §1 | a run in flight streamed as SSE | BUILT | api.go:1079-1097 GET /v1/runs/{id}/stream |
 | 090 §1.1 | one human formatter (D69) | BUILT | internal/human; `--json`/API unformatted |
 | 090 §2 | TUI, four view groups (D26, D33) | SCHEDULED | M6 |
-| 090 §3 | REST+JSON for everything the CLI does | PARTIAL | config-side commands (arm/task/oracle/lane/endpoint/sdk/image/suite/export conversations batch-level) have no API route; M6 hardening |
+| 090 §3 | REST+JSON for everything the CLI does | PARTIAL, rest SCHEDULED (m6) | config-side commands (arm/task/oracle/lane/endpoint/sdk/image/suite/export conversations batch-level) have no API route; M6 hardening |
 | 090 §3 | SSE/WebSocket live events | BUILT | SSE only (api.go:1097) |
-| 090 §3 | token auth with read-only mode | PARTIAL | token yes; "read-only" = loopback GETs only, no share token; M6 |
+| 090 §3 | token auth with read-only mode | PARTIAL, rest SCHEDULED (m6) | token yes; "read-only" = loopback GETs only, no share token; M6 |
 | 090 §3 | every list paged | SCHEDULED | M6 hardening; only `limit` on GET /v1/runs (api.go:744), no paging |
 | 090 §3 | every object has a `brief` form | SCHEDULED | M6 hardening; none |
 | 090 §3 | structured errors (code, message, gate) | SCHEDULED | M6 hardening; errors are `{"error": "..."}` only (api.go:264-277) |
 | 090 §4 | web dashboard (all bullets incl. read-only share) | SCHEDULED | M6 |
 | 090 §5 | MCP server | SCHEDULED | M6 |
-| 090 §5 | server-side "wait for" primitives | NOT BUILT | see `wait` row; not assigned in 110 §3 table except via MCP (M6) |
+| 090 §5 | server-side "wait for" primitives | BUILT (2026-11-02 re-check) | `GET /v1/wait/{kind}` (internal/daemon/wait.go), `automaticum wait` |
 | 090 §5 | `brief` report format | NOT BUILT | no code; not explicitly in 110 §3 |
 | 090 §5 | notifications: webhook on campaign end, refusing gate, stopped batch | BUILT | daemon.go:657-690; campaign.go:254, daemon.go:488, canary.go:118 |
-| 090 §5 | notifications through the mailbox | NOT BUILT | carried forward from M3 (110 §3.2), no milestone |
-| 090 §5 | dry run and idempotency keys (as CLI) | PARTIAL | as §1 |
+| 090 §5 | notifications through the mailbox | BUILT (2026-11-02 re-check) | through `[notify] command` (050 §2) |
+| 090 §5 | dry run and idempotency keys (as CLI) | BUILT (2026-11-02 re-check) | dry runs and Idempotency-Key on every mutating command (internal/daemon/mutate.go) |
 | 090 §6 | transcript viewer, aligned server/runtime log | SCHEDULED | M6 (TUI/dashboard view group 4) |
 | 090 §6 | full-text/regex search, filters, archived runs | SCHEDULED | M6 |
 | 090 §6 | semantic search with coverage | SCHEDULED | M6 |
@@ -641,13 +657,13 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 090 §7 | embedders | SCHEDULED | M6 |
 | 090 §7 | chat box | SCHEDULED | M6 |
 | 090 §7 | model-written run summaries / finding triage | NOT BUILT | not assigned |
-| 090 §7 | private task text never to a cloud endpoint | PARTIAL | flag documented on task (task.go:43); no enforcement code found (no embedder/cloud check) |
+| 090 §7 | private task text never to a cloud endpoint | PARTIAL | `export conversations` refuses private tasks (daemon/export.go); embedder and chat box are m6; no cloud endpoint kind |
 
 ## 070 Diagnostics
 
 | spec § | item | status | evidence / notes |
 |---|---|---|---|
-| 070 §1 | everything automatic at ingest, as CLI + API + dashboard view | PARTIAL | ingest + CLI/API yes; dashboard M6 |
+| 070 §1 | everything automatic at ingest, as CLI + API + dashboard view | PARTIAL, rest SCHEDULED (m6) | ingest + CLI/API yes; dashboard M6 |
 | 070 §1.1 | `run show`: verdict, evidence, metrics, findings, artefact list | BUILT | runShow / GET /v1/runs/{id} |
 | 070 §1.1 | arm fields differing from batch baseline highlighted | BUILT | D130: campaign `baseline`, else the parent arm; `run show` lists what differs (baseline.go); TestArmBaseline, TestLoadCampaign |
 | 070 §1.1 | timeline | BUILT | `run timeline` (timeline_cmds.go), `Events.KeepTimeline`; TestTimeline |
@@ -659,7 +675,7 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §2 | completion split reasoning/text/tool input; rates prompt/gen | BUILT | tokens.completion.reasoning/text/tool_input, rate.*_tok_s |
 | 070 §2 | rates per request and with concurrency | PARTIAL | per request built (`rate.*.per_request`, analysis 9); the concurrency measured at is not recorded |
 | 070 §2 | length distributions (tokens) n,sum,p10,p50,p90,max | BUILT | tokens.completion.per_request.* |
-| 070 §2 | length distributions in characters, reasoning alone, text alone | PARTIAL | thinking.chars(.max), text.chars; not full p10..p90 sets for each |
+| 070 §2 | length distributions in characters, reasoning alone, text alone | PARTIAL | n/sum/p10/p50/p90/max for thinking.chars, text.chars, tokens per request, text tokens per request, thinking tokens per block (ingest/analyse.go `distribution`); no distribution of total completion characters |
 | 070 §2 | finish reasons histogram; empty completions | BUILT | finish.*, completions.empty |
 | 070 §2 | thinking: blocks, turns without | BUILT | thinking.blocks, thinking.turns_without |
 | 070 §2 | thinking: tokens per block median/p90, budget hits, thinking-only turns | BUILT | `thinking.tokens.per_block`, `thinking.budget_hits`, `turns.thinking_only` (analysis 9); TestTurnMetrics |
@@ -678,12 +694,12 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §2.1 | token p50/p90 over PASS runs only | BUILT | `token_stats_pass` in the result file (cell.go verdictNumbers); TestVerdictNumbers |
 | 070 §2.1 | tokens per solved task | BUILT | compare.go:61,403 |
 | 070 §2.1 | throughput over whole cell | BUILT | `scores.throughput_tok_s` |
-| 070 §2.1 | sanity warnings: n vs expected, empty >5%, p10 visible chars under floor | PARTIAL | empty >5% warning built (`empty_completion_share`); n always equals the runs queued; the floor is declared in `suites/*.toml` (m5), as the spec now says |
+| 070 §2.1 | sanity warnings: n vs expected, empty >5%, p10 visible chars under floor | PARTIAL, rest SCHEDULED (m5) | empty >5% warning built (`empty_completion_share`); n always equals the runs queued; the floor is declared in `suites/*.toml` (m5), as the spec now says |
 | 070 §3 | Go detector library, via CLI and API (D24) | BUILT | internal/detect; `detect`, GET /v1/runs/{id}/detect |
 | 070 §3 | short-unit repeat, char run, sentence repeat (§3.1) | BUILT | internal/detect/detect.go, reference_test.go |
-| 070 §3 | runaway (per-suite declared size) | PARTIAL | detector and `detect --runaway N` built; the per-suite size is declared in `suites/*.toml` (m5), as the spec now says |
+| 070 §3 | runaway (per-suite declared size) | PARTIAL, rest SCHEDULED (m5) | detector and `detect --runaway N` built; the per-suite size is declared in `suites/*.toml` (m5), as the spec now says |
 | 070 §3 | repeated tool call | BUILT | detectors.go:103-105 |
-| 070 §3 | near-duplicate rounds | NOT BUILT | D129: held until the owner defines it |
+| 070 §3 | near-duplicate rounds | HELD (D129) | held until the owner defines it |
 | 070 §3 | edit oscillation | BUILT | D129: `edit_oscillation`, the call guard on writing tools (library 3) |
 | 070 §3 | re-read loop | BUILT | D129: `reread_loop`, the call guard's same-result rule on other tools (library 3) |
 | 070 §3 | per-block flags kept separate + looped OR | BUILT | detector.<name>.<channel>, detector.looped_blocks |
@@ -703,9 +719,9 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §3.2 | `detect.Spans` | BUILT | internal/detect/spans.go |
 | 070 §4 | guards: what fired, when, what it cut, what the model did next | BUILT | `guard_trip` finding, `guard_trips.next.<act>` (analysis 9) |
 | 070 §4 | guards that should have fired (rule replayed); false-positive review queue | BUILT | `guard_replay` finding; `report guards` (`GET /v1/report/guards`); TestReportGuards |
-| 070 §4 | tool-call findings (parse path, unreadable, truncated, unknown names, schema violations, arrays as strings, intent scratch, 5xx apart, no-call turns) | NOT BUILT | only failed-by-tool metrics |
+| 070 §4 | tool-call findings (parse path, unreadable, truncated, unknown names, schema violations, arrays as strings, intent scratch, 5xx apart, no-call turns) | PARTIAL | error classes (`tool_calls.failed.by_class`) and swallowed arguments (D131) built; unreadable or truncated calls, unknown names, arrays as strings, 5xx apart, no-call turns not |
 | 070 §4 | output hygiene findings (empty turns, control tokens, leaks, unclosed thinking, fences...) | PARTIAL | `control_markers`, `turns.short_text`, `completions.empty`; fences, answers only in reasoning, stop inside reasoning not built |
-| 070 §4 | turn pathologies | PARTIAL | D128: thinking-only turns, ended thinking-only, premature done = `claimed_success_oracle_no`; refusal and report-after-early-end held |
+| 070 §4 | turn pathologies | PARTIAL, rest HELD (D128) | thinking-only turns, ended thinking-only, premature done built; refusal and report after an early end held until the owner gives rules |
 | 070 §4 | parameter drift | BUILT | wire_arm `drift`/`differs`/`sent_not_stated` (070 §4.1) |
 | 070 §4 | server side: finish per request, reloads, GPU residency | PARTIAL | finish.*, model_reloaded, gpu_residency; no truncations/slot reuse/evictions/admission/restarts/server-log errors |
 | 070 §4 | integrity: oracle tampering, workspace not pristine | PARTIAL | tampering = verdict, pristine = gate `workspace`; files outside the workspace: `outside_workspace` from the container's changes (analysis 11, TestIntegrity, TestRunChanges); sandbox escapes and in-workspace obstacle changes not built |
@@ -731,7 +747,7 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §6 | group by any arm field, task label or finding | BUILT | `compare --group arm.F|label.L|finding.D` (`?split=`), n and arm ids per group; TestCompareSplits |
 | 070 §6 | census of tool failures | PARTIAL | `report census` with error classes (analysis 9); parse paths unrecorded: the SDK keeps them on its messages, not in the event stream |
 | 070 §6 | regression view across SDK versions | BUILT | `report regression` (compare split by harness build) |
-| 070 §6 | comparability: refusal to pool across task/oracle/scoring/basis | PARTIAL | groups never pool across tasks; basis differences are shown, not refused; no exclusion list for oracle/scoring boundaries |
+| 070 §6 | comparability: refusal to pool across task/oracle/scoring/basis | PARTIAL (task version BUILT 2026-11-02) | groups never pool across tasks; the task version boundary is refused unless `--pool-versions` (compare.go); basis differences shown, not refused; no oracle or scoring boundary |
 | 070 §6 | lane skew | BUILT | `report skew` (`?split=lane`): one group per lane host, the same arm's paired; TestCompareSplits |
 | 070 §6 | served-model facts per arm and change between runs (D82) | BUILT | compare.go:58 `Served` |
 
@@ -753,12 +769,12 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 080 §4 | temp name + rename | BUILT | put.go:19 |
 | 080 §4 | range-readable streams | BUILT | read.go:194 ReadRange (no viewer uses it yet) |
 | 080 §5 | results never deleted, nothing pruned | BUILT | no delete path |
-| 080 §5 | automatic archiving by age, verified, then freed (D31) | NOT BUILT | `blob.ArchiveOlderThan` (archive.go:40) exists but nothing in the daemon calls it; no age setting in config/local.go (only archive_root) |
+| 080 §5 | automatic archiving by age, verified, then freed (D31) | BUILT (2026-11-02) | `archive_after_days` (config/local.go; unset archives nothing), a pass at start and daily (internal/daemon/archive.go `archiveLoop`; TestArchiveLoop) |
 | 080 §5 | archived blob addressable, reads fall through | BUILT | read.go:49-80 |
 | 080 §5 | reports say when a query waited on the archive | NOT BUILT | none |
-| 080 §5 | archive unreachable: nothing moved, daemon notifies | PARTIAL | library refuses (archive_test.go TestArchiveRootMissing); no daemon mover, no notification |
+| 080 §5 | archive unreachable: nothing moved, daemon notifies | BUILT (2026-11-02) | an unreachable archive moves nothing (blob library) and the daemon notifies `archive unavailable`; blobs left behind notify `archive failed` |
 | 080 §5 | free-space floor stops new runs | BUILT | gate.go:365-385 |
-| 080 §5.1 | archived logs stay searchable (D36) | PARTIAL | readers fall through; search itself M6 |
+| 080 §5.1 | archived logs stay searchable (D36) | PARTIAL, rest SCHEDULED (m6) | readers fall through; search itself M6 |
 | 080 §5.1 | regex over raw blobs incl. archive, with archive count | SCHEDULED | M6 |
 | 080 §5.1 | archived unreadable blob reported per result | PARTIAL | read.go errors name hash and expected path; no search results yet |
 | 080 §5.1 | consistency check covers both tiers | BUILT | check.go tiers(); store check prints live/archived |
@@ -793,9 +809,9 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 100 §4 | reports weaken/flag "as configured" vs "as sent" when mixed | NOT BUILT | value recorded (store.go:96) but no report says so |
 | 100 §4 | runs without oracle keep analysis-script verdict, marked | PARTIAL | not confirmed in code |
 | 100 §5 | scripts replaced: loops, drivers, chains, gates, run report, metrics, statistics | BUILT | scheduler, arms, campaigns, gates, run show, ingest, compare |
-| 100 §5 | A/B report and auto-score | PARTIAL | `compare`; no `report ab` |
+| 100 §5 | A/B report and auto-score | BUILT (2026-11-02 re-check) | `compare` and `report ab` (cmd/automaticum/report_cmds.go) |
 | 100 §5 | transaction watcher -> live events and watchdogs | PARTIAL | SSE stream + wall/idle limits; not separately verified |
-| 100 §5 | tool-failure census | NOT BUILT | see 070 §6 |
+| 100 §5 | tool-failure census | BUILT (2026-11-02 re-check) | `report census` with error classes (analysis 9) |
 | 100 §5 | escalation study -> struggle signals | BUILT | D126; see 070 §4 |
 | 100 §5 | struggle calibration -> reanalyse | BUILT | `reanalyse` applies analysis 10's signals; `report struggle` measures them |
 | 100 §5 | census scripts -> findings (leaks, missing paths) | NOT BUILT | see 070 §4 |
@@ -823,19 +839,19 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 110 §2 | which runs of this arm looped, where, on what text | PARTIAL | per run (`detect <run>`, run show); compare gives counts per arm, no where/text across runs |
 | 110 §2 | did the sampler reach the wire in every request of this batch | PARTIAL | per-run wire_arm findings; compare counts runs with wire_arm; no per-field batch answer |
 | 110 §2 | what differs between two arms / builds / cells' bases | BUILT | arm diff, basis diff, compare basis |
-| 110 §2 | which guard fired in failed runs and what happened after | PARTIAL | guard_trips metrics, notices; no FAIL filter, no "after" |
-| 110 §2 | every unreadable tool call, by model | NOT BUILT | no unreadable-call finding |
-| 110 §2 | thinking stopped after template leak this week | NOT BUILT | no leak finding |
-| 110 §2 | how many requests re-read the whole prompt, and why | NOT BUILT | no metric |
-| 110 §2 | is B better than A, how many more runs | PARTIAL | compare (Fisher, Wilson); no "how many more runs" |
+| 110 §2 | which guard fired in failed runs and what happened after | PARTIAL | `guard_trip` findings, `guard_trips.next.*`, `reanalyse --where verdict=FAIL`; no one command listing trips in FAIL runs with what came next |
+| 110 §2 | every unreadable tool call, by model | PARTIAL | the SDK's unparsed-call nudge counted per run (guard_trips), groupable in compare; no unreadable-call finding listing the calls |
+| 110 §2 | thinking stopped after template leak this week | PARTIAL | `control_markers` finding (ingest/turns.go); "did thinking stop after it" not answered |
+| 110 §2 | how many requests re-read the whole prompt, and why | BUILT (2026-11-02 re-check) | `context.rereads` and `.compaction|.reload|.unknown` per run, in compare (ingest/turns.go `rereads`) |
+| 110 §2 | is B better than A, how many more runs | CHANGED (O39 not adopted) | compare with Fisher and Wilson; "how many more runs" not adopted |
 | 110 §2 | which runs were on a model not fully on the GPU | PARTIAL | gpu_residency finding/INVALID; run ls cannot filter by finding |
-| 110 §2 | turn 41 of run X as the model saw it + server log for those seconds | PARTIAL | `logs --wire` dumps all requests; no `--turn`, no server log |
+| 110 §2 | turn 41 of run X as the model saw it + server log for those seconds | PARTIAL | `logs --wire --turn N`; server logs not collected |
 | 110 §2 | find runs where the model concluded the checker was wrong | SCHEDULED | M6 semantic search |
 | 110 §2 | what the last 20 FAILs had in common vs PASSes | NOT BUILT | none |
 | 110 §2 | tokens per solved task; any cell capped | BUILT | compare |
 | 110 §3 | M1 store spike and importer | BUILT | 080 §7.4, 100 §7 |
 | 110 §3 | M2 walking skeleton | BUILT | daemon, CLI, lane, runner, manic_miner, verdicts |
-| 110 §3 | M3 gates, metrics, detectors, doctor, reanalyse, run report | PARTIAL | built except carry-forwards: reanalyse --detector/--where, timeline/baseline, mailbox, 3 detectors, agent-mode gates (M7) |
+| 110 §3 | M3 gates, metrics, detectors, doctor, reanalyse, run report | PARTIAL | reanalyse flags, timeline, baseline (D130), mailbox by notify command, edit oscillation and re-read loop built; near-duplicate rounds held (D129); agent-mode gates m7 |
 | 110 §3 | M4 batches, cells, statistics | PARTIAL | scheduler, interleave, campaigns, control, recovery, basis, cell run, cap audit, paired statistics (McNemar), group-by and lane skew built |
 | 110 §3 | M5 suites and adapters (suite interface, SWE-bench, BFCL, in-container adapter, multi-language reqs, Gitea) | SCHEDULED | only tbench2 importer and train-* tasks exist; no BFCL/SWE-bench/adapter/Gitea |
 | 110 §3 | M6 interfaces | SCHEDULED | none built |
@@ -857,8 +873,8 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | README status | "milestone 3 of 7 built ... no batches, statistics or dashboards yet" | STALE | batches, campaigns, cells, compare statistics exist (M4 largely built); claim understates |
 | README core | run record proving what was sent, read-back, enum verdicts, oracle by harness, gates | BUILT | runner, run, gate |
 | README core | diagnostics: loops, guard firings | BUILT | detect, guard_trips |
-| README core | diagnostics: unreadable tool calls, template leaks, server-side events, integrity | NOT BUILT / PARTIAL | see 070 §4 rows |
-| README core | statistics: intervals, "distinguishable at this n", refusal to pool across boundaries | PARTIAL | Wilson/Fisher/MW; no power/distinguishability (D78), pooling refusal only by task |
+| README core | diagnostics: unreadable tool calls, template leaks, server-side events, integrity | PARTIAL | template leaks (`control_markers`), server finish and reload, files outside the workspace built; unreadable tool calls, server-log events, sandbox escapes not |
+| README core | statistics: intervals, "distinguishable at this n", refusal to pool across boundaries | PARTIAL | Wilson/Fisher/MW; distinguishability not adopted (O39); pooling refused across tasks and task versions, not other basis boundaries |
 | README arch | API with SSE/WebSocket; scheduler; Docker lanes; ingest; query+stats | BUILT | SSE only |
 | README arch | web client, agent client, embedder client, Gitea client | SCHEDULED | M6, M7, M6, M5 |
 | README arch | Remote hosts in agent mode | SCHEDULED | M7 |
@@ -866,7 +882,7 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | README suites | BFCL two cells; SWE-bench; other-language SWE sets | SCHEDULED | M5 |
 | README suites | multi-language suite C#, C/C++, Python, TS, Go, Rust | BUILT | tasks/train-ml (12 tasks), images/layers |
 | README suites | suite is a plugin; engine adapters | SCHEDULED | M5 |
-| README interfaces | CLI with `--json` and stable exit codes | PARTIAL | see 090 §1 |
+| README interfaces | CLI with `--json` and stable exit codes | BUILT (2026-11-02 re-check) | `--json` and exit codes (main.go `exitOf`, exit_test.go); progress bars are their own row |
 | README interfaces | full terminal dashboard | SCHEDULED | M6 |
 | README interfaces | HTTP API and live dashboard | PARTIAL / SCHEDULED | API built; dashboard M6 |
 | README interfaces | MCP server, server-side wait-until primitives, dry-run, idempotency keys | NOT BUILT / SCHEDULED | MCP M6; wait not built; dry-run/idem partial |
@@ -882,11 +898,11 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | D3 | Node only in containers (lane image, external harness container) | BUILT (lane) / SCHEDULED (adapter, M5) | images/base, runner |
 | D4 | Docker lanes, base + one layer per language | BUILT | images/ |
 | D5, D30 | Gitea, one per daemon | SCHEDULED | M5; no gitea code |
-| D6, D12, D46 | store shape DuckDB + Lance + blobs | PARTIAL | DuckDB + blobs live; Lance library only (M6) |
+| D6, D12, D46 | store shape DuckDB + Lance + blobs | PARTIAL, rest SCHEDULED (m6) | DuckDB + blobs live; Lance library only (M6) |
 | D7 | specs only | DROPPED/CHANGED BY DECISION | superseded by D29 |
 | D8, D35 | agent mode only for remotes; native agents | SCHEDULED | M7 |
 | D9 | TOML config; tasks in repo; large suites fetched | BUILT | internal/config, tasks/, suite import |
-| D10 | one write token + read-only share mode | PARTIAL | token built; share mode only loopback reads (M6) |
+| D10 | one write token + read-only share mode | PARTIAL, rest SCHEDULED (m6) | token built; share mode only loopback reads (M6) |
 | D11 | six verdicts, original word kept | BUILT | store.Verdict; legacy OriginalVerdict |
 | D13 | full parity with VS Code extension | PARTIAL | scripted user, forks, modes built; emulated diagnostics M5 |
 | D14 | neutral host names | BUILT | policy |
@@ -904,10 +920,10 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | D26, D33 | TUI with four view groups | SCHEDULED | M6 |
 | D27 | SDK fixes on Cerebriline side | BUILT | external (X rows) |
 | D28, D29 | spike first; roadmap order | BUILT | M1 done |
-| D31 | automatic archiving by age, verified | NOT BUILT | library function only, not wired; no age setting |
+| D31 | automatic archiving by age, verified | BUILT (2026-11-02) | see 080 §5: `archive_after_days`, internal/daemon/archive.go |
 | D32 | plugins compiled in | BUILT | n/a |
 | D34 | runner observes SDK retries | BUILT | runner |
-| D36 | archived logs stay searchable | PARTIAL | read fall-through built; search M6 |
+| D36 | archived logs stay searchable | PARTIAL, rest SCHEDULED (m6) | read fall-through built; search M6 |
 | D37 | Apache-2.0 | BUILT | LICENSE |
 | D38, D44 | Lance binding by spike -> lance-c wrapper | BUILT | internal/store/lance |
 | D39, D45 | linking posture; manylinux_2_28 | BUILT | build/Dockerfile.build |

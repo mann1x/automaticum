@@ -342,17 +342,22 @@ func TestLocal(t *testing.T) {
 		return m
 	}
 	cases := map[string]map[string]string{
-		"unknown field":       change("lanes/l.toml", lane+"gpus = 1\n"),
-		"lane as root":        change("lanes/l.toml", lane+"user = \"0:0\"\n"),
-		"lane without limits": change("lanes/l.toml", "host = \"h\"\nendpoints = [\"e\"]\n"),
-		"unknown endpoint":    change("lanes/l.toml", strings.Replace(lane, "\"e\"", "\"nope\"", 1)),
-		"all interfaces":      change("endpoints/e.toml", strings.Replace(ep, "10.0.0.1", "0.0.0.0", 1)),
-		"bad kind":            change("endpoints/e.toml", strings.Replace(ep, "ollama", "magic", 1)),
-		"relative data root":  change("automaticum.toml", strings.Replace(daemon, "/data", "data", 1)),
-		"no free floor":       change("automaticum.toml", strings.Replace(daemon, "free_floor_gb = 10\n", "", 1)),
-		"price, no currency":  change("endpoints/e.toml", ep+"[price]\ninput_per_mtok = 1\n"),
-		"price below zero":    change("endpoints/e.toml", ep+"[price]\ncurrency = \"EUR\"\noutput_per_mtok = -1\n"),
-		"price, unknown key":  change("endpoints/e.toml", ep+"[price]\ncurrency = \"EUR\"\nper_request = 1\n"),
+		"unknown field":           change("lanes/l.toml", lane+"gpus = 1\n"),
+		"lane as root":            change("lanes/l.toml", lane+"user = \"0:0\"\n"),
+		"lane without limits":     change("lanes/l.toml", "host = \"h\"\nendpoints = [\"e\"]\n"),
+		"unknown endpoint":        change("lanes/l.toml", strings.Replace(lane, "\"e\"", "\"nope\"", 1)),
+		"all interfaces":          change("endpoints/e.toml", strings.Replace(ep, "10.0.0.1", "0.0.0.0", 1)),
+		"bad kind":                change("endpoints/e.toml", strings.Replace(ep, "ollama", "magic", 1)),
+		"relative data root":      change("automaticum.toml", strings.Replace(daemon, "/data", "data", 1)),
+		"no free floor":           change("automaticum.toml", strings.Replace(daemon, "free_floor_gb = 10\n", "", 1)),
+		"price, no currency":      change("endpoints/e.toml", ep+"[price]\ninput_per_mtok = 1\n"),
+		"price below zero":        change("endpoints/e.toml", ep+"[price]\ncurrency = \"EUR\"\noutput_per_mtok = -1\n"),
+		"price, unknown key":      change("endpoints/e.toml", ep+"[price]\ncurrency = \"EUR\"\nper_request = 1\n"),
+		"archive age, no archive": change("automaticum.toml", daemon+"archive_after_days = 30\n"),
+		"archive age below zero":  change("automaticum.toml", daemon+"archive_root = \"/archive\"\narchive_after_days = -1\n"),
+	}
+	if l, err := LoadLocal(local(t, change("automaticum.toml", daemon+"archive_root = \"/archive\"\narchive_after_days = 30\n"))); err != nil || l.Daemon.ArchiveAfterDays != 30 {
+		t.Errorf("archive age: %v", err)
 	}
 	for name, files := range cases {
 		if _, err := LoadLocal(local(t, files)); err == nil {

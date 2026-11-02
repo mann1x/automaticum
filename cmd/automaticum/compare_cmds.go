@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"maps"
 	"net/url"
 	"slices"
 	"sort"
@@ -34,6 +35,7 @@ func compareAs(ctx context.Context, args []string, name, split string) error {
 	var batches list
 	fs.Var(&batches, "batch", "a batch; give it several times to compare batches")
 	all := fs.Bool("all", false, "every metric the runs have, not only the main ones")
+	pool := fs.Bool("pool-versions", false, "count runs of a task at different task versions together (020 §4); by default only the latest version's runs count")
 	group := new(string)
 	if split == "" {
 		group = fs.String("group", "", "group the runs by an arm field (arm.thinking.level), a task label (label.difficulty) or a finding (finding.reasoning_loop) instead of by arm")
@@ -54,12 +56,25 @@ func compareAs(ctx context.Context, args []string, name, split string) error {
 	if split != "" {
 		q.Set("split", split)
 	}
+	if *pool {
+		q.Set("pool_versions", "1")
+	}
 	var v daemon.CompareView
 	if err := c.do(ctx, "GET", "/v1/compare?"+q.Encode(), nil, &v); err != nil {
 		return err
 	}
 	if c.json {
 		return printJSON(v)
+	}
+	if v.EngineNote != "" {
+		fmt.Printf("note: %s\n\n", v.EngineNote)
+	}
+	for _, task := range slices.Sorted(maps.Keys(v.MixedVersions)) {
+		if v.PooledVersions {
+			fmt.Printf("note: task %s: runs at versions %v pooled, as asked\n\n", task, v.MixedVersions[task])
+		} else {
+			fmt.Printf("note: task %s: runs at versions %v; only the latest counts (--pool-versions counts all)\n\n", task, v.MixedVersions[task])
+		}
 	}
 	letter := func(i int) string { return string(rune('A' + i)) }
 	for i, g := range v.Groups {

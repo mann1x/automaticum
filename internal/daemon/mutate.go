@@ -36,6 +36,22 @@ type IdemEntry struct {
 	At     time.Time       `json:"at"`
 }
 
+// ClientHeader names the caller of a request (010 §5): a name the caller
+// supplies, recorded with every change it makes.
+const ClientHeader = "Automaticum-Client"
+
+// clientOf is the request's client name, "unnamed" when it gives none.
+func clientOf(r *http.Request) string {
+	n := strings.Join(strings.Fields(r.Header.Get(ClientHeader)), " ")
+	if n == "" {
+		return "unnamed"
+	}
+	if len(n) > 100 {
+		n = n[:100]
+	}
+	return n
+}
+
 // idemKeep is how long a key's answer is kept.
 const idemKeep = 30 * 24 * time.Hour
 

@@ -18,6 +18,9 @@
 - (2026-10-29) This session only develops automaticum. Client sessions (e.g. backup_models) write their own arms, models, endpoints and lanes, confirm their gates and start their own batches.
 
 ## Key Learnings
+
+- (2026-11-02) The 2026-11-01 audit's NOT BUILT/PARTIAL rows were partly grep guesses: a re-check found 17 already built and 20 with wrong evidence. Before building an audit gap, verify it against the code (or delegate a read-only re-check).
+- (2026-11-02) Mutating API calls carry `Automaticum-Client` (CLI `--client`, default user@host); the daemon logs `msg=change client=...` for every non-GET, non-dry-run call. compareView takes `pool`: runs off the latest task version are Excluded unless pooled; the cell passes pool=true.
 - 2026-11-02: a regex for an argument name before a colon must allow a closing quote between (JSON writes `"start_line":`); backup_models' scan pattern did not, but its data held the unquoted form (`,start_line:90`).
 - 2026-11-02: Docker's GET /containers/{id}/changes lists a container's mount points (and the directories above them) as added/changed even though writes under a mount are not changes; filter them (docker.notMounts) before reporting files written outside the workspace.
 - 2026-11-02: "the batch's baseline" (070 §1.1) is undefined since a batch is one arm; carried as O40, not guessed.

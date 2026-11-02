@@ -26,6 +26,9 @@ type CampaignState struct {
 	Started time.Time            `json:"started"`
 	Ended   time.Time            `json:"ended,omitzero"`
 	Batches []CampaignBatchState `json:"batches"`
+	// StartedBy is the client that started the campaign (010 §5); its
+	// batches are started in that name.
+	StartedBy string `json:"started_by,omitempty"`
 }
 
 // CampaignBatchState is one batch of a campaign.
@@ -139,7 +142,7 @@ func (d *Daemon) campaignStep(ctx context.Context, name string) error {
 		}
 		co, vr := c.Def.CohortOf()
 		resp, _, err := d.start(ctx, StartRequest{Arms: def.Arms, Tasks: def.Tasks, Suites: def.Suites, Count: def.Runs, Order: def.Order, Lane: def.Lane,
-			Key: campaignKey(name, def.Name), CaptureRequests: def.CaptureRequests, Limits: batchLimits(def), Cohort: co, DeclaredVariable: vr})
+			Key: campaignKey(name, def.Name), CaptureRequests: def.CaptureRequests, Limits: batchLimits(def), Cohort: co, DeclaredVariable: vr, Client: c.StartedBy})
 		if err != nil {
 			d.setBatch(name, cur, "stopped", "it could not start: "+err.Error())
 			return d.endCampaign(ctx, name, "stopped", "batch "+def.Name+" could not start: "+err.Error())
@@ -307,7 +310,7 @@ func (d *Daemon) handleCampaignStart(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	c := &CampaignState{Def: def, State: "running", Started: time.Now().UTC()}
+	c := &CampaignState{Def: def, State: "running", Started: time.Now().UTC(), StartedBy: clientOf(r)}
 	for _, b := range def.Batches {
 		c.Batches = append(c.Batches, CampaignBatchState{Name: b.Name, State: "waiting"})
 	}
@@ -324,7 +327,7 @@ func (d *Daemon) handleCampaignStart(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusInternalServerError, "the control file: %v", err)
 		return
 	}
-	d.Log.Info("campaign started", "campaign", req.Name, "batches", len(def.Batches))
+	d.Log.Info("campaign started", "campaign", req.Name, "batches", len(def.Batches), "client", c.StartedBy)
 	d.pokeCampaigns()
 	reply(w, http.StatusAccepted, v)
 }

@@ -41,6 +41,15 @@ func TestModeCCell(t *testing.T) {
 			t.Errorf("run %s: %+v", id, v)
 		}
 	}
+	// Every report of a mode C score says what it is a score of (000 §2).
+	var cv CellView
+	if code := g.call("GET", "/v1/batches/"+resp.Batch+"/cell", nil, &cv); code != 200 || cv.Result.EngineNote != EngineNote {
+		t.Errorf("cell note: %d %q", code, cv.Result.EngineNote)
+	}
+	var cmp CompareView
+	if code := g.call("GET", "/v1/compare?batch="+resp.Batch, nil, &cmp); code != 200 || cmp.EngineNote != EngineNote {
+		t.Errorf("compare note: %d %q", code, cmp.EngineNote)
+	}
 	g.runner.mu.Lock()
 	reqs := append(g.runner.reqs[:0:0], g.runner.reqs...)
 	g.runner.mu.Unlock()

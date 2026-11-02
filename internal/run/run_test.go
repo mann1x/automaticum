@@ -438,7 +438,7 @@ func TestRecord(t *testing.T) {
 	if r.Host != "linux-gpu-1" || r.Model != "stub:latest" || r.Provider != "ollama" || r.AgentEnd != "completed" || r.ClaimedSuccess == nil || !*r.ClaimedSuccess || r.ArmID == "" || r.TaskVersion != 1 {
 		t.Errorf("record: %+v", r)
 	}
-	if p.Limits.Wall != (limit{300, "arm"}) || p.Limits.Idle != (limit{120, "arm"}) {
+	if p.Limits.Wall != (limit{300, "arm"}) || p.Limits.Idle != (limit{120, "arm"}) || p.Limits.Steps != (count{}) || p.Limits.Requests != (count{}) {
 		t.Errorf("limits: %+v", p.Limits)
 	}
 	if fmt.Sprint(p.Workspace.Added, p.Workspace.Changed, p.Workspace.Removed) != "[notes.txt] [answer.txt] []" {
@@ -705,5 +705,21 @@ expect_pattern = "RESULT wrong"
 	}
 	if !names["check"] || !names["scope"] {
 		t.Errorf("oracle blobs: %v", names)
+	}
+}
+
+// Every limit in force says who set it (020 §1): a mode C caller's value is
+// the caller's, zero is no limit.
+func TestArmCount(t *testing.T) {
+	n, zero := 40, 0
+	a := &config.Arm{Origins: map[string]string{"model.output_tokens": "caller", "agent.max_iterations": "stub"}}
+	if c := armCount(a, "agent.max_iterations", &n); c != (count{40, "arm"}) {
+		t.Errorf("arm: %+v", c)
+	}
+	if c := armCount(a, "model.output_tokens", &n); c != (count{40, "caller"}) {
+		t.Errorf("caller: %+v", c)
+	}
+	if c := armCount(a, "agent.max_iterations", &zero); c != (count{}) {
+		t.Errorf("zero: %+v", c)
 	}
 }

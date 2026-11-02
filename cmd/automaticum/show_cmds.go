@@ -189,6 +189,9 @@ func cellShow(ctx context.Context, args []string) error {
 		return printJSON(v)
 	}
 	r := v.Result
+	if r.EngineNote != "" {
+		fmt.Printf("note: %s\n", r.EngineNote)
+	}
 	fmt.Printf("cell %s: arm %s (id %s), %d of %d runs counted, complete %v\n", r.Batch, r.Arm, r.ArmID,
 		r.NExpected-r.Counts["unfinished"], r.NExpected, r.Complete)
 	fmt.Printf("  %s %s\n", r.Headline.Metric, human.Number(r.Headline.Value))

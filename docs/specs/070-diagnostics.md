@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.24, 2026-11-02.
+**Status:** draft 0.25, 2026-11-02.
 
 ## 1. The rule: no custom script
 
@@ -704,7 +704,13 @@ run of each arm in turn (`--order blocks` for all of one, then the next).
 - **Regression view** across harness builds: what changed between two SDK
   versions, on the same arm, for every metric and finding.
 - **Comparability:** refusal to pool across task, oracle, scoring or basis
-  boundaries, with the excluded runs and the reason.
+  boundaries, with the excluded runs and the reason. Built 2026-11-02 for
+  the task version (020 §4): `compare`, `report ab` and `basis show` count
+  only the runs at the latest task version in the view, leave the others
+  out by name ("task version N, not the latest here (M)"), and say which
+  tasks were mixed; `--pool-versions` (`?pool_versions=1`) counts them all
+  and says so. A cell keeps every run and warns instead. Groups never pool
+  across tasks; a basis difference is shown, not refused.
 - **Lane skew:** the same arm on two hosts, to separate the model from the
   machine.
 

@@ -1589,3 +1589,25 @@
 |------|--------|---------|---------|--------|
 | 10:20 | Created internal/detect/swallow.go | — | ~950 |
 | 10:23 | D130 run show baseline (campaign baseline key, else parent), D131 swallowed_argument detector (schemas from wire, library 4, analysis 12), matched backup_models' scan on runs 006/008 | detect/swallow.go, ingest/swallow.go, daemon/baseline.go, config, cmd | tests pass | ~25000 |
+
+## Session: 2026-11-02 10:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-02 10:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-02 10:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:34 | deployed 815fb25 on blackswan-2 (idle-gated, owner's go); mailed backup_models #2107/#2108 | bin/, repo checkout | daemon up, library 4 | ~4000 |
+
+## Session: 2026-11-02 11:53
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:40 | audit item 5: re-checked every NOT BUILT/PARTIAL row (17 stale built, 20 stale evidence, 16 now SCHEDULED); built mode C engine_note (000 §2), limits steps/output tokens (020 §1), --client attribution (010 §5), archive_after_days (D31), task-version pooling refusal --pool-versions (020 §4) | internal/daemon/{cell,compare,mutate,api,campaign,canary,archive}.go, internal/run/run.go, internal/config/local.go, cmd/automaticum, specs 000/010/020/030/050/065/070/080/090, audit | make test ok | ~60k |

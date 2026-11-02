@@ -153,6 +153,8 @@ type BatchView struct {
 	Finished map[string]int `json:"finished"` // by verdict
 	Paused   bool           `json:"paused,omitempty"`
 	Canary   *CanaryRecord  `json:"canary,omitempty"`
+	// StartedBy is the client that started the batch (010 §5).
+	StartedBy string `json:"started_by,omitempty"`
 }
 
 func (d *Daemon) handleBatch(w http.ResponseWriter, r *http.Request) {
@@ -178,6 +180,7 @@ func (d *Daemon) handleBatch(w http.ResponseWriter, r *http.Request) {
 	d.mu.Lock()
 	_, v.Paused = d.ctl.Held[batch]
 	v.Canary = d.ctl.Canary[batch]
+	v.StartedBy = d.ctl.StartedBy[batch]
 	d.mu.Unlock()
 	if f == nil && len(queued) == 0 && len(runs) == 0 && v.Canary == nil {
 		fail(w, http.StatusNotFound, "there is no batch %s", batch)
