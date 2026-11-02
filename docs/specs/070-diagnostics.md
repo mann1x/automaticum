@@ -17,6 +17,19 @@ number from omnimergekit mean the same thing.
 that differ from the batch's baseline highlighted; timeline; the metrics of §2;
 the findings of §3 and §4; links to every artefact.
 
+**As built (2026-11-02), the timeline:** `automaticum run timeline <run>`
+reads the run's event stream: one line per turn with its time, how long
+after the run's first event it came, its tool calls and how many failed
+(by tool and error class), and between the turns every guard trip (with
+its cause; the SDK's notice of the same trip is folded into it), every
+other notice of the SDK but the context report each turn carries, session
+forks, mode switches and the agent's end (`--json` gives the moments).
+
+**Open (O40):** what "the batch's baseline" is. A batch is one arm, so its
+runs share every arm field. Recommendation: the baseline arm of the
+campaign or cohort the batch belongs to where there is one, else the arm
+the run's arm extends, with the fields its own file states highlighted.
+
 ## 2. Metrics per run
 
 Token counts come from the server's own `usage` block whenever it exists, not
@@ -102,7 +115,7 @@ method is recorded.
   `turns.no_call_no_answer` (and its share), `turns.short_text` (visible
   text under five characters and no call), `turns.ended_thinking_only`
   (D128). Not built: churn (lines written against lines surviving), edits
-  to the same region, sub-agents (the arms run none), cost in money.
+  to the same region, sub-agents (the arms run none).
 
   From analysis version 10 (2026-11-02): the change protocol, from the
   SDK's `atomic_transaction` notice (a transaction settled), its
@@ -113,6 +126,13 @@ method is recorded.
   (distribution). The struggle signals of §4 (D126): `struggle.<signal>`
   and `struggle.<signal>.turn` where one held, `struggle.signals` (how
   many held) on every run, and `struggle.replay.<nudge|suggest>.<reason>`.
+
+  From analysis version 11 (2026-11-02): cost in money for a priced
+  endpoint (030 §4.2): `cost.money`, `cost.money.prompt` and
+  `cost.money.completion`, the run's fresh prompt, cached prompt and
+  completion tokens at the price the run recorded, in its currency. And
+  the integrity metrics of §4: `integrity.outside_workspace` with its
+  `.added`, `.changed` and `.deleted`.
 
   **Decided by the owner (2026-10-27, D116):** from analysis version 7 a
   notice of the SDK is counted by what kind it is, never by its sentence:
@@ -137,7 +157,9 @@ method is recorded.
 - Throughput over the whole cell. A rate from the easy first tasks is not the
   rate of the suite.
 - **Sanity warnings:** n differs from expected; empty completions above 5 %;
-  p10 of visible characters under the suite's declared floor.
+  p10 of visible characters under the suite's declared floor. The floor
+  is declared in the suite's definition (`suites/*.toml`, 030 §1), which
+  comes with milestone 5; until then no floor is checked.
 
 **As built (2026-11-01):** every summary of a cell or a comparison has p10
 and p90 beside the quartiles. A cell's result file has `token_stats_pass`
@@ -145,9 +167,12 @@ and p90 beside the quartiles. A cell's result file has `token_stats_pass`
 `throughput_tok_s` (its completion tokens over its time in the model) and
 `empty_completion_share` in `scores`, with the warning above 5 %, and
 `loop_by_verdict`: per verdict, the runs, those that looped, those that hit
-their output limit and those that did both (§3.1). n always equals the
-runs the cell queued, so it cannot differ. Not built: the floor of visible
-characters, which no suite declares yet.
+their output limit and those that did both (§3.1), and (2026-11-02)
+`loop_components`: the runs `loop_rate` counts, by detector
+(`reasoning_loop`, `reasoning_repetition`), by channel (reasoning, text)
+and the turn of each one's first loop (distribution). n always equals
+the runs the cell queued, so it cannot differ. The floor of visible
+characters comes with the suite definitions (milestone 5).
 
 ## 3. Detectors: degeneration and looping
 
@@ -201,7 +226,9 @@ Requirements:
   components: which detector, reasoning or text, turn index.
 - **Always cross-tabulated** with the verdict and with cap hits: loops among
   passes, loops among failures, loops that ended in a cap.
-- A suite subset may declare `loop_rate` as its headline metric.
+- A suite subset may declare `loop_rate` as its headline metric. The
+  declaration is the suite definition's (`suites/*.toml`), milestone 5;
+  until then a cell's headline is its pass rate.
 - Interventions are arm fields (030 §5.1), and the report says which runs had a
   guard fire.
 - When a detector changes, findings are recomputed over the whole corpus
@@ -268,7 +295,9 @@ detector always reads with the release's defaults, so that runs compare.
 - **`runaway` has no default size.** The SDK's own data says length is
   never the signal: healthy reasoning runs to hundreds of thousands of
   characters a turn. The detector reports only where a suite declares a
-  size (the requirement it comes from says "per suite").
+  size (the requirement it comes from says "per suite"). The size is
+  declared in the suite's definition (`suites/*.toml`), milestone 5; until
+  then it fires only with `automaticum detect --runaway N`.
 - The SDK's guards look while the stream arrives; here the whole block is
   at hand, and it is looked at after every line and, inside a line, after
   every character. What fires in the SDK fires here.
@@ -394,6 +423,21 @@ Each has a severity, evidence (event ids, quoted text) and a count.
 - **Integrity:** oracle tampering, workspace not pristine, files written
   outside the workspace, sandbox escapes or denials, the agent changing its
   environment to get past an obstacle (editing PATH, chmod, deleting a guard).
+
+  **As built (2026-11-02, analysis version 11):** the agent's container
+  is asked for its filesystem changes when it stops (the engine's
+  `changes`: its own filesystem, never its mounts; the mount points and
+  the directories above them are left out), and the run records them
+  (`container.changes`: how many, the first 500). `outside_workspace`
+  (info, version 1) lists what was added, changed or deleted there by
+  directory (three levels), a directory changed only because something
+  under it changed not counted. It judges nothing yet: which paths the
+  runner and the SDK write on every run is to be read from the runs
+  before any of it is called a fault. Oracle tampering is a verdict (060
+  §3) and a workspace not pristine a gate (050 §3.1). Not built: sandbox
+  escapes or denials, and changes inside the workspace that get past an
+  obstacle (a mode changed, a check deleted), which need the task to say
+  what its obstacles are.
 - **Struggle signals:** the triggers of the escalation study, evaluated on
   every run, with recall and false-alarm rate per trigger across a set.
   **Decided by the owner (2026-11-01), D126:** the triggers are listed
@@ -662,5 +706,19 @@ no call. Error classes come from analysis version 9 (§2); ingest records no
 parse path yet (`not recorded`): the SDK records it on its messages, not in
 the event stream. `report struggle` and `report guards` are in §4. `report
 run|cell|batch|ab` are `run show`, `cell show` and `compare`, whose paired
-test is McNemar's on the task ids the two groups share. Not built yet:
-group-by and lane skew.
+test is McNemar's on the task ids the two groups share. The unpaired
+test of a metric is Mann-Whitney's (the "or bootstrap" of the list above
+is not needed beside it).
+
+**As built (2026-11-02), group-by and lane skew:** `automaticum compare
+<batch>... --group <axis>` (`GET /v1/compare?split=<axis>`) groups the
+runs on each task by an arm field as the run recorded its arm
+(`arm.thinking.level`, a dotted path; `not stated` where the arm has
+none), a task label as the task's files say now (`label.difficulty`;
+`not labelled`), or a finding (`finding.reasoning_loop`: `with` or
+`without`). Each group shows its n and the arm ids it holds, so the reader
+sees whether an axis is balanced; groups on one task are paired as usual,
+with no arm diff, since a group may hold several arms. `automaticum report
+skew <batch>...` (`split=lane`) is lane skew: one group per arm, task and
+the host its lanes ran on (the run's `lane_host`), and only the groups of
+one arm id are paired, so what differs is the machine.

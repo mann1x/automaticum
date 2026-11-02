@@ -327,6 +327,9 @@ type Spec struct {
 	// copied into its directory (CopyOut). Result.CollectErr says what
 	// could not be copied.
 	Collect map[string]string
+	// Changes asks Run for the container's filesystem changes once it
+	// has stopped (Result.Changes): what it wrote outside its mounts.
+	Changes bool
 }
 
 // DefaultCapabilities are the capabilities the engine gives a container
@@ -601,6 +604,52 @@ type Result struct {
 	Ended     time.Time
 	// CollectErr says which of Spec.Collect could not be copied out.
 	CollectErr error
+	// Changes are the container's filesystem changes, when Spec.Changes
+	// asked for them; ChangesErr says why they could not be read.
+	Changes    []Change
+	ChangesErr error
+}
+
+// Change is one path the container added, changed or deleted in its own
+// filesystem (its mounts are not part of it), as the engine reports it.
+type Change struct {
+	Path string `json:"path"`
+	// Kind is 0 for changed, 1 for added, 2 for deleted.
+	Kind int `json:"kind"`
+}
+
+// notMounts leaves out of a container's changes its mount points, which
+// the engine makes in the container's filesystem, and the directories
+// above them: what was written under a mount is not a change at all.
+func notMounts(changes []Change, s Spec) []Change {
+	skip := map[string]bool{}
+	mark := func(target string) {
+		for p := path.Clean(target); p != "/" && p != "."; p = path.Dir(p) {
+			skip[p] = true
+		}
+	}
+	for _, m := range s.Mounts {
+		mark(m.Target)
+	}
+	for t := range s.Tmpfs {
+		mark(t)
+	}
+	out := changes[:0:0]
+	for _, c := range changes {
+		if !(skip[c.Path] && c.Kind != 2) {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// Changes reads a stopped or running container's filesystem changes.
+func (c *Client) Changes(ctx context.Context, id string) ([]Change, error) {
+	var out []Change
+	if err := c.json(ctx, "GET", "/containers/"+url.PathEscape(id)+"/changes", nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 // Run creates a container, starts it, copies its output to stdout and stderr
@@ -690,6 +739,10 @@ wait:
 	defer cancel()
 	if st, image, err := c.Inspect(ictx, id); err == nil {
 		res.OOMKilled, res.ImageID = st.OOMKilled, image
+	}
+	if s.Changes {
+		res.Changes, res.ChangesErr = c.Changes(ictx, id)
+		res.Changes = notMounts(res.Changes, s)
 	}
 	for p, dst := range s.Collect {
 		cctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)

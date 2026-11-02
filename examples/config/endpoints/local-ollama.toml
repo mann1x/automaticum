@@ -11,3 +11,12 @@ capacity = 1
 gpu = "NVIDIA GeForce RTX 3090"
 vram_gb = 24
 notes = ""
+
+# What a million tokens cost, if the endpoint charges for them (070 §2):
+# every run records it as declared, and its analysis gives cost.money in
+# that currency. Leave the table out for a server that charges nothing.
+# [price]
+# currency = "EUR"
+# input_per_mtok = 0.0
+# cached_input_per_mtok = 0.0
+# output_per_mtok = 0.0

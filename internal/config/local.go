@@ -206,6 +206,9 @@ type Endpoint struct {
 	// Hardware is what the server runs on, as the installation's owner
 	// declares it. It is recorded in every run as declared, not measured.
 	Hardware Hardware `toml:"hardware"`
+	// Price is what the endpoint's tokens cost, as the installation
+	// declares it (070 §2); nil for an endpoint that charges nothing.
+	Price *Price `toml:"price"`
 	// Cell marks the endpoint of a mode C cell: the caller serves the
 	// model there and automaticum never loads or unloads anything on it
 	// (065 §2).
@@ -220,6 +223,16 @@ type Hardware struct {
 	VRAMGB float64 `toml:"vram_gb"`
 	// Notes is free text: other devices, a driver, a power limit.
 	Notes string `toml:"notes"`
+}
+
+// Price is the [price] table of an endpoint: its currency and what a
+// million tokens cost, fresh prompt, prompt served from the server's
+// cache, and completion. A run records it as declared.
+type Price struct {
+	Currency    string  `toml:"currency" json:"currency"`
+	Input       float64 `toml:"input_per_mtok" json:"input_per_mtok"`
+	CachedInput float64 `toml:"cached_input_per_mtok" json:"cached_input_per_mtok"`
+	Output      float64 `toml:"output_per_mtok" json:"output_per_mtok"`
 }
 
 var endpointKinds = map[string]bool{"ollama": true, "xollama": true, "openai-compatible": true, "llamacpp": true}
@@ -305,6 +318,14 @@ func LoadLocal(dir string) (*Local, error) {
 		}
 		if e.Capacity < 1 {
 			bad("endpoint %s: capacity must be 1 or more", e.Name)
+		}
+		if pr := e.Price; pr != nil {
+			if pr.Currency == "" {
+				bad("endpoint %s: [price] does not state its currency", e.Name)
+			}
+			if pr.Input < 0 || pr.CachedInput < 0 || pr.Output < 0 {
+				bad("endpoint %s: [price] holds a price below zero", e.Name)
+			}
 		}
 		l.Endpoints[e.Name] = e
 	}

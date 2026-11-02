@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -189,5 +190,51 @@ func TestUntar(t *testing.T) {
 	}
 	if _, err := os.Stat("/tmp/escaped"); err == nil {
 		t.Error("a file was written outside dst")
+	}
+}
+
+// Run reads the container's filesystem changes when asked: a file the
+// container wrote in its own filesystem is there, its mounts are not.
+func TestRunChanges(t *testing.T) {
+	c := engine(t)
+	ctx := context.Background()
+	if _, err := c.ImageInspect(ctx, testImage); err != nil {
+		if err := c.ImagePull(ctx, testImage, nil); err != nil {
+			t.Skipf("cannot pull %s: %v", testImage, err)
+		}
+	}
+	dir := t.TempDir()
+	res, err := c.Run(ctx, Spec{
+		Image: testImage, Cmd: []string{"sh", "-c", "echo x > /var/tmp/left; echo y > /w/inside"},
+		User: "0:0", Network: "none", Mounts: []Mount{{Source: dir, Target: "/w"}}, Changes: true,
+	}, time.Minute, io.Discard, io.Discard, nil)
+	if err != nil || res.ChangesErr != nil {
+		t.Fatal(err, res.ChangesErr)
+	}
+	found := false
+	for _, ch := range res.Changes {
+		if strings.HasPrefix(ch.Path, "/w") {
+			t.Errorf("a mount's write is a change: %+v", ch)
+		}
+		found = found || (ch.Path == "/var/tmp/left" && ch.Kind == 1)
+	}
+	if !found {
+		t.Errorf("changes %+v", res.Changes)
+	}
+}
+
+func TestNotMounts(t *testing.T) {
+	s := Spec{Mounts: []Mount{{Target: "/workspace"}, {Target: "/opt/automaticum/out"}}, Tmpfs: map[string]string{"/tmp": ""}}
+	in := []Change{{"/workspace", 1}, {"/opt", 0}, {"/opt/automaticum", 0}, {"/opt/automaticum/out", 1}, {"/opt/automaticum/note", 1},
+		{"/tmp", 1}, {"/home/agent/.cache", 1}, {"/opt", 2}}
+	got := notMounts(in, s)
+	want := []Change{{"/opt/automaticum/note", 1}, {"/home/agent/.cache", 1}, {"/opt", 2}}
+	if len(got) != len(want) {
+		t.Fatalf("%+v", got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("%d: %+v, want %+v", i, got[i], want[i])
+		}
 	}
 }

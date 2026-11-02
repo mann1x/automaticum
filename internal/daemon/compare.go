@@ -16,6 +16,7 @@ import (
 	"github.com/mann1x/automaticum/internal/run"
 	"github.com/mann1x/automaticum/internal/stats"
 	"github.com/mann1x/automaticum/internal/store"
+	"github.com/mann1x/automaticum/internal/task"
 )
 
 // CompareView puts the runs of some batches side by side, one group per
@@ -24,7 +25,9 @@ import (
 // difference is real is the reader's call.
 type CompareView struct {
 	Batches []string `json:"batches"`
-	// Split is "build" in the regression view.
+	// Split is how the runs are grouped when not by arm (070 §6): "build"
+	// (the regression view), "lane" (lane skew), or a group-by axis:
+	// "arm.<field>", "label.<name>", "finding.<detector>".
 	Split  string         `json:"split,omitempty"`
 	Groups []CompareGroup `json:"groups"`
 	Pairs  []ComparePair  `json:"pairs"`
@@ -46,6 +49,9 @@ type CompareGroup struct {
 	// Build is the harness build fact of the group's runs, in the
 	// regression view only.
 	Build string `json:"build,omitempty"`
+	// Value is the group's lane host under split "lane", or its value of
+	// the axis under a group-by split.
+	Value string `json:"value,omitempty"`
 	// Runs are the runs counted; Excluded those left out, with the reason:
 	// a run that never started or was not valid says nothing of the arm.
 	Runs     []string          `json:"runs"`
@@ -350,10 +356,94 @@ func streaks(runs []string, passed map[string]bool) Streaks {
 	return s
 }
 
+// validSplit says whether split names a way of grouping compare knows.
+func validSplit(split string) bool {
+	switch split {
+	case "", "build", "lane":
+		return true
+	}
+	return groupAxis(split) != ""
+}
+
+// groupAxis is the field, label or detector of a group-by split, or "".
+func groupAxis(split string) string {
+	for _, prefix := range []string{"arm.", "label.", "finding."} {
+		if rest, ok := strings.CutPrefix(split, prefix); ok && rest != "" {
+			return rest
+		}
+	}
+	return ""
+}
+
+// laneHost is the host a run's agent ran on, as its record says, else its
+// lane's name.
+func laneHost(run *store.Run) string {
+	var p struct {
+		Inference struct {
+			LaneHost string `json:"lane_host"`
+		} `json:"inference"`
+	}
+	json.Unmarshal(run.Provenance, &p)
+	if p.Inference.LaneHost != "" {
+		return p.Inference.LaneHost
+	}
+	if run.Lane != "" {
+		return "lane " + run.Lane
+	}
+	return "not recorded"
+}
+
+// groupValue is a run's value of a group-by axis: an arm field as the run
+// recorded its arm (a dotted path, "thinking.level"), a label of its task
+// as the task's files say now, or whether it has a finding of a detector.
+func groupValue(split string, run *store.Run, labels map[string]string, findings []store.Finding) string {
+	axis := groupAxis(split)
+	switch {
+	case strings.HasPrefix(split, "arm."):
+		var v any
+		if json.Unmarshal(run.Arm, &v) != nil {
+			return "not recorded"
+		}
+		for _, k := range strings.Split(axis, ".") {
+			m, ok := v.(map[string]any)
+			if !ok {
+				return "not stated"
+			}
+			if v, ok = m[k]; !ok {
+				return "not stated"
+			}
+		}
+		switch t := v.(type) {
+		case nil:
+			return "not stated"
+		case string:
+			return t
+		case float64, bool:
+			return fmt.Sprint(t)
+		}
+		b, _ := json.Marshal(v)
+		return string(b)
+	case strings.HasPrefix(split, "label."):
+		if l, ok := labels[axis]; ok {
+			return l
+		}
+		return "not labelled"
+	default:
+		for _, f := range findings {
+			if f.Detector == axis {
+				return "with " + axis
+			}
+		}
+		return "without " + axis
+	}
+}
+
+// handleCompare gives compare's view of the batches named (?batch=, given
+// any number of times), grouped as ?split= says.
 func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
 	split := r.URL.Query().Get("split")
-	if split != "" && split != "build" {
-		fail(w, http.StatusBadRequest, "split %q: only build", split)
+	if !validSplit(split) {
+		fail(w, http.StatusBadRequest, "split %q: build, lane, arm.<field>, label.<name> or finding.<detector>", split)
 		return
 	}
 	v, code, err := d.compareView(r.Context(), r.URL.Query()["batch"], nil, split)
@@ -383,6 +473,18 @@ func (d *Daemon) compareView(ctx context.Context, batches []string, leave map[st
 	v := CompareView{Batches: batches, Split: split, Level: 0.95, Groups: []CompareGroup{}, Pairs: []ComparePair{}}
 	index := map[string]int{}
 	arms := map[int]*config.Arm{}
+	axis := groupAxis(split)
+	var labels map[string]map[string]string
+	if strings.HasPrefix(split, "label.") {
+		tasks, err := task.LoadAll(d.taskRoots())
+		if err != nil {
+			return v, http.StatusInternalServerError, fmt.Errorf("the tasks cannot be read: %v", err)
+		}
+		labels = map[string]map[string]string{}
+		for _, t := range tasks {
+			labels[t.Suite+"/"+t.ID] = t.Labels
+		}
+	}
 	for _, b := range batches {
 		runs, err := d.State.ListRuns(ctx, store.RunFilter{Batch: b})
 		if err != nil {
@@ -405,22 +507,38 @@ func (d *Daemon) compareView(ctx context.Context, batches []string, leave map[st
 			task := run.Suite + "/" + run.TaskID
 			var a config.Arm
 			named := json.Unmarshal(run.Arm, &a) == nil
-			key, build := run.ArmID+" "+task, ""
-			if split == "build" {
+			findings, err := d.State.Findings(ctx, run.ID)
+			if err != nil {
+				return v, http.StatusInternalServerError, err
+			}
+			key, build, value := run.ArmID+" "+task, "", ""
+			switch {
+			case split == "build":
 				build = basisOfRun(&run, nil)["harness build"]
 				if build == "" {
 					build = "not recorded"
 				}
 				key = a.Name + " " + task + " " + build
+			case split == "lane":
+				value = laneHost(&run)
+				key = run.ArmID + " " + task + " " + value
+			case axis != "":
+				value = groupValue(split, &run, labels[task], findings)
+				key = task + " " + value
 			}
 			i, ok := index[key]
 			if !ok {
 				i = len(v.Groups)
 				index[key] = i
-				g := CompareGroup{ArmID: run.ArmID, Task: task, Model: run.Model, SDK: run.Harness, Build: build, Runs: []string{},
+				g := CompareGroup{ArmID: run.ArmID, Task: task, Model: run.Model, SDK: run.Harness, Build: build, Value: value, Runs: []string{},
 					Verdicts: map[string]int{}, Metrics: map[string]stats.Summary{}, Findings: map[string]int{}, Served: map[string][]string{}, values: map[string][]float64{}}
 				if named {
-					g.Arm, arms[i] = a.Name, &a
+					g.Arm = a.Name
+					// A group-by group may hold several arms: no arm
+					// stands for it in the pairs' arm diff.
+					if axis == "" {
+						arms[i] = &a
+					}
 				}
 				v.Groups = append(v.Groups, g)
 			} else if g := &v.Groups[i]; !slices.Contains(strings.Split(g.ArmID, ","), run.ArmID) {
@@ -460,10 +578,6 @@ func (d *Daemon) compareView(ctx context.Context, batches []string, leave map[st
 				}
 			}
 			g.Cap.audit(run.ID, run.Verdict == store.Pass, byName)
-			findings, err := d.State.Findings(ctx, run.ID)
-			if err != nil {
-				return v, http.StatusInternalServerError, err
-			}
 			seen := map[string]bool{}
 			for _, f := range findings {
 				if !seen[f.Detector] {
@@ -506,7 +620,7 @@ func (d *Daemon) compareView(ctx context.Context, batches []string, leave map[st
 	for i := range v.Groups {
 		for j := i + 1; j < len(v.Groups); j++ {
 			a, b := &v.Groups[i], &v.Groups[j]
-			if a.Task != b.Task || split == "build" && a.Arm != b.Arm {
+			if a.Task != b.Task || split == "build" && a.Arm != b.Arm || split == "lane" && a.ArmID != b.ArmID {
 				continue
 			}
 			p := ComparePair{A: i, B: j, Differs: []string{}, Metrics: map[string]stats.Rank{},

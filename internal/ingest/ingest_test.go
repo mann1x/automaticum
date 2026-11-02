@@ -755,3 +755,21 @@ func TestGuardTrips(t *testing.T) {
 		t.Errorf("bare notice turns %v", bare.NoticeTurns)
 	}
 }
+
+// TestMoney proves cost.money (070 §2): the price the endpoint declared
+// when the run started, a million tokens at a time, and nothing for an
+// endpoint without one.
+func TestMoney(t *testing.T) {
+	got := map[string]float64{}
+	put := func(n string, v float64) { got[n] = v }
+	r := &store.Run{ID: "r", Provenance: json.RawMessage(`{"inference":{"price":{"currency":"EUR","input_per_mtok":2,"cached_input_per_mtok":0.5,"output_per_mtok":8}}}`)}
+	money(r, put, 3_000_000, 2_000_000, 500_000)
+	if got["cost.money.prompt"] != 7 || got["cost.money.completion"] != 4 || got["cost.money"] != 11 {
+		t.Errorf("money %v", got)
+	}
+	got = map[string]float64{}
+	money(&store.Run{ID: "q", Provenance: json.RawMessage(`{"inference":{}}`)}, put, 1, 1, 1)
+	if len(got) != 0 {
+		t.Errorf("unpriced %v", got)
+	}
+}

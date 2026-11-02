@@ -137,7 +137,8 @@ static-gate refusal of a start answers 422 with `gate` beside `error`.
 - **Reading:** `run tail` renders the transcript (turns, reasoning, text,
   tool calls with how they ended, notices, the runner's notes, the scripted
   user and the end; `--raw` for the lines, `--max N` to cut long blocks).
-  `logs` takes `--grep RE`, `--turn N`, `--render` and `--max`. `status
+  `logs` takes `--grep RE`, `--turn N`, `--render` and `--max`. `run
+  timeline <run>` is the per-run timeline of 070 §1.1. `status
   --watch`. `run ls --lane L`.
 - **`reanalyse --where`** (`suite=, task=, arm_id=, model=, verdict=, lane=,
   batch=, since=, until=`) and `--detector D`.
@@ -147,7 +148,9 @@ static-gate refusal of a start answers 422 with `gate` beside `error`.
   [<batch>...] [--where ...]` (`GET /v1/report/census`), `report struggle
   [<batch>...] [--where ...]` (`GET /v1/report/struggle`, D126) and `report
   guards [<batch>...] [--kind unconfirmed|missed] [--where ...]` (`GET
-  /v1/report/guards`).
+  /v1/report/guards`) and `report skew <batch>...` (`GET
+  /v1/compare?split=lane`). `compare --group arm.<field>|label.<name>|finding.<detector>`
+  groups by that axis (`?split=`).
 - **Exports (065 §5):** `export cell <batch> --out D [--format jsonl|csv]`
   writes a batch's cell files as `cell run` does, and with csv also
   `runs.csv`, one row per run with every per-run number as a column. `export

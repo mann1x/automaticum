@@ -34,6 +34,10 @@ func compareAs(ctx context.Context, args []string, name, split string) error {
 	var batches list
 	fs.Var(&batches, "batch", "a batch; give it several times to compare batches")
 	all := fs.Bool("all", false, "every metric the runs have, not only the main ones")
+	group := new(string)
+	if split == "" {
+		group = fs.String("group", "", "group the runs by an arm field (arm.thinking.level), a task label (label.difficulty) or a finding (finding.reasoning_loop) instead of by arm")
+	}
 	rest := parse(fs, args)
 	batches = append(batches, rest...)
 	if len(batches) == 0 {
@@ -44,6 +48,9 @@ func compareAs(ctx context.Context, args []string, name, split string) error {
 		return err
 	}
 	q := url.Values{"batch": batches}
+	if *group != "" {
+		split = *group
+	}
 	if split != "" {
 		q.Set("split", split)
 	}
@@ -59,6 +66,12 @@ func compareAs(ctx context.Context, args []string, name, split string) error {
 		fmt.Printf("%s  arm %s (%s), task %s\n   model %s, SDK %s\n", letter(i), g.Arm, shortIDs(g.ArmID), g.Task, g.Model, g.SDK)
 		if g.Build != "" {
 			fmt.Printf("   build %s\n", g.Build)
+		}
+		switch {
+		case v.Split == "lane":
+			fmt.Printf("   lane host %s, %d runs\n", g.Value, len(g.Runs))
+		case g.Value != "":
+			fmt.Printf("   %s = %s, %d runs (arm ids %s)\n", v.Split, g.Value, len(g.Runs), shortIDs(g.ArmID))
 		}
 		ids := make([]string, 0, len(g.Excluded))
 		for id := range g.Excluded {

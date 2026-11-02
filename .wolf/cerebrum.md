@@ -18,6 +18,8 @@
 - (2026-10-29) This session only develops automaticum. Client sessions (e.g. backup_models) write their own arms, models, endpoints and lanes, confirm their gates and start their own batches.
 
 ## Key Learnings
+- 2026-11-02: Docker's GET /containers/{id}/changes lists a container's mount points (and the directories above them) as added/changed even though writes under a mount are not changes; filter them (docker.notMounts) before reporting files written outside the workspace.
+- 2026-11-02: "the batch's baseline" (070 §1.1) is undefined since a batch is one arm; carried as O40, not guessed.
 - 2026-11-02: before writing "the SDK emits no event for X", search the bundle for notice kinds (`kind:"..."`); one run without the feature on proves nothing. The change protocol has atomic_transaction/atomic_empty_attempt/atomic_plan notices.
 - 2026-11-02: the SDK's struggle detector (core class Pa, observer Tl) is identical 4.100.250-269; it is only attached to the main agent when escalation tools or spawn_agent exist, and inspects only at content_end/iteration_end.
 - (2026-11-01) encoding/json decodes into an existing map by merging keys: a test that polls into one struct keeps stale keys. Decode into a fresh value each time.

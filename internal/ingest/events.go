@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"sort"
 	"strings"
@@ -50,6 +51,11 @@ type Events struct {
 	// NoticeLog, for `automaticum notices`; the analysis does not.
 	KeepNotices bool
 	NoticeLog   []Notice
+	// KeepTimeline asks Read to keep the run's moments in order, with
+	// their times, in Timeline, for `automaticum run timeline` (070 §1.1);
+	// the analysis does not.
+	KeepTimeline bool
+	Timeline     []Moment
 	// GuardTrips counts the guards' trips the runner noted, by guard and
 	// phase ("reasoning_loop.cut"); GuardStop is the trip that ended the
 	// run, for an arm that stops at the first one (D99).
@@ -285,6 +291,26 @@ type agentEvent struct {
 	} `json:"outputSplit"`
 }
 
+// Moment is one thing that happened in a run, for its timeline: a turn
+// starting ("turn"), a tool call ending ("tool", with Failed and the error
+// class in What), a guard's trip ("trip"), a notice of the SDK ("notice",
+// its key), a session fork ("fork"), a mode switch ("mode") or the
+// agent's end ("end").
+type Moment struct {
+	T      time.Time `json:"t"`
+	Turn   int       `json:"turn"`
+	Kind   string    `json:"kind"`
+	What   string    `json:"what,omitempty"`
+	Failed bool      `json:"failed,omitempty"`
+}
+
+// moment keeps one moment when the timeline is asked for.
+func (ev *Events) moment(t time.Time, turn int, kind, what string, failed bool) {
+	if ev.KeepTimeline {
+		ev.Timeline = append(ev.Timeline, Moment{T: t, Turn: turn, Kind: kind, What: what, Failed: failed})
+	}
+}
+
 // Notice is one notice of the SDK as it was shown, with its key.
 type Notice struct {
 	T       time.Time `json:"t"`
@@ -393,6 +419,7 @@ func (ev *Events) line(line []byte, sc *scan) {
 		case "fork":
 			ev.Forks = append(ev.Forks, Fork{T: l.T, From: l.From, To: l.To, Checkpoint: l.Checkpoint, Workspace: l.Workspace, Restarted: l.Restarted})
 			ev.ForkCalls = append(ev.ForkCalls, len(ev.Calls))
+			ev.moment(l.T, sc.turn, "fork", fmt.Sprintf("back to checkpoint %d", l.Checkpoint), false)
 		case "guard_trip":
 			key := l.Guard
 			if l.Phase != "" {
@@ -403,6 +430,7 @@ func (ev *Events) line(line []byte, sc *scan) {
 				ev.GuardCauses[key+"."+l.Cause]++
 			}
 			ev.Trips = append(ev.Trips, Trip{T: l.T, Turn: sc.turn, Guard: l.Guard, Phase: l.Phase, Cause: l.Cause})
+			ev.moment(l.T, sc.turn, "trip", strings.TrimSuffix(strings.Join([]string{l.Guard, l.Phase, l.Cause}, " "), " "), false)
 			if l.Guard == "reasoning_loop" && (l.Phase == "cut" || l.Phase == "aborted") {
 				// The stream so far was thrown away: keep it apart, and
 				// start the block again with what is asked for next.
@@ -424,6 +452,7 @@ func (ev *Events) line(line []byte, sc *scan) {
 				ev.GuardStopCause = ev.GuardStop + "." + l.Cause
 			}
 		case "mode_switched":
+			ev.moment(l.T, sc.turn, "mode", "switched by the "+map[bool]string{true: "agent", false: "user"}[l.Source == "agent"], false)
 			if l.Source == "agent" {
 				ev.AgentModeSwitches++
 			} else {
@@ -478,6 +507,7 @@ func (ev *Events) line(line []byte, sc *scan) {
 			ev.Iterations = a.Iteration
 		}
 		ev.Struggle = append(ev.Struggle, detect.StruggleEvent{Kind: "turn", Turn: a.Iteration})
+		ev.moment(l.T, a.Iteration, "turn", "", false)
 	case "iteration_end":
 		ev.Struggle = append(ev.Struggle, detect.StruggleEvent{Kind: "turn_end", Turn: a.Iteration})
 	case "content_start":
@@ -537,6 +567,7 @@ func (ev *Events) line(line []byte, sc *scan) {
 			delete(sc.started, a.ToolCallID)
 			delete(sc.inputs, a.ToolCallID)
 			ev.ToolCalls = append(ev.ToolCalls, call)
+			ev.moment(l.T, sc.turn, "tool", a.ToolName+map[bool]string{true: ": " + call.ErrorClass, false: ""}[!call.OK], !call.OK)
 			givenStrings(&ev.Given, a.Output)
 			loopFailed := guardFailed(&a)
 			ev.Calls = append(ev.Calls, detect.Call{Turn: sc.turn, Tool: a.ToolName, Input: input, Result: compact(a.Output),
@@ -609,9 +640,14 @@ func (ev *Events) line(line []byte, sc *scan) {
 		if ev.KeepNotices {
 			ev.NoticeLog = append(ev.NoticeLog, Notice{T: l.T, Turn: sc.turn, Key: key, Message: a.Message})
 		}
+		// Every notice but the context report each turn carries.
+		if a.Metadata.Kind != "context_breakdown" {
+			ev.moment(l.T, sc.turn, "notice", key, false)
+		}
 	case "done":
 		ev.AgentEnd = a.Reason
 		ev.next("end", "")
+		ev.moment(l.T, sc.turn, "end", a.Reason, false)
 	}
 }
 

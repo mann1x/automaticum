@@ -358,3 +358,72 @@ func TestReportGuards(t *testing.T) {
 		t.Errorf("bad kind %d", code)
 	}
 }
+
+// Lane skew and group-by (070 §6): the same arm on two hosts is two
+// groups, paired; a group-by axis groups the runs by its value on each
+// task, whatever their arm.
+func TestCompareSplits(t *testing.T) {
+	g := newRig(t, false)
+	ctx := context.Background()
+	host := func(id, h string) {
+		rec, _ := g.state.GetRun(ctx, id)
+		var p map[string]any
+		json.Unmarshal(rec.Provenance, &p)
+		p["inference"] = map[string]any{"lane_host": h}
+		rec.Provenance, _ = json.Marshal(p)
+		g.state.UpsertRun(ctx, rec)
+	}
+	for _, id := range []string{"r1", "r2", "r3", "r4"} {
+		putRun(t, g, id, "b", "id-1", "4.100.266", "v1", "m")
+	}
+	putRun(t, g, "r5", "b", "id-2", "4.100.266", "v1", "m")
+	host("r1", "linux-gpu-1")
+	host("r2", "linux-gpu-1")
+	host("r3", "blackswan-2")
+	host("r4", "blackswan-2")
+	host("r5", "blackswan-2")
+	g.state.ReplaceFindings(ctx, "r2", []store.Finding{{RunID: "r2", Detector: "reasoning_loop", Severity: "warning", Count: 1}})
+	g.state.ReplaceFindings(ctx, "r5", []store.Finding{{RunID: "r5", Detector: "reasoning_loop", Severity: "warning", Count: 1}})
+
+	var v CompareView
+	if code := g.call("GET", "/v1/compare?batch=b&split=lane", nil, &v); code != 200 || len(v.Groups) != 3 {
+		t.Fatalf("lane: %d %+v", code, v.Groups)
+	}
+	// Only the two hosts of arm id-1 are paired; id-2 has one host.
+	if len(v.Pairs) != 1 || v.Groups[v.Pairs[0].A].ArmID != "id-1" || v.Groups[v.Pairs[0].A].Value == v.Groups[v.Pairs[0].B].Value {
+		t.Errorf("lane pairs %+v", v.Pairs)
+	}
+	v = CompareView{}
+	if g.call("GET", "/v1/compare?batch=b&split=finding.reasoning_loop", nil, &v); len(v.Groups) != 2 || len(v.Pairs) != 1 {
+		t.Fatalf("finding: %+v", v.Groups)
+	}
+	for _, gr := range v.Groups {
+		want := map[string]int{"with reasoning_loop": 2, "without reasoning_loop": 3}[gr.Value]
+		if len(gr.Runs) != want {
+			t.Errorf("group %q has %d runs, want %d", gr.Value, len(gr.Runs), want)
+		}
+	}
+	v = CompareView{}
+	if g.call("GET", "/v1/compare?batch=b&split=arm.name", nil, &v); len(v.Groups) != 1 || v.Groups[0].Value != "a" || len(v.Groups[0].Runs) != 5 {
+		t.Errorf("arm.name: %+v", v.Groups)
+	}
+	for _, bad := range []string{"arm.", "colour", "label"} {
+		if code := g.call("GET", "/v1/compare?batch=b&split="+bad, nil, nil); code != 400 {
+			t.Errorf("split %q: %d", bad, code)
+		}
+	}
+	// The values of an axis, read from the run.
+	run := &store.Run{Arm: json.RawMessage(`{"name":"a","thinking":{"level":"high","budget":0},"sampler":{"seed":null}}`)}
+	for split, want := range map[string]string{"arm.thinking.level": "high", "arm.thinking.budget": "0", "arm.sampler.seed": "not stated",
+		"arm.model.model": "not stated", "arm.thinking": `{"budget":0,"level":"high"}`} {
+		if got := groupValue(split, run, nil, nil); got != want {
+			t.Errorf("%s = %q, want %q", split, got, want)
+		}
+	}
+	if got := groupValue("label.difficulty", run, map[string]string{"difficulty": "hard"}, nil); got != "hard" {
+		t.Errorf("label %q", got)
+	}
+	if got := groupValue("label.category", run, map[string]string{"difficulty": "hard"}, nil); got != "not labelled" {
+		t.Errorf("no label %q", got)
+	}
+}

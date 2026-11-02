@@ -40,3 +40,40 @@ func TestStreaks(t *testing.T) {
 		t.Errorf("%+v", s)
 	}
 }
+
+// loop_rate's components (070 §3.1): the runs by detector, by channel and
+// their first loop's turn, over the runs that count.
+func TestLoopComponents(t *testing.T) {
+	seen := func(first int, dets, chans []string) *loopSeen {
+		l := &loopSeen{detectors: map[string]bool{}, channels: map[string]bool{}, first: first}
+		for _, d := range dets {
+			l.detectors[d] = true
+		}
+		for _, c := range chans {
+			l.channels[c] = true
+		}
+		return l
+	}
+	rows := []CellRow{{RunID: "a", Verdict: "PASS"}, {RunID: "b", Verdict: "FAIL"}, {RunID: "c", Verdict: "TIMEOUT"},
+		{RunID: "d", Verdict: "FAIL", SupersededBy: "e"}, {RunID: "f", Verdict: "INVALID"}, {RunID: "g", Verdict: "PASS"}}
+	loops := map[string]*loopSeen{
+		"a": seen(12, []string{detect.ReasoningLoop}, []string{"reasoning"}),
+		"b": seen(30, []string{detect.ReasoningLoop, detect.ReasoningRepetition}, []string{"reasoning", "text"}),
+		"c": seen(50, []string{detect.ReasoningRepetition}, []string{"text"}),
+		"d": seen(1, []string{detect.ReasoningLoop}, []string{"reasoning"}),
+		"f": seen(1, []string{detect.ReasoningLoop}, []string{"reasoning"}),
+	}
+	n, c := loopComponents(rows, loops)
+	if n != 3 || c == nil {
+		t.Fatalf("%d %+v", n, c)
+	}
+	if c.ByDetector[detect.ReasoningLoop] != 2 || c.ByDetector[detect.ReasoningRepetition] != 2 || c.ByChannel["reasoning"] != 2 || c.ByChannel["text"] != 2 {
+		t.Errorf("components %+v", c)
+	}
+	if c.FirstTurn.N != 3 || c.FirstTurn.Median != 30 || c.FirstTurn.Min != 12 {
+		t.Errorf("first turn %+v", c.FirstTurn)
+	}
+	if n, c := loopComponents(rows, nil); n != 0 || c != nil {
+		t.Errorf("no loops: %d %+v", n, c)
+	}
+}

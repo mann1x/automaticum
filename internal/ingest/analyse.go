@@ -51,13 +51,13 @@ const SessionFork = "session_fork"
 // analysis records it as the metric analysis.version: the basis (020 §5)
 // says from it which detectors a run was analysed with, whether or not
 // they found anything.
-const AnalysisVersion = 10
+const AnalysisVersion = 11
 
 // Versions are the versions of the detectors this analysis applies:
 // ingest's own and the detector library's.
 var Versions = map[string]string{
 	"library": detect.Version, WireArm: WireArmVersion, CapHit: "2", GPUResidency: "1", ModelIdentity: "1", ModelReloaded: "2", SessionFork: "1",
-	SecondaryOracle: "1", ClaimedNotPassed: "1", GuardTrip: "1", ControlMarkers: "1", GuardReplay: "1", StruggleSignals: "1",
+	SecondaryOracle: "1", ClaimedNotPassed: "1", GuardTrip: "1", ControlMarkers: "1", GuardReplay: "1", StruggleSignals: "1", OutsideWorkspace: "1",
 }
 
 // VersionsText is Versions as one line, in order.
@@ -92,7 +92,7 @@ func Detectors() []string {
 var owned = map[string]bool{WireArm: true, CapHit: true, GPUResidency: true, ModelReloaded: true, ModelIdentity: true, detect.ShortUnitRepeat: true, detect.CharRun: true,
 	detect.SentenceRepeat: true, detect.Runaway: true, detect.RepeatedToolCall: true,
 	detect.ReasoningRepetition: true, detect.ReasoningLoop: true, detect.FailedIdenticalCall: true, detect.RepeatedCallResult: true,
-	detect.EditOscillation: true, detect.RereadLoop: true, SecondaryOracle: true, ClaimedNotPassed: true, GuardTrip: true, ControlMarkers: true, GuardReplay: true, StruggleSignals: true}
+	detect.EditOscillation: true, detect.RereadLoop: true, SecondaryOracle: true, ClaimedNotPassed: true, GuardTrip: true, ControlMarkers: true, GuardReplay: true, StruggleSignals: true, OutsideWorkspace: true}
 
 // Run derives metrics, tool calls and findings from a run's stored material
 // and writes them, replacing what an earlier ingest wrote. It is safe to run
@@ -358,6 +358,7 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 		m("tokens.prompt.cached", float64(cached))
 		m("tokens.prompt.fresh", float64(prompt-cached))
 		m("tokens.completion", float64(eval))
+		money(r, m, prompt-cached, cached, eval)
 		if evalNS > 0 {
 			m("rate.generation_tok_s", float64(eval)/(float64(evalNS)/1e9))
 		}
@@ -664,6 +665,7 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 	guardReplay(r.ID, ev, fired, m, res)
 	struggleSignals(r.ID, ev, m, res)
 	transactions(ev, m)
+	integrity(r, m, res)
 	return res
 }
 
@@ -681,6 +683,28 @@ func window(r *store.Run, agent []Request) int {
 }
 
 // distribution writes n, sum, p10, p50, p90 and max of a list.
+// money is what the run's tokens cost at the price its endpoint declared
+// when it started (070 §2): cost.money, and its prompt and completion
+// parts, in the endpoint's currency, which the run's record names. A run
+// on an endpoint without a price has none.
+func money(r *store.Run, m func(string, float64), fresh, cached, completion int) {
+	var p struct {
+		Inference struct {
+			Price *config.Price `json:"price"`
+		} `json:"inference"`
+	}
+	json.Unmarshal(r.Provenance, &p)
+	pr := p.Inference.Price
+	if pr == nil {
+		return
+	}
+	in := (float64(fresh)*pr.Input + float64(cached)*pr.CachedInput) / 1e6
+	out := float64(completion) * pr.Output / 1e6
+	m("cost.money", in+out)
+	m("cost.money.prompt", in)
+	m("cost.money.completion", out)
+}
+
 func distribution(m func(string, float64), name string, v []float64) {
 	if len(v) == 0 {
 		return

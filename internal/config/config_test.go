@@ -322,6 +322,14 @@ func TestLocal(t *testing.T) {
 	if l.Lanes["l"].User != "1000:1000" || l.Daemon.Listen != "127.0.0.1:7411" {
 		t.Errorf("defaults: %+v %+v", l.Lanes["l"], l.Daemon)
 	}
+	if l.Endpoints["e"].Price != nil {
+		t.Errorf("an endpoint without [price] is priced: %+v", l.Endpoints["e"].Price)
+	}
+	priced, err := LoadLocal(local(t, map[string]string{"automaticum.toml": daemon, "lanes/l.toml": lane, "token": strings.Repeat("x", 40) + "\n",
+		"endpoints/e.toml": ep + "[price]\ncurrency = \"EUR\"\ninput_per_mtok = 2\ncached_input_per_mtok = 0.5\noutput_per_mtok = 8\n"}))
+	if err != nil || priced.Endpoints["e"].Price == nil || *priced.Endpoints["e"].Price != (Price{Currency: "EUR", Input: 2, CachedInput: 0.5, Output: 8}) {
+		t.Errorf("price: %v %+v", err, priced)
+	}
 	if tok, err := l.Token(); err != nil || len(tok) != 40 {
 		t.Errorf("token: %q, %v", tok, err)
 	}
@@ -342,6 +350,9 @@ func TestLocal(t *testing.T) {
 		"bad kind":            change("endpoints/e.toml", strings.Replace(ep, "ollama", "magic", 1)),
 		"relative data root":  change("automaticum.toml", strings.Replace(daemon, "/data", "data", 1)),
 		"no free floor":       change("automaticum.toml", strings.Replace(daemon, "free_floor_gb = 10\n", "", 1)),
+		"price, no currency":  change("endpoints/e.toml", ep+"[price]\ninput_per_mtok = 1\n"),
+		"price below zero":    change("endpoints/e.toml", ep+"[price]\ncurrency = \"EUR\"\noutput_per_mtok = -1\n"),
+		"price, unknown key":  change("endpoints/e.toml", ep+"[price]\ncurrency = \"EUR\"\nper_request = 1\n"),
 	}
 	for name, files := range cases {
 		if _, err := LoadLocal(local(t, files)); err == nil {

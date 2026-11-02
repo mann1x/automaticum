@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-11-01 (revision 37).
+**Status:** current as of 2026-11-02 (revision 38).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -168,6 +168,7 @@ Each of these waits for a measurement or for the planning of its milestone.
 | O5 | Which published C/C++ SWE-bench-style set, at which version; the order of languages after it. | 062 §6 | milestone 5 |
 | O6 | Which external harnesses need the offline event path. | 064 §3.2 | milestone 5, per harness |
 | O29 | How a `tbench2` verifier gets large binary packages (`path-tracing`'s numpy and pillow, 23 MB of wheels, over the import's 8 MB a task): vendored into the repository, or downloaded when the verifier is built, by the hashes `oracle/requirements.txt` pins (an artefact build with the network). Recommendation: download at build time; the repository keeps only what PyPI does not publish (wheels built from source). | 066 §5 | the owner |
+| O40 | What "the batch's baseline" of the per-run report is (070 §1.1): a batch is one arm, so its runs share every arm field. Candidates: the arm the run's arm extends (the fields its own file states highlighted), the baseline arm of the campaign or cohort the batch belongs to, or the other arms of the same campaign. Recommendation: the campaign's or cohort's baseline where there is one, else the parent arm. | 070 §1.1 | the owner |
 
 Closed since the first revision: O2 (D32), O4 (D30), O7 (S4, then D34), O9
 (D31), O10 (D42), O11 (D33), O12 (D28), O13 (D29), O14 (D46), O8 (D47), O15

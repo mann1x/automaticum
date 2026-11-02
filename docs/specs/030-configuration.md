@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.21, 2026-11-01.
+**Status:** draft 0.22, 2026-11-02.
 
 ## 1. Rules
 
@@ -149,6 +149,14 @@ read from anywhere: no file can say what a merge is called.
 An endpoint file may hold a `[hardware]` table: `gpu`, `vram_gb`, `notes`
 (D72). It is the owner's declaration and is recorded in every run as
 declared. Endpoint files hold addresses and stay untracked (§1).
+
+**As built (2026-11-02):** an endpoint that charges for its tokens may
+hold a `[price]` table: `currency` (required in the table),
+`input_per_mtok`, `cached_input_per_mtok` and `output_per_mtok`, what a
+million fresh prompt, cached prompt and completion tokens cost. No price
+is assumed: an endpoint without the table charges nothing. Every run
+records the table as it was declared when the run started (its inference
+facts, `price`), and its analysis gives `cost.money` (070 §2).
 
 ## 5. Arms
 

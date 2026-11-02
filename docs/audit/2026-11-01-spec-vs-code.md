@@ -628,8 +628,8 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 |---|---|---|---|
 | 070 §1 | everything automatic at ingest, as CLI + API + dashboard view | PARTIAL | ingest + CLI/API yes; dashboard M6 |
 | 070 §1.1 | `run show`: verdict, evidence, metrics, findings, artefact list | BUILT | runShow / GET /v1/runs/{id} |
-| 070 §1.1 | arm fields differing from batch baseline highlighted | NOT BUILT | carried forward (110 §3.2), no milestone |
-| 070 §1.1 | timeline | NOT BUILT | carried forward (110 §3.2), no milestone |
+| 070 §1.1 | arm fields differing from batch baseline highlighted | OPEN | O40: "the batch's baseline" is undefined (a batch is one arm); asked 2026-11-02 |
+| 070 §1.1 | timeline | BUILT | `run timeline` (timeline_cmds.go), `Events.KeepTimeline`; TestTimeline |
 | 070 §2 | tokens from server `usage` | BUILT | tokens.prompt/.cached/.fresh/.completion (ingest) |
 | 070 §2 | time: wall, first token, in tools vs model | BUILT | time.wall_ms, first_token_ms, tools_ms, model_ms, agent_ms |
 | 070 §2 | time per turn; idle gaps | BUILT | `time.turn_median_ms`, `time.turn_max_ms`, `time.gap_max_ms` (analysis 8); TestTurnTimes |
@@ -649,7 +649,7 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §2 | change protocol (transactions, checks, rollbacks) | BUILT | `transactions.*` from the SDK's `atomic_transaction`, `atomic_empty_attempt`, `atomic_plan` notices (analysis 10); TestStruggleSignals |
 | 070 §2 | escalation | BUILT | `escalation.*` from the SDK's expert_reply/escalation_failed notices; offers and calls as notices (analysis 9) |
 | 070 §2 | sub-agents | NOT BUILT | no metric |
-| 070 §2 | cost in tokens and money | NOT BUILT | no money/cost metric |
+| 070 §2 | cost in tokens and money | BUILT | tokens.*; `[price]` on the endpoint (030 §4.2), recorded per run, `cost.money` (analysis 11); TestMoney |
 | 070 §2 | scripted user `user.*`, hidden where zero (D88) | BUILT | user.actions/denials/failed/forks/mode_switches; compare.go:234,266 |
 | 070 §2 | guard trips and stops by guard/phase/cause (D99, D100) | BUILT | guard_trips.*, guard_stop.* (compare.go:266) |
 | 070 §2 | notices by kind `notices.<type>.<kind>.<phase>` (D116); compaction counted once | BUILT | ingest (status.reasoning_loop.cut etc.) |
@@ -657,10 +657,10 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §2.1 | token p50/p90 over PASS runs only | BUILT | `token_stats_pass` in the result file (cell.go verdictNumbers); TestVerdictNumbers |
 | 070 §2.1 | tokens per solved task | BUILT | compare.go:61,403 |
 | 070 §2.1 | throughput over whole cell | BUILT | `scores.throughput_tok_s` |
-| 070 §2.1 | sanity warnings: n vs expected, empty >5%, p10 visible chars under floor | PARTIAL | empty >5% warning built (`empty_completion_share`); n always equals the runs queued; no suite declares a visible-character floor |
+| 070 §2.1 | sanity warnings: n vs expected, empty >5%, p10 visible chars under floor | PARTIAL | empty >5% warning built (`empty_completion_share`); n always equals the runs queued; the floor is declared in `suites/*.toml` (m5), as the spec now says |
 | 070 §3 | Go detector library, via CLI and API (D24) | BUILT | internal/detect; `detect`, GET /v1/runs/{id}/detect |
 | 070 §3 | short-unit repeat, char run, sentence repeat (§3.1) | BUILT | internal/detect/detect.go, reference_test.go |
-| 070 §3 | runaway (per-suite declared size) | PARTIAL | detector exists; no suite/task field declares a size and ingest always passes `detect.Options{}` (analyse.go:124,514), so it never fires at ingest |
+| 070 §3 | runaway (per-suite declared size) | PARTIAL | detector and `detect --runaway N` built; the per-suite size is declared in `suites/*.toml` (m5), as the spec now says |
 | 070 §3 | repeated tool call | BUILT | detectors.go:103-105 |
 | 070 §3 | near-duplicate rounds | NOT BUILT | D129: held until the owner defines it |
 | 070 §3 | edit oscillation | BUILT | D129: `edit_oscillation`, the call guard on writing tools (library 3) |
@@ -668,9 +668,9 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §3 | per-block flags kept separate + looped OR | BUILT | detector.<name>.<channel>, detector.looped_blocks |
 | 070 §3 | detectors evaluated per run and per cell | PARTIAL | per run yes; per cell only `loop_rate` + degeneration counts (cell.go:242) |
 | 070 §3.1 | controls per domain, self-test at start, in result file | BUILT | detect controls; daemon start; cell.go:279 |
-| 070 §3.1 | `loop_rate` with its components (detector, channel, turn) | PARTIAL | cell.go:242 gives the rate; components only as separate findings, not reported with it |
+| 070 §3.1 | `loop_rate` with its components (detector, channel, turn) | BUILT | `loop_components` in the cell result (cell.go `loopComponents`); TestLoopComponents |
 | 070 §3.1 | always cross-tabulated with verdict and cap hits | BUILT | `loop_by_verdict` in the result file |
-| 070 §3.1 | suite subset may declare `loop_rate` as headline | NOT BUILT | headline is always pass_rate (cell.go:229) |
+| 070 §3.1 | suite subset may declare `loop_rate` as headline | SCHEDULED (m5) | the declaration is `suites/*.toml` (030 §1, m5); the spec says so; headline is pass_rate until then |
 | 070 §3.1 | report says which runs had a guard fire | BUILT | guard_trips metrics in run show/compare |
 | 070 §3.1 | reanalyse recomputes over corpus incl. imported (D65) | BUILT | reanalyse `--imported` |
 | 070 §3.2 | library v2: reasoning_repetition, reasoning_loop, repeated_tool_call from SDK (D75) | BUILT | internal/detect/guards.go |
@@ -687,7 +687,7 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §4 | turn pathologies | PARTIAL | D128: thinking-only turns, ended thinking-only, premature done = `claimed_success_oracle_no`; refusal and report-after-early-end held |
 | 070 §4 | parameter drift | BUILT | wire_arm `drift`/`differs`/`sent_not_stated` (070 §4.1) |
 | 070 §4 | server side: finish per request, reloads, GPU residency | PARTIAL | finish.*, model_reloaded, gpu_residency; no truncations/slot reuse/evictions/admission/restarts/server-log errors |
-| 070 §4 | integrity: oracle tampering, workspace not pristine | PARTIAL | tampering = verdict (run TestTamperedOracle), pristine = gate `workspace`; files outside workspace, sandbox escapes, PATH/chmod changes not detected |
+| 070 §4 | integrity: oracle tampering, workspace not pristine | PARTIAL | tampering = verdict, pristine = gate `workspace`; files outside the workspace: `outside_workspace` from the container's changes (analysis 11, TestIntegrity, TestRunChanges); sandbox escapes and in-workspace obstacle changes not built |
 | 070 §4 | struggle signals with recall / false alarm | BUILT | D126: `struggle_signals` finding, `detect.Struggle` (the SDK's detector replayed), `report struggle`; TestStruggle*, TestReportStruggle |
 | 070 §4 | session forks `session_fork` (D86) | BUILT | ingest/analyse.go:46 |
 | 070 §4 | outcome mismatches (claimed vs oracle, fixed then broken) | PARTIAL | claimed vs oracle built (`claimed_success_oracle_no`); fixed-then-broken needs periodic oracle sampling (060 §3.1) |
@@ -702,15 +702,15 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §6 | `compare`: Wilson, Fisher, Mann-Whitney, medians/ranges/swing, basis diff above, cap per pair, denominators | BUILT | compare.go:394-429; stats.go |
 | 070 §6 | streaks; "how many more runs to tell apart" | BUILT | streaks built (CompareGroup.Streaks); "how many more runs" not adopted (O39) |
 | 070 §6 | paired comparison (McNemar) | BUILT | stats.McNemar; ComparePair.Paired; TestMcNemar |
-| 070 §6 | unpaired with bootstrap; statement whether distinguishable | PARTIAL | Fisher/MW built; no bootstrap; the "distinguishable" statement is overridden by D78 (no conclusion) |
+| 070 §6 | unpaired with bootstrap; statement whether distinguishable | BUILT | the spec asks "Mann-Whitney or bootstrap": Fisher and Mann-Whitney built; the "distinguishable" statement is not adopted (D78, O39) |
 | 070 §6 | jitter band | NOT ADOPTED | O39 |
 | 070 §6 | zero/null result carries its power | NOT ADOPTED | O39 |
 | 070 §6 | distributions on request | PARTIAL | `--all` shows every metric, not distributions |
-| 070 §6 | group by any arm field, task label or finding | NOT BUILT | compare groups by arm id + task only (compare.go:321) |
+| 070 §6 | group by any arm field, task label or finding | BUILT | `compare --group arm.F|label.L|finding.D` (`?split=`), n and arm ids per group; TestCompareSplits |
 | 070 §6 | census of tool failures | PARTIAL | `report census` with error classes (analysis 9); parse paths unrecorded: the SDK keeps them on its messages, not in the event stream |
 | 070 §6 | regression view across SDK versions | BUILT | `report regression` (compare split by harness build) |
 | 070 §6 | comparability: refusal to pool across task/oracle/scoring/basis | PARTIAL | groups never pool across tasks; basis differences are shown, not refused; no exclusion list for oracle/scoring boundaries |
-| 070 §6 | lane skew | NOT BUILT | none |
+| 070 §6 | lane skew | BUILT | `report skew` (`?split=lane`): one group per lane host, the same arm's paired; TestCompareSplits |
 | 070 §6 | served-model facts per arm and change between runs (D82) | BUILT | compare.go:58 `Served` |
 
 ## 080 Store
@@ -814,7 +814,7 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 110 §3 | M1 store spike and importer | BUILT | 080 §7.4, 100 §7 |
 | 110 §3 | M2 walking skeleton | BUILT | daemon, CLI, lane, runner, manic_miner, verdicts |
 | 110 §3 | M3 gates, metrics, detectors, doctor, reanalyse, run report | PARTIAL | built except carry-forwards: reanalyse --detector/--where, timeline/baseline, mailbox, 3 detectors, agent-mode gates (M7) |
-| 110 §3 | M4 batches, cells, statistics | PARTIAL | scheduler, interleave, campaigns, control, recovery, basis, cell run, cap audit, paired statistics (McNemar) built; group-by, lane skew and bootstrap not yet |
+| 110 §3 | M4 batches, cells, statistics | PARTIAL | scheduler, interleave, campaigns, control, recovery, basis, cell run, cap audit, paired statistics (McNemar), group-by and lane skew built |
 | 110 §3 | M5 suites and adapters (suite interface, SWE-bench, BFCL, in-container adapter, multi-language reqs, Gitea) | SCHEDULED | only tbench2 importer and train-* tasks exist; no BFCL/SWE-bench/adapter/Gitea |
 | 110 §3 | M6 interfaces | SCHEDULED | none built |
 | 110 §3 | M7 remote and native | SCHEDULED | none built |

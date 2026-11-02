@@ -40,6 +40,7 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   run ls                        queued, running and finished runs
   run show <run>                one run's record
   run tail <run>                what a run prints, as it arrives; a queued run is waited for until it starts
+  run timeline <run>            the run turn by turn: calls and failures, guard trips, notices, forks, the end
   run stop <run>                take a queued run off the queue
   run abort <run>               end a run in flight
   run pause <run>               hold a run in flight between two model requests and free the endpoint of its model
@@ -74,13 +75,14 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   export cohort <name> --out D  every cell of a cohort, cohort.json, and every run's numbers in runs.jsonl [--format jsonl|csv]
   export run <run>... --out D   a run's record and its stored artefacts [--kind K ...]
   doctor                        every gate, on every lane, now [--lane L] [--arm A] [--task T] [--all]
-  compare <batch> [<batch> ...] the arms of some batches side by side: every statistic, no conclusion [--all]
+  compare <batch> [<batch> ...] the arms of some batches side by side: every statistic, no conclusion [--all] [--group arm.F|label.L|finding.D]
   report run|cell <id>          the same as run show, cell show
   report batch|ab <b> [<b>]     compare of one batch, or of two
   report regression <batch>...  the runs side by side by harness build (SDK, image, automaticum), one arm at a time [--all]
   report census [<batch>...]    tool calls by tool and model: failed, error classes, parse paths [--where ...]
   report struggle [<batch>...]  struggle signals (D126) against "did not pass": recall, false alarms [--where ...]
   report guards [<batch>...]    the guards' review queue: unconfirmed trips, missed turns [--kind ...] [--where ...]
+  report skew <batch>...        lane skew: the same arm's runs by lane host, paired
   campaign start <name>         run campaigns/<name>.toml: its batches in order, with their stop conditions [--dry-run]
   campaign ls                   the campaigns
   cohort ls                     the cohorts: cells declared to differ in one variable (a campaign's [cohort], cell run --cohort)
@@ -134,6 +136,7 @@ func main() {
 		"run ls":               runLs,
 		"run show":             runShow,
 		"run tail":             runTail,
+		"run timeline":         runTimeline,
 		"run stop":             runPost("stop", "taken off the queue"),
 		"run abort":            runPost("abort", "aborting"),
 		"run pause":            runPost("pause", "will be held before its next model request, and the endpoint then freed of its model"),
@@ -181,6 +184,7 @@ func main() {
 		"report census":        reportCensus,
 		"report struggle":      reportStruggle,
 		"report guards":        reportGuards,
+		"report skew":          reportSkew,
 		"run identify":         runPost("identify", "where and on what it ran is now in the record, marked as added later"),
 		"legacy import":        legacyImport,
 		"store check":          storeCheck,

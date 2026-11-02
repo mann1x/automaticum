@@ -1,6 +1,6 @@
 # 065 — The cell contract and exports
 
-**Status:** draft 0.13, 2026-11-01.
+**Status:** draft 0.14, 2026-11-02.
 
 ## 1. Purpose
 
@@ -134,6 +134,9 @@ fields are those of §3 plus `arm` and `batch`. As built:
 - `token_stats` and `tool_calls` are per-run summaries (median, quartiles,
   spread); `generation_caps` is the cap audit of 070 §5; `degeneration`
   counts, per detector, the runs with a result where it fired;
+  `loop_components` (absent when no run looped) is what `scores.loop_rate`
+  is made of, over the runs it counts: runs by detector, by channel
+  (reasoning or text) and the turn of each run's first loop (070 §3.1);
   `detector_self_test` is the library's self-test, run when the result is
   read.
 - `warnings`: INVALID runs, runs without a result, unfinished runs, an

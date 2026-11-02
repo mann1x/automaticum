@@ -1,6 +1,6 @@
 # 110 — Acceptance and roadmap
 
-**Status:** draft 0.25, 2026-10-27. The milestone order in §3 was approved by the owner
+**Status:** draft 0.26, 2026-11-02. The milestone order in §3 was approved by the owner
 on 2026-10-12. Milestone 1 has been carried out: the store, the importer and
 the spike's measurements exist (080 §7.4, 100 §7), and the owner has decided
 the questions it raised (D46 to D51). Milestone 2 was planned and approved on
@@ -257,6 +257,9 @@ Not done in milestone 3, and carried forward:
 - `reanalyse --detector` and `--where`; the timeline and the baseline
   highlighting of the per-run report (070 §1.1); a mailbox notifier; the
   detectors near-duplicate rounds, edit oscillation and re-read loop.
+  (2026-11-02: the timeline, edit oscillation and the re-read loop are
+  built; the baseline highlighting waits for O40, near-duplicate rounds
+  for D129.)
 - The gates that need an agent on the endpoint's host (milestone 7), and the
   parts of `free`, `gpu_residency`, `host` and `bind_address` that 050 §3.1.1
   lists as not yet looked at.

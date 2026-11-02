@@ -55,7 +55,10 @@ type CellResult struct {
 	TokenStatsPass map[string]stats.Summary `json:"token_stats_pass"`
 	// LoopByVerdict cross-tabulates the runs with a loop and the runs
 	// that hit their output limit with the verdict (070 §3.1).
-	LoopByVerdict    map[string]LoopCross     `json:"loop_by_verdict"`
+	LoopByVerdict map[string]LoopCross `json:"loop_by_verdict"`
+	// LoopComponents is what loop_rate is made of (070 §3.1): nil when no
+	// run counted looped.
+	LoopComponents   *LoopComponents          `json:"loop_components,omitempty"`
 	GenerationCaps   CapAudit                 `json:"generation_caps"`
 	Degeneration     map[string]int           `json:"degeneration"`
 	ToolCalls        map[string]stats.Summary `json:"tool_calls"`
@@ -117,6 +120,53 @@ type LoopCross struct {
 	Looped       int `json:"looped"`
 	Capped       int `json:"capped"`
 	LoopedCapped int `json:"looped_and_capped"`
+}
+
+// LoopComponents are the runs counted in loop_rate by the detector that
+// fired, by where it fired (reasoning or text; a run may count under both)
+// and the turn of each run's first loop.
+type LoopComponents struct {
+	ByDetector map[string]int `json:"by_detector"`
+	ByChannel  map[string]int `json:"by_channel"`
+	FirstTurn  stats.Summary  `json:"first_turn"`
+}
+
+// loopDetectors are the detectors loop_rate counts.
+var loopDetectors = map[string]bool{detect.ReasoningLoop: true, detect.ReasoningRepetition: true}
+
+// loopSeen is one run's loop findings: the detectors, the channels and the
+// first turn.
+type loopSeen struct {
+	detectors, channels map[string]bool
+	first               int
+}
+
+// loopComponents counts the runs that count (PASS, FAIL, TIMEOUT, not
+// superseded) with a loop finding, and what their loops were made of; nil
+// components when none looped.
+func loopComponents(rows []CellRow, loops map[string]*loopSeen) (int, *LoopComponents) {
+	looped := 0
+	comp := &LoopComponents{ByDetector: map[string]int{}, ByChannel: map[string]int{}}
+	var first []float64
+	for _, row := range rows {
+		l := loops[row.RunID]
+		if row.SupersededBy != "" || (row.Verdict != "PASS" && row.Verdict != "FAIL" && row.Verdict != "TIMEOUT") || l == nil {
+			continue
+		}
+		looped++
+		for det := range l.detectors {
+			comp.ByDetector[det]++
+		}
+		for ch := range l.channels {
+			comp.ByChannel[ch]++
+		}
+		first = append(first, float64(l.first))
+	}
+	if looped == 0 {
+		return 0, nil
+	}
+	comp.FirstTurn = stats.Summarise(first)
+	return looped, comp
 }
 
 // emptyShareWarn is 070 §2.1's "empty completions above 5 %".
@@ -258,6 +308,7 @@ func (d *Daemon) cellView(ctx context.Context, batch string) (CellView, int, err
 	leave := map[string]bool{}
 	var refusedBy []string
 	tasks := map[string]string{}
+	loops := map[string]*loopSeen{}
 	sort.Slice(recs, func(i, j int) bool { return recs[i].ID < recs[j].ID })
 	for _, rec := range recs {
 		row := CellRow{RunID: rec.ID, Task: rec.Suite + "/" + rec.TaskID, Verdict: string(rec.Verdict), VerdictReason: rec.VerdictReason,
@@ -278,6 +329,21 @@ func (d *Daemon) cellView(ctx context.Context, batch string) (CellView, int, err
 				row.Findings = map[string]int{}
 			}
 			row.Findings[f.Detector]++
+			if loopDetectors[f.Detector] {
+				l := loops[rec.ID]
+				if l == nil {
+					l = &loopSeen{detectors: map[string]bool{}, channels: map[string]bool{}, first: f.Turn}
+					loops[rec.ID] = l
+				}
+				l.detectors[f.Detector] = true
+				l.first = min(l.first, f.Turn)
+				var e struct {
+					Channel string `json:"channel"`
+				}
+				if json.Unmarshal(f.Evidence, &e) == nil && e.Channel != "" {
+					l.channels[e.Channel] = true
+				}
+			}
 		}
 		if res.StartedAt.IsZero() || (!rec.StartedAt.IsZero() && rec.StartedAt.Before(res.StartedAt)) {
 			res.StartedAt = rec.StartedAt
@@ -359,14 +425,9 @@ func (d *Daemon) cellView(ctx context.Context, batch string) (CellView, int, err
 	}
 	res.Scores["pass_rate"] = res.Headline.Value
 	if counted := res.Counts["pass"] + res.Counts["fail"] + res.Counts["timeout"]; counted > 0 {
-		looped := 0
-		for _, row := range v.Rows {
-			if row.SupersededBy == "" && (row.Verdict == "PASS" || row.Verdict == "FAIL" || row.Verdict == "TIMEOUT") &&
-				(row.Findings[detect.ReasoningLoop] > 0 || row.Findings[detect.ReasoningRepetition] > 0) {
-				looped++
-			}
-		}
+		looped, comp := loopComponents(v.Rows, loops)
 		res.Scores["loop_rate"] = float64(looped) / float64(counted)
+		res.LoopComponents = comp
 	}
 	if !res.StartedAt.IsZero() && !res.FinishedAt.IsZero() {
 		res.DurationS = res.FinishedAt.Sub(res.StartedAt).Seconds()

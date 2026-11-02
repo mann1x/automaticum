@@ -46,6 +46,18 @@ type Blobs interface {
 	Put(ctx context.Context, r io.Reader) (blob.Hash, int64, error)
 }
 
+// maxChanges is how many changed paths a run's record keeps; Count says
+// how many there were.
+const maxChanges = 500
+
+// Changes are a container's filesystem changes: how many, and the first
+// maxChanges of them in the engine's order.
+type Changes struct {
+	Count int             `json:"count"`
+	Paths []docker.Change `json:"paths"`
+	Error string          `json:"error,omitempty"`
+}
+
 // Inference is the inference point of a run and the identity of its model,
 // each fact with where it comes from: stated by the owner, declared in the
 // configuration, said by the server, or read from the weights file.
@@ -62,7 +74,10 @@ type Inference struct {
 	// AddedLater is set when these facts were not recorded by the run but
 	// added to its record afterwards (D74): when, and from what.
 	AddedLater *AddedLater `json:"added_later,omitempty"`
-	GPU        struct {
+	// Price is the endpoint's [price] as it was declared when the run
+	// started; nil when it declares none.
+	Price *config.Price `json:"price,omitempty"`
+	GPU   struct {
 		// Declared is what the endpoint's configuration states.
 		Declared string  `json:"declared"`
 		VRAMGB   float64 `json:"vram_gb,omitempty"`
@@ -276,6 +291,10 @@ type provenance struct {
 		// asks for less (D112).
 		CPUs        float64 `json:"cpus,omitempty"`
 		MemoryBytes int64   `json:"memory_bytes,omitempty"`
+		// Changes is what the agent's container wrote in its own
+		// filesystem, outside the workspace and the harness's mounts (070
+		// §4, integrity); nil when they could not be read.
+		Changes *Changes `json:"changes,omitempty"`
 	} `json:"container"`
 	Stream struct {
 		Lines    int `json:"lines"`
@@ -419,6 +438,7 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 	inf := &Inference{Endpoint: endpoint.Name, Kind: endpoint.Kind, ServerVersion: before.ServerVersion, Engine: before.Engine,
 		Host: endpoint.Host, LaneHost: lane.Host}
 	inf.GPU.Declared, inf.GPU.VRAMGB, inf.GPU.Notes = endpoint.Hardware.GPU, endpoint.Hardware.VRAMGB, endpoint.Hardware.Notes
+	inf.Price = endpoint.Price
 	inf.Model.Tag, inf.Model.Digest = a.Model.Model, before.Digest
 	stated := req.Identity
 	if Ollama(endpoint) {
@@ -518,6 +538,7 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		Tmpfs:       map[string]string{"/tmp": "exec"},
 		MemoryBytes: memory, NanoCPUs: nanoCPUs, PidsLimit: lane.Pids,
 		Collect: collected,
+		Changes: true,
 		Labels:  map[string]string{"automaticum": "run", "automaticum.run": r.ID, "automaticum.lane": req.Lane},
 		// Time held is not the run's time: the outer limit moves by it,
 		// and does not fall while the run is being held.
@@ -547,6 +568,19 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 	cancel(nil)
 	p.Container.ID, p.Container.ExitCode, p.Container.OOMKilled, p.Container.TimedOut = res.ID, res.ExitCode, res.OOMKilled, res.TimedOut
 	p.Image.ID = res.ImageID
+	switch {
+	case res.ChangesErr != nil:
+		p.Container.Changes = &Changes{Error: res.ChangesErr.Error(), Paths: []docker.Change{}}
+	case res.ID != "":
+		ch := &Changes{Count: len(res.Changes), Paths: res.Changes}
+		if len(ch.Paths) > maxChanges {
+			ch.Paths = ch.Paths[:maxChanges]
+		}
+		if ch.Paths == nil {
+			ch.Paths = []docker.Change{}
+		}
+		p.Container.Changes = ch
+	}
 	lines, events, bad, end := st.snapshot()
 	p.Stream.Lines, p.Stream.Events, p.Stream.BadLines = lines, events, bad
 	p.Runner = end

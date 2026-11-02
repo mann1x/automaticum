@@ -44,6 +44,12 @@ func reportRegression(ctx context.Context, args []string) error {
 	return compareAs(ctx, args, "report regression", "build")
 }
 
+// reportSkew puts the same arm's runs side by side by the host its lanes
+// ran on (070 §6): what is the model and what is the machine.
+func reportSkew(ctx context.Context, args []string) error {
+	return compareAs(ctx, args, "report skew", "lane")
+}
+
 // positional are the arguments that are not flags or their values.
 func positional(args []string) []string {
 	var out []string
