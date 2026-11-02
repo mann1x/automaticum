@@ -193,6 +193,9 @@ type RunView struct {
 	// Settings are the run's sampling and thinking parameters as they
 	// were in effect (070 §4.1).
 	Settings []ingest.Setting `json:"settings,omitempty"`
+	// Baseline is the arm the run's arm is set against, and what differs
+	// (070 §1.1, D130).
+	Baseline *ArmBaseline `json:"baseline,omitempty"`
 	// DryRun says the answer is what a control would do; nothing changed.
 	DryRun bool `json:"dry_run,omitempty"`
 }
@@ -957,6 +960,7 @@ func (d *Daemon) handleRun(w http.ResponseWriter, r *http.Request) {
 func (d *Daemon) fullView(ctx context.Context, rec *store.Run) (RunView, error) {
 	v := view(rec, true)
 	d.retryLinks(&v)
+	v.Baseline = d.armBaseline(rec)
 	refs, err := d.State.BlobRefs(ctx, rec.ID)
 	if err != nil {
 		return v, err

@@ -25,10 +25,18 @@ its cause; the SDK's notice of the same trip is folded into it), every
 other notice of the SDK but the context report each turn carries, session
 forks, mode switches and the agent's end (`--json` gives the moments).
 
-**Open (O40):** what "the batch's baseline" is. A batch is one arm, so its
-runs share every arm field. Recommendation: the baseline arm of the
-campaign or cohort the batch belongs to where there is one, else the arm
-the run's arm extends, with the fields its own file states highlighted.
+**Decided by the owner (2026-11-02), D130:** the baseline is the
+baseline arm of the campaign or cohort the run's batch belongs to where
+there is one, else the arm the run's arm extends; the fields in which the
+run's arm differs from it are highlighted.
+
+**As built (2026-11-02):** a campaign file may name `baseline = "<arm>"`,
+one of its batches' arms (a campaign's cohort shares it). `run show`
+(`GET /v1/runs/{id}`, `baseline`) names the run's baseline and where it
+comes from (`campaign <name>` or `parent`, the arm its file extends) and
+lists every field in which the run's arm, as the run recorded it, differs
+from the baseline as its file is now, each line marked `*`; a run of the
+baseline arm says so.
 
 ## 2. Metrics per run
 
@@ -133,6 +141,10 @@ method is recorded.
   completion tokens at the price the run recorded, in its currency. And
   the integrity metrics of §4: `integrity.outside_workspace` with its
   `.added`, `.changed` and `.deleted`.
+
+  From analysis version 12 (2026-11-02): `tool_calls.swallowed_argument`
+  and `tool_calls.swallowed_argument.by_tool.<tool>` (D131, §4), also a
+  column of `compare`.
 
   **Decided by the owner (2026-10-27, D116):** from analysis version 7 a
   notice of the SDK is counted by what kind it is, never by its sentence:
@@ -344,6 +356,8 @@ detector always reads with the release's defaults, so that runs compare.
   runaway size of 10,000 characters given explicitly (6 short-unit, 1
   letter-run, 363 sentence and 529 runaway firings). Criterion 8 of 110 §1
   is met for the detectors the requirements define.
+- **Library version 4 (2026-11-02).** The swallowed-argument detector
+  (D131, §4) and its two controls.
 - **Library version 3 (2026-11-01).** The SDK's call guard is replayed
   after the run (`internal/detect/callguard.go`, from class `Bu` of
   @cerebriline/core 4.100.269): before each call it looks at what the same
@@ -494,6 +508,17 @@ opening a thinking tag it never closes (`hygiene.control_markers`,
 `hygiene.unclosed_thinking`). Not built: the rest of output hygiene and
 tool-call parse paths, which the SDK records on its messages and not in
 the event stream.
+- **Swallowed arguments (D131, as built 2026-11-02, library version 4,
+  analysis version 12):** `swallowed_argument` (warning) is a tool call
+  one of whose string arguments holds another argument of the same tool,
+  missing from the call: its name after a quote, a backtick, a comma or a
+  closing brace and before a colon (a closing quote between or not). The
+  names are the tools' schemas the run's requests offered (`ReadWire`
+  keeps them), and the arguments the run's calls of the tool did pass. The
+  finding gives the calls per tool, the arguments swallowed and up to five
+  calls with the text around the name. A client's own count on its gates
+  (a fixed list of editor argument names, found whether or not the call
+  passed them) and this rule agreed on the runs read (2 and 19 calls).
 - **Oracles and the agent's own end (as built 2026-11-01, analysis version
   8):** `secondary_oracle` (warning, version 1), one per secondary oracle
   that did not pass or could not run (060 §2), and

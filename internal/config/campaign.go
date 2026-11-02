@@ -25,6 +25,9 @@ type Campaign struct {
 	Stop CampaignStop `toml:"stop" json:"stop"`
 	// Cohort makes every batch of the campaign a cell of one cohort (D120).
 	Cohort *CampaignCohort `toml:"cohort" json:"cohort,omitempty"`
+	// Baseline names the arm, one of its batches', that every run of the
+	// campaign is set against in `run show` (070 §1.1, D130).
+	Baseline string `toml:"baseline" json:"baseline,omitempty"`
 	// SHA256 is the hash of the file as it was read.
 	SHA256 string `toml:"-" json:"sha256"`
 }
@@ -126,6 +129,17 @@ func (c *Campaign) Validate() error {
 		}
 		if co.Variable == "" {
 			bad("[cohort] names no variable: the basis fact or arm field in which its cells differ")
+		}
+	}
+	if c.Baseline != "" {
+		found := false
+		for _, b := range c.Batches {
+			for _, a := range b.Arms {
+				found = found || a == c.Baseline
+			}
+		}
+		if !found {
+			bad("baseline %q is not an arm of any of its batches", c.Baseline)
 		}
 	}
 	seen := map[string]bool{}

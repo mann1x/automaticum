@@ -317,6 +317,14 @@ func LoadArms(dir string) (map[string]*Arm, error) {
 	return out, nil
 }
 
+// ArmParent is the arm an arm's file extends, or "" for none.
+func ArmParent(dir, name string) string {
+	if chain := armChain(dir, name); len(chain) > 1 {
+		return chain[1]
+	}
+	return ""
+}
+
 // armChain lists an arm and its parents, the arm first. It is called after
 // loadArmTree succeeded, so every file exists and there is no cycle.
 func armChain(dir, name string) []string {

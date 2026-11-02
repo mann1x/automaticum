@@ -1,6 +1,7 @@
 # A campaign on the stub model server, for trying campaigns without a GPU:
 # two batches of the stub arm, the second stopping at its first INVALID.
 description = "stub: the demo task, then the demo task and manic_miner"
+# baseline = "stub"  # the arm every run is set against in `run show` (D130)
 
 [[batch]]
 name = "demo"

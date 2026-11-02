@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-02T07:46:41.307Z
-> Files: 504 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-02T09:20:44.126Z
+> Files: 510 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -120,8 +120,6 @@
 - `image_cmds.go` — built (65 fields) (~1334 tok)
 - `main.go` — Command automaticum is the command line of automaticum. (~3973 tok)
 - `report_cmds_test.go` — TestWriteRunsCSV, TestPositionalAndFormat (~426 tok)
-- `timeline_cmds.go` — runTimeline (`run timeline`), timelineLines: a line per turn with calls/failures, trips (notice folded), notices, forks, end (~1100 tok)
-- `timeline_cmds_test.go` — TestTimeline (~600 tok)
 - `report_cmds.go` — written (128 fields) (~3796 tok)
 - `rescore_cmds.go` (~956 tok)
 - `sdk_cmds.go` — row (57 fields) (~1545 tok)
@@ -130,6 +128,8 @@
 - `store_nocgo.go` — go:build !cgo (~128 tok)
 - `stub_cmds.go` (~489 tok)
 - `suite_cmds.go` — plan (50 fields) (~1297 tok)
+- `timeline_cmds_test.go` — TestTimeline (~600 tok)
+- `timeline_cmds.go` — runTimeline (`run timeline`), timelineLines: a line per turn with calls/failures, trips (notice folded), notices, forks, end (~1100 tok)
 - `wait_cmds_test.go` — oldDaemon (23 fields); methods: ServeHTTP (~984 tok)
 - `wait_cmds.go` — waiter (139 fields) (~5130 tok)
 
@@ -314,6 +314,7 @@
 - `spans.go` — Span (51 fields) (~1142 tok)
 - `struggle_test.go` — TestStruggleFailures, TestStruggleBeforeMinIteration, TestStruggleTransactions, TestStruggleEditStre (~1941 tok)
 - `struggle.go` — Struggle: the SDK's struggle detector (core Pa + observer Tl, 4.100.250-269) replayed; StruggleEvent, StruggleFiring, StruggleFailure (the SDK's ET) (~2723 tok)
+- `swallow.go` — Struct: SwallowFiring (~950 tok)
 
 ## internal/docker/
 
@@ -345,17 +346,17 @@
 - `detectors.go` — Firing (54 fields) (~2289 tok)
 - `events.go` — turns a run's stored raw material into what is queried: (~7430 tok)
 - `ingest_test.go` — TestNoticeLog, TestReadEvents, TestReadWire, TestCompareWireClean, TestCompareWire (~10640 tok)
+- `integrity_test.go` — TestIntegrity (~500 tok)
+- `integrity.go` — integrity: outside_workspace finding and integrity.outside_workspace.* from container.changes (~900 tok)
 - `openai_test.go` — TestOpenAIWire, TestOpenAIWireFromStub, TestOpenAIThinkingBudget (~1625 tok)
 - `oracle_test.go` — TestPartialScore, TestOracleFindings, TestTurnTimes (~930 tok)
-- `integrity.go` — integrity: outside_workspace finding and integrity.outside_workspace.* from container.changes (~900 tok)
-- `integrity_test.go` — TestIntegrity (~500 tok)
 - `oracle.go` — oracleBrief (29 fields) (~1325 tok)
 - `render_test.go` — TestRenderer (~628 tok)
 - `render.go` — Renderer (35 fields); methods: Turn, Line (~1056 tok)
 - `sample_test.go` — TestSample, TestDumpBlocks (~1010 tok)
 - `sampler.go` — Setting (43 fields) (~1398 tok)
-- `struggle.go` — struggleSignals (struggle_signals finding, struggle.* metrics, StruggleTriggers, D126), transactions (transactions.* from atomic_* notices) (~1253 tok)
 - `struggle_test.go` — TestStruggleSignals (~900 tok)
+- `struggle.go` — struggleSignals (struggle_signals finding, struggle.* metrics, StruggleTriggers, D126), transactions (transactions.* from atomic_* notices) (~1253 tok)
 - `turns_test.go` — TestTurnMetrics, TestEditsWithoutCheck, TestErrorClass, TestRereadsAndCarried (~2052 tok)
 - `turns.go` — replay (64 fields) (~2671 tok)
 - `wire.go` — Request (120 fields) (~3086 tok)

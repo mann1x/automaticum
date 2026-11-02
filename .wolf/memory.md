@@ -1557,3 +1557,35 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 09:13 | endpoint [price] + cost.money, loop_components, compare --group / report skew, run timeline, O40 (baseline), outside_workspace from container changes; analysis 11 | config, run, docker, ingest, daemon, cmd, 030/065/070/090/110/decisions/audit | tests pass | ~45000 |
+
+## Session: 2026-11-02 09:15
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-02 09:15
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-02 09:16
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-02 09:17
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-02 09:20
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-02 09:20
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:20 | Created internal/detect/swallow.go | — | ~950 |
+| 10:23 | D130 run show baseline (campaign baseline key, else parent), D131 swallowed_argument detector (schemas from wire, library 4, analysis 12), matched backup_models' scan on runs 006/008 | detect/swallow.go, ingest/swallow.go, daemon/baseline.go, config, cmd | tests pass | ~25000 |

@@ -71,8 +71,8 @@ re-read loop, D129), struggle signals with recall and false alarms (D126,
 `report struggle`), cost in money for a priced endpoint, loop_rate's
 components, group-by and lane skew (`compare --group`, `report skew`),
 the run timeline, and files written outside the workspace
-(`outside_workspace`). Still open or waiting: the per-run report's arm
-highlight (O40), near-duplicate rounds (D129: undefined), refusal and a
+(`outside_workspace`). Since: the arm highlight (D130) and swallowed
+arguments (D131). Still open or waiting: near-duplicate rounds (D129: undefined), refusal and a
 report after an early end (D128: no rule), the per-suite runaway size,
 visible-character floor and loop_rate headline (`suites/*.toml`,
 milestone 5), edit churn and same-region edits, parse paths and the
@@ -649,7 +649,7 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 |---|---|---|---|
 | 070 §1 | everything automatic at ingest, as CLI + API + dashboard view | PARTIAL | ingest + CLI/API yes; dashboard M6 |
 | 070 §1.1 | `run show`: verdict, evidence, metrics, findings, artefact list | BUILT | runShow / GET /v1/runs/{id} |
-| 070 §1.1 | arm fields differing from batch baseline highlighted | OPEN | O40: "the batch's baseline" is undefined (a batch is one arm); asked 2026-11-02 |
+| 070 §1.1 | arm fields differing from batch baseline highlighted | BUILT | D130: campaign `baseline`, else the parent arm; `run show` lists what differs (baseline.go); TestArmBaseline, TestLoadCampaign |
 | 070 §1.1 | timeline | BUILT | `run timeline` (timeline_cmds.go), `Events.KeepTimeline`; TestTimeline |
 | 070 §2 | tokens from server `usage` | BUILT | tokens.prompt/.cached/.fresh/.completion (ingest) |
 | 070 §2 | time: wall, first token, in tools vs model | BUILT | time.wall_ms, first_token_ms, tools_ms, model_ms, agent_ms |
@@ -709,6 +709,7 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §4 | parameter drift | BUILT | wire_arm `drift`/`differs`/`sent_not_stated` (070 §4.1) |
 | 070 §4 | server side: finish per request, reloads, GPU residency | PARTIAL | finish.*, model_reloaded, gpu_residency; no truncations/slot reuse/evictions/admission/restarts/server-log errors |
 | 070 §4 | integrity: oracle tampering, workspace not pristine | PARTIAL | tampering = verdict, pristine = gate `workspace`; files outside the workspace: `outside_workspace` from the container's changes (analysis 11, TestIntegrity, TestRunChanges); sandbox escapes and in-workspace obstacle changes not built |
+| 070 §4 | swallowed arguments (D131) | BUILT | `swallowed_argument` (detect/swallow.go, ingest/swallow.go), `tool_calls.swallowed_argument`, a compare column; TestSwallowedArgs, TestSwallowed |
 | 070 §4 | struggle signals with recall / false alarm | BUILT | D126: `struggle_signals` finding, `detect.Struggle` (the SDK's detector replayed), `report struggle`; TestStruggle*, TestReportStruggle |
 | 070 §4 | session forks `session_fork` (D86) | BUILT | ingest/analyse.go:46 |
 | 070 §4 | outcome mismatches (claimed vs oracle, fixed then broken) | PARTIAL | claimed vs oracle built (`claimed_success_oracle_no`); fixed-then-broken needs periodic oracle sampling (060 §3.1) |

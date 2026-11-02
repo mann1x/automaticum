@@ -427,3 +427,38 @@ func TestCompareSplits(t *testing.T) {
 		t.Errorf("no label %q", got)
 	}
 }
+
+// The per-run report's baseline (D130): the arm the run's arm extends, or
+// the campaign's baseline arm; and what differs from it.
+func TestArmBaseline(t *testing.T) {
+	g := newRig(t, false)
+	ctx := context.Background()
+	arm, err := config.LoadArm(examplesConfig(t)+"/arms", "stub-sdk-4.100.266")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := json.Marshal(arm)
+	putRun(t, g, "r1", "b1", "id", "4.100.266", "v1", "m")
+	rec, _ := g.state.GetRun(ctx, "r1")
+	rec.Arm = raw
+	g.state.UpsertRun(ctx, rec)
+
+	var v RunView
+	if code := g.call("GET", "/v1/runs/r1", nil, &v); code != 200 || v.Baseline == nil {
+		t.Fatalf("%d %+v", code, v.Baseline)
+	}
+	b := v.Baseline
+	if b.Arm != "stub" || b.Source != "parent" || len(b.Differs) == 0 || !strings.Contains(strings.Join(b.Differs, "\n"), "4.100.266") {
+		t.Errorf("parent baseline %+v", b)
+	}
+	// A campaign that names a baseline sets its batches' runs against it.
+	g.d.mu.Lock()
+	g.d.ctl.Campaigns = map[string]*CampaignState{"c": {Def: &config.Campaign{Name: "c", Baseline: "stub-sdk-4.100.266"},
+		Batches: []CampaignBatchState{{Name: "x", Batch: "b1"}}}}
+	g.d.mu.Unlock()
+	v = RunView{}
+	g.call("GET", "/v1/runs/r1", nil, &v)
+	if b := v.Baseline; b == nil || b.Source != "campaign c" || b.Note != "this run is of the baseline arm" {
+		t.Errorf("campaign baseline %+v", b)
+	}
+}

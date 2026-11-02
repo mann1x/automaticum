@@ -423,6 +423,21 @@ func runShow(ctx context.Context, args []string) error {
 	}
 	line("task", fmt.Sprintf("%s, version %d", r.Task, r.TaskVersion))
 	line("arm", strings.TrimSpace(r.Arm+" "+r.ArmID))
+	if b := r.Baseline; b != nil {
+		switch {
+		case b.Note != "" && b.Arm == "":
+			line("baseline", b.Note)
+		case b.Note != "":
+			line("baseline", fmt.Sprintf("%s (%s): %s", b.Arm, b.Source, b.Note))
+		case len(b.Differs) == 0:
+			line("baseline", fmt.Sprintf("%s (%s): the same in every field", b.Arm, b.Source))
+		default:
+			line("baseline", fmt.Sprintf("%s (%s); the arm differs in:", b.Arm, b.Source))
+			for _, d := range b.Differs {
+				fmt.Printf("  * %s\n", d)
+			}
+		}
+	}
 	line("batch", r.Batch)
 	line("campaign", r.Campaign)
 	line("retries", r.RetryOf)

@@ -285,7 +285,7 @@ func compareAs(ctx context.Context, args []string, name, split string) error {
 var mainMetrics = map[string]bool{"time.wall_ms": true, "time.model_ms": true, "time.tools_ms": true, "time.first_token_ms": true,
 	"requests": true, "requests.failed": true, "tokens.completion": true, "tokens.completion.reasoning": true, "tokens.completion.text": true,
 	"tokens.completion.tool_input": true, "tokens.prompt": true, "thinking.chars.sum": true, "thinking.chars.max": true,
-	"thinking.budget_tokens.served": true, "context.peak_share": true, "context.compactions": true, "tool_calls": true, "tool_calls.failed": true,
+	"thinking.budget_tokens.served": true, "context.peak_share": true, "context.compactions": true, "tool_calls": true, "tool_calls.failed": true, "tool_calls.swallowed_argument": true,
 	"rate.generation_tok_s": true, "endpoint.reloads": true, "endpoint.gpu_share": true}
 
 // bare drops the unit a value was formatted with: the metric's name says it.

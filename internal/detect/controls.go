@@ -186,12 +186,30 @@ func SelfTest() (results []ControlResult, ok bool) {
 		ok = ok && res.OK
 		results = append(results, res)
 	}
+	// Swallowed arguments: an edit whose new_text holds the start_line it
+	// is missing, against code that names the same word with the argument
+	// passed.
+	schema := map[string][]string{"editor": {"file_path", "new_text", "start_line"}}
+	for _, c := range []struct {
+		name  string
+		input string
+		want  []string
+	}{{"an edit whose text swallowed its start_line", `{"file_path":"a","new_text":"x;\",\"start_line\": 3"}`, []string{SwallowedArgument}},
+		{"an edit of code that names the word, the argument passed", `{"file_path":"a","start_line":3,"new_text":"{start_line: 3}"}`, []string{}}} {
+		g := []string{}
+		if len(SwallowedArgs([]Call{{Turn: 1, Tool: "editor", Input: c.input}}, schema)) > 0 {
+			g = append(g, SwallowedArgument)
+		}
+		res := ControlResult{Control: c.name, Domain: "tool calls", Want: c.want, Got: g, OK: strings.Join(g, ",") == strings.Join(c.want, ",")}
+		ok = ok && res.OK
+		results = append(results, res)
+	}
 	return results, ok
 }
 
 var available = sync.OnceValue(func() map[string]bool {
 	out := map[string]bool{}
-	for _, d := range append(append([]string{}, Text...), RepeatedToolCall, FailedIdenticalCall, RepeatedCallResult) {
+	for _, d := range append(append([]string{}, Text...), RepeatedToolCall, FailedIdenticalCall, RepeatedCallResult, SwallowedArgument) {
 		out[d] = true
 	}
 	results, _ := SelfTest()

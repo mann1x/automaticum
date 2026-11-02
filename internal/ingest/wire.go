@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"sort"
 	"strings"
 	"time"
 )
@@ -46,6 +47,38 @@ type Request struct {
 	// sent back with their reasoning, and HistoryReasoningChars how many
 	// characters of it (070 §2: reasoning carried between turns).
 	HistoryReasoning, HistoryReasoningChars int
+	// ToolArgs are the argument names of each tool the request offered,
+	// from its schema (D131).
+	ToolArgs map[string][]string
+}
+
+// toolArgs reads the argument names of each tool a request offers: the
+// properties of its parameters' schema, in either protocol's shape.
+func toolArgs(raw json.RawMessage) map[string][]string {
+	var tools []struct {
+		Function struct {
+			Name       string `json:"name"`
+			Parameters struct {
+				Properties map[string]json.RawMessage `json:"properties"`
+			} `json:"parameters"`
+		} `json:"function"`
+	}
+	if json.Unmarshal(raw, &tools) != nil {
+		return nil
+	}
+	out := map[string][]string{}
+	for _, t := range tools {
+		if t.Function.Name == "" {
+			continue
+		}
+		names := make([]string, 0, len(t.Function.Parameters.Properties))
+		for n := range t.Function.Parameters.Properties {
+			names = append(names, n)
+		}
+		sort.Strings(names)
+		out[t.Function.Name] = names
+	}
+	return out
 }
 
 // historyReasoning counts the assistant messages of a request that carry
@@ -137,6 +170,7 @@ func request(l *wireLine) Request {
 	}
 	if tools := bytes.TrimSpace(body["tools"]); len(tools) > 2 {
 		q.Agent = true
+		q.ToolArgs = toolArgs(tools)
 	}
 	if !q.Agent {
 		// The SDK's own chat requests still say how the model was loaded.
@@ -221,6 +255,7 @@ func openAIRequest(q *Request, l *wireLine) {
 	}
 	if tools := bytes.TrimSpace(body["tools"]); len(tools) > 2 {
 		q.Agent = true
+		q.ToolArgs = toolArgs(tools)
 	}
 	q.Options = map[string]any{}
 	for field, option := range openAIFields {

@@ -18,6 +18,7 @@
 - (2026-10-29) This session only develops automaticum. Client sessions (e.g. backup_models) write their own arms, models, endpoints and lanes, confirm their gates and start their own batches.
 
 ## Key Learnings
+- 2026-11-02: a regex for an argument name before a colon must allow a closing quote between (JSON writes `"start_line":`); backup_models' scan pattern did not, but its data held the unquoted form (`,start_line:90`).
 - 2026-11-02: Docker's GET /containers/{id}/changes lists a container's mount points (and the directories above them) as added/changed even though writes under a mount are not changes; filter them (docker.notMounts) before reporting files written outside the workspace.
 - 2026-11-02: "the batch's baseline" (070 §1.1) is undefined since a batch is one arm; carried as O40, not guessed.
 - 2026-11-02: before writing "the SDK emits no event for X", search the bundle for notice kinds (`kind:"..."`); one run without the feature on proves nothing. The change protocol has atomic_transaction/atomic_empty_attempt/atomic_plan notices.
@@ -86,3 +87,4 @@ The full list is in docs/specs/decisions.md; keep this log in step with it.
 - 2026-11-01 D120-D125 (O31, O33-O36, O38, the recommendations): cohort in the campaign file `[cohort] name/variable` + `cell run --cohort`; rescore queued on the cell lane, records beside runs, old result file kept; `requires` labels on task and arm; lane `busy_command`; auto quarantine after 10 infrastructure ABORTs in a row (`quarantine_after`, 0 off); batch `--priority`, `lane reserve`. Not adopted: requeue (O32), driver watchdog (O37), level-based statistics (O39).
 
 - 2026-11-01: D126 struggle signals = SDK signals + owner study (2nd compaction) + SDK struggle detector replayed; D127 edit-without-check = run_commands after the edit; D128 turn pathologies: build what data defines; D129 edit oscillation & re-read loop = ported SDK call guard on writing/other tools, near-duplicate rounds held.
+- 2026-11-02: D130 (O40): the per-run report's baseline is the campaign's or cohort's baseline arm, else the parent arm. D131: swallowed-argument detector (a schema argument of the tool missing from the call, named with a colon inside a string argument), suggested by backup_models.

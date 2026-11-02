@@ -43,6 +43,28 @@ retries = 3
 	if _, err := LoadCampaign(dir, "unknown"); err == nil || !strings.Contains(err.Error(), "retries") {
 		t.Errorf("an unknown field: %v", err)
 	}
+	write("baseline", `
+baseline = "a"
+[[batch]]
+name = "x"
+arms = ["a", "b"]
+tasks = ["t"]
+runs = 1
+`)
+	if c, err := LoadCampaign(dir, "baseline"); err != nil || c.Baseline != "a" {
+		t.Errorf("baseline: %v %+v", err, c)
+	}
+	write("nobaseline", `
+baseline = "z"
+[[batch]]
+name = "x"
+arms = ["a"]
+tasks = ["t"]
+runs = 1
+`)
+	if _, err := LoadCampaign(dir, "nobaseline"); err == nil || !strings.Contains(err.Error(), "not an arm of any") {
+		t.Errorf("a baseline outside the batches: %v", err)
+	}
 	write("cohort", `
 [cohort]
 name = "Bad Name"

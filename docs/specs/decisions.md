@@ -139,6 +139,8 @@ All dated 2026-10-12.
 | D127 | Edit-without-check (070 §2, 2026-11-01): an edit is checked when a `run_commands` call follows it before the next edit of the same file or the run's end; otherwise it counts as an edit without check. | 070 §2 |
 | D128 | Turn pathologies (070 §4, 2026-11-01): thinking-only turns and a thinking-only last turn before the run ends ("a plan written to reasoning with an empty reply") are built from the data; "premature done" is the agent claiming success where the oracle said no (`claimed_success_oracle_no`); refusal to continue and a report after work that ended the run early stay unbuilt until the owner gives phrases or rules. | 070 §4 |
 | D129 | Near-duplicate rounds, edit oscillation, re-read loop (070 §3, 2026-11-01): edit oscillation is the SDK's call guard (same call, same result; refused in advance) on writing tools, the re-read loop its same-result rule on every other tool, each reported under its own name with the SDK's numbers; near-duplicate rounds stays unbuilt until the owner defines it. | 070 §3 |
+| D130 | The per-run report's baseline (070 §1.1, O40, 2026-11-02): the baseline arm of the campaign or cohort the run's batch belongs to where there is one, else the arm the run's arm extends; the fields in which the run's arm differs from it are highlighted. | 070 §1.1 |
+| D131 | Swallowed arguments (070 §4, 2026-11-02, suggested by a client from its gates): a tool call one of whose string arguments holds the name of another argument of the same tool, taken from the tool's schema, followed by a colon, where that argument is missing from the call. A finding with its count per tool, a metric, and a column of `compare`. | 070 §4 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked
@@ -168,12 +170,11 @@ Each of these waits for a measurement or for the planning of its milestone.
 | O5 | Which published C/C++ SWE-bench-style set, at which version; the order of languages after it. | 062 §6 | milestone 5 |
 | O6 | Which external harnesses need the offline event path. | 064 §3.2 | milestone 5, per harness |
 | O29 | How a `tbench2` verifier gets large binary packages (`path-tracing`'s numpy and pillow, 23 MB of wheels, over the import's 8 MB a task): vendored into the repository, or downloaded when the verifier is built, by the hashes `oracle/requirements.txt` pins (an artefact build with the network). Recommendation: download at build time; the repository keeps only what PyPI does not publish (wheels built from source). | 066 §5 | the owner |
-| O40 | What "the batch's baseline" of the per-run report is (070 §1.1): a batch is one arm, so its runs share every arm field. Candidates: the arm the run's arm extends (the fields its own file states highlighted), the baseline arm of the campaign or cohort the batch belongs to, or the other arms of the same campaign. Recommendation: the campaign's or cohort's baseline where there is one, else the parent arm. | 070 §1.1 | the owner |
 
 Closed since the first revision: O2 (D32), O4 (D30), O7 (S4, then D34), O9
 (D31), O10 (D42), O11 (D33), O12 (D28), O13 (D29), O14 (D46), O8 (D47), O15
 (D48), O16 (D49), O17 (D50), O18 (D51), O3 (D57), O22 (D84), O23 (D108), O24 (D113), O25 (D110), O26
-(D111), O27 (D112), O28 (D114), O30 (D119), O31 (D120), O32 (not adopted), O33 (D121), O34 (D122), O35 (D123), O36 (D124), O37 (not adopted), O38 (D125), O39 (not adopted).
+(D111), O27 (D112), O28 (D114), O30 (D119), O31 (D120), O32 (not adopted), O33 (D121), O34 (D122), O35 (D123), O36 (D124), O37 (not adopted), O38 (D125), O39 (not adopted), O40 (D130).
 
 ## 4. External dependencies
 
