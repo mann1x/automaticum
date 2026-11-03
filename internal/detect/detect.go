@@ -14,7 +14,7 @@ import (
 
 // Version is the version of the library's definitions. It changes when any
 // detector's answer on some input changes, and findings are then recomputed.
-const Version = "7"
+const Version = "8"
 
 // The detectors, by name.
 const (

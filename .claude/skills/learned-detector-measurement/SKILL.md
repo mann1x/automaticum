@@ -66,3 +66,36 @@ Write the numbers into the code comment beside the constant and into the 070 spe
 ## 5. Clean up
 
 Delete `$W/zz-*`, the binaries on the host and the local scratch copies. The scratch directory may be under the session's /tmp scratchpad only while the files are under about 1 MB; otherwise use persistent disk.
+
+## Measuring while a client's batch is running
+
+Never start a measurement while a client's batch runs on the lane: reading hundreds of runs' blobs competes with the run for disk and CPU. Put the wait and the measurement in one background command, so the measurement starts only when the batch has ended:
+
+```bash
+ssh <host> '$B/bin/automaticum wait batch <batch> --timeout 2h | tail -3' && \
+  claude-hooks-res run <host>/build:shared -r "read-only <rule> measurement over stored runs" -- \
+  ssh <host> 'bash $B/work/zz-remote.sh'
+```
+
+Run it with `run_in_background: true`. While you wait, carry on with the code and the tests.
+
+## The per-run loop on the host
+
+Copy the throwaway binary and a driver script to `$B/work` (persistent disk). In the script:
+- write `run ls --json --limit 10000` to a TSV of run, arm, batch, sdk_release and verdict, for finished runs only;
+- for each run, write `automaticum logs <run>` and `automaticum logs --kind wire <run>` to one reused scratch pair (`zzt/ev`, `zzt/wire`; `|| : > zzt/wire` when a run has no wire capture);
+- call the binary with the run, its `sdk_release` (for `detect.RulesFor`) and the two paths, and append its TSV row after the arm, batch and verdict;
+- `rm -rf zzt` at the end, and print `MEASURE-DONE <rows>` so the background output shows it finished.
+
+Then summarise by arm: `awk -F'\t' '{a[$1]++; if($6>0)f[$1]++} END{for(k in a) print a[k], f[k]+0, k}'`. Count the `err` rows separately.
+
+## Reading a firing on a run you thought was healthy
+
+- First check the run's stored analysis version. Runs analysed before analysis version 17 have no wire-only answers, so a real loop up to the output limit may never have appeared in their stored findings.
+- Look for the text in the wire capture (`logs --kind wire`), not `logs --render`: the render does not hold wire-only answers. The wire is JSON-escaped several times over, so search for a phrase without newlines or quotes, and in python print `repr()` of the slice around `t.find(phrase)`.
+- If the output really is a loop written to the limit, it is a positive. Report it in the spec's margins paragraph as such, with turn, offset and length. Do not report it as a false positive.
+- Guard every shell arithmetic on a grep result (`L=$(grep -n ... | head -1 | cut -d: -f1)`): an empty `L` turns `sed -n "$((L-6)),..."` into `sed: invalid option -- '6'`.
+
+## Cleanup
+
+Delete `$B/work/zz*` (runs, list, out, binary, script) on the host once you have written the numbers into 070 and the code comment. Locally, check `git status --short | grep zz` to make sure nothing is left.

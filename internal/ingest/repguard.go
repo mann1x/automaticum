@@ -30,8 +30,9 @@ type GuardFire struct {
 const guardExamples = 10
 
 // GuardFires are every output of a run the repetition guard would have
-// tripped on, the first first.
-func GuardFires(ev *Events, reqs []Request) []GuardFire {
+// tripped on, the first first; opt are the run's detector options
+// (DetectOptions).
+func GuardFires(ev *Events, reqs []Request, opt detect.Options) []GuardFire {
 	if !detect.Available(detect.RepetitionGuard) {
 		return nil
 	}
@@ -44,7 +45,7 @@ func GuardFires(ev *Events, reqs []Request) []GuardFire {
 			if b.GivenTo <= len(given) {
 				g = given[:b.GivenTo]
 			}
-			f = detect.GuardText(b.Text, g)
+			f = detect.GuardText(b.Text, g, blockOptions(opt, given, b))
 		} else {
 			f = detect.GuardReasoning(b.Text)
 		}
@@ -157,11 +158,11 @@ func requestAt(reqs []Request, b Block) *Request {
 // repetitionGuard writes repetition_guard.would_fire (outputs it would have
 // tripped on) and, where one was, the finding: info, as the guard only
 // observes unless an arm makes it stop.
-func repetitionGuard(runID string, ev *Events, reqs []Request, m func(string, float64), res *Result) {
+func repetitionGuard(runID string, ev *Events, reqs []Request, opt detect.Options, m func(string, float64), res *Result) {
 	if !detect.Available(detect.RepetitionGuard) {
 		return
 	}
-	fs := GuardFires(ev, reqs)
+	fs := GuardFires(ev, reqs, opt)
 	m("repetition_guard.would_fire", float64(len(fs)))
 	if len(fs) == 0 {
 		return

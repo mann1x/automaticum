@@ -17,9 +17,15 @@ import (
 // (2026-11-03, 202 runs on a client's lane host):
 //
 //   - visible text: the paragraph rule (reasoning_repetition, the SDK's
-//     measureReasoningRepetition, which the SDK applies to reasoning only)
-//     or restated lines (RestatedText, the SDK's measure of a call's
-//     arguments);
+//     measureReasoningRepetition, which the SDK applies to reasoning only),
+//     restated lines (RestatedText, the SDK's measure of a call's
+//     arguments) or the reasoning-loop rule (reasoning_loop, the SDK's
+//     reasoningLoopDetection with the run's rule set and what the model was
+//     given; a few short lines written a thousand times, which the other
+//     two never see). On 399 runs it tripped on two outputs, both written
+//     to the output limit (a gate reply of three closing tags 1,002 times,
+//     at character 5,960 of 31,535; a base-model answer of one progress
+//     line, at 5,346 of 20,466), and on nothing else;
 //   - reasoning: the paragraph rule; restated lines also fire on healthy
 //     reasoning that quotes code while it works (a run that passed);
 //   - arguments: duplicate definitions (DuplicateDefinitionsMax) or
@@ -31,6 +37,7 @@ const (
 	RuleParagraph   = "paragraph"
 	RuleRestated    = "restated_lines"
 	RuleDefinitions = "duplicate_definitions"
+	RuleLoop        = "reasoning_loop"
 )
 
 // GuardFire is where the repetition guard would first have tripped on one
@@ -76,6 +83,16 @@ func restatedAt(text, given string) *GuardFire {
 	return &GuardFire{Rule: RuleRestated, Offset: x.Offset, Chars: len([]rune(text)), Count: x.Most, Unit: x.Sample}
 }
 
+// loopAt is where the reasoning-loop rule first holds: the rule reads the
+// text line by line and stops at the first place it fires.
+func loopAt(text string, o Options) *GuardFire {
+	h := reasoningLoop([]rune(text), text, o)
+	if h == nil {
+		return nil
+	}
+	return &GuardFire{Rule: RuleLoop, Offset: h.Offset, Chars: len([]rune(text)), Count: h.Count, Unit: h.Unit}
+}
+
 // first is the fire that came first.
 func first(fs ...*GuardFire) *GuardFire {
 	var out *GuardFire
@@ -87,9 +104,11 @@ func first(fs ...*GuardFire) *GuardFire {
 	return out
 }
 
-// GuardText is the guard on a block of visible text.
-func GuardText(text, given string) *GuardFire {
-	return first(paragraphAt(text), restatedAt(text, given))
+// GuardText is the guard on a block of visible text: given is what the
+// model was given before it, o the block's detector options (the run's
+// reasoning-loop rules).
+func GuardText(text, given string, o Options) *GuardFire {
+	return first(paragraphAt(text), restatedAt(text, given), loopAt(text, o))
 }
 
 // GuardReasoning is the guard on a block of reasoning.

@@ -1718,3 +1718,37 @@
 | 13:18 | Created internal/run/held.go | — | ~987 |
 | 13:18 | Created internal/ingest/held.go | — | ~643 |
 | 13:22 | Session end: 4 writes across 2 files (slots.go, held.go) | 0 reads | ~4188 tok |
+
+## Session: 2026-11-03 13:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-03 13:23
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-03 13:23
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-03 13:24
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:31 | D136 held stream built (slots sampler, held_stream finding, run held), eb5a1f3 pushed; deployed to blackswan-2 (gpu1:shared claim, START #2147, idle swap, repo eb5a1f3, rollback .prev=bd4fa8a, unit .pre-eb5a1f3); run held -004/-008 -> FAIL (prior ABORTED); claim released | internal/run/held.go slots.go, internal/ingest/held.go, internal/daemon/api.go | deployed | ~40000 |
+| 14:12 | tick: no mail; receipts: backup_models checked eb5a1f3, detect sweep s200 vs s800 repetition_guard 4/10 vs 1/10, held_stream 0 vs 2; lane-1 idle, nothing queued until owner orders next gate | - | noted | ~200 |
+
+## Session: 2026-11-03 15:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:11 | tick: no mail; blackswan-2 eb5a1f3 up 1h44m, lane-1 idle, 0 queued, NRestarts=0 | - | quiet | ~200 |
+| 16:11 | tick: no mail; blackswan-2 eb5a1f3 up 2h44m, lane-1 idle, 0 queued, NRestarts=0 | - | quiet | ~200 |
+| 17:11 | tick: no mail; daemon restarted cleanly 16:00:38Z while idle (same eb5a1f3 binary, endpoints=15, likely config reload by backup_models); their gate k-gate-sft5-s1200-c14r9-manic-w1800-p9 running on lane-1 (run -001, 9 queued), canary sound | - | hands off | ~400 |
+| 18:11 | tick: no mail; sft5-s1200 gate progressing: -001/-002 TIMEOUT (wall 30m), -003 running 9m20s, 7 queued; daemon healthy | - | hands off | ~300 |
+| 19:11 | tick: no mail; sft5-s1200 gate: -001..-004 TIMEOUT, -005 running 8m30s, 5 queued; daemon healthy | - | hands off | ~300 |
+| 20:11 | tick: no mail; sft5-s1200 gate: -001..-006 TIMEOUT, -007 running 7m58s, 3 queued; daemon healthy | - | hands off | ~300 |
+| 21:16 | mail #2154 (backup_models): repetition_guard missed 1,002x 3-line unit on s1200 -007; added text rule reasoning_loop (SDK's ported rule, run's rule set + given) to GuardText; options through GuardFires/watchGuard/detect; control added; library 8, analysis 20; tests green; measurement queued on blackswan-2 after the gate (bg b6714woba) | internal/detect/repguard.go, controls.go, detect.go, internal/ingest/repguard.go, analyse.go, internal/daemon/{detect,guardwatch,daemon}.go | in progress | ~6000 |

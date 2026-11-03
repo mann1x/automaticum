@@ -34,7 +34,7 @@ func TestRepetitionGuard(t *testing.T) {
 	var res Result
 	var metrics []store.Metric
 	m := func(n string, v float64) { metrics = append(metrics, store.Metric{Name: n, Value: v}) }
-	repetitionGuard("r", ev, reqs, m, &res)
+	repetitionGuard("r", ev, reqs, detect.Options{}, m, &res)
 	if len(res.Findings) != 1 || res.Findings[0].Detector != detect.RepetitionGuard || res.Findings[0].Severity != "info" {
 		t.Fatalf("findings %+v", res.Findings)
 	}
@@ -60,7 +60,7 @@ func TestRepetitionGuard(t *testing.T) {
 	res, metrics = Result{}, nil
 	healthy, _ := ReadEvents(strings.NewReader(ag(0, `{"type":"iteration_start","iteration":1}`) + "\n" +
 		ag(1, `{"type":"content_end","contentType":"text","text":"Done: the file parses and the tests pass."}`)))
-	repetitionGuard("r", healthy, nil, m, &res)
+	repetitionGuard("r", healthy, nil, detect.Options{}, m, &res)
 	if len(res.Findings) != 0 || len(metrics) != 1 || metrics[0].Value != 0 {
 		t.Errorf("healthy %+v %+v", res.Findings, metrics)
 	}

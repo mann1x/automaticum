@@ -52,7 +52,7 @@ const SessionFork = "session_fork"
 // analysis records it as the metric analysis.version: the basis (020 §5)
 // says from it which detectors a run was analysed with, whether or not
 // they found anything.
-const AnalysisVersion = 19
+const AnalysisVersion = 20
 
 // Versions are the versions of the detectors this analysis applies:
 // ingest's own and the detector library's.
@@ -719,7 +719,8 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 	// The reasoning-loop guard is read with the rules of the run's SDK
 	// build, and from 4.100.258 on with what the model was given: the
 	// task's prompt and the tool results before each block.
-	found, counts, fired := detectorRun(r.ID, ev, DetectOptions(r))
+	opt := DetectOptions(r)
+	found, counts, fired := detectorRun(r.ID, ev, opt)
 	res.Findings = append(res.Findings, found...)
 	res.Metrics = append(res.Metrics, counts...)
 	guardReplay(r.ID, ev, fired, m, res)
@@ -728,7 +729,7 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 	integrity(r, m, res)
 	swallowed(r.ID, ev, reqs, m, res)
 	duplicateDefinitions(r.ID, ev, reqs, m, res)
-	repetitionGuard(r.ID, ev, reqs, m, res)
+	repetitionGuard(r.ID, ev, reqs, opt, m, res)
 	return res
 }
 

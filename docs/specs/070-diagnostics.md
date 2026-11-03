@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.32, 2026-11-03.
+**Status:** draft 0.33, 2026-11-03.
 
 ## 1. The rule: no custom script
 
@@ -693,6 +693,14 @@ the event stream.
     restated lines (the SDK's measure of a call's arguments, 4.100.258 on:
     300 long lines or more, 30% or more of them third copies beyond what
     the model was given). Neither fired on the text of a healthy run.
+    From library version 8 (analysis version 20) also the reasoning-loop
+    rule (`reasoning_loop`, the SDK's `reasoningLoopDetection` with the
+    run's rule set and what the model was given: from 4,000 characters, 4
+    distinct lines or fewer in a window of 60, a cycle of up to 6 lines 20
+    times, or a block cycle), for a few short lines written again and
+    again, which the other two never see: a reply that wrote three lines
+    of closing HTML tags 1,002 times had no blank line for the paragraph
+    rule and no long line for restated lines.
   - **reasoning:** the paragraph rule. Restated lines fire on healthy
     reasoning that quotes code while it works (two pool runs, one of which
     passed), so they are left out.
@@ -719,6 +727,17 @@ the event stream.
     block had 86% of its long lines third copies at 153 lines (restated
     lines need 300). No base-model or stub argument held more than one
     repeated definition.
+  - **Margins of the reasoning-loop rule on visible text (2026-11-03,
+    399 runs, the replay with the wire's answers):** it tripped on two
+    outputs, both written until the output limit. One is the sft5-s1200
+    gate reply with three lines of closing HTML tags written 1,002 times,
+    tripped at character 5,960 of 31,535 (turn 55). The other is a
+    base-model pool run's answer that wrote one progress line again and
+    again to its 14,010-token limit, tripped at character 5,346 of
+    20,466 (turn 50). Its stored analysis predates the wire's answers
+    (analysis version 17), so it never showed there. It stayed silent on
+    every other output of the base model (239 runs), every trained
+    checkpoint and every stub run.
 - **Held streams (as built 2026-11-03, analysis version 19):**
   `held_stream` (warning, version 1) is a run the SDK gave up on, presumed
   dead, while the server was still decoding for it. The server's parser held

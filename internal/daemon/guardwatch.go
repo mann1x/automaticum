@@ -28,7 +28,7 @@ func stopsOnHarness(a *config.Arm, guard string) bool {
 // detect reads a run in flight, and the run is cancelled as stopped by a
 // guard, a failed run whose oracle still reads what it left (D99). Every
 // other arm only observes: the guard is a finding of the analysis.
-func (d *Daemon) watchGuard(ctx context.Context, f *flight) {
+func (d *Daemon) watchGuard(ctx context.Context, f *flight, opt detect.Options) {
 	t := time.NewTicker(guardWatchEvery)
 	defer t.Stop()
 	read := -1
@@ -49,7 +49,7 @@ func (d *Daemon) watchGuard(ctx context.Context, f *flight) {
 		if ev.Read(bytes.NewReader(bytes.Join(lines, []byte("\n")))) != nil {
 			continue
 		}
-		if fs := ingest.GuardFires(ev, nil); len(fs) > 0 {
+		if fs := ingest.GuardFires(ev, nil, opt); len(fs) > 0 {
 			g := fs[0]
 			why := fmt.Sprintf("turn %d, %s, %s at character %d (%dx): %q", g.Turn, g.Channel, g.Rule, g.Offset, g.Count, g.Unit)
 			d.Log.Info("the repetition guard stops the run", "run", f.runID, "lane", f.item.Lane, "at", why)

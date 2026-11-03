@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mann1x/automaticum/internal/detect"
 	"github.com/mann1x/automaticum/internal/run"
 )
 
@@ -31,7 +32,7 @@ func TestWatchGuard(t *testing.T) {
 		ctx, cancel := context.WithCancelCause(context.Background())
 		f := &flight{runID: "r-" + c.name, cancel: cancel, lines: c.lines}
 		done := make(chan struct{})
-		go func() { g.d.watchGuard(ctx, f); close(done) }()
+		go func() { g.d.watchGuard(ctx, f, detect.Options{}); close(done) }()
 		select {
 		case <-ctx.Done():
 		case <-time.After(300 * time.Millisecond):

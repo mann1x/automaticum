@@ -1,15 +1,15 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-03T12:18:42.943Z
-> Files: 505 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-03T17:00:00.372Z
+> Files: 502 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
 - `.gitleaks.toml` (~581 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~2619 tok)
-- `CLAUDE.md` — automaticum (~6262 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~2916 tok)
+- `CLAUDE.md` — automaticum (~6395 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
 - `LICENSE` — Project license (~3029 tok)
@@ -20,9 +20,9 @@
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~140469 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~140992 tok)
 - `manifest.json` (~728 tok)
-- `refresh-hook.log` (~0 tok)
+- `refresh-hook.log` (~211 tok)
 - `score-history.jsonl` (~1860 tok)
 
 ## .caliber/backups/2026-10-12T20-16-19-461Z/
@@ -35,13 +35,13 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~97832 tok)
+- `fingerprint.json` — Declares usage (~98124 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` — Declares max (~6164 tok)
+- `current-session.jsonl` (~9590 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~93266 tok)
+- `roi-stats.json` (~94376 tok)
 - `state.json` (~41 tok)
 
 ## .claude/
@@ -117,7 +117,7 @@
 
 - `campaign_cmds.go` (~1628 tok)
 - `cell_cmds.go` — exitCode: names (~3525 tok)
-- `client_cmds.go` — client (114 fields); methods: Error (~10670 tok)
+- `client_cmds.go` — client (114 fields); methods: Error (~10778 tok)
 - `cohort_cmds.go` (~1633 tok)
 - `compare_cmds.go` — Declares list (~4058 tok)
 - `config_cmds_test.go` — TestParseInterspersed, TestCellTasks, TestNoticeMatch (~593 tok)
@@ -128,7 +128,7 @@
 - `exit_test.go` — TestExitOf (~153 tok)
 - `export_cmds.go` — result (100 fields); methods: Error (~2565 tok)
 - `image_cmds.go` — built (65 fields) (~1334 tok)
-- `main.go` — Command automaticum is the command line of automaticum. (~4150 tok)
+- `main.go` — Command automaticum is the command line of automaticum. (~4176 tok)
 - `report_cmds_test.go` — TestWriteRunsCSV, TestPositionalAndFormat (~426 tok)
 - `report_cmds.go` — Declares and (~4829 tok)
 - `rescore_cmds.go` (~956 tok)
@@ -159,10 +159,10 @@
 
 - `000-overview.md` — 000 — Overview, vocabulary and map of the spec set (~2127 tok)
 - `010-architecture.md` — 010 — Architecture (~1763 tok)
-- `020-run-record.md` — 020 — The run record, verdicts and the basis (~4055 tok)
+- `020-run-record.md` — 020 — The run record, verdicts and the basis (~4126 tok)
 - `030-configuration.md` — 030 — Configuration (~4093 tok)
 - `040-runner.md` — 040 — The runner (~9106 tok)
-- `050-orchestration.md` — 050 — Orchestration: scheduling, gates, control (~6537 tok)
+- `050-orchestration.md` — 050 — Orchestration: scheduling, gates, control (~6785 tok)
 - `060-tasks-and-suites.md` — 060 — Tasks, oracles and the suite interface (~2546 tok)
 - `061-suite-bfcl.md` — 061 — Suite: BFCL (Berkeley Function-Calling Leaderboard) (~551 tok)
 - `062-suite-swe-bench.md` — 062 — Suite: SWE-bench and SWE-bench-style sets (~610 tok)
@@ -170,12 +170,12 @@
 - `064-engine-adapters.md` — 064 — Engine adapters: Cerebriline as the engine of an external harness (~1057 tok)
 - `065-cell-contract.md` — 065 — The cell contract and exports (~4254 tok)
 - `066-suite-terminal-bench.md` — 066 — Suite: Terminal-Bench 2.0 (`tbench2`) (~2335 tok)
-- `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~15076 tok)
+- `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~15496 tok)
 - `080-store.md` — 080 — The store (~4525 tok)
-- `090-interfaces.md` — 090 — Interfaces (~5583 tok)
+- `090-interfaces.md` — 090 — Interfaces (~5616 tok)
 - `100-legacy-import.md` — 100 — Import of the old harness's corpus (~3426 tok)
 - `110-acceptance-and-roadmap.md` — 110 — Acceptance and roadmap (~8040 tok)
-- `decisions.md` — Decisions and open questions (~10627 tok)
+- `decisions.md` — Decisions and open questions (~10826 tok)
 
 ## docs/specs/archive/
 
@@ -279,7 +279,7 @@
 
 ## internal/daemon/
 
-- `api.go` — Status (114 fields) (~16407 tok)
+- `api.go` — Status (114 fields) (~17148 tok)
 - `archive_test.go` — fakeArchiver (19 fields); methods: ArchiveOlderThan (~762 tok)
 - `archive.go` — Interface: Archiver (2 methods) (~631 tok)
 - `baseline.go` — ArmBaseline (17 fields) (~504 tok)
@@ -301,6 +301,7 @@
 - `guardwatch_test.go` — TestWatchGuard (~489 tok)
 - `guardwatch.go` (~536 tok)
 - `heartbeat.go` — Heartbeat (25 fields) (~863 tok)
+- `held_test.go` — TestRunHeld (~832 tok)
 - `lanerules.go` — InfraEnd (34 fields) (~1654 tok)
 - `lists_test.go` — TestBatchesAndLaneShow, TestWhereFilter (~879 tok)
 - `lists.go` — BatchSummary (71 fields) (~1928 tok)
@@ -329,7 +330,7 @@
 - `guards258_test.go` — TestReasoningLoop258, TestRulesFor (~869 tok)
 - `guards258.go` — given (102 fields) (~2445 tok)
 - `reference_test.go` — expected (52 fields) (~2243 tok)
-- `repguard.go` — GuardFire (34 fields) (~1348 tok)
+- `repguard.go` — GuardFire; GuardText (paragraph, restated lines, reasoning_loop from library 8), GuardReasoning, GuardArgument (D135) (~1500 tok)
 - `restated_test.go` — TestRestatedText (~440 tok)
 - `restated.go` — RestatedLines is the SDK's measure of a text that writes its own long (~803 tok)
 - `spans_test.go` — TestSpansShortUnit, TestSpansSentenceLaterOnly, TestCycleStart (~398 tok)
@@ -365,7 +366,7 @@
 
 ## internal/ingest/
 
-- `analyse.go` — Interface: Blobs (33 methods) (~7398 tok)
+- `analyse.go` — Interface: Blobs (34 methods) (~7578 tok)
 - `answers_test.go` — TestWireAnswers (~705 tok)
 - `answers.go` (~698 tok)
 - `canary_test.go` — TestCanary (~680 tok)
@@ -376,7 +377,8 @@
 - `duplicates_test.go` — TestDuplicateDefinitions (~738 tok)
 - `duplicates.go` — DefinitionFirings (~679 tok)
 - `events.go` — turns a run's stored raw material into what is queried: (~9659 tok)
-- `held.go` — held_stream finding: ReadSlots (slots blob), HeldStreamOf (record, slots or SDK message), heldStream metrics (~650 tok)
+- `held_test.go` — TestHeldStream (~1106 tok)
+- `held.go` — ReadSlots, HeldStreamOf (~757 tok)
 - `ingest_test.go` — TestNoticeLog, TestReadEvents, TestReadWire, TestCompareWireClean, TestCompareWire (~11693 tok)
 - `integrity_test.go` — TestIntegrity, TestSwallowed (~1032 tok)
 - `integrity.go` — dir (25 fields) (~830 tok)
@@ -421,18 +423,20 @@
 
 - `fault_test.go` — TestFault, TestInfrastructure (~627 tok)
 - `fault.go` — Fault, Infrastructure (~1148 tok)
-- `held.go` — Held, HeldStream (SDK silence error + /slots readings), Proven, Reason: held stream decided by the oracle, D136 (~1050 tok)
+- `held_test.go` — TestHeldStreamVerdict (~909 tok)
+- `held.go` — Held (23 fields); methods: Proven, Reason (~1128 tok)
 - `identity_test.go` — m (37 fields) (~1878 tok)
 - `probe.go` — Identity (126 fields); methods: Changed (~4244 tok)
 - `props_test.go` — TestProps, TestProbeLlamaServer (~1470 tok)
 - `props.go` — Props (51 fields) (~1519 tok)
 - `protocol.go` — executes one run: an arm on a task, once, on a lane. It (~2108 tok)
 - `rescore_test.go` — TestRescoreVerdict, TestUntar (~936 tok)
-- `rescore.go` — Rescore, Untar (~750 tok)
+- `rescore.go` — Rescore, Redecide, Untar (~1013 tok)
 - `run_test.go` — fakeState (73 fields); methods: UpsertRun, AddBlobRefs, Put, Check (~8732 tok)
-- `run.go` — Interface: Engine (6 methods) (~10762 tok)
-- `slots.go` — ReadSlots (GET /slots n_decoded), watchSlots: sampled every 10 s during a run into the slots blob (~1100 tok)
-- `verdict.go` — Facts (27 fields) (~836 tok)
+- `run.go` — Interface: Engine (6 methods) (~11009 tok)
+- `slots_test.go` — TestReadSlots (~615 tok)
+- `slots.go` — SlotSample (46 fields) (~1128 tok)
+- `verdict.go` — Facts (32 fields) (~994 tok)
 
 ## internal/sdk/
 
@@ -890,13 +894,3 @@
 - `recursive_structures.scm` (~799 tok)
 - `test_read.scm` (~24 tok)
 - `variadic_functions.scm` — Declares and (~650 tok)
-- `y_combinator.scm` (~234 tok)
-
-## tasks/tbench2/schemelike-metacircular-eval/oracle/tests/test/
-
-- `01-factorial.scm` (~133 tok)
-- `02-fibonacci.scm` (~183 tok)
-- `03-list-operations.scm` (~276 tok)
-- `04-higher-order.scm` (~239 tok)
-- `05-simple-io.scm` (~246 tok)
-- `06-interactive-io.scm` (~265 tok)

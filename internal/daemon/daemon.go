@@ -619,7 +619,7 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 		return false
 	}
 	if stopsOnHarness(arm, detect.RepetitionGuard) {
-		go d.watchGuard(ctx, f)
+		go d.watchGuard(ctx, f, detect.Options{Rules: detect.RulesFor(arm.Harness.SDKRelease), Given: tk.Prompt})
 	}
 	// A mode C cell's server is asked what it is before every run, and a
 	// contradiction of the caller's facts refuses the run as a gate does

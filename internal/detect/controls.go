@@ -235,11 +235,13 @@ func SelfTest() (results []ControlResult, ok bool) {
 		fmt.Fprintf(&prose, "Step %d reads the file at offset %d and writes the result to the log before it moves on to the next one.\n\n", i, i*512)
 	}
 	loop := strings.Repeat("Now let me fix each syntax error in the file properly, one at a time:\n\n", 120)
+	tail := "Here is the finished page:\n" + strings.Repeat("\n</script>\n</body>\n</html>", 300)
 	for _, c := range []struct {
 		name, channel, text string
 		want                []string
 	}{{"a reply that says one paragraph again and again", "text", loop, []string{RepetitionGuard}},
 		{"a reply that restates its plan with small changes", "text", plan.String(), []string{RepetitionGuard}},
+		{"a reply that writes a few short lines again and again", "text", tail, []string{RepetitionGuard}},
 		{"a long reply of distinct steps", "text", prose.String(), []string{}},
 		{"reasoning that says one paragraph again and again", "reasoning", loop, []string{RepetitionGuard}},
 		{"a call that writes the same stubs again and again", "argument", stubs, []string{RepetitionGuard}},
@@ -247,7 +249,7 @@ func SelfTest() (results []ControlResult, ok bool) {
 		var f *GuardFire
 		switch c.channel {
 		case "text":
-			f = GuardText(c.text, "")
+			f = GuardText(c.text, "", Options{Rules: Rules258})
 		case "reasoning":
 			f = GuardReasoning(c.text)
 		default:
