@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.27, 2026-11-03.
+**Status:** draft 0.28, 2026-11-03.
 
 ## 1. The rule: no custom script
 
@@ -417,6 +417,22 @@ Not built: near-duplicate rounds (D129).
   finding. From analysis version 14 they are kept. A stored run shows them
   after `automaticum reanalyse` or `detect --record`, and `detect` shows
   the difference as "(stored 0)".
+
+- **Blocks cut off before their end, lost before analysis version 16
+  (fixed 2026-11-03):** a block is what the model wrote between its
+  first delta and its `content_end`. When the output limit cut a turn,
+  or the wall limit stopped the run, no `content_end` came, and the next
+  block's end threw the deltas away: the detectors never read the text
+  that ran into the cap. A client's run wrote a visible-text loop of
+  360,271 characters (5,781 lines, 114 distinct) to the 96,000-token
+  limit and had no loop finding. From analysis version 16 such a block
+  is kept as unfinished, in the turn it started, and read like any
+  other; `reasoning_repetition` fires on that loop (one paragraph 837
+  times). The metric `blocks.unfinished` counts them; an unfinished
+  block is left out of `hygiene.unclosed_thinking`, as it may stop
+  inside its thinking. Not yet read: an answer the SDK never streamed
+  as events (its retry after the output limit, which only the wire
+  capture holds).
 
 ### 3.3 Detectors over runs, on demand (D133, as built 2026-11-03)
 

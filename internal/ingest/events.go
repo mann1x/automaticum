@@ -26,6 +26,10 @@ type Block struct {
 	Text string
 	// GivenTo is how much of Events.Given came before the block.
 	GivenTo int
+	// Unfinished is a block whose stream stopped before its "content_end":
+	// the output limit or the wall limit cut the turn. It is what its
+	// deltas added up to (bug-076).
+	Unfinished bool
 }
 
 // Events is what one pass over a run's event stream gives.
@@ -348,6 +352,22 @@ type scan struct {
 	// What a block's deltas add up to, by kind, for a stream whose
 	// "content_end" does not repeat the whole block.
 	partial map[string]*bytes.Buffer
+	// partialTurn is the turn each partial block started in.
+	partialTurn map[string]int
+}
+
+// flush keeps what a block's deltas added up to when its "content_end"
+// never came, as an unfinished block: a turn the output limit cut, which
+// the SDK retries as a new turn, or the last turn of a run the wall limit
+// stopped. Before, the next block's end threw it away, and the detectors
+// never read a 360,271-character text loop (bug-076).
+func (sc *scan) flush(ev *Events) {
+	for _, kind := range []string{"reasoning", "text"} {
+		if buf := sc.partial[kind]; buf != nil && buf.Len() > 0 {
+			ev.Blocks = append(ev.Blocks, Block{Turn: sc.partialTurn[kind], Kind: kind, Text: buf.String(), GivenTo: ev.Given.Len(), Unfinished: true})
+			buf.Reset()
+		}
+	}
 }
 
 // ReadEvents reads a run's event stream: the JSON lines the runner printed.
@@ -373,7 +393,7 @@ func (ev *Events) Read(r io.Reader) error {
 		ev.NoticeTurns = map[string]int{}
 	}
 	rd := bufio.NewReaderSize(r, 1<<20)
-	sc := &scan{started: map[string]time.Time{}, inputs: map[string]string{}, partial: map[string]*bytes.Buffer{}}
+	sc := &scan{started: map[string]time.Time{}, inputs: map[string]string{}, partial: map[string]*bytes.Buffer{}, partialTurn: map[string]int{}}
 	for {
 		line, err := rd.ReadBytes('\n')
 		if len(bytes.TrimSpace(line)) > 0 {
@@ -383,6 +403,7 @@ func (ev *Events) Read(r io.Reader) error {
 			}
 		}
 		if err == io.EOF {
+			sc.flush(ev)
 			return nil
 		}
 		if err != nil {
@@ -499,6 +520,7 @@ func (ev *Events) line(line []byte, sc *scan) {
 	}
 	switch a.Type {
 	case "iteration_start":
+		sc.flush(ev)
 		sc.turn = a.Iteration
 		if !l.T.IsZero() {
 			ev.TurnStarts = append(ev.TurnStarts, l.T)
@@ -523,6 +545,9 @@ func (ev *Events) line(line []byte, sc *scan) {
 			if buf == nil {
 				buf = &bytes.Buffer{}
 				sc.partial[a.ContentType] = buf
+			}
+			if buf.Len() == 0 {
+				sc.partialTurn[a.ContentType] = sc.turn
 			}
 			buf.WriteString(a.Reasoning + a.Text)
 		}

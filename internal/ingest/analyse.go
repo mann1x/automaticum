@@ -51,7 +51,7 @@ const SessionFork = "session_fork"
 // analysis records it as the metric analysis.version: the basis (020 §5)
 // says from it which detectors a run was analysed with, whether or not
 // they found anything.
-const AnalysisVersion = 15
+const AnalysisVersion = 16
 
 // Versions are the versions of the detectors this analysis applies:
 // ingest's own and the detector library's.
@@ -484,7 +484,11 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 	// Thinking and visible text, in characters.
 	var reasoning, text []float64
 	thought, spoke := map[int]bool{}, map[int]bool{}
+	unfinished := 0
 	for _, b := range ev.Blocks {
+		if b.Unfinished {
+			unfinished++
+		}
 		n := float64(len([]rune(b.Text)))
 		if b.Kind == "reasoning" {
 			reasoning, thought[b.Turn] = append(reasoning, n), true
@@ -493,6 +497,8 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 		}
 	}
 	m("thinking.blocks", float64(len(reasoning)))
+	// Blocks cut off before their end, read from their deltas (bug-076).
+	m("blocks.unfinished", float64(unfinished))
 	distribution(m, "thinking.chars", reasoning)
 	distribution(m, "text.chars", text)
 	if ev.Iterations > 0 {

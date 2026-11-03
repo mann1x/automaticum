@@ -773,3 +773,53 @@ func TestMoney(t *testing.T) {
 		t.Errorf("unpriced %v", got)
 	}
 }
+
+// TestUnfinishedBlocks is the shape of a client's run: a text loop the
+// output limit cut, so its "content_end" never came, a recovery turn that
+// ended, and a last turn the wall limit stopped (bug-076).
+func TestUnfinishedBlocks(t *testing.T) {
+	ag := func(event string) string {
+		return `{"t":"2026-11-03T01:48:41Z","k":"event","event":{"type":"agent_event","payload":{"event":` + event + `}}}`
+	}
+	para := "Now let me fix each syntax error properly:\n\n"
+	lines := []string{ag(`{"type":"iteration_start","iteration":7}`)}
+	for range 200 {
+		lines = append(lines, ag(`{"type":"content_start","contentType":"text","text":"Now let me fix each syntax error properly:\n\n"}`))
+	}
+	lines = append(lines,
+		ag(`{"type":"usage","inputTokens":41072,"outputTokens":96000}`),
+		ag(`{"type":"notice","noticeType":"status","message":"output limit reached","metadata":{"kind":"max_tokens_turn_recovery","phase":"started"}}`),
+		ag(`{"type":"iteration_start","iteration":8}`),
+		ag(`{"type":"content_start","contentType":"text","text":"The file"}`),
+		ag(`{"type":"content_end","contentType":"text","text":"The file parses."}`),
+		ag(`{"type":"iteration_start","iteration":9}`),
+		ag(`{"type":"content_start","contentType":"reasoning","reasoning":"I should "}`),
+		ag(`{"type":"content_start","contentType":"reasoning","reasoning":"check"}`),
+		`{"t":"2026-11-03T02:15:58Z","k":"runner","note":"wall_limit","wall_s":1800}`)
+	ev, err := ReadEvents(strings.NewReader(strings.Join(lines, "\n")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ev.Blocks) != 3 {
+		t.Fatalf("blocks %+v", ev.Blocks)
+	}
+	b := ev.Blocks
+	if b[0].Turn != 7 || b[0].Kind != "text" || !b[0].Unfinished || b[0].Text != strings.Repeat(para, 200) {
+		t.Errorf("the cut loop %d %q %v %d", b[0].Turn, b[0].Kind, b[0].Unfinished, len(b[0].Text))
+	}
+	if b[1].Turn != 8 || b[1].Unfinished || b[1].Text != "The file parses." {
+		t.Errorf("the recovery turn %+v", b[1])
+	}
+	if b[2].Turn != 9 || b[2].Kind != "reasoning" || !b[2].Unfinished || b[2].Text != "I should check" {
+		t.Errorf("the last turn %+v", b[2])
+	}
+	// The detectors now read the loop.
+	f, _ := detectorFindings("r", ev, detect.Options{})
+	fired := false
+	for _, x := range f {
+		fired = fired || x.Detector != detect.Runaway && x.Turn == 7
+	}
+	if !fired {
+		t.Errorf("no loop finding on the cut loop: %+v", f)
+	}
+}

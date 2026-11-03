@@ -164,7 +164,8 @@ func turnFindings(runID string, ev *Events, m func(string, float64), res *Result
 		for _, mk := range markerRE.FindAllString(b.Text, -1) {
 			hits = append(hits, hit{b.Turn, b.Kind, mk})
 		}
-		if strings.Count(b.Text, "<think>") > strings.Count(b.Text, "</think>") {
+		// A block cut off may stop inside its thinking.
+		if !b.Unfinished && strings.Count(b.Text, "<think>") > strings.Count(b.Text, "</think>") {
 			unclosed++
 		}
 	}

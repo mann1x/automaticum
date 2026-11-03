@@ -1646,3 +1646,9 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 02:14 | deployed be1ded6 on blackswan-2 per owner plan (after opencoti released gpu1; claimed the GPU, swapped, released); canary run shows cap_hit=1 duplicate_definitions=1 (stored 0) | - | done, backup_models mailed | ~5k |
+
+## Session: 2026-11-03 04:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 04:30 | mail #2128: text loop missed; root cause cut blocks dropped (no content_end); flush as Unfinished, blocks.unfinished, AV 16; 070 draft 0.28; bug-076 | internal/ingest/events.go, analyse.go, turns.go, ingest_test.go | make test green; real run fires reasoning_repetition | ~9000 |

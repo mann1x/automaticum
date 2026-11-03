@@ -1288,6 +1288,27 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-03T01:45:00+01:00"
+    },
+    {
+      "id": "bug-076",
+      "timestamp": "2026-11-03T04:30:00+01:00",
+      "error_message": "client report: a 360,271-char visible-text sentence loop (5,781 lines, 114 distinct) ran to the 96,000-token output limit with no loop finding (sentence_repeat, reasoning_repetition all 0)",
+      "file": "internal/ingest/events.go",
+      "root_cause": "Blocks were made only at content_end; a turn cut by the output limit (or the wall limit) never gets one, and the next block's content_end reset the partial delta buffer, so the cut text was dropped before any detector saw it",
+      "fix": "scan.flush keeps every open partial as Block{Unfinished:true} in the turn it started, at the next iteration_start and at end of stream; metric blocks.unfinished; unfinished blocks left out of hygiene.unclosed_thinking; AnalysisVersion 16. On the real run reasoning_repetition fires (837 repeats, share 0.98). Still not read: the SDK's max_tokens_turn_recovery answer, which never reaches the event stream (wire only)",
+      "tags": [
+        "ingest",
+        "events",
+        "detectors",
+        "output-limit",
+        "cap",
+        "blocks"
+      ],
+      "related_bugs": [
+        "bug-074"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-03T04:30:00+01:00"
     }
   ]
 }
