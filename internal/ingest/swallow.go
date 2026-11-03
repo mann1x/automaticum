@@ -19,20 +19,7 @@ func swallowed(runID string, ev *Events, reqs []Request, m func(string, float64)
 	if len(ev.Calls) == 0 || !detect.Available(detect.SwallowedArgument) {
 		return
 	}
-	schemas := map[string][]string{}
-	for _, q := range reqs {
-		for tool, names := range q.ToolArgs {
-			seen := map[string]bool{}
-			for _, n := range schemas[tool] {
-				seen[n] = true
-			}
-			for _, n := range names {
-				if !seen[n] {
-					schemas[tool] = append(schemas[tool], n)
-				}
-			}
-		}
-	}
+	schemas := Schemas(reqs)
 	fs := detect.SwallowedArgs(ev.Calls, schemas)
 	m("tool_calls.swallowed_argument", float64(len(fs)))
 	if len(fs) == 0 {
@@ -76,4 +63,36 @@ func swallowed(runID string, ev *Events, reqs []Request, m func(string, float64)
 	}{tools, len(schemas) > 0, examples})
 	res.Findings = append(res.Findings, store.Finding{RunID: runID, Detector: detect.SwallowedArgument, DetectorVersion: detect.Version,
 		Severity: "warning", Turn: fs[0].Turn, Count: len(fs), Evidence: raw})
+}
+
+// Schemas are the argument names of each tool, as the run's requests
+// offered them; nil when none were captured.
+func Schemas(reqs []Request) map[string][]string {
+	var schemas map[string][]string
+	for _, q := range reqs {
+		for tool, names := range q.ToolArgs {
+			if schemas == nil {
+				schemas = map[string][]string{}
+			}
+			seen := map[string]bool{}
+			for _, n := range schemas[tool] {
+				seen[n] = true
+			}
+			for _, n := range names {
+				if !seen[n] {
+					schemas[tool] = append(schemas[tool], n)
+				}
+			}
+		}
+	}
+	return schemas
+}
+
+// SwallowFirings are every call of a run with a swallowed argument; the
+// finding quotes only the first few.
+func SwallowFirings(ev *Events, reqs []Request) []detect.SwallowFiring {
+	if len(ev.Calls) == 0 || !detect.Available(detect.SwallowedArgument) {
+		return nil
+	}
+	return detect.SwallowedArgs(ev.Calls, Schemas(reqs))
 }

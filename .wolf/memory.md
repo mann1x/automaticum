@@ -1627,3 +1627,23 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 12:55 | D132 tokens stored hashed: token_file token or sha256:<hex>, daemon keeps TokenHash only, CLI client_token_file | internal/config/local.go, internal/daemon/{api,daemon}.go, cmd/automaticumd/main.go, 010, decisions rev 39, audit | tests ok | ~8k |
+
+## Session: 2026-11-02 12:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-02 12:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-02 13:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 01:03 | Created internal/ingest/outcomes.go | — | ~911 |
+| 01:06 | Created internal/daemon/detect.go | — | ~4822 |
+| 01:08 | Created cmd/automaticum/detect_cmds.go | — | ~5854 |
+| 01:09 | Created internal/daemon/detect_test.go | — | ~1978 |
+| 01:12 | detect over any set of runs (D133) + swallow newline form (library 5, analysis 13) | daemon/detect.go, detect_cmds.go, ingest/outcomes.go, detect/swallow.go, specs 070/090/decisions | built, make test ok | ~60k |

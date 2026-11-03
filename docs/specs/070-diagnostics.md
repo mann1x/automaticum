@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.25, 2026-11-02.
+**Status:** draft 0.26, 2026-11-03.
 
 ## 1. The rule: no custom script
 
@@ -253,8 +253,9 @@ Requirements:
 
 `internal/detect`, version 1, holds the four reference detectors and the
 repeated tool call. `automaticum detect <file>` runs them on a text file
-taken as one block, `automaticum detect <run>` on a stored run's blocks and
-calls, and `automaticum detect --self-test` on the library's own controls.
+taken as one block, `automaticum detect <run>` every detector on stored
+runs (§3.3), and `automaticum detect --self-test` on the library's own
+controls.
 
 - **Short-unit repeat** takes the unit the reference pattern
   `(.{2,40}?)\1{7,}` takes: the shortest unit that repeats at the leftmost
@@ -406,6 +407,74 @@ detector always reads with the release's defaults, so that runs compare.
 
 Not built: near-duplicate rounds (D129).
 
+### 3.3 Detectors over runs, on demand (D133, as built 2026-11-03)
+
+**Decided by the owner (2026-11-03), D133:** "we should not need a script
+for this kind of checks, there should be a command in automaticum to do it
+at any time, either on a single run or scanning multiple results, cohorts,
+lanes, etc.", and "make detect broad and covering all possible use cases".
+A client had been scanning its gates with its own script.
+
+`automaticum detect` runs every detector of this build, or the ones named,
+again on the stored material of any set of runs, with the same analysis
+ingest applies (`ingest.Load` and `ingest.Derive`). By default it writes
+nothing.
+
+- **Which runs:** the union of the runs named (bare or `--run`), batches
+  (`--batch`, a glob), cohorts (`--cohort`) and campaigns (`--campaign`).
+  Then every narrowing given: `--lane`, `--arm` (name or id), `--task`
+  (`suite/task` or the task), `--suite`, `--model`, `--verdict` (globs,
+  any number of each), and `--since`/`--until`. With nothing named, every
+  run the narrowing leaves; every run at all takes `--all`. Imported runs
+  only with `--imported`; skipped runs never.
+- **Runs in flight** are included (not with `--finished`, `--model` or
+  `--verdict`). Each is read from the lines it has printed so far, with its
+  arm as the configuration says it now, and marked partial: its wire
+  capture is written only at its end, so argument names come from its own
+  calls. If the daemon no longer holds its first lines, the mark says so.
+- **What each run gives:**
+  - its state, verdict, blocks and calls;
+  - each detector's firings now (a finding counts its `Count`, at least
+    one), and, for a finished run, what its stored findings say, so a
+    changed rule shows what it changes;
+  - the metrics counted per tool (`….by_tool.<tool>`) and any metric asked
+    with `--metric` (a name, a prefix or a glob);
+  - its calls by tool: failed, by their 070 §2 error class; refused; with
+    arguments that are not a JSON object; of a tool no request offered
+    (said only when the requests were captured); and with an argument name
+    holding a control token or a piece of one (`<|`, `|>`, the markers of
+    `control_markers`).
+- **`--firings`** adds each finding with its evidence, and every call with
+  a swallowed argument (the finding quotes five), with the text around it.
+  **`--calls`** prints the calls by tool for each run.
+- **Totals:** by batch, arm and cohort by default, or by each `--group`:
+  `batch`, `arm`, `arm_id`, `cohort`, `campaign`, `lane`, `task`, `model`,
+  `state`, `verdict`, or one of compare's axes (`arm.<field>`,
+  `label.<label>`, `finding.<detector>`). Each total gives the runs, calls,
+  failed calls, and per detector the firings and the runs it fired in;
+  the overall total also gives the failed calls by error class, and each
+  metric asked, summed and averaged.
+- **`--fail-if "EXPR"`** (any number) exits 1 when one holds. `EXPR` is
+  `NAME OP NUMBER`, with `OP` one of `>`, `>=`, `<`, `<=`, `==`, `!=`.
+  `NAME` is a detector (its firings), `runs_with.<detector>`,
+  `share.<detector>` (runs with it over runs), `metric.<name>` (summed),
+  or `runs`, `partial`, `calls`, `failed`, `refused`, `unreadable`,
+  `control_token_names`, `not_offered`. `--fail-scope` says what is tested:
+  `total` (the default), `run` (each run), or a totals axis (each group).
+- **`--record`** stores the new analysis on the finished runs, as
+  `reanalyse` does (it needs the daemon's token); runs in flight are never
+  recorded.
+- **Output:** one line per run as it is read, then the totals; `--quiet`
+  prints the totals alone; `--json` prints the header, the runs, the
+  totals, the groups and the tests that held, as one document. The header
+  names the detector library version and the analysis version the runs
+  were read with.
+- **API:** `GET /v1/detect` reads and `POST /v1/detect` records, with the
+  same fields in the query. The answer is a stream of JSON lines: a header,
+  one line per run in the order of their ids (runs in flight last), and an
+  end line. `detect <file>` and `detect --self-test` are unchanged.
+  `GET /v1/runs/{id}/detect` stays for older command lines.
+
 ## 4. Other findings
 
 Each has a severity, evidence (event ids, quoted text) and a count.
@@ -509,10 +578,17 @@ opening a thinking tag it never closes (`hygiene.control_markers`,
 tool-call parse paths, which the SDK records on its messages and not in
 the event stream.
 - **Swallowed arguments (D131, as built 2026-11-02, library version 4,
-  analysis version 12):** `swallowed_argument` (warning) is a tool call
+  analysis version 12; widened 2026-11-03, library version 5, analysis
+  version 13):** `swallowed_argument` (warning) is a tool call
   one of whose string arguments holds another argument of the same tool,
-  missing from the call: its name after a quote, a backtick, a comma or a
-  closing brace and before a colon (a closing quote between or not). The
+  missing from the call: its name at the start of the string or after
+  whitespace (a newline included), a quote, a backtick, a comma or a
+  closing brace, and before a colon (a closing quote between or not). The
+  start and whitespace came from a client's run on which version 4 found
+  none of 18 such calls: an intent ending `*/\nnew_text:`, new_text
+  missing. That run's calls are the test `TestSwallowedNewline`, which
+  must find all 18. An optional argument named in code with a colon after
+  it (`{ start_line: 3 }`) in a call that left it out also fires. The
   names are the tools' schemas the run's requests offered (`ReadWire`
   keeps them), and the arguments the run's calls of the tool did pass. The
   finding gives the calls per tool, the arguments swallowed and up to five

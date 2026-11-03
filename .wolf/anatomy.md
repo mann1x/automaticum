@@ -1,15 +1,15 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-02T11:00:00.865Z
-> Files: 502 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-03T00:09:40.266Z
+> Files: 506 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
 - `.gitleaks.toml` (~581 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~3826 tok)
-- `CLAUDE.md` — automaticum (~5770 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~4005 tok)
+- `CLAUDE.md` — automaticum (~5797 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
 - `LICENSE` — Project license (~3029 tok)
@@ -20,7 +20,7 @@
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~131089 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~132154 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~211 tok)
 - `score-history.jsonl` (~1860 tok)
@@ -35,13 +35,13 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~97952 tok)
+- `fingerprint.json` — Declares usage (~97950 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` (~59315 tok)
+- `current-session.jsonl` (~12814 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~86481 tok)
+- `roi-stats.json` (~87167 tok)
 - `state.json` (~41 tok)
 
 ## .claude/
@@ -111,14 +111,15 @@
 
 ## cmd/automaticum/
 
-- `campaign_cmds.go` (~1605 tok)
+- `campaign_cmds.go` (~1628 tok)
 - `cell_cmds.go` — exitCode: names (~3525 tok)
-- `client_cmds.go` — client (116 fields); methods: Error (~11378 tok)
+- `client_cmds.go` — client (114 fields); methods: Error (~11555 tok)
 - `cohort_cmds.go` (~1633 tok)
-- `compare_cmds.go` — Declares list (~3898 tok)
+- `compare_cmds.go` — Declares list (~4058 tok)
 - `config_cmds_test.go` — TestParseInterspersed, TestCellTasks, TestNoticeMatch (~593 tok)
 - `config_cmds.go` — place (153 fields) (~4205 tok)
-- `control_cmds.go` (~2912 tok)
+- `control_cmds.go` (~2935 tok)
+- `detect_cmds.go` — Struct: failTest (~5854 tok)
 - `exit_test.go` — TestExitOf (~153 tok)
 - `export_cmds.go` — result (100 fields); methods: Error (~2565 tok)
 - `image_cmds.go` — built (65 fields) (~1334 tok)
@@ -139,11 +140,11 @@
 
 ## cmd/automaticumd/
 
-- `main.go` — Command automaticumd is the daemon: it owns the store, works the queue on (~1671 tok)
+- `main.go` — Command automaticumd is the daemon: it owns the store, works the queue on (~1680 tok)
 
 ## docs/audit/
 
-- `2026-11-01-spec-vs-code.md` — Spec against code, 2026-11-01 (~26684 tok)
+- `2026-11-01-spec-vs-code.md` — Spec against code, 2026-11-01 (~27708 tok)
 
 ## docs/local/
 
@@ -152,11 +153,11 @@
 ## docs/specs/
 
 - `000-overview.md` — 000 — Overview, vocabulary and map of the spec set (~2127 tok)
-- `010-architecture.md` — 010 — Architecture (~1615 tok)
-- `020-run-record.md` — 020 — The run record, verdicts and the basis (~4026 tok)
-- `030-configuration.md` — 030 — Configuration (~3935 tok)
+- `010-architecture.md` — 010 — Architecture (~1763 tok)
+- `020-run-record.md` — 020 — The run record, verdicts and the basis (~4055 tok)
+- `030-configuration.md` — 030 — Configuration (~3941 tok)
 - `040-runner.md` — 040 — The runner (~9106 tok)
-- `050-orchestration.md` — 050 — Orchestration: scheduling, gates, control (~6500 tok)
+- `050-orchestration.md` — 050 — Orchestration: scheduling, gates, control (~6537 tok)
 - `060-tasks-and-suites.md` — 060 — Tasks, oracles and the suite interface (~2546 tok)
 - `061-suite-bfcl.md` — 061 — Suite: BFCL (Berkeley Function-Calling Leaderboard) (~551 tok)
 - `062-suite-swe-bench.md` — 062 — Suite: SWE-bench and SWE-bench-style sets (~610 tok)
@@ -164,12 +165,12 @@
 - `064-engine-adapters.md` — 064 — Engine adapters: Cerebriline as the engine of an external harness (~1057 tok)
 - `065-cell-contract.md` — 065 — The cell contract and exports (~4254 tok)
 - `066-suite-terminal-bench.md` — 066 — Suite: Terminal-Bench 2.0 (`tbench2`) (~2335 tok)
-- `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~11654 tok)
-- `080-store.md` — 080 — The store (~4404 tok)
-- `090-interfaces.md` — 090 — Interfaces (~5347 tok)
+- `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~11766 tok)
+- `080-store.md` — 080 — The store (~4525 tok)
+- `090-interfaces.md` — 090 — Interfaces (~5476 tok)
 - `100-legacy-import.md` — 100 — Import of the old harness's corpus (~3426 tok)
 - `110-acceptance-and-roadmap.md` — 110 — Acceptance and roadmap (~8040 tok)
-- `decisions.md` — Decisions and open questions (~10103 tok)
+- `decisions.md` — Decisions and open questions (~10183 tok)
 
 ## docs/specs/archive/
 
@@ -178,7 +179,7 @@
 
 ## examples/config/
 
-- `automaticum.toml` — The daemon's own file. Copy this directory, edit it, and start the daemon (~382 tok)
+- `automaticum.toml` — The daemon's own file. Copy this directory, edit it, and start the daemon (~469 tok)
 
 ## examples/config/arms/
 
@@ -265,41 +266,43 @@
 - `campaign.go` — Campaign (51 fields); methods: CohortOf, Validate (~1883 tok)
 - `cell_test.go` — TestArmForCell, TestCellEndpoint (~791 tok)
 - `cell.go` — CallerValues (41 fields); methods: ForCell (~1530 tok)
-- `config_test.go` — TestRepositoryArms, TestArmValidation, TestStopOnIdentity, TestReasoningLoopLimitIdentity + 3 more (~5291 tok)
-- `local.go` — Local (94 fields); methods: Endpoint, MayUse, AddCellEndpoint, QuarantineAfter (~4157 tok)
+- `config_test.go` — TestRepositoryArms, TestArmValidation, TestStopOnIdentity, TestReasoningLoopLimitIdentity + 3 more (~5976 tok)
+- `local.go` — Local (91 fields); methods: Endpoint, MayUse, AddCellEndpoint, QuarantineAfter (~4764 tok)
 - `model_test.go` — TestModels (~541 tok)
 - `model.go` — ModelIdentity (25 fields); methods: Missing (~761 tok)
 - `runner_fixture_test.go` — TestRunnerFixtureIsTheResolvedArm (~164 tok)
 
 ## internal/daemon/
 
-- `api.go` — Status (114 fields) (~16271 tok)
+- `api.go` — Status (114 fields) (~16278 tok)
+- `archive_test.go` — fakeArchiver (15 fields); methods: ArchiveOlderThan (~702 tok)
+- `archive.go` — Interface: Archiver (2 methods) (~631 tok)
 - `baseline.go` — ArmBaseline (17 fields) (~504 tok)
-- `basis.go` — Basis (87 fields) (~4395 tok)
-- `campaign.go` — CampaignState (108 fields) (~4491 tok)
+- `basis.go` — Basis (87 fields) (~4407 tok)
+- `campaign.go` — CampaignState (108 fields) (~4504 tok)
 - `canary.go` — CanaryRecord (37 fields); methods: Error, Is (~1639 tok)
 - `cell_numbers_test.go` — TestVerdictNumbers, TestStreaks, TestLoopComponents (~1036 tok)
-- `cell.go` — CellResult (104 fields) (~6252 tok)
+- `cell.go` — CellResult (104 fields) (~6290 tok)
 - `cohort_test.go` — TestCohort (~923 tok)
 - `cohort.go` — Cohort (72 fields) (~2583 tok)
-- `compare.go` — CompareView (101 fields) (~6156 tok)
+- `compare.go` — CompareView (101 fields) (~6590 tok)
 - `control.go` — control (103 fields) (~8806 tok)
-- `daemon_test.go` — memState (122 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~18211 tok)
-- `daemon.go` — is automaticumd without its main: the queue, one worker (~8520 tok)
+- `daemon_test.go` — memState (122 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~18217 tok)
+- `daemon.go` — is automaticumd without its main: the queue, one worker (~8623 tok)
+- `detect_test.go` — TestDetectRuns (~1978 tok)
+- `detect.go` — Struct: DetectLine (~4822 tok)
 - `export_test.go` — TestExport (~1366 tok)
 - `export.go` — ExportMeta (48 fields) (~1796 tok)
-- `archive.go` — Archiver, archiveLoop/archivePass: blobs older than archive_after_days to the archive tier at start and daily, notifies archive unavailable/failed (080 §5, D31) (~600 tok)
-- `archive_test.go` — TestArchiveLoop with a fake archiver (~650 tok)
 - `heartbeat.go` — Heartbeat (25 fields) (~863 tok)
 - `lanerules.go` — InfraEnd (34 fields) (~1654 tok)
 - `lists_test.go` — TestBatchesAndLaneShow, TestWhereFilter (~771 tok)
 - `lists.go` — BatchSummary (71 fields) (~1928 tok)
 - `modec_test.go` — TestModeCCell, TestModeCBasis (~1862 tok)
 - `modec.go` — CellSpec (69 fields) (~2243 tok)
-- `mutate_test.go` — holdRunner (57 fields); methods: Hold, Release (~2243 tok)
+- `mutate_test.go` — holdRunner (72 fields); methods: Hold, Release, Write, String (~2830 tok)
 - `mutate.go` — IdemEntry (30 fields); methods: WriteHeader, Write, Flush (~1340 tok)
 - `notify_test.go` — TestNotifyCommand (~709 tok)
-- `report_test.go` — TestReportRegressionAndCensus, TestEndpointCapacity, TestHeartbeat, TestAutoQuarantine + 4 more (~5606 tok)
+- `report_test.go` — TestReportRegressionAndCensus, TestEndpointCapacity, TestHeartbeat, TestAutoQuarantine + 4 more (~5940 tok)
 - `report.go` — CensusRow (90 fields) (~2865 tok)
 - `rescore_test.go` — syncBlobs (47 fields); methods: AddBlobRefs, Put, Reader (~1923 tok)
 - `rescore.go` — RescoreJob (117 fields) (~3699 tok)
@@ -359,6 +362,7 @@
 - `openai_test.go` — TestOpenAIWire, TestOpenAIWireFromStub, TestOpenAIThinkingBudget (~1625 tok)
 - `oracle_test.go` — TestPartialScore, TestOracleFindings, TestTurnTimes (~930 tok)
 - `oracle.go` — oracleBrief (29 fields) (~1325 tok)
+- `outcomes.go` — Struct: ToolOutcome (~911 tok)
 - `render_test.go` — TestRenderer (~628 tok)
 - `render.go` — Renderer (35 fields); methods: Turn, Line (~1056 tok)
 - `sample_test.go` — TestSample, TestDumpBlocks (~1010 tok)
@@ -891,5 +895,24 @@
 - `nested_defines.scm` — Declares x (~303 tok)
 - `oeis_sequences.scm` (~536 tok)
 - `oeis_sequences2.scm` (~627 tok)
-- `oeis_sequences3.scm` (~682 tok)
-- `README.md` — Project documentation (~527 tok)
+
+## internal/daemon/detect.go
+- `GET|POST /v1/detect`: every detector again on any set of runs (run/batch/cohort/campaign globs, narrowed by lane/arm/task/suite/model/verdict/time), in flight included (partial), streamed as JSON lines; POST records (D133, 070 §3.3). (~4500 tok)
+
+## internal/daemon/detect_test.go
+- TestDetectRuns: selection, globs, firings, groups, cohort/campaign, in flight, record. (~2000 tok)
+
+## internal/ingest/outcomes.go
+- `Outcomes`: a run's calls by tool (failed by 070 §2 error class, refused, unreadable, not offered, control-token argument names). (~700 tok)
+
+## internal/ingest/outcomes_test.go
+- TestOutcomes. (~500 tok)
+
+## internal/detect/testdata/swallow_newline_calls.json
+- A client's run's 44 calls (18 with new_text swallowed after a newline), the positive control of TestSwallowedNewline. (~7000 tok)
+
+## cmd/automaticum/detect_cmds.go
+- `automaticum detect`: file, --self-test, or over runs with totals by axis, --firings, --calls, --metric, --fail-if/--fail-scope, --record, --json. (~5000 tok)
+
+## cmd/automaticum/detect_cmds_test.go
+- TestDetectFailIf: --fail-if parsing, totals, firings text. (~600 tok)

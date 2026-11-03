@@ -16,9 +16,12 @@ import (
 // of the base model's.
 //
 // The rule: an argument the tool's schema names, missing from the call,
-// whose name stands inside one of the call's string arguments after a
-// quote, a backtick, a comma or a closing brace and before a colon (with a
-// closing quote between, as JSON writes it, or not). The
+// whose name stands inside one of the call's string arguments at its start
+// or after whitespace (a newline included), a quote, a backtick, a comma or
+// a closing brace, and before a colon (with a closing quote between, as
+// JSON writes it, or not). The newline form is the client's second case
+// (library version 5): an intent ending `*/\nnew_text:` with new_text
+// missing. The
 // argument names come from the schemas the run's requests offered, and
 // from the arguments the run's calls of the same tool did pass, for a run
 // whose requests were not captured.
@@ -73,7 +76,7 @@ func SwallowedArgs(calls []Call, schemas map[string][]string) []SwallowFiring {
 		if r, ok := res[n]; ok {
 			return r
 		}
-		r := regexp.MustCompile("[`,}\"']\\s*" + regexp.QuoteMeta(n) + `["']?\s*:`)
+		r := regexp.MustCompile("(?:^|[\\s`,}\"'])\\s*" + regexp.QuoteMeta(n) + `["']?\s*:`)
 		res[n] = r
 		return r
 	}

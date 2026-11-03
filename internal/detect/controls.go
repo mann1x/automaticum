@@ -195,6 +195,7 @@ func SelfTest() (results []ControlResult, ok bool) {
 		input string
 		want  []string
 	}{{"an edit whose text swallowed its start_line", `{"file_path":"a","new_text":"x;\",\"start_line\": 3"}`, []string{SwallowedArgument}},
+		{"an intent that swallowed new_text after a newline", `{"file_path":"a","start_line":3,"intent":"fix line 3 */\nnew_text:"}`, []string{SwallowedArgument}},
 		{"an edit of code that names the word, the argument passed", `{"file_path":"a","start_line":3,"new_text":"{start_line: 3}"}`, []string{}}} {
 		g := []string{}
 		if len(SwallowedArgs([]Call{{Turn: 1, Tool: "editor", Input: c.input}}, schema)) > 0 {

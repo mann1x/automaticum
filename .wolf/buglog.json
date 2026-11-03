@@ -1236,6 +1236,23 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-02T08:53:36"
+    },
+    {
+      "id": "bug-073",
+      "timestamp": "2026-11-03T01:30:00+01:00",
+      "error_message": "swallowed_argument reads 0 on run 20261102-133653-f01df0-002 where 18 editor calls have intent ending '*/\\nnew_text:' with new_text missing (client report)",
+      "file": "internal/detect/swallow.go",
+      "root_cause": "the rule required the swallowed name after one of ` , } \" ' ; a newline or the start of the string was not accepted",
+      "fix": "accept the start of the string and whitespace before the name; library version 5, analysis version 13; the run's calls are the fixture TestSwallowedNewline (18 firings)",
+      "tags": [
+        "detector",
+        "swallowed_argument",
+        "regex",
+        "D131"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-03T01:30:00+01:00"
     }
   ]
 }

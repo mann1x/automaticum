@@ -347,6 +347,8 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/runs/{id}/invalidate", d.handleInvalidate)
 	mux.HandleFunc("POST /v1/runs/{id}/identify", d.handleIdentify)
 	mux.HandleFunc("GET /v1/runs/{id}/detect", d.handleDetect)
+	mux.HandleFunc("GET /v1/detect", d.handleDetectRuns)
+	mux.HandleFunc("POST /v1/detect", d.handleDetectRuns)
 	mux.HandleFunc("GET /v1/doctor", d.handleDoctor)
 	mux.HandleFunc("POST /v1/reanalyse", d.handleReanalyse)
 	mux.HandleFunc("GET /v1/reanalyse", func(w http.ResponseWriter, r *http.Request) { reply(w, http.StatusOK, d.reanalyseStatus()) })

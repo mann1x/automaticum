@@ -19,6 +19,9 @@
 
 ## Key Learnings
 
+- [2026-11-03] `ingest.Load` + `ingest.Derive` are the analysis without writes; `ingest.Run` = Load + Derive + write. Reuse them for any read-only rerun of detectors (`daemon/detect.go`). A run in flight has no wire capture until it ends, so swallowed_argument learns argument names only from its own calls.
+- [2026-11-03] Tool-call error classes already exist (070 §2, `ErrorClass` in events.go, on `store.ToolCall.ErrorClass`); never write a second classifier.
+
 - (2026-11-02) The 2026-11-01 audit's NOT BUILT/PARTIAL rows were partly grep guesses: a re-check found 17 already built and 20 with wrong evidence. Before building an audit gap, verify it against the code (or delegate a read-only re-check).
 - (2026-11-02) Mutating API calls carry `Automaticum-Client` (CLI `--client`, default user@host); the daemon logs `msg=change client=...` for every non-GET, non-dry-run call. compareView takes `pool`: runs off the latest task version are Excluded unless pooled; the cell passes pool=true.
 - 2026-11-02: a regex for an argument name before a colon must allow a closing quote between (JSON writes `"start_line":`); backup_models' scan pattern did not, but its data held the unquoted form (`,start_line:90`).
@@ -77,6 +80,8 @@
 - 2026-10-13: xollama's GPU host is `windows-2`. Job waiters need an exit-code file, a failure exit and a time bound.
 
 ## Decision Log
+
+- [2026-11-03] D133: `automaticum detect` over any set of runs (070 §3.3). Owner: "there should be a command in automaticum to do it at any time ... single run or scanning multiple results, cohorts, lanes" and "make detect broad and covering all possible use cases". Read-only by default, POST records; in-flight runs partial.
 
 The full list is in docs/specs/decisions.md; keep this log in step with it.
 

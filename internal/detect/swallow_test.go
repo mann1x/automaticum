@@ -1,6 +1,10 @@
 package detect
 
-import "testing"
+import (
+	"encoding/json"
+	"os"
+	"testing"
+)
 
 func TestSwallowedArgs(t *testing.T) {
 	schemas := map[string][]string{"editor": {"end_line", "file_path", "new_text", "old_text", "start_line"}}
@@ -28,5 +32,31 @@ func TestSwallowedArgs(t *testing.T) {
 	}
 	if got := SwallowedArgs(nil, schemas); len(got) != 0 {
 		t.Errorf("no calls %+v", got)
+	}
+}
+
+// TestSwallowedNewline is a client's run (bm-889 sft4 step 200 gate, run
+// 20261102-133653-f01df0-002): 18 editor calls whose intent ends
+// `*/\nnew_text:`, new_text missing. The rule of library version 4 found
+// none of them; the client's own scan found 18.
+func TestSwallowedNewline(t *testing.T) {
+	b, err := os.ReadFile("testdata/swallow_newline_calls.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var calls []Call
+	if err := json.Unmarshal(b, &calls); err != nil {
+		t.Fatal(err)
+	}
+	for _, schemas := range []map[string][]string{nil, {"editor": {"end_line", "file_path", "intent", "new_text", "old_text", "start_line"}}} {
+		got := SwallowedArgs(calls, schemas)
+		if len(got) != 18 {
+			t.Fatalf("schemas %v: %d firings, want 18", schemas != nil, len(got))
+		}
+		for _, f := range got {
+			if f.Tool != "editor" || f.In != "intent" || f.Swallowed != "new_text" {
+				t.Errorf("%+v", f)
+			}
+		}
 	}
 }

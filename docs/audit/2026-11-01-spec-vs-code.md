@@ -620,6 +620,7 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 090 §1 | `notices (<run>... | --batch B...) [--key K]` | BUILT | client_cmds.go:501-503 (D116) |
 | 090 §1 | `replay <run> --turn N [--endpoint E]` | SCHEDULED | M6 (replay); no code |
 | 090 §1 | `detect <file|run> [--runaway N]`, `--self-test` (+`--first-match`) | BUILT | client_cmds.go:720-722, GET /v1/runs/{id}/detect |
+| 070 §3.3 | `detect` over any set of runs, in flight included, totals, `--fail-if`, `--record` (D133, 2026-11-03) | BUILT | detect_cmds.go, daemon/detect.go `GET|POST /v1/detect`, ingest.Load/Derive/Outcomes; TestDetectRuns, TestOutcomes, TestDetectFailIf |
 | 090 §1 | `embed start|status|stop [--where]` | SCHEDULED | M6 (semantic search); no code; also D52 |
 | 090 §1 | `reanalyse [--run|--batch] [--imported]` | BUILT | client_cmds.go:645-647, POST/GET /v1/reanalyse |
 | 090 §1 | `reanalyse --detector D` / `--where` | BUILT | ReanalyseRequest.Where/Detector, whereFilter, TestWhereFilter |
@@ -695,7 +696,7 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 070 §2.1 | tokens per solved task | BUILT | compare.go:61,403 |
 | 070 §2.1 | throughput over whole cell | BUILT | `scores.throughput_tok_s` |
 | 070 §2.1 | sanity warnings: n vs expected, empty >5%, p10 visible chars under floor | PARTIAL, rest SCHEDULED (m5) | empty >5% warning built (`empty_completion_share`); n always equals the runs queued; the floor is declared in `suites/*.toml` (m5), as the spec now says |
-| 070 §3 | Go detector library, via CLI and API (D24) | BUILT | internal/detect; `detect`, GET /v1/runs/{id}/detect |
+| 070 §3 | Go detector library, via CLI and API (D24) | BUILT | internal/detect; `detect`, GET /v1/detect (070 §3.3) |
 | 070 §3 | short-unit repeat, char run, sentence repeat (§3.1) | BUILT | internal/detect/detect.go, reference_test.go |
 | 070 §3 | runaway (per-suite declared size) | PARTIAL, rest SCHEDULED (m5) | detector and `detect --runaway N` built; the per-suite size is declared in `suites/*.toml` (m5), as the spec now says |
 | 070 §3 | repeated tool call | BUILT | detectors.go:103-105 |

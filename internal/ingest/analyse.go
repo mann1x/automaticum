@@ -51,7 +51,7 @@ const SessionFork = "session_fork"
 // analysis records it as the metric analysis.version: the basis (020 §5)
 // says from it which detectors a run was analysed with, whether or not
 // they found anything.
-const AnalysisVersion = 12
+const AnalysisVersion = 13
 
 // Versions are the versions of the detectors this analysis applies:
 // ingest's own and the detector library's.
@@ -94,14 +94,17 @@ var owned = map[string]bool{WireArm: true, CapHit: true, GPUResidency: true, Mod
 	detect.ReasoningRepetition: true, detect.ReasoningLoop: true, detect.FailedIdenticalCall: true, detect.RepeatedCallResult: true,
 	detect.EditOscillation: true, detect.RereadLoop: true, SecondaryOracle: true, ClaimedNotPassed: true, GuardTrip: true, ControlMarkers: true, GuardReplay: true, StruggleSignals: true, OutsideWorkspace: true, detect.SwallowedArgument: true}
 
-// Run derives metrics, tool calls and findings from a run's stored material
-// and writes them, replacing what an earlier ingest wrote. It is safe to run
-// again: nothing but derived rows is touched.
-//
-// An imported run gets the detectors' findings and nothing else: its tool
-// calls were written by the importer and it has no wire capture, so the
-// metrics that need one do not exist for it (D65).
-func Run(ctx context.Context, st store.State, blobs Blobs, runID string) (*Result, error) {
+// Material is what a run's analysis reads: its record, its event stream,
+// its wire capture and its oracles' outputs, by name.
+type Material struct {
+	Run      *store.Run
+	Events   *Events
+	Requests []Request
+	Oracles  map[string]string
+}
+
+// Load reads a run's stored material.
+func Load(ctx context.Context, st store.State, blobs Blobs, runID string) (*Material, error) {
 	r, err := st.GetRun(ctx, runID)
 	if err != nil {
 		return nil, err
@@ -110,8 +113,7 @@ func Run(ctx context.Context, st store.State, blobs Blobs, runID string) (*Resul
 	if err != nil {
 		return nil, err
 	}
-	ev, reqs := &Events{Notices: map[string]int{}, GuardTrips: map[string]int{}, GuardCauses: map[string]int{}}, []Request(nil)
-	outputs := map[string]string{}
+	m := &Material{Run: r, Events: &Events{Notices: map[string]int{}, GuardTrips: map[string]int{}, GuardCauses: map[string]int{}}, Oracles: map[string]string{}}
 	for _, ref := range refs {
 		if ref.Kind == "oracle" {
 			rd, _, err := blobs.Reader(ctx, ref.Hash)
@@ -123,7 +125,7 @@ func Run(ctx context.Context, st store.State, blobs Blobs, runID string) (*Resul
 			if err != nil {
 				return nil, fmt.Errorf("oracle %s of run %s: %w", ref.Name, runID, err)
 			}
-			outputs[ref.Name] = string(b)
+			m.Oracles[ref.Name] = string(b)
 			continue
 		}
 		if ref.Kind != "events" && (ref.Kind != "wire" || r.Imported) {
@@ -134,29 +136,57 @@ func Run(ctx context.Context, st store.State, blobs Blobs, runID string) (*Resul
 			return nil, fmt.Errorf("%s of run %s: %w", ref.Kind, runID, err)
 		}
 		if ref.Kind == "events" {
-			err = ev.Read(rd)
+			err = m.Events.Read(rd)
 		} else {
 			var more []Request
 			more, err = ReadWire(rd)
-			reqs = append(reqs, more...)
+			m.Requests = append(m.Requests, more...)
 		}
 		rd.Close()
 		if err != nil {
 			return nil, fmt.Errorf("%s of run %s: %w", ref.Kind, runID, err)
 		}
 	}
+	return m, nil
+}
+
+// Derive is everything the analysis derives from a run's material, with
+// the detectors of this build. It reads and writes nothing.
+func Derive(m *Material) *Result {
+	r := m.Run
 	var res *Result
 	if r.Imported {
-		res = &Result{Blocks: ev.Blocks}
-		res.Findings, _ = detectorFindings(r.ID, ev, detect.Options{})
+		res = &Result{Blocks: m.Events.Blocks}
+		res.Findings, _ = detectorFindings(r.ID, m.Events, detect.Options{})
 	} else {
-		res = Analyse(r, ev, reqs)
+		res = Analyse(r, m.Events, m.Requests)
 	}
-	of, om := oracleFindings(r, outputs)
+	of, om := oracleFindings(r, m.Oracles)
 	res.Findings = append(res.Findings, of...)
 	if !r.Imported {
 		res.Metrics = append(res.Metrics, om...)
 	}
+	return res
+}
+
+// Owned says whether ingest writes a detector's findings; findings of any
+// other detector are kept as they are.
+func Owned(detector string) bool { return owned[detector] }
+
+// Run derives metrics, tool calls and findings from a run's stored material
+// and writes them, replacing what an earlier ingest wrote. It is safe to run
+// again: nothing but derived rows is touched.
+//
+// An imported run gets the detectors' findings and nothing else: its tool
+// calls were written by the importer and it has no wire capture, so the
+// metrics that need one do not exist for it (D65).
+func Run(ctx context.Context, st store.State, blobs Blobs, runID string) (*Result, error) {
+	m, err := Load(ctx, st, blobs, runID)
+	if err != nil {
+		return nil, err
+	}
+	r := m.Run
+	res := Derive(m)
 	old, err := st.Findings(ctx, runID)
 	if err != nil {
 		return nil, err

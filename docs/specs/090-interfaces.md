@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.27, 2026-11-02.
+**Status:** draft 0.28, 2026-11-03.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -32,7 +32,8 @@ automaticum find "<query>" [--semantic] [--where ...]
 automaticum logs <run> [--server|--runtime|--events|--wire] [--grep ...] [--turn N]
 automaticum notices (<run> ... | --batch B ...) [--key K]   # the SDK's notices with their sentences (D116)
 automaticum replay <run> --turn N [--endpoint E]
-automaticum detect <file|run> [--runaway N] # the detector library, standalone; --self-test runs its controls
+automaticum detect <file> [--runaway N] [--sdk R] [--first-match]   # the detector library on one text; --self-test runs its controls
+automaticum detect [<detector>...] [<run>...] [--batch B] [--cohort C] [--campaign X] [--lane L] [--arm A] [--task T] [--suite S] [--model M] [--verdict V] [--since T] [--until T] [--all] [--metric M] [--group AXIS] [--firings] [--calls] [--quiet] [--fail-if "EXPR"] [--fail-scope S] [--record] [--finished] [--imported]   # every detector again on any set of runs, in flight included (070 §3.3, D133)
 automaticum embed start|status|stop [--where ...]   # by hand only (080 §5.2)
 automaticum reanalyse [--run R | --batch B] [--imported] [--detector D] [--where ...]
 automaticum rescore <batch> [--out D] [--no-wait]   # the cell scored again with its tasks' current oracles (D121, 065 §4)
