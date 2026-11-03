@@ -925,7 +925,7 @@
 - TestDefinitions, TestDuplicateDefinitionCalls, TestDuplicateDefinitionsCanary (gz fixture). (~700 tok)
 
 ## internal/detect/testdata/duplicate_definitions_call.json.gz
-- The cut-off 218,643-char editor call of run 20261103-000031-39ec08-001 request 13 (1541 defs / 1049 names). (binary)
+- The cut-off 215,471-char editor call of run 20261103-000031-39ec08-001 request 13 (1541 defs / 1049 names). (binary)
 
 ## internal/ingest/duplicates.go
 - `DefinitionFirings` (wire calls, else events), `duplicateDefinitions` metric + finding. (~700 tok)

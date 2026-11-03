@@ -11,7 +11,7 @@ import (
 // defines the same names again and again: more than DuplicateDefinitionsMax
 // definitions of a name the same string already defined. A client's
 // trained model, asked to fix a game file of about 130 lines, wrote an
-// editor call of 218,643 characters whose text turned into invented stubs
+// editor call of 215,471 characters (218,643 as the escaped JSON of the arguments) whose text turned into invented stubs
 // (`function drawPlayers5()?{}`, `function drawPlayers6()?{}`) until the
 // output limit cut it: 1,541 definitions of 1,049 names. No detector of
 // what a model writes saw it, as they read reasoning and text, not the

@@ -626,7 +626,7 @@ the event stream.
     3: methods of one name in several classes. The trained models that
     broke wrote 6, 18, 33 and 492. The positive control is the call that
     started it (`TestDuplicateDefinitionsCanary`): a trained model's editor
-    call of 218,643 characters, cut at 96,000 tokens, rewriting a file of
+    call of 215,471 characters (218,643 as the escaped JSON of the arguments), cut at 96,000 tokens, rewriting a file of
     about 130 lines, with 1,541 definitions of 1,049 names.
   - **Not covered:** C, C++, C# and Java functions, whose lines start with
     a type, and the argument's size against the file it edits.

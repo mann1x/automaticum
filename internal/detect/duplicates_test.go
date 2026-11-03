@@ -39,7 +39,7 @@ func TestDuplicateDefinitionCalls(t *testing.T) {
 // TestDuplicateDefinitionsCanary is a client's trained model's editor call
 // (bm-889 sft5 step 200 gate, run 20261103-000031-39ec08-001, request 13),
 // as the server streamed it until the output limit cut it at 96,000
-// tokens: 218,643 characters rewriting a file of about 130 lines.
+// tokens: 215,471 characters (218,643 as the escaped JSON of the arguments) rewriting a file of about 130 lines.
 func TestDuplicateDefinitionsCanary(t *testing.T) {
 	f, err := os.Open("testdata/duplicate_definitions_call.json.gz")
 	if err != nil {
