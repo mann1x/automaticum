@@ -51,7 +51,7 @@ const SessionFork = "session_fork"
 // analysis records it as the metric analysis.version: the basis (020 §5)
 // says from it which detectors a run was analysed with, whether or not
 // they found anything.
-const AnalysisVersion = 13
+const AnalysisVersion = 14
 
 // Versions are the versions of the detectors this analysis applies:
 // ingest's own and the detector library's.
@@ -557,7 +557,8 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 		if prov.EndpointBefore != nil {
 			tag = prov.EndpointBefore.Parameters
 		}
-		res.Findings = wireFindings(r.ID, CompareWire(&arm, tag, reqs))
+		// Appended: the cap audit and the turns wrote theirs above.
+		res.Findings = append(res.Findings, wireFindings(r.ID, CompareWire(&arm, tag, reqs))...)
 	}
 
 	// What the arm accepts of the two conditions below (D73).

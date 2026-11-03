@@ -1253,6 +1253,41 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-03T01:30:00+01:00"
+    },
+    {
+      "id": "bug-074",
+      "timestamp": "2026-11-03T01:40:00+01:00",
+      "error_message": "cap_hit finding missing on run 20261103-000031-39ec08-001 although cap.hits metric is 1 (request 13 finish length at 96000 tokens); guard_trip and control_markers findings likewise never stored",
+      "file": "internal/ingest/analyse.go",
+      "root_cause": "Analyse assigned res.Findings = wireFindings(...) for runs with an arm, replacing the cap_hit and turnFindings findings appended earlier; tests ran Analyse without the earlier findings or without an arm",
+      "fix": "append the wire findings; TestFindingsBeforeWireKept; analysis version 14",
+      "tags": [
+        "ingest",
+        "findings",
+        "cap_hit",
+        "guard_trip",
+        "control_markers",
+        "overwrite"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-03T01:40:00+01:00"
+    },
+    {
+      "id": "bug-075",
+      "timestamp": "2026-11-03T01:45:00+01:00",
+      "error_message": "TestArchiveLoop: race detected during execution of test (make test, -race)",
+      "file": "internal/daemon/archive_test.go",
+      "root_cause": "the test read fa.ages[0] without the fake's mutex while the archive loop kept appending",
+      "fix": "locked accessor firstAge()",
+      "tags": [
+        "test",
+        "race",
+        "archive"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-03T01:45:00+01:00"
     }
   ]
 }

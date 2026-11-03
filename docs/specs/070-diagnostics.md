@@ -407,6 +407,17 @@ detector always reads with the release's defaults, so that runs compare.
 
 Not built: near-duplicate rounds (D129).
 
+- **Findings lost before analysis version 14 (fixed 2026-11-03):** on a
+  run with an arm on record (every run of this harness), the findings of
+  the wire against the arm replaced every finding written before them,
+  where they should have been added. So `cap_hit`, `guard_trip` and
+  `control_markers` were never stored, though their metrics were
+  (`cap.hits`, `guard_trips`, `hygiene.*`). A client's run whose request
+  ended by length at 96,000 tokens had `cap.hits` 1 and no `cap_hit`
+  finding. From analysis version 14 they are kept. A stored run shows them
+  after `automaticum reanalyse` or `detect --record`, and `detect` shows
+  the difference as "(stored 0)".
+
 ### 3.3 Detectors over runs, on demand (D133, as built 2026-11-03)
 
 **Decided by the owner (2026-11-03), D133:** "we should not need a script

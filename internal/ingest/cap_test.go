@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/mann1x/automaticum/internal/store"
@@ -46,5 +47,24 @@ func TestFailedRequestFinish(t *testing.T) {
 	}
 	if got["finish.stop"] != 1 || got["finish.failed"] != 1 || got["finish.none"] != 1 {
 		t.Errorf("finish: stop %g, failed %g, none %g", got["finish.stop"], got["finish.failed"], got["finish.none"])
+	}
+}
+
+// A run with an arm on record keeps the findings written before the wire
+// against the arm: the cap audit's and the turns' (analysis version 14; the
+// wire's findings replaced them before).
+func TestFindingsBeforeWireKept(t *testing.T) {
+	ev, err := ReadEvents(strings.NewReader(`{"t":"2026-01-02T03:04:00Z","k":"runner","note":"guard_trip","guard":"nudge","phase":"no_tool_call","iteration":3,"message":"carry on"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	reqs := []Request{{Seq: 1, Agent: true, Chat: true, EvalTokens: 96000, DoneReason: "length"}}
+	res := Analyse(&store.Run{ID: "r", Arm: json.RawMessage(`{"name":"a"}`)}, ev, reqs)
+	got := map[string]bool{}
+	for _, f := range res.Findings {
+		got[f.Detector] = true
+	}
+	if !got[CapHit] || !got[GuardTrip] {
+		t.Errorf("findings %v", got)
 	}
 }

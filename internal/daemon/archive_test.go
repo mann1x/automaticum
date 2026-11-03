@@ -31,6 +31,16 @@ func (f *fakeArchiver) ArchiveOlderThan(ctx context.Context, age time.Duration, 
 	return a()
 }
 
+// firstAge is the age the first pass was asked with.
+func (f *fakeArchiver) firstAge() time.Duration {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if len(f.ages) == 0 {
+		return 0
+	}
+	return f.ages[0]
+}
+
 func (f *fakeArchiver) passes() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -57,8 +67,8 @@ func TestArchiveLoop(t *testing.T) {
 	for fa.passes() < 3 && time.Now().Before(deadline) {
 		time.Sleep(5 * time.Millisecond)
 	}
-	if fa.passes() < 3 || fa.ages[0] != 30*24*time.Hour {
-		t.Fatalf("passes %d, ages %v", fa.passes(), fa.ages)
+	if fa.passes() < 3 || fa.firstAge() != 30*24*time.Hour {
+		t.Fatalf("passes %d, first age %v", fa.passes(), fa.firstAge())
 	}
 	out := logs.String()
 	for _, want := range []string{`msg="archive unavailable"`, `msg="archive failed"`, `1 of 2 blobs older than 30 days were not moved`, `msg=archive scanned=3 older=2 moved=1`} {

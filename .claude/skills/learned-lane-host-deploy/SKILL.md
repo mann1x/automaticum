@@ -72,3 +72,9 @@ The host reads tasks and images from this checkout, so it must match the binarie
 ## Rollback
 
 Run `systemctl stop automaticumd`, `mv bin/automaticumd.prev bin/automaticumd` (and the same for the CLI), restore the `.pre-<sha>` unit if it changed, run `daemon-reload`, then start the daemon again.
+
+## Token file check (before or after the swap)
+
+- `automaticum.toml` on the host usually has no `token_file` line. The daemon then reads `<root>/config/token` (the default in `internal/config/local.go`). Grepping the TOML for `token_file` finds nothing, and that is not an error.
+- Check the file directly: `stat -c '%a %s' <root>/config/token; head -c7 <root>/config/token`. A file that starts `sha256:` holds the hash (D132), so the CLI needs `client_token_file` for the plain token. Any other file holds the plain token and keeps working with a new build.
+- Do not rewrite the token file during a deploy. It belongs to the installation, and client sessions use it.

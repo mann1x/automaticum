@@ -1647,3 +1647,24 @@
 | 01:08 | Created cmd/automaticum/detect_cmds.go | — | ~5854 |
 | 01:09 | Created internal/daemon/detect_test.go | — | ~1978 |
 | 01:12 | detect over any set of runs (D133) + swallow newline form (library 5, analysis 13) | daemon/detect.go, detect_cmds.go, ingest/outcomes.go, detect/swallow.go, specs 070/090/decisions | built, make test ok | ~60k |
+
+## Session: 2026-11-03 01:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-03 01:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-03 01:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-03 01:15
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 01:23 | deployed 8b6374f on blackswan-2 (lane idle after canary stop); found+fixed findings overwrite (cap_hit/guard_trip/control_markers lost), analysis 14 | internal/ingest/analyse.go, cap_test.go, 070 | fixed | ~15k |
