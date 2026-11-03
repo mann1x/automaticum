@@ -31,6 +31,10 @@ type Facts struct {
 	// own retries (Fault): an infrastructure error is never the model's
 	// failure (050 §4).
 	Infra string
+	// Held is a held stream the agent ended with (Held.Reason): the server
+	// decoded, its parser held the model's output back, and the SDK gave it
+	// up. The oracle decides it, not the fault (D136).
+	Held string
 }
 
 // Decide applies the verdict rules and returns the verdict with its reason.
@@ -41,7 +45,8 @@ type Facts struct {
 // ABORTED. After that the oracle speaks, and a pass outranks the clock: a
 // limit only makes a TIMEOUT of a run the oracle did not pass. A pass
 // outranks a server fault the same way; a run the oracle did not pass that
-// ended on one is ABORTED, never FAIL or TIMEOUT (050 §4).
+// ended on one is ABORTED, never FAIL or TIMEOUT (050 §4), unless the fault
+// was a held stream, which the oracle decides (D136).
 func Decide(f Facts) (store.Verdict, string) {
 	switch {
 	case f.Skipped != "":
@@ -60,6 +65,13 @@ func Decide(f Facts) (store.Verdict, string) {
 			said = "pass"
 		}
 		return store.Fail, fmt.Sprintf("stopped at %s; the oracle said %s", f.GuardStop, said)
+	case f.Held != "":
+		// The model's own output stalled a healthy server (D136): the
+		// oracle decides, the held stream beside its answer.
+		if f.OraclePassed {
+			return store.Pass, "oracle passed; " + f.Held
+		}
+		return store.Fail, f.Held + "; the oracle said no"
 	case f.OraclePassed:
 		if f.Limit != "" {
 			return store.Pass, fmt.Sprintf("oracle passed; the %s limit had fired (%s)", f.Limit, limitWho(f))

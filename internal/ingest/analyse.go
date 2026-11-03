@@ -11,6 +11,7 @@ import (
 
 	"github.com/mann1x/automaticum/internal/config"
 	"github.com/mann1x/automaticum/internal/detect"
+	"github.com/mann1x/automaticum/internal/run"
 	"github.com/mann1x/automaticum/internal/stats"
 	"github.com/mann1x/automaticum/internal/store"
 	"github.com/mann1x/automaticum/internal/store/blob"
@@ -51,13 +52,13 @@ const SessionFork = "session_fork"
 // analysis records it as the metric analysis.version: the basis (020 §5)
 // says from it which detectors a run was analysed with, whether or not
 // they found anything.
-const AnalysisVersion = 18
+const AnalysisVersion = 19
 
 // Versions are the versions of the detectors this analysis applies:
 // ingest's own and the detector library's.
 var Versions = map[string]string{
 	"library": detect.Version, WireArm: WireArmVersion, CapHit: "2", GPUResidency: "1", ModelIdentity: "1", ModelReloaded: "2", SessionFork: "1",
-	SecondaryOracle: "1", ClaimedNotPassed: "1", GuardTrip: "1", ControlMarkers: "1", GuardReplay: "1", StruggleSignals: "1", OutsideWorkspace: "1",
+	SecondaryOracle: "1", ClaimedNotPassed: "1", GuardTrip: "1", ControlMarkers: "1", GuardReplay: "1", StruggleSignals: "1", OutsideWorkspace: "1", HeldStream: "1",
 }
 
 // VersionsText is Versions as one line, in order.
@@ -92,7 +93,7 @@ func Detectors() []string {
 var owned = map[string]bool{WireArm: true, CapHit: true, GPUResidency: true, ModelReloaded: true, ModelIdentity: true, detect.ShortUnitRepeat: true, detect.CharRun: true,
 	detect.SentenceRepeat: true, detect.Runaway: true, detect.RepeatedToolCall: true,
 	detect.ReasoningRepetition: true, detect.ReasoningLoop: true, detect.FailedIdenticalCall: true, detect.RepeatedCallResult: true,
-	detect.EditOscillation: true, detect.RereadLoop: true, SecondaryOracle: true, ClaimedNotPassed: true, GuardTrip: true, ControlMarkers: true, GuardReplay: true, StruggleSignals: true, OutsideWorkspace: true, detect.SwallowedArgument: true, detect.DuplicateDefinitions: true, detect.RepetitionGuard: true}
+	detect.EditOscillation: true, detect.RereadLoop: true, SecondaryOracle: true, ClaimedNotPassed: true, GuardTrip: true, ControlMarkers: true, GuardReplay: true, StruggleSignals: true, OutsideWorkspace: true, detect.SwallowedArgument: true, detect.DuplicateDefinitions: true, detect.RepetitionGuard: true, HeldStream: true}
 
 // Material is what a run's analysis reads: its record, its event stream,
 // its wire capture and its oracles' outputs, by name.
@@ -101,6 +102,8 @@ type Material struct {
 	Events   *Events
 	Requests []Request
 	Oracles  map[string]string
+	// Slots are the readings of the endpoint's /slots during the run.
+	Slots []run.SlotSample
 }
 
 // Load reads a run's stored material.
@@ -126,6 +129,18 @@ func Load(ctx context.Context, st store.State, blobs Blobs, runID string) (*Mate
 				return nil, fmt.Errorf("oracle %s of run %s: %w", ref.Name, runID, err)
 			}
 			m.Oracles[ref.Name] = string(b)
+			continue
+		}
+		if ref.Kind == "slots" {
+			rd, _, err := blobs.Reader(ctx, ref.Hash)
+			if err != nil {
+				return nil, fmt.Errorf("slots of run %s: %w", runID, err)
+			}
+			m.Slots, err = ReadSlots(rd)
+			rd.Close()
+			if err != nil {
+				return nil, fmt.Errorf("slots of run %s: %w", runID, err)
+			}
 			continue
 		}
 		if ref.Kind != "events" && (ref.Kind != "wire" || r.Imported) {
@@ -160,6 +175,9 @@ func Derive(m *Material) *Result {
 		res.Findings, _ = detectorFindings(r.ID, m.Events, detect.Options{})
 	} else {
 		res = Analyse(r, m.Events, m.Requests)
+		heldStream(r, m.Slots, func(name string, v float64) {
+			res.Metrics = append(res.Metrics, store.Metric{RunID: r.ID, Name: name, Value: v})
+		}, res)
 	}
 	of, om := oracleFindings(r, m.Oracles)
 	res.Findings = append(res.Findings, of...)

@@ -86,6 +86,7 @@
 
 ## Decision Log
 
+- [2026-11-03] D136: held stream = oracle decides (PASS if it passes, else FAIL; not ABORTED). Owner via backup_models "ok FAIL with oracle", then in session "Oracle decides". Proof: /slots n_decoded growing in the silence (live sampler, slots blob) or `run held` from the server log; the SDK's silence message alone stays ABORTED. Interim until the engine sends keepalives during holds.
 - [2026-11-03] D135: paragraph-repetition guard. Owner 07:49: build it, observe-only by default, an arm flag to make it stop; "shouldn't this guard be part of detect?" -> it is a detector (would-fire point, finding, detect column); stop = same rule live in the daemon, arm opt-in. Thresholds ported (guards.go) or measured on positives (sft5-s200 cap_hit) vs negatives (floor gates, sft3, sft3-s400, pool).
 - [2026-11-03] D134: duplicate_definitions (tool-call string argument redefining names > 3 times). Owner: "build it with your recommendation" = threshold from data: max over base-model + stub runs on blackswan-2 (371 runs) was 3; trained broke at 6/18/33/492.
 

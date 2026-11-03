@@ -345,6 +345,7 @@ func (d *Daemon) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/lanes/{lane}/unreserve", d.handleReserve)
 	mux.HandleFunc("GET /v1/basis", d.handleBasis)
 	mux.HandleFunc("POST /v1/runs/{id}/invalidate", d.handleInvalidate)
+	mux.HandleFunc("POST /v1/runs/{id}/held", d.handleHeld)
 	mux.HandleFunc("POST /v1/runs/{id}/identify", d.handleIdentify)
 	mux.HandleFunc("GET /v1/runs/{id}/detect", d.handleDetect)
 	mux.HandleFunc("GET /v1/detect", d.handleDetectRuns)
@@ -1699,6 +1700,75 @@ func (d *Daemon) handleIdentify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	reply(w, http.StatusOK, Done{RunID: id, State: "identified"})
+}
+
+// handleHeld records that a finished run which ended on the SDK's silence
+// ceiling was a held stream, from the server's log an operator read (D136):
+// the server's task and the tokens it had decoded. The verdict is decided
+// again from the run's record with it, its oracle's answer included, and
+// what it was is kept beside it; the run is analysed again.
+func (d *Daemon) handleHeld(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := r.PathValue("id")
+	var req struct {
+		Task     int64  `json:"task"`
+		NDecoded int    `json:"n_decoded"`
+		Source   string `json:"source"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&req); err != nil || req.NDecoded <= 0 || strings.TrimSpace(req.Source) == "" {
+		fail(w, http.StatusBadRequest, "recording a held stream needs the tokens the server decoded (n_decoded > 0) and where that was read (source)")
+		return
+	}
+	rec, err := d.State.GetRun(ctx, id)
+	if errors.Is(err, store.ErrNotFound) {
+		fail(w, http.StatusNotFound, "there is no finished run %s", id)
+		return
+	}
+	if err != nil {
+		fail(w, http.StatusInternalServerError, "%v", err)
+		return
+	}
+	var prov map[string]json.RawMessage
+	var end struct {
+		Runner *run.End `json:"runner"`
+	}
+	if json.Unmarshal(rec.Provenance, &prov) != nil || json.Unmarshal(rec.Provenance, &end) != nil || end.Runner == nil {
+		fail(w, http.StatusConflict, "run %s has no runner record to read its end from", id)
+		return
+	}
+	h := run.HeldStream(end.Runner.AgentError, nil)
+	if h == nil {
+		fail(w, http.StatusConflict, "run %s did not end on the SDK's silence ceiling: %q", id, end.Runner.AgentError)
+		return
+	}
+	h.By, h.Source, h.Task, h.Decoded = "server log", strings.TrimSpace(req.Source), req.Task, req.NDecoded
+	prov["held_stream"], _ = json.Marshal(h)
+	raw, _ := json.Marshal(prov)
+	was := *rec
+	rec.Provenance = raw
+	v, why, ok := run.Redecide(rec)
+	if !ok {
+		fail(w, http.StatusConflict, "run %s has no answer of its oracle to decide it by", id)
+		return
+	}
+	if v != was.Verdict && rec.PriorVerdict == "" {
+		rec.PriorVerdict = was.Verdict
+	}
+	rec.Verdict, rec.VerdictReason = v, why
+	if dryRun(r) {
+		out := view(rec, false)
+		out.DryRun = true
+		reply(w, http.StatusOK, out)
+		return
+	}
+	if err := d.State.UpsertRun(ctx, rec); err != nil {
+		fail(w, http.StatusInternalServerError, "%v", err)
+		return
+	}
+	if _, err := ingest.Run(ctx, d.State, d.Blobs, id); err != nil {
+		d.Log.Error("the run could not be analysed again", "run", id, "error", err)
+	}
+	reply(w, http.StatusOK, view(rec, false))
 }
 
 // handleInvalidate marks a finished run INVALID. What the verdict was is

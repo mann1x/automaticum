@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-03T07:12:29.079Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-03T12:18:42.943Z
 > Files: 505 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
@@ -8,8 +8,8 @@
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
 - `.gitleaks.toml` (~581 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~2405 tok)
-- `CLAUDE.md` — automaticum (~6116 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~2619 tok)
+- `CLAUDE.md` — automaticum (~6262 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
 - `LICENSE` — Project license (~3029 tok)
@@ -20,9 +20,9 @@
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~140143 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~140469 tok)
 - `manifest.json` (~728 tok)
-- `refresh-hook.log` (~211 tok)
+- `refresh-hook.log` (~0 tok)
 - `score-history.jsonl` (~1860 tok)
 
 ## .caliber/backups/2026-10-12T20-16-19-461Z/
@@ -39,10 +39,10 @@
 
 ## .caliber/learning/
 
-- `current-session.jsonl` (~2205 tok)
+- `current-session.jsonl` — Declares max (~6164 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~92266 tok)
-- `state.json` (~40 tok)
+- `roi-stats.json` (~93266 tok)
+- `state.json` (~41 tok)
 
 ## .claude/
 
@@ -76,6 +76,10 @@
 ## .claude/skills/find-skills/
 
 - `SKILL.md` — Find Skills (~593 tok)
+
+## .claude/skills/learned-detector-measurement/
+
+- `SKILL.md` — Measuring a detector over every stored run on a lane host (~943 tok)
 
 ## .claude/skills/learned-lane-host-deploy/
 
@@ -120,7 +124,7 @@
 - `config_cmds.go` — place (153 fields) (~4205 tok)
 - `control_cmds.go` (~2935 tok)
 - `detect_cmds_test.go` — TestDetectFailIf (~606 tok)
-- `detect_cmds.go` — failTest (91 fields) (~6410 tok)
+- `detect_cmds.go` — failTest (90 fields) (~6605 tok)
 - `exit_test.go` — TestExitOf (~153 tok)
 - `export_cmds.go` — result (100 fields); methods: Error (~2565 tok)
 - `image_cmds.go` — built (65 fields) (~1334 tok)
@@ -156,7 +160,7 @@
 - `000-overview.md` — 000 — Overview, vocabulary and map of the spec set (~2127 tok)
 - `010-architecture.md` — 010 — Architecture (~1763 tok)
 - `020-run-record.md` — 020 — The run record, verdicts and the basis (~4055 tok)
-- `030-configuration.md` — 030 — Configuration (~3941 tok)
+- `030-configuration.md` — 030 — Configuration (~4093 tok)
 - `040-runner.md` — 040 — The runner (~9106 tok)
 - `050-orchestration.md` — 050 — Orchestration: scheduling, gates, control (~6537 tok)
 - `060-tasks-and-suites.md` — 060 — Tasks, oracles and the suite interface (~2546 tok)
@@ -166,12 +170,12 @@
 - `064-engine-adapters.md` — 064 — Engine adapters: Cerebriline as the engine of an external harness (~1057 tok)
 - `065-cell-contract.md` — 065 — The cell contract and exports (~4254 tok)
 - `066-suite-terminal-bench.md` — 066 — Suite: Terminal-Bench 2.0 (`tbench2`) (~2335 tok)
-- `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~14005 tok)
+- `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~15076 tok)
 - `080-store.md` — 080 — The store (~4525 tok)
 - `090-interfaces.md` — 090 — Interfaces (~5583 tok)
 - `100-legacy-import.md` — 100 — Import of the old harness's corpus (~3426 tok)
 - `110-acceptance-and-roadmap.md` — 110 — Acceptance and roadmap (~8040 tok)
-- `decisions.md` — Decisions and open questions (~10422 tok)
+- `decisions.md` — Decisions and open questions (~10627 tok)
 
 ## docs/specs/archive/
 
@@ -262,12 +266,12 @@
 
 ## internal/config/
 
-- `arm.go` — loads automaticum's configuration: arms, lanes, endpoints (~8847 tok)
+- `arm.go` — loads automaticum's configuration: arms, lanes, endpoints (~8975 tok)
 - `campaign_test.go` — TestLoadCampaign (~806 tok)
 - `campaign.go` — Campaign (51 fields); methods: CohortOf, Validate (~1883 tok)
 - `cell_test.go` — TestArmForCell, TestCellEndpoint (~791 tok)
 - `cell.go` — CallerValues (41 fields); methods: ForCell (~1530 tok)
-- `config_test.go` — TestRepositoryArms, TestArmValidation, TestStopOnIdentity, TestReasoningLoopLimitIdentity + 3 more (~5976 tok)
+- `config_test.go` — TestRepositoryArms, TestArmValidation, TestStopOnIdentity, TestReasoningLoopLimitIdentity + 3 more (~6038 tok)
 - `local.go` — Local (91 fields); methods: Endpoint, MayUse, AddCellEndpoint, QuarantineAfter (~4764 tok)
 - `model_test.go` — TestModels (~541 tok)
 - `model.go` — ModelIdentity (25 fields); methods: Missing (~761 tok)
@@ -275,7 +279,7 @@
 
 ## internal/daemon/
 
-- `api.go` — Status (114 fields) (~16310 tok)
+- `api.go` — Status (114 fields) (~16407 tok)
 - `archive_test.go` — fakeArchiver (19 fields); methods: ArchiveOlderThan (~762 tok)
 - `archive.go` — Interface: Archiver (2 methods) (~631 tok)
 - `baseline.go` — ArmBaseline (17 fields) (~504 tok)
@@ -289,16 +293,16 @@
 - `compare.go` — CompareView (101 fields) (~6590 tok)
 - `control.go` — control (103 fields) (~8806 tok)
 - `daemon_test.go` — memState (122 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~18217 tok)
-- `daemon.go` — is automaticumd without its main: the queue, one worker (~8623 tok)
+- `daemon.go` — is automaticumd without its main: the queue, one worker (~8659 tok)
 - `detect_test.go` — TestDetectRuns (~2187 tok)
-- `detect.go` — DetectLine (104 fields) (~5248 tok)
+- `detect.go` — DetectLine (103 fields) (~5325 tok)
 - `export_test.go` — TestExport (~1366 tok)
 - `export.go` — ExportMeta (48 fields) (~1796 tok)
+- `guardwatch_test.go` — TestWatchGuard (~489 tok)
+- `guardwatch.go` (~536 tok)
 - `heartbeat.go` — Heartbeat (25 fields) (~863 tok)
-- `guardwatch.go` — watchGuard, stopsOnHarness: live repetition-guard stop for arms whose stop_on names it (D135), every guardWatchEvery (~600 tok)
-- `guardwatch_test.go` — TestWatchGuard (~550 tok)
 - `lanerules.go` — InfraEnd (34 fields) (~1654 tok)
-- `lists_test.go` — TestBatchesAndLaneShow, TestWhereFilter (~771 tok)
+- `lists_test.go` — TestBatchesAndLaneShow, TestWhereFilter (~879 tok)
 - `lists.go` — BatchSummary (71 fields) (~1928 tok)
 - `modec_test.go` — TestModeCCell, TestModeCBasis (~1862 tok)
 - `modec.go` — CellSpec (69 fields) (~2243 tok)
@@ -316,20 +320,18 @@
 
 - `callguard_test.go` — TestCallGuard (~971 tok)
 - `callguard.go` — GuardFiring (41 fields) (~1618 tok)
-- `controls.go` — Control (58 fields) (~3511 tok)
+- `controls.go` — Control (53 fields) (~4110 tok)
 - `detect_test.go` — TestSelfTest, TestShortUnit, TestShortUnitAgainstPattern, TestCharRun + 5 more (~2760 tok)
 - `detect.go` — is the detector library (spec 070 §3): degeneration and (~2939 tok)
-- `duplicates_test.go` — TestDefinitions, TestDuplicateDefinitionCalls, TestDuplicateDefinitionsCanary (~638 tok)
-- `duplicates.go` — DefinitionFiring (35 fields) (~1457 tok)
-- `restated.go` — RestatedText: the SDK RestatedLines measure ported (long lines written a third time, 300 lines, 30%, source excuse) (~800 tok)
-- `restated_test.go` — TestRestatedText (~450 tok)
-- `repguard.go` — RepetitionGuard (D135): GuardText/GuardReasoning/GuardArgument, first would-trip point per output; paragraphAt, restatedAt, definitionsAt (~1500 tok)
+- `duplicates_test.go` — TestDefinitions, TestDuplicateDefinitionCalls, TestDuplicateDefinitionsCanary (~825 tok)
+- `duplicates.go` — DefinitionFiring (48 fields) (~2110 tok)
 - `guards.go` (~1847 tok)
 - `guards258_test.go` — TestReasoningLoop258, TestRulesFor (~869 tok)
 - `guards258.go` — given (102 fields) (~2445 tok)
 - `reference_test.go` — expected (52 fields) (~2243 tok)
-- `repguard.go` — Struct: GuardFire (~1257 tok)
-- `restated.go` — Struct: Restated (~750 tok)
+- `repguard.go` — GuardFire (34 fields) (~1348 tok)
+- `restated_test.go` — TestRestatedText (~440 tok)
+- `restated.go` — RestatedLines is the SDK's measure of a text that writes its own long (~803 tok)
 - `spans_test.go` — TestSpansShortUnit, TestSpansSentenceLaterOnly, TestCycleStart (~398 tok)
 - `spans.go` — Span (51 fields) (~1142 tok)
 - `struggle_test.go` — TestStruggleFailures, TestStruggleBeforeMinIteration, TestStruggleTransactions, TestStruggleEditStreak + 3 more (~2079 tok)
@@ -363,11 +365,9 @@
 
 ## internal/ingest/
 
-- `analyse.go` — Interface: Blobs (33 methods) (~7378 tok)
+- `analyse.go` — Interface: Blobs (33 methods) (~7398 tok)
 - `answers_test.go` — TestWireAnswers (~705 tok)
 - `answers.go` (~698 tok)
-- `repguard.go` — GuardFires, repetitionGuard: the repetition_guard finding and metrics, observe-only, token/second estimates (~1600 tok)
-- `repguard_test.go` — TestRepetitionGuard (~700 tok)
 - `canary_test.go` — TestCanary (~680 tok)
 - `canary.go` — CanaryVerdict (14 fields) (~698 tok)
 - `cap_test.go` — TestCapHits, TestFailedRequestFinish, TestFindingsBeforeWireKept (~818 tok)
@@ -376,6 +376,7 @@
 - `duplicates_test.go` — TestDuplicateDefinitions (~738 tok)
 - `duplicates.go` — DefinitionFirings (~679 tok)
 - `events.go` — turns a run's stored raw material into what is queried: (~9659 tok)
+- `held.go` — held_stream finding: ReadSlots (slots blob), HeldStreamOf (record, slots or SDK message), heldStream metrics (~650 tok)
 - `ingest_test.go` — TestNoticeLog, TestReadEvents, TestReadWire, TestCompareWireClean, TestCompareWire (~11693 tok)
 - `integrity_test.go` — TestIntegrity, TestSwallowed (~1032 tok)
 - `integrity.go` — dir (25 fields) (~830 tok)
@@ -386,7 +387,8 @@
 - `outcomes.go` — ToolOutcome (24 fields) (~715 tok)
 - `render_test.go` — TestRenderer (~628 tok)
 - `render.go` — Renderer (35 fields); methods: Turn, Line (~1056 tok)
-- `repguard.go` — Struct: GuardFire (~1496 tok)
+- `repguard_test.go` — TestRepetitionGuard (~782 tok)
+- `repguard.go` — GuardFire (50 fields) (~1603 tok)
 - `sample_test.go` — TestSample, TestDumpBlocks (~1010 tok)
 - `sampler.go` — Setting (43 fields) (~1398 tok)
 - `struggle_test.go` — TestStruggleSignals (~1164 tok)
@@ -419,6 +421,7 @@
 
 - `fault_test.go` — TestFault, TestInfrastructure (~627 tok)
 - `fault.go` — Fault, Infrastructure (~1148 tok)
+- `held.go` — Held, HeldStream (SDK silence error + /slots readings), Proven, Reason: held stream decided by the oracle, D136 (~1050 tok)
 - `identity_test.go` — m (37 fields) (~1878 tok)
 - `probe.go` — Identity (126 fields); methods: Changed (~4244 tok)
 - `props_test.go` — TestProps, TestProbeLlamaServer (~1470 tok)
@@ -426,8 +429,9 @@
 - `protocol.go` — executes one run: an arm on a task, once, on a lane. It (~2108 tok)
 - `rescore_test.go` — TestRescoreVerdict, TestUntar (~936 tok)
 - `rescore.go` — Rescore, Untar (~750 tok)
-- `run_test.go` — fakeState (73 fields); methods: UpsertRun, AddBlobRefs, Put, Check (~8484 tok)
-- `run.go` — Interface: Engine (5 methods) (~10605 tok)
+- `run_test.go` — fakeState (73 fields); methods: UpsertRun, AddBlobRefs, Put, Check (~8732 tok)
+- `run.go` — Interface: Engine (6 methods) (~10762 tok)
+- `slots.go` — ReadSlots (GET /slots n_decoded), watchSlots: sampled every 10 s during a run into the slots blob (~1100 tok)
 - `verdict.go` — Facts (27 fields) (~836 tok)
 
 ## internal/sdk/
@@ -896,11 +900,3 @@
 - `04-higher-order.scm` (~239 tok)
 - `05-simple-io.scm` (~246 tok)
 - `06-interactive-io.scm` (~265 tok)
-- `08-progn-sequencing.scm` (~285 tok)
-- `09-mutual-recursion.scm` (~239 tok)
-- `10-advanced-features.scm` (~519 tok)
-- `accumulator_patterns.scm` (~376 tok)
-- `binary_tree.scm` (~350 tok)
-- `calculator.scm` (~91 tok)
-- `church_numerals.scm` (~315 tok)
-- `closures.scm` (~242 tok)

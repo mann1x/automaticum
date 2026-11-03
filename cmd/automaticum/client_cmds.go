@@ -584,6 +584,9 @@ func runPost(verb, done string) func(context.Context, []string) error {
 		m := addMutation(fs)
 		reason := fs.String("reason", "", "why (needed to mark a run invalid)")
 		keep := fs.Bool("keep-model", false, "pause: hold the run but leave its model loaded")
+		task := fs.Int64("task", 0, "held: the server's task that was held, from its log")
+		decoded := fs.Int("n-decoded", 0, "held: the tokens the server had decoded for it, from its log")
+		source := fs.String("source", "", "held: where that was read, e.g. the server's log and its time")
 		rest := parse(fs, args)
 		if len(rest) != 1 {
 			return fmt.Errorf("usage: automaticum run %s <run> [--dry-run] [--idempotency-key K]", verb)
@@ -596,6 +599,8 @@ func runPost(verb, done string) func(context.Context, []string) error {
 		switch verb {
 		case "invalidate":
 			in = map[string]string{"reason": *reason}
+		case "held":
+			in = map[string]any{"task": *task, "n_decoded": *decoded, "source": *source}
 		case "pause":
 			in = map[string]bool{"keep_model": *keep}
 		}

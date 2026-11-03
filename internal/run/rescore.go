@@ -15,15 +15,43 @@ import (
 
 // Rescore decides a run's verdict again from a new answer of its primary
 // oracle (D121, 065 §4): the facts the run recorded (the limit that fired,
-// a guard stop, a server fault the agent ended with), with the new answer
-// in place of the old. Only a run whose verdict the oracle gave is
-// rescored: PASS, FAIL and TIMEOUT; ok is false for any other.
+// a guard stop, a held stream or a server fault the agent ended with), with
+// the new answer in place of the old. Only a run whose verdict the oracle
+// gave is rescored: PASS, FAIL and TIMEOUT; ok is false for any other.
 func Rescore(r *store.Run, passed bool) (v store.Verdict, reason string, ok bool) {
 	switch r.Verdict {
 	case store.Pass, store.Fail, store.Timeout:
 	default:
 		return "", "", false
 	}
+	f := recorded(r)
+	f.OracleRan, f.OraclePassed = true, passed
+	v, reason = Decide(f)
+	return v, reason, true
+}
+
+// Redecide decides a run's verdict again from what it recorded, its
+// oracle's answer included: after a held stream was added to its record
+// (D136). ok is false for a run whose oracle gave no answer.
+func Redecide(r *store.Run) (v store.Verdict, reason string, ok bool) {
+	var p struct {
+		Oracle *struct {
+			Passed bool   `json:"Passed"`
+			Err    string `json:"Err"`
+		} `json:"oracle"`
+	}
+	if json.Unmarshal(r.Provenance, &p) != nil || p.Oracle == nil || p.Oracle.Err != "" {
+		return "", "", false
+	}
+	f := recorded(r)
+	f.OracleRan, f.OraclePassed = true, p.Oracle.Passed
+	v, reason = Decide(f)
+	return v, reason, true
+}
+
+// recorded are the facts a finished run recorded, but for its oracle's
+// answer.
+func recorded(r *store.Run) Facts {
 	var p struct {
 		Limits struct {
 			Wall    limit  `json:"wall"`
@@ -31,10 +59,11 @@ func Rescore(r *store.Run, passed bool) (v store.Verdict, reason string, ok bool
 			Fired   string `json:"fired"`
 			FiredBy string `json:"fired_by"`
 		} `json:"limits"`
-		Runner *End `json:"runner"`
+		Runner     *End  `json:"runner"`
+		HeldStream *Held `json:"held_stream"`
 	}
 	json.Unmarshal(r.Provenance, &p)
-	f := Facts{OracleRan: true, OraclePassed: passed}
+	var f Facts
 	switch p.Limits.Fired {
 	case "wall":
 		f.Limit, f.LimitOwner, f.LimitBy = "wall", p.Limits.Wall.Owner, p.Limits.FiredBy
@@ -45,14 +74,15 @@ func Rescore(r *store.Run, passed bool) (v store.Verdict, reason string, ok bool
 		if end.Outcome == OutcomeGuardStop {
 			f.GuardStop = end.Reason
 		}
-		if end.AgentEnd == "error" {
+		if p.HeldStream.Proven() {
+			f.Held = p.HeldStream.Reason()
+		} else if end.AgentEnd == "error" {
 			if kind := Fault(end.AgentError); kind != "" {
 				f.Infra = kind + ": " + end.AgentError
 			}
 		}
 	}
-	v, reason = Decide(f)
-	return v, reason, true
+	return f
 }
 
 // Untar writes a tree stored by tarTree into dir, which must exist. Every

@@ -142,6 +142,7 @@ func main() {
 		"run pause":            runPost("pause", "will be held before its next model request, and the endpoint then freed of its model"),
 		"run resume":           runPost("resume", "released; its next request loads the model again"),
 		"run invalidate":       runPost("invalidate", "marked INVALID"),
+		"run held":             runPost("held", "recorded as a held stream and decided again"),
 		"run retry":            retry("run"),
 		"lane drain":           laneControl("drain"),
 		"lane resume":          laneControl("resume"),

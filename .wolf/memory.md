@@ -1698,3 +1698,23 @@
 | 08:25 | D135 repetition guard built as detector (observe): repguard.go (detect+ingest), restated.go (SDK RestatedLines port), dup defs keyed by class (max 1 measured), library 7, AV 18; run ls limit 400 (bug-078); measured 202 runs on blackswan-2 | internal/detect, internal/ingest, internal/daemon | make test green | ~40000 |
 | 08:20 | Session end: 3 writes across 2 files (restated.go, repguard.go) | 0 reads | ~3753 tok |
 | 08:35 | D135 stop flag: stop_on may name repetition_guard (HarnessGuards), run.GuardStop cause -> D99 FAIL, daemon watchGuard every 10s; guard pass over 202 runs: 0 negatives, 4/5 positives; 030 0.24, 070 0.30, decisions r42 | internal/config, internal/run, internal/daemon, docs/specs | make test green | ~15000 |
+
+## Session: 2026-11-03 08:23
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 08:26 | be009bf pushed (D135 guard + stop flag, dup defs by class max 1, run ls limit); mail #2137 margins to backup_models; deploy waits for their idle after s800; blackswan-2 work dir cleaned | - | done | ~2000 |
+| 09:12 | tick: no mail; daemon restarted cleanly at 07:45:29Z (drain, NRestarts=0, same bd4fa8a) right before the s800 gate (likely a client reload for the new endpoint, 14 endpoints); gate run -001 26m, 9 queued; be009bf waits for their idle | - | noted | ~400 |
+
+## Session: 2026-11-03 10:07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:12 | tick: no mail; s800 gate on blackswan-2 at run -004 (11m), 6 queued, daemon active NRestarts=0; be009bf still waits for idle notice | - | noted | ~200 |
+| 11:12 | tick: no mail; s800 gate at run -007 (6m), 3 queued, daemon active NRestarts=0; be009bf waits for idle notice | - | noted | ~200 |
+| 12:20 | mail #2141 held stream (run -004 ABORTED on SDK silence 595s): point 1 is SDK's fixed 600000ms silence ceiling (4.100.266/.269 providers.js, already probes liveness); /slots on endpoint has next_token[0].n_decoded; replied #2143: will build live /slots record + held_stream detector, verdict change asked of owner | - | replied | ~3000 |
+| 13:13 | Created internal/run/slots.go | — | ~1052 |
+| 13:14 | Created internal/ingest/held.go | — | ~1226 |
+| 13:18 | Created internal/run/held.go | — | ~987 |
+| 13:18 | Created internal/ingest/held.go | — | ~643 |
+| 13:22 | Session end: 4 writes across 2 files (slots.go, held.go) | 0 reads | ~4188 tok |

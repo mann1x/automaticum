@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.28, 2026-11-03.
+**Status:** draft 0.29, 2026-11-03.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -22,7 +22,7 @@ automaticum task ls|show|verify
 automaticum oracle verify <task>
 automaticum suite import tbench2 -source D -commit C <task>...   # Terminal-Bench 2.0 tasks as tbench2, kept only if the oracle holds (066 §3)
 automaticum run start --arm A --task T [--task T2 ...] [--suite S ...] [-n 5] [--lane L] [--wall-s S] [--idle-s S] [--capture-requests]
-automaticum run ls|show|tail|stop|abort|pause|resume|retry|invalidate|identify
+automaticum run ls|show|tail|stop|abort|pause|resume|retry|invalidate|identify|held
 automaticum compare <batch> [<batch> ...] [--group AXIS] [--pool-versions] [--all]
 automaticum batch|campaign start|ls|show|pause|resume|abort
 automaticum cell run|show|ls
@@ -46,7 +46,7 @@ Every mutating command has `--dry-run` and accepts `--idempotency-key`.
 
 **Built in milestone 2:** `status`; `arm validate|show|diff`; `task
 ls|show|build`; `oracle verify`; `lane ls`; `endpoint ls` (prints no address
-unless asked); `run start|ls|show|tail|stop|abort|invalidate|identify` (`run identify <run>` adds where and on what a run ran to a record that lacks it, from today's configuration and catalogue, marked as added later, D74); `logs`
+unless asked); `run start|ls|show|tail|stop|abort|invalidate|identify` (`run identify <run>` adds where and on what a run ran to a record that lacks it, from today's configuration and catalogue, marked as added later, D74; `run held <run> --task T --n-decoded N --source S` records a held stream from the server's log and decides the run again, D136); `logs`
 (`--events`, `--wire`, `--runner`, `--oracle`, `--kind`); `legacy import`;
 `store check`. `task build` is new in this list: it builds a task's artefacts
 and checks their pinned hashes. Of these, `--dry-run` and

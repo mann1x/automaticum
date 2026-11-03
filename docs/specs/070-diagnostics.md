@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.30, 2026-11-03.
+**Status:** draft 0.32, 2026-11-03.
 
 ## 1. The rule: no custom script
 
@@ -719,6 +719,32 @@ the event stream.
     block had 86% of its long lines third copies at 153 lines (restated
     lines need 300). No base-model or stub argument held more than one
     repeated definition.
+- **Held streams (as built 2026-11-03, analysis version 19):**
+  `held_stream` (warning, version 1) is a run the SDK gave up on, presumed
+  dead, while the server was still decoding for it. The server's parser held
+  back what the model wrote (a tool call its grammar rejects, a channel tag
+  it does not know), so nothing reached the wire, keepalives included.
+  The SDK's silence ceiling, fixed at 600 s in 4.100.266, then cancelled
+  the request (`OpencotiServerSilentError`). The model wrote that output;
+  it was never parsed, and it never comes back, because the request is
+  cancelled. Nothing of it is on the wire, so the evidence is taken
+  live:
+  - While a run is in flight, the harness reads the endpoint's `/slots`
+    every 10 s, the SDK's keepalive interval. It keeps each slot that is
+    processing and the reading where it stopped, as the run's `slots`
+    blob: the slot, the server's task, and `n_decoded`.
+  - The finding names the held task, `n_decoded` at the last reading, how
+    many tokens were decoded during the silence, and whether the count
+    still grew.
+  - A server without `/slots` (Ollama, vLLM), and a run from before this
+    version, is known from the SDK's message alone (`by: "error text"`).
+  The metrics are `held_stream` (1 or 0) with `.silent_seconds`,
+  `.n_decoded` and `.n_decoded_in_silence`. `detect` counts it beside
+  `cap_hit`. When the readings prove it (the count still grew during the
+  silence), or `run held` recorded it from the server's log, the oracle
+  decides the run, not the fault (D136, 050 §4). The finding's `proven`
+  says which case it is. A held stream known from the SDK's message alone
+  stays `ABORTED`.
 - **Calls on the wire (analysis version 15):** `ReadWire` keeps the tool
   calls of each answer (`Request.Calls`): OpenAI's streamed pieces joined
   by index, and Ollama's whole calls.

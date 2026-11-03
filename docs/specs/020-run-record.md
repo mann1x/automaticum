@@ -1,6 +1,6 @@
 # 020 — The run record, verdicts and the basis
 
-**Status:** draft 0.18, 2026-11-02.
+**Status:** draft 0.19, 2026-11-03.
 
 Nothing in this file is optional. Each item is here because its absence
 invalidated or blinded a real campaign. A value is recorded **as probed or as
@@ -98,6 +98,10 @@ milestone 4.
   ran as, its capabilities, CPUs and memory (D110, D112). From 2026-10-25.
 - For every oracle: command, output, exit code, duration.
 - The runner's stdout and stderr, exit code and signal.
+- The endpoint's `/slots`, read every 10 s while the run is in flight, as
+  the `slots` blob: each slot that was processing, with its task and
+  tokens decoded (070 §4, `held_stream`). It is the only record of output
+  the server decoded and held back from the wire. From 2026-11-03.
 - Enough to **re-run the scorer without the model**: the final workspace or
   patch, the tool-call trace and the model's raw output (080 §5).
 

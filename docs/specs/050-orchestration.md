@@ -1,6 +1,6 @@
 # 050 — Orchestration: scheduling, gates, control
 
-**Status:** draft 0.21, 2026-11-02.
+**Status:** draft 0.22, 2026-11-03.
 
 ## 1. Scheduling
 
@@ -255,6 +255,20 @@ batch, campaign, lane and whole daemon.
   ("the server failed after the SDK's retries"), never `FAIL` or `TIMEOUT`.
   A pass outranks the fault as it outranks a limit. Before, such a run
   went to the oracle and could be counted `FAIL`.
+  **Decided by the owner (2026-11-03), D136:** a held stream is not such a
+  fault. The SDK gave the server up on its silence ceiling, but the server
+  was decoding all along: its parser held back the model's malformed
+  output (070 §4, `held_stream`). That run goes to its oracle like any
+  other: `PASS` if the oracle passes, else `FAIL`. Its reason is "held
+  stream: model output unparseable for <silence> (n_decoded <N>)", next to
+  the oracle's answer. The proof is the readings of the endpoint's
+  `/slots` (its `n_decoded` still grew during the silence), or the server's
+  log recorded by an operator with `automaticum run held <run> --task T
+  --n-decoded N --source S`. That command decides a stored run again from
+  its record, its oracle's answer included, and keeps the old verdict
+  beside the new one. The SDK's message alone stays `ABORTED`. This rule is
+  interim: once the server sends keepalives while it holds, such a request
+  runs on to its output limit like any other.
 - **Restart:** the daemon survives its own restart. Runs in flight are
   re-attached or marked `ABORTED(reason=daemon restart)`, never lost and never
   duplicated.

@@ -2,6 +2,7 @@ package run
 
 import (
 	"archive/tar"
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -147,6 +148,9 @@ type Executor struct {
 	Grace time.Duration
 	// IdleTick is how often the idle limit is checked; zero means 5 s.
 	IdleTick time.Duration
+	// SlotsTick is how often the endpoint's /slots is read during a run;
+	// zero means slotsEvery.
+	SlotsTick time.Duration
 	// Free returns the free bytes of the filesystem holding a path.
 	Free func(path string) (uint64, error)
 }
@@ -338,8 +342,11 @@ type provenance struct {
 		Events   int `json:"events"`
 		BadLines int `json:"bad_lines"`
 	} `json:"stream"`
-	Runner    *End `json:"runner"`
-	Workspace struct {
+	Runner *End `json:"runner"`
+	// HeldStream is the held stream the agent ended with, when the
+	// readings of /slots prove it (D136).
+	HeldStream *Held `json:"held_stream,omitempty"`
+	Workspace  struct {
 		Before  string   `json:"before"` // hash of the manifest
 		After   string   `json:"after"`
 		Added   []string `json:"added"`
@@ -559,6 +566,12 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 	if idle.Seconds > 0 {
 		go x.watchIdle(rctx, st, time.Duration(idle.Seconds)*time.Second, cancel)
 	}
+	// What the server decodes for the run, which the wire does not show
+	// while the server holds it back (held_stream).
+	slotsDone := make(chan []SlotSample, 1)
+	sctx, stopSlots := context.WithCancel(rctx)
+	defer stopSlots()
+	go x.watchSlots(sctx, endpoint, key, slotsDone)
 	grace := x.Grace
 	if grace == 0 {
 		grace = 2 * time.Minute
@@ -600,6 +613,16 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 	stderrW.Close()
 	<-stored
 	<-stored
+	stopSlots()
+	slots := <-slotsDone
+	if ss := slots; len(ss) > 0 {
+		var b bytes.Buffer
+		enc := json.NewEncoder(&b)
+		for _, sample := range ss {
+			enc.Encode(sample)
+		}
+		put("slots", "", &b)
+	}
 	os.Remove(filepath.Join(jobDir, HoldFile))
 	held, _ = st.heldFor(time.Now())
 	p.Holds, p.HeldMS = st.heldIntervals(), held.Milliseconds()
@@ -711,7 +734,9 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		facts.Aborted = "the event stream is empty"
 	}
 	if end != nil && end.AgentEnd == "error" {
-		if kind := Fault(end.AgentError); kind != "" {
+		if h := HeldStream(end.AgentError, slots); h.Proven() {
+			facts.Held, p.HeldStream = h.Reason(), h
+		} else if kind := Fault(end.AgentError); kind != "" {
 			facts.Infra = kind + ": " + end.AgentError
 		}
 	}
