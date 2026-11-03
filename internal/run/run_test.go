@@ -494,6 +494,25 @@ func TestOperatorAbortAndEndpointChange(t *testing.T) {
 	}
 }
 
+// A guard of the harness that the arm stops on (D135): the daemon cancels
+// the run with GuardStop, and the run fails as at an SDK guard's stop
+// (D99), its oracle still run.
+func TestHarnessGuardStop(t *testing.T) {
+	w := newWorld(t)
+	ctx, cancel := context.WithCancelCause(context.Background())
+	w.engine.runner = func(rctx context.Context, s docker.Spec, out io.Writer) (docker.Result, error) {
+		fix(s)
+		io.WriteString(out, `{"k":"event","event":{}}`+"\n")
+		cancel(&GuardStop{Guard: "repetition_guard", Reason: "turn 7, text, paragraph at character 12000"})
+		<-rctx.Done()
+		return docker.Result{ExitCode: 137}, rctx.Err()
+	}
+	r, p := w.run(t, ctx)
+	if r.Verdict != store.Fail || !strings.Contains(r.VerdictReason, "stopped at repetition_guard: turn 7") || p.Oracle == nil {
+		t.Fatalf("%s: %s (oracle %v)", r.Verdict, r.VerdictReason, p.Oracle != nil)
+	}
+}
+
 // A workspace copy of the oracle's artefact that the agent changed.
 func TestTamperedOracle(t *testing.T) {
 	w := newWorld(t)

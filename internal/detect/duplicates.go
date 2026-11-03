@@ -11,7 +11,7 @@ import (
 // defines the same names again and again: more than DuplicateDefinitionsMax
 // definitions of a name the same string already defined. A client's
 // trained model, asked to fix a game file of about 130 lines, wrote an
-// editor call of 215,471 characters (218,643 as the escaped JSON of the arguments) whose text turned into invented stubs
+// editor call of 215,471 characters whose text turned into invented stubs
 // (`function drawPlayers5()?{}`, `function drawPlayers6()?{}`) until the
 // output limit cut it: 1,541 definitions of 1,049 names. No detector of
 // what a model writes saw it, as they read reasoning and text, not the
@@ -24,14 +24,16 @@ import (
 // as far as it went.
 const DuplicateDefinitions = "duplicate_definitions"
 
-// DuplicateDefinitionsMax is the most repeated definitions in one string
-// that is not a firing. It is measured, not chosen: on 2026-11-03, over
-// the 637 string arguments of 20 lines or more in the 371 runs then on
-// the client's lane host, every run of a base model (413 strings, 15
-// tasks) and of the harness's stub wrote at most 3. The reference game
-// file itself has 3, methods of one name in several classes. The trained
-// models that broke wrote 6, 18, 33 and 492.
-const DuplicateDefinitionsMax = 3
+// DuplicateDefinitionsMax is the most definitions of names already
+// defined in their scope, in one string, that is not a firing. It is
+// measured, not chosen. On 2026-11-03, over the 662 string arguments of 20
+// lines or more in the 202 finished runs on the client's lane host, the 425
+// of base models and the harness's stub held at most 1 (one name defined
+// twice at the top level); the trained models wrote 2, 3, 18, 30 and 489.
+// Before definitions were keyed by class (library version 7) the same
+// measure was 3, as the reference game file defines one method name in
+// several classes.
+const DuplicateDefinitionsMax = 1
 
 // DefinitionFiring is one string argument with repeated definitions.
 type DefinitionFiring struct {
@@ -66,16 +68,72 @@ var notNames = map[string]bool{"if": true, "for": true, "while": true, "switch":
 	"until": true, "using": true, "lock": true, "fixed": true, "sizeof": true, "typeof": true, "new": true, "await": true, "async": true,
 	"super": true, "this": true}
 
-// Definitions counts the definitions in a text, by name.
+var (
+	classRE = regexp.MustCompile(`^\s*(?:export\s+)?(?:default\s+)?(?:abstract\s+)?class\s+([A-Za-z_$][A-Za-z0-9_$]*)`)
+	// quotedRE and lineCommentRE are left out before braces are counted.
+	quotedRE      = regexp.MustCompile(`"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|` + "`(?:[^`\\\\]|\\\\.)*`")
+	lineCommentRE = regexp.MustCompile(`//.*$`)
+)
+
+// scope is a class a definition is inside: closed by its brace (depth
+// is the depth it opened at), or for Python by a line indented no deeper
+// than it (indent >= 0). Functions are no scope: a file cut off or broken
+// leaves braces open, and every later definition would look nested.
+type scope struct {
+	name   string
+	depth  int
+	indent int
+}
+
+// Definitions counts the definitions in a text, by name in its class:
+// "Player.update" for a method of class Player, "draw" at the top level.
+// A name defined once in each of several classes is not defined again;
+// a name defined twice in one scope is (scoped from library version 7).
+// Scopes follow braces, with strings and line comments left out, and for
+// Python the indentation of a "class" or "def" line ending with a colon.
 func Definitions(text string) map[string]int {
 	out := map[string]int{}
+	var stack []scope
+	depth := 0
+	path := func() string {
+		names := make([]string, len(stack))
+		for i, s := range stack {
+			names[i] = s.name
+		}
+		return strings.Join(names, ".")
+	}
 	for _, l := range strings.Split(text, "\n") {
-		d := definitionRE.FindStringSubmatch(l)
-		if d == nil {
+		if strings.TrimSpace(l) == "" {
 			continue
 		}
-		if n := d[1] + d[2] + d[3]; !notNames[n] {
-			out[n]++
+		indent := len(l) - len(strings.TrimLeft(l, " \t"))
+		for len(stack) > 0 && stack[len(stack)-1].indent >= 0 && indent <= stack[len(stack)-1].indent {
+			stack = stack[:len(stack)-1]
+		}
+		name := ""
+		if d := definitionRE.FindStringSubmatch(l); d != nil {
+			if n := d[1] + d[2] + d[3]; !notNames[n] {
+				key := n
+				if p := path(); p != "" {
+					key = p + "." + n
+				}
+				out[key]++
+			}
+		}
+		if c := classRE.FindStringSubmatch(l); c != nil {
+			name = c[1]
+		}
+		code := lineCommentRE.ReplaceAllString(quotedRE.ReplaceAllString(l, ""), "")
+		next := depth + strings.Count(code, "{") - strings.Count(code, "}")
+		switch {
+		case name != "" && next > depth:
+			stack = append(stack, scope{name: name, depth: depth, indent: -1})
+		case name != "" && strings.HasSuffix(strings.TrimSpace(code), ":"):
+			stack = append(stack, scope{name: name, depth: depth, indent: indent})
+		}
+		depth = max(next, 0)
+		for len(stack) > 0 && stack[len(stack)-1].indent < 0 && stack[len(stack)-1].depth >= depth {
+			stack = stack[:len(stack)-1]
 		}
 	}
 	return out

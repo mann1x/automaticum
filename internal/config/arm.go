@@ -161,6 +161,11 @@ type Guards struct {
 	StopOn *[]string `toml:"stop_on" json:"stop_on,omitempty"`
 }
 
+// HarnessGuards are the guards of the harness itself that guards.stop_on
+// may name: they observe unless an arm names them, and then the daemon
+// stops the run at their first trip (D135).
+var HarnessGuards = map[string]bool{"repetition_guard": true}
+
 // guardPhases are the guards that announce their actions and the phases
 // they announce, as SDK 4.100.259 sends them (Cerebriline's table of
 // 2026-10-23); runner/guards.mjs counts the same kinds. A nudge's phase is
@@ -634,6 +639,10 @@ func (a *Arm) Validate() []string {
 			guard, phase, hasPhase := strings.Cut(sel, ".")
 			phases, known := guardPhases[guard]
 			switch {
+			case HarnessGuards[guard] && !hasPhase:
+				// A guard of the harness, stopped by the daemon (D135).
+			case HarnessGuards[guard]:
+				bad("guards.stop_on: %q: %s has no phases", sel, guard)
 			case !known:
 				bad("guards.stop_on: %q names no guard that announces its actions", sel)
 			case hasPhase && !slices.Contains(phases, phase):

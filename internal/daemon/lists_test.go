@@ -63,6 +63,15 @@ func TestBatchesAndLaneShow(t *testing.T) {
 	if g.call("GET", "/v1/runs?lane=lane-1&limit=100", nil, &runs); len(runs) != 3 {
 		t.Errorf("runs of lane-1: %d", len(runs))
 	}
+	// A limit out of range is refused, not replaced by the default (bug-078).
+	for _, l := range []string{"100000", "0", "-1", "many"} {
+		if code := g.call("GET", "/v1/runs?limit="+l, nil, nil); code != 400 {
+			t.Errorf("limit %s: %d, want 400", l, code)
+		}
+	}
+	if code := g.call("GET", "/v1/runs?limit=10000", nil, &runs); code != 200 {
+		t.Errorf("limit 10000: %d", code)
+	}
 }
 
 func TestWhereFilter(t *testing.T) {

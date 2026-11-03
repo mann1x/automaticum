@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.23, 2026-11-02.
+**Status:** draft 0.24, 2026-11-03.
 
 ## 1. Rules
 
@@ -205,6 +205,16 @@ announce is refused (the guards and phases of 4.100.259 are in
 resolved arm, so arms resolved before the field existed keep their
 identity. Every run counts its guards' trips (`guard_trips.<guard>.<phase>`,
 070).
+
+**Decided by the owner (2026-11-03, D135):** `stop_on` may also name a guard
+of the harness itself, without a phase: `repetition_guard` (070 §4,
+`HarnessGuards` in `internal/config/arm.go`). Such a guard observes on
+every arm: the analysis records where it would have tripped. Only an arm
+whose `stop_on` names it is stopped, by the daemon, which reads the run's
+stream as `detect` reads a run in flight (every 10 seconds) and ends the
+run at the guard's first trip: `FAIL`, "stopped at repetition_guard: …",
+with the oracle still run, as for an SDK guard. The runner is not told; the
+SDK never announces it.
 
 **Decided by the owner (2026-10-25, D108; was O23):** the SDK's
 reasoning-loop guard asks the host, after

@@ -1669,3 +1669,32 @@
 |------|--------|---------|---------|--------|
 | 04:21 | 252ca17 pushed; replied #2129 (fix, recovery answer wire-only still unread, guard = owner/SDK, deploy only on their ask); scratch copies removed | - | done | ~1500 |
 | 05:45 | backup_models asked (note on #2129): deploy 252ca17 at idle + build wire read for seq 17; built WireAnswers (AV 17, bug-077), real run: seq 17 reasoning+text fire reasoning_repetition | internal/ingest/answers.go, events.go, wire.go, analyse.go | make test green | ~15000 |
+
+## Session: 2026-11-03 05:16
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-03 05:16
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-03 05:17
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-03 05:18
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 05:22 | bd4fa8a built+staged on blackswan-2 (sha match); background wait for blackswan-2 gpu1 (task bi9elfb5c); mail #2130 plan | bin/*.new | waiting for r2 end | ~800 |
+| 06:24 | DEPLOYED bd4fa8a on blackswan-2 (claim 8403905ecb80, idle, unit backup .pre-bd4fa8a, .prev = be1ded6, repo at bd4fa8a); detect on 7a6be4-002: reasoning_repetition=3, blocks.unfinished=4, from_wire=3; gpu1 released | - | done | ~2000 |
+| 08:03 | Created internal/detect/restated.go | — | ~750 |
+| 08:04 | Session end: 1 writes across 1 files (restated.go) | 0 reads | ~803 tok |
+| 08:11 | Created internal/detect/repguard.go | — | ~1257 |
+| 08:12 | Created internal/ingest/repguard.go | — | ~1496 |
+| 08:25 | D135 repetition guard built as detector (observe): repguard.go (detect+ingest), restated.go (SDK RestatedLines port), dup defs keyed by class (max 1 measured), library 7, AV 18; run ls limit 400 (bug-078); measured 202 runs on blackswan-2 | internal/detect, internal/ingest, internal/daemon | make test green | ~40000 |
+| 08:20 | Session end: 3 writes across 2 files (restated.go, repguard.go) | 0 reads | ~3753 tok |
+| 08:35 | D135 stop flag: stop_on may name repetition_guard (HarnessGuards), run.GuardStop cause -> D99 FAIL, daemon watchGuard every 10s; guard pass over 202 runs: 0 negatives, 4/5 positives; 030 0.24, 070 0.30, decisions r42 | internal/config, internal/run, internal/daemon, docs/specs | make test green | ~15000 |

@@ -9,9 +9,14 @@ import (
 )
 
 func TestDefinitions(t *testing.T) {
-	text := "function a() {}\nfunction a() {}\n  def b(x):\nfn c() {\nfunc d() {\nif (x) {\nfor (;;) {\n  update(dt) {\nclass X {\n"
+	text := "function a() {}\nfunction a() {}\n  def b(x):\nfn c() {\n}\nfunc d() {\n}\nif (x) {\n}\nfor (;;) {\n}\n  update(dt) {\n  }\n" +
+		// One name in two classes is no duplicate; twice in one class is.
+		"class Player {\n  constructor(x) {\n    this.s = '{';\n  }\n  update(dt) {\n  }\n}\n" +
+		"export class Enemy extends Thing {\n  constructor() { }\n  update(dt) { if (x) { y(); } }\n  update(dt) {\n  }\n}\n" +
+		"class Py:\n    def run(self):\n        pass\ndef run():\n    pass\n"
 	got := Definitions(text)
-	want := map[string]int{"a": 2, "b": 1, "c": 1, "d": 1, "update": 1}
+	want := map[string]int{"a": 2, "b": 1, "c": 1, "d": 1, "update": 1, "Player.constructor": 1, "Player.update": 1,
+		"Enemy.constructor": 1, "Enemy.update": 2, "Py.run": 1, "run": 1}
 	if len(got) != len(want) {
 		t.Fatalf("%v", got)
 	}
@@ -55,7 +60,10 @@ func TestDuplicateDefinitionsCanary(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := DuplicateDefinitionCalls([]Call{{Turn: 5, Tool: c.Tool, Input: c.Arguments}})
-	if len(got) != 1 || got[0].In != "new_text" || !got[0].Cut || got[0].Definitions != 1541 || got[0].Names != 1049 || got[0].Repeated != 492 {
+	// 1,049 names and 492 repeated before definitions were keyed by class:
+	// three were methods of one name in several classes (constructor in
+	// Cloud, Level and SoundManager).
+	if len(got) != 1 || got[0].In != "new_text" || !got[0].Cut || got[0].Definitions != 1541 || got[0].Names != 1052 || got[0].Repeated != 489 {
 		t.Fatalf("%+v", got)
 	}
 }

@@ -35,6 +35,17 @@ var (
 	errIdle          = errors.New("idle limit")
 )
 
+// GuardStop is the cause a run's context is cancelled with when a guard
+// of the harness tripped that the arm's guards.stop_on names (D135): the
+// run is stopped as a failed run, as at an SDK guard's stop (D99), and the
+// oracle still reads what it left.
+type GuardStop struct {
+	Guard  string // as stop_on names it, "repetition_guard"
+	Reason string // what tripped it
+}
+
+func (g *GuardStop) Error() string { return g.Guard + ": " + g.Reason }
+
 // Engine is what a run needs of the container engine. *docker.Client is one.
 type Engine interface {
 	task.Executor
@@ -642,9 +653,12 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 
 	// What ended it.
 	started := res.ID != "" && !res.Started.IsZero()
+	var guardStop *GuardStop
 	switch {
 	case errors.Is(cause, ErrOperatorAbort), errors.Is(cause, ErrDaemonStop):
 		facts.Aborted = cause.Error()
+	case errors.As(cause, &guardStop):
+		facts.GuardStop = guardStop.Error()
 	case errors.Is(cause, errIdle):
 		facts.Limit, facts.LimitOwner, facts.LimitBy = "idle", idle.Owner, "harness"
 	case ctx.Err() != nil:

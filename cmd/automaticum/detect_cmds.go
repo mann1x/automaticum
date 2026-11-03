@@ -15,6 +15,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/mann1x/automaticum/internal/daemon"
 	"github.com/mann1x/automaticum/internal/detect"
@@ -503,6 +504,25 @@ func (o *detectOut) row(r *daemon.DetectRow) {
 				cut = ", cut off"
 			}
 			fmt.Printf("    %s %s: %s defines %d names %d times (%d repeated) in %s characters%s: %s\n", where, d.Tool, d.In, d.Names, d.Definitions, d.Repeated, human.Count(int64(d.Chars)), cut, strings.Join(top, ", "))
+		}
+		for _, g := range r.Guard {
+			where := fmt.Sprintf("turn %-4d", g.Turn)
+			if g.Request > 0 {
+				where += fmt.Sprintf(" req %d", g.Request)
+			}
+			out := g.Channel
+			if g.In != "" {
+				out += " " + g.In
+			}
+			if g.Unfinished {
+				out += " (cut off)"
+			}
+			when := ""
+			if g.Tokens > 0 {
+				when = fmt.Sprintf(", about %s tokens and %s into the request", human.Count(int64(g.Tokens)), human.Duration(time.Duration(g.Seconds*float64(time.Second))))
+			}
+			fmt.Printf("    %s repetition guard would trip on %s by %s at character %s of %s%s (%dx): %q\n", where, out, g.Rule,
+				human.Count(int64(g.Offset)), human.Count(int64(g.Chars)), when, g.Count, g.Unit)
 		}
 	}
 }

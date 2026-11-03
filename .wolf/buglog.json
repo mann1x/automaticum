@@ -1330,6 +1330,24 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-11-03T05:45:00+01:00"
+    },
+    {
+      "id": "bug-078",
+      "timestamp": "2026-11-03T08:20:00+01:00",
+      "error_message": "run ls --limit 100000 listed 50 runs (owner: 'why run ls stops at 50 runs whatever --limit says? it's a bug?')",
+      "file": "internal/daemon/api.go",
+      "root_cause": "handleRuns kept the default 50 when the limit was out of range (1..10000) or not a number, without a word",
+      "fix": "an out-of-range or non-numeric limit is refused with 400 'give a number from 1 to 10000' (maxRunList); lists_test covers 100000, 0, -1, many and 10000",
+      "tags": [
+        "daemon",
+        "cli",
+        "run-ls",
+        "limit",
+        "silent-default"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-03T08:20:00+01:00"
     }
   ]
 }

@@ -862,6 +862,9 @@ func dedupe(sorted []string) []string {
 	return out
 }
 
+// maxRunList is the most runs one list returns.
+const maxRunList = 10000
+
 func (d *Daemon) handleRuns(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	q := r.URL.Query()
@@ -885,7 +888,14 @@ func (d *Daemon) handleRuns(w http.ResponseWriter, r *http.Request) {
 	}
 	f.Newest = true
 	f.Limit = 50
-	if v, err := strconv.Atoi(q.Get("limit")); err == nil && v > 0 && v <= 10000 {
+	if l := q.Get("limit"); l != "" {
+		// A limit out of range is refused: it was once replaced by the
+		// default without a word, so "--limit 100000" listed 50 (bug-078).
+		v, err := strconv.Atoi(l)
+		if err != nil || v < 1 || v > maxRunList {
+			fail(w, http.StatusBadRequest, "limit %q: give a number from 1 to %d", l, maxRunList)
+			return
+		}
 		f.Limit = v
 	}
 	out := []RunView{}

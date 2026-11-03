@@ -96,8 +96,11 @@ type DetectRow struct {
 	Swallowed []detect.SwallowFiring `json:"swallowed,omitempty"`
 	// Definitions are all the string arguments with repeated definitions.
 	Definitions []detect.DefinitionFiring `json:"definitions,omitempty"`
-	Recorded    bool                      `json:"recorded,omitempty"`
-	Error       string                    `json:"error,omitempty"`
+	// Guard are every output the repetition guard would have tripped on
+	// (D135), the first first.
+	Guard    []ingest.GuardFire `json:"repetition_guard,omitempty"`
+	Recorded bool               `json:"recorded,omitempty"`
+	Error    string             `json:"error,omitempty"`
 }
 
 // DetectEnd closes the answer.
@@ -510,6 +513,9 @@ func (d *Daemon) detectOne(ctx context.Context, t detectTarget, dq detectQuery, 
 	}
 	if dq.firings && slices.Contains(detectors, detect.DuplicateDefinitions) {
 		row.Definitions, _ = ingest.DefinitionFirings(m.Events, m.Requests)
+	}
+	if dq.firings && slices.Contains(detectors, detect.RepetitionGuard) {
+		row.Guard = ingest.GuardFires(m.Events, m.Requests)
 	}
 	if dq.group != "" {
 		var labels map[string]string

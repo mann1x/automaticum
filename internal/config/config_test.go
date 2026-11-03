@@ -113,6 +113,8 @@ func TestArmValidation(t *testing.T) {
 		{"reasoning loop without its limit", good + "[guards.reasoning_loop]\nenabled = true\n", ""}, // the parent states it
 		{"reasoning loop limit zero", good + "[guards.reasoning_loop]\nmax_consecutive_trips = 0\n", "max_consecutive_trips must be 1 or more"},
 		{"reasoning loop off with a limit", good + "[guards.reasoning_loop]\nenabled = false\nmax_consecutive_trips = 5\n", "max_consecutive_trips must not be stated"},
+		{"stop on the harness's repetition guard", good + "[guards]\nstop_on = [\"repetition_guard\"]\n", ""},
+		{"a phase of the harness's guard", good + "[guards]\nstop_on = [\"repetition_guard.cut\"]\n", "has no phases"},
 		{"stop on an unknown guard", good + "[guards]\nstop_on = [\"loop_detect\"]\n", "names no guard that announces"},
 		{"stop on an unknown phase", good + "[guards]\nstop_on = [\"nudge.no_tools\"]\n", "nudge announces no_tool_call"},
 	}

@@ -86,6 +86,7 @@
 
 ## Decision Log
 
+- [2026-11-03] D135: paragraph-repetition guard. Owner 07:49: build it, observe-only by default, an arm flag to make it stop; "shouldn't this guard be part of detect?" -> it is a detector (would-fire point, finding, detect column); stop = same rule live in the daemon, arm opt-in. Thresholds ported (guards.go) or measured on positives (sft5-s200 cap_hit) vs negatives (floor gates, sft3, sft3-s400, pool).
 - [2026-11-03] D134: duplicate_definitions (tool-call string argument redefining names > 3 times). Owner: "build it with your recommendation" = threshold from data: max over base-model + stub runs on blackswan-2 (371 runs) was 3; trained broke at 6/18/33/492.
 
 - [2026-11-03] D133: `automaticum detect` over any set of runs (070 §3.3). Owner: "there should be a command in automaticum to do it at any time ... single run or scanning multiple results, cohorts, lanes" and "make detect broad and covering all possible use cases". Read-only by default, POST records; in-flight runs partial.

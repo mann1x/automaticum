@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.29, 2026-11-03.
+**Status:** draft 0.30, 2026-11-03.
 
 ## 1. The rule: no custom script
 
@@ -653,10 +653,72 @@ the event stream.
     3: methods of one name in several classes. The trained models that
     broke wrote 6, 18, 33 and 492. The positive control is the call that
     started it (`TestDuplicateDefinitionsCanary`): a trained model's editor
-    call of 215,471 characters (218,643 as the escaped JSON of the arguments), cut at 96,000 tokens, rewriting a file of
+    call of 215,471 characters, cut at 96,000 tokens, rewriting a file of
     about 130 lines, with 1,541 definitions of 1,049 names.
   - **Not covered:** C, C++, C# and Java functions, whose lines start with
     a type, and the argument's size against the file it edits.
+  - **Keyed by class from library version 7 (2026-11-03, asked by a
+    client):** a name is counted in its class ("Player.update"), or at the
+    top level, so one method name in several classes is no duplicate and a
+    name defined twice in one class or at the top level is. Classes follow
+    braces with strings and line comments left out, or for Python the
+    indentation of `class X:`; functions are no scope, as a file cut off
+    or broken leaves braces open. The limit was measured again on the new
+    count: over the 662 string arguments of 20 lines or more in the 202
+    finished runs on the client's lane host, the 425 of base models and the
+    stub held at most 1 (one name defined twice at the top level), so the
+    limit is 1 and a single redefinition stays silent. The trained models
+    wrote 2, 3, 18, 30 and 489. The canary reads 1,052 names and 489
+    repeated (1,049 and 492 before: `constructor` in three classes).
+- **Repetition guard (D135, as built 2026-11-03, library version 7,
+  analysis version 18):** `repetition_guard` (info) is the first point
+  where the harness's guard against a model writing the same thing again
+  and again would have tripped, on a run's visible text, reasoning or call
+  arguments. It observes: it records that point and changes nothing in the
+  run. Each output is read as it was written, so the point is known: the
+  turn, the request, the character offset of how many, an estimate of the
+  tokens and seconds into the request (by the share of the answer written
+  by then), the rule and the repeated unit. `detect` shows it beside
+  `cap_hit`, and `--firings` lists every output it would have tripped on.
+  The metric is `repetition_guard.would_fire` and its
+  `.<channel>.<rule>`, with `repetition_guard.first_turn` and
+  `.first_offset`. Its rules are the SDK's or measured, and each output
+  has only those that stayed silent there on healthy runs (202 runs,
+  2026-11-03; positives the gate runs that hit the output limit, negatives
+  the base model's floor gates and pool runs, sft3, sft3-s400 and the stub):
+  - **visible text:** the paragraph rule (`reasoning_repetition`, the
+    SDK's measure of repetition, which the SDK applies to reasoning only:
+    a paragraph that carries a sentence written 4 times or more, with 25%
+    or more of the paragraphs repeats, in 4,000 characters or more) or
+    restated lines (the SDK's measure of a call's arguments, 4.100.258 on:
+    300 long lines or more, 30% or more of them third copies beyond what
+    the model was given). Neither fired on the text of a healthy run.
+  - **reasoning:** the paragraph rule. Restated lines fire on healthy
+    reasoning that quotes code while it works (two pool runs, one of which
+    passed), so they are left out.
+  - **arguments:** duplicate definitions (above) or restated lines.
+  Stopping a run on the guard is an arm's choice and off unless an arm
+  states it: `guards.stop_on = ["repetition_guard"]` (030, D135). The
+  daemon then reads the run in flight every 10 seconds, without its wire
+  capture, and ends it at the first trip as a failed run, its oracle still
+  run.
+  - **Margins (2026-11-03):** on the five gate runs that hit the output
+    limit, it would have tripped on four: a 215,471-character editor call
+    at character 31,859 (about 25,600 tokens and 3m50s into the request),
+    a reply loop at character 12,000 of 360,271 (about 9,900 tokens and
+    1m31s into a request of 14m44s), a run whose reasoning it would have
+    tripped on at 66,000 characters (3m23s) before its reply loop, and a
+    call of the fourth run defining two names twice. It tripped on no
+    base-model, sft3, sft3-s400 or stub run. The fifth restated its plan with every copy
+    a little different (5 repeats of its most repeated paragraph, 2% of
+    paragraphs repeats; 24% of long lines third copies against 30%) and
+    passes under every rule. On the negatives, the paragraph rule came
+    closest on reasoning at 7 repeats with 18% repeats (it needs 25%), over
+    984 blocks of 4,000 characters or more; only 4 blocks of healthy
+    visible text were that long, none with a repeat, and one shorter text
+    block had 86% of its long lines third copies at 153 lines (restated
+    lines need 300). No base-model or stub argument held more than one
+    repeated definition.
 - **Calls on the wire (analysis version 15):** `ReadWire` keeps the tool
   calls of each answer (`Request.Calls`): OpenAI's streamed pieces joined
   by index, and Ollama's whole calls.

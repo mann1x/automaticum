@@ -214,7 +214,9 @@ func SelfTest() (results []ControlResult, ok bool) {
 		text string
 		want []string
 	}{{"an edit that defines the same functions again and again", stubs, []string{DuplicateDefinitions}},
-		{"an edit with one method of a name per class", "class A {\n  update() {\n  }\n}\nclass B {\n  update() {\n  }\n}\nfunction main() {}\n", []string{}}} {
+		{"an edit with one method of a name per class", "class A {\n  update() {\n  }\n}\nclass B {\n  update() {\n  }\n}\nfunction main() {}\n", []string{}},
+		{"an edit that defines one name twice, as base models have", "function a() {}\nfunction a() {}\nfunction b() {}\n", []string{}},
+		{"an edit that defines two names twice", "function a() {}\nfunction a() {}\nfunction b() {}\nfunction b() {}\n", []string{DuplicateDefinitions}}} {
 		g := []string{}
 		in, _ := json.Marshal(map[string]string{"file_path": "a", "new_text": c.text})
 		if len(DuplicateDefinitionCalls([]Call{{Turn: 1, Tool: "editor", Input: string(in)}})) > 0 {
@@ -224,12 +226,47 @@ func SelfTest() (results []ControlResult, ok bool) {
 		ok = ok && res.OK
 		results = append(results, res)
 	}
+	// The repetition guard: a reply that says one paragraph again and
+	// again, one that restates its plan with small changes, healthy prose,
+	// and a call that rewrites a file with stubs.
+	var plan, prose strings.Builder
+	for i := 0; i < 120; i++ {
+		fmt.Fprintf(&plan, "1. Line 90: the dDec method has a syntax error (pass %d)\n2. Line 95: the dBoss method has a syntax error\n3. Line 96: a semicolon is missing after the call\n", i%2)
+		fmt.Fprintf(&prose, "Step %d reads the file at offset %d and writes the result to the log before it moves on to the next one.\n\n", i, i*512)
+	}
+	loop := strings.Repeat("Now let me fix each syntax error in the file properly, one at a time:\n\n", 120)
+	for _, c := range []struct {
+		name, channel, text string
+		want                []string
+	}{{"a reply that says one paragraph again and again", "text", loop, []string{RepetitionGuard}},
+		{"a reply that restates its plan with small changes", "text", plan.String(), []string{RepetitionGuard}},
+		{"a long reply of distinct steps", "text", prose.String(), []string{}},
+		{"reasoning that says one paragraph again and again", "reasoning", loop, []string{RepetitionGuard}},
+		{"a call that writes the same stubs again and again", "argument", stubs, []string{RepetitionGuard}},
+		{"a call that writes distinct steps", "argument", prose.String(), []string{}}} {
+		var f *GuardFire
+		switch c.channel {
+		case "text":
+			f = GuardText(c.text, "")
+		case "reasoning":
+			f = GuardReasoning(c.text)
+		default:
+			f = GuardArgument(c.text, "")
+		}
+		g := []string{}
+		if f != nil {
+			g = append(g, RepetitionGuard)
+		}
+		res := ControlResult{Control: c.name, Domain: "repetition guard", Want: c.want, Got: g, OK: strings.Join(g, ",") == strings.Join(c.want, ",")}
+		ok = ok && res.OK
+		results = append(results, res)
+	}
 	return results, ok
 }
 
 var available = sync.OnceValue(func() map[string]bool {
 	out := map[string]bool{}
-	for _, d := range append(append([]string{}, Text...), RepeatedToolCall, FailedIdenticalCall, RepeatedCallResult, SwallowedArgument, DuplicateDefinitions) {
+	for _, d := range append(append([]string{}, Text...), RepeatedToolCall, FailedIdenticalCall, RepeatedCallResult, SwallowedArgument, DuplicateDefinitions, RepetitionGuard) {
 		out[d] = true
 	}
 	results, _ := SelfTest()

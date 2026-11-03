@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/mann1x/automaticum/internal/config"
+	"github.com/mann1x/automaticum/internal/detect"
 	"github.com/mann1x/automaticum/internal/gate"
 	"github.com/mann1x/automaticum/internal/ingest"
 	"github.com/mann1x/automaticum/internal/run"
@@ -616,6 +617,9 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 	if err != nil {
 		skip("the task cannot be used: " + err.Error())
 		return false
+	}
+	if stopsOnHarness(arm, detect.RepetitionGuard) {
+		go d.watchGuard(ctx, f)
 	}
 	// A mode C cell's server is asked what it is before every run, and a
 	// contradiction of the caller's facts refuses the run as a gate does
