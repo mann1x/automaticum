@@ -43,6 +43,8 @@ type Request struct {
 	// Visible is the answer's text as the user would see it: not its
 	// thinking, not its calls.
 	Visible string
+	// Reasoning is the answer's thinking.
+	Reasoning string
 	// HistoryReasoning is how many earlier assistant messages the request
 	// sent back with their reasoning, and HistoryReasoningChars how many
 	// characters of it (070 §2: reasoning carried between turns).
@@ -261,7 +263,7 @@ func (q *Request) answer(body string) {
 		EvalNS            int64  `json:"eval_duration"`
 	}
 	something := false
-	var visible strings.Builder
+	var visible, reasoning strings.Builder
 	for _, line := range strings.Split(body, "\n") {
 		if strings.TrimSpace(line) == "" {
 			continue
@@ -275,6 +277,7 @@ func (q *Request) answer(body string) {
 		}
 		q.addCalls(m.Message.ToolCalls, false)
 		visible.WriteString(m.Message.Content)
+		reasoning.WriteString(m.Message.Thinking)
 		if m.Done {
 			q.DoneReason, q.ThinkBudget, q.ThinkBudgetTokens = m.DoneReason, m.ThinkBudget, m.ThinkBudgetTokens
 			q.PromptTokens, q.CachedTokens, q.PromptNS = m.PromptEvalCount, m.PromptCached, m.PromptEvalNS
@@ -284,6 +287,7 @@ func (q *Request) answer(body string) {
 	}
 	q.Empty = !q.Failed && !something
 	q.Visible = visible.String()
+	q.Reasoning = reasoning.String()
 }
 
 // openAIFields maps the sampler fields of an OpenAI-compatible request body
@@ -369,7 +373,7 @@ func (q *Request) openAIAnswer(body string) {
 		} `json:"timings"`
 	}
 	something := false
-	var visible strings.Builder
+	var visible, reasoning strings.Builder
 	read := func(c chunk) {
 		for _, ch := range c.Choices {
 			for _, m := range []struct {
@@ -381,6 +385,7 @@ func (q *Request) openAIAnswer(body string) {
 					something = true
 				}
 				visible.WriteString(m.Content)
+				reasoning.WriteString(m.ReasoningContent + m.Reasoning)
 			}
 			q.addCalls(ch.Delta.ToolCalls, true)
 			q.addCalls(ch.Message.ToolCalls, false)
@@ -428,4 +433,5 @@ func (q *Request) openAIAnswer(body string) {
 	}
 	q.Empty = !q.Failed && !something
 	q.Visible = visible.String()
+	q.Reasoning = reasoning.String()
 }

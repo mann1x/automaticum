@@ -51,7 +51,7 @@ const SessionFork = "session_fork"
 // analysis records it as the metric analysis.version: the basis (020 §5)
 // says from it which detectors a run was analysed with, whether or not
 // they found anything.
-const AnalysisVersion = 16
+const AnalysisVersion = 17
 
 // Versions are the versions of the detectors this analysis applies:
 // ingest's own and the detector library's.
@@ -238,6 +238,7 @@ func severity(accepted bool) string {
 // Analyse derives everything from a run record and what was read from its
 // event stream and wire capture. It reads and writes nothing.
 func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
+	fromWire := ev.WireAnswers(reqs)
 	res := &Result{Blocks: ev.Blocks}
 	m := func(name string, v float64) {
 		res.Metrics = append(res.Metrics, store.Metric{RunID: r.ID, Name: name, Value: v})
@@ -499,6 +500,10 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 	m("thinking.blocks", float64(len(reasoning)))
 	// Blocks cut off before their end, read from their deltas (bug-076).
 	m("blocks.unfinished", float64(unfinished))
+	// Answers only the wire had, read from it (bug-077).
+	if len(reqs) > 0 {
+		m("blocks.from_wire", float64(fromWire))
+	}
 	distribution(m, "thinking.chars", reasoning)
 	distribution(m, "text.chars", text)
 	if ev.Iterations > 0 {

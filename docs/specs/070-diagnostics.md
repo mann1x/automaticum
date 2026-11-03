@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.28, 2026-11-03.
+**Status:** draft 0.29, 2026-11-03.
 
 ## 1. The rule: no custom script
 
@@ -430,9 +430,20 @@ Not built: near-duplicate rounds (D129).
   other; `reasoning_repetition` fires on that loop (one paragraph 837
   times). The metric `blocks.unfinished` counts them; an unfinished
   block is left out of `hygiene.unclosed_thinking`, as it may stop
-  inside its thinking. Not yet read: an answer the SDK never streamed
-  as events (its retry after the output limit, which only the wire
-  capture holds).
+  inside its thinking.
+
+- **Answers only the wire has (analysis version 17, 2026-11-03):** the
+  SDK's retry after the output limit (`max_tokens_turn_recovery`) is
+  never streamed as events: the same client's retry wrote 94,187
+  characters of reasoning and 106,517 of text in ten minutes of an event
+  stream with no line. When the requests were captured, an agent
+  request's answer that no block of the same kind was printed during is
+  read from the wire as a block of the turn that had started when it was
+  asked; by time, not by text, as a retry may begin as the turn it
+  retries did. A stream without times adds none. On that run
+  `reasoning_repetition` then fires on the retry's reasoning (one
+  paragraph 212 times) as well as on both text blocks. The metric
+  `blocks.from_wire` counts them, on a run with a capture.
 
 ### 3.3 Detectors over runs, on demand (D133, as built 2026-11-03)
 

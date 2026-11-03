@@ -378,6 +378,8 @@
 - `openai_test.go` — TestOpenAIWire, TestOpenAIWireFromStub, TestOpenAIThinkingBudget (~1625 tok)
 - `oracle_test.go` — TestPartialScore, TestOracleFindings, TestTurnTimes (~930 tok)
 - `oracle.go` — oracleBrief (29 fields) (~1325 tok)
+- `answers.go` — Events.WireAnswers: agent answers only the wire has (the SDK retry after the output limit), merged as blocks by time; printed, turnAt, givenAt (~700 tok)
+- `answers_test.go` — TestWireAnswers (~600 tok)
 - `outcomes.go` — Struct: ToolOutcome (~911 tok)
 - `render_test.go` — TestRenderer (~628 tok)
 - `render.go` — Renderer (35 fields); methods: Turn, Line (~1056 tok)

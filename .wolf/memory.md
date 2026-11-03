@@ -1652,3 +1652,20 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 04:30 | mail #2128: text loop missed; root cause cut blocks dropped (no content_end); flush as Unfinished, blocks.unfinished, AV 16; 070 draft 0.28; bug-076 | internal/ingest/events.go, analyse.go, turns.go, ingest_test.go | make test green; real run fires reasoning_repetition | ~9000 |
+
+## Session: 2026-11-03 04:17
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-03 04:17
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-03 04:18
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 04:21 | 252ca17 pushed; replied #2129 (fix, recovery answer wire-only still unread, guard = owner/SDK, deploy only on their ask); scratch copies removed | - | done | ~1500 |
+| 05:45 | backup_models asked (note on #2129): deploy 252ca17 at idle + build wire read for seq 17; built WireAnswers (AV 17, bug-077), real run: seq 17 reasoning+text fire reasoning_repetition | internal/ingest/answers.go, events.go, wire.go, analyse.go | make test green | ~15000 |

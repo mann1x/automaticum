@@ -19,7 +19,7 @@
 
 ## Key Learnings
 
-- **A turn cut by the output or wall limit has no `content_end` (2026-11-03, bug-076):** the SDK streams text/reasoning as `content_start` deltas and closes with `content_end`; a cut turn never closes, and its retry (`max_tokens_turn_recovery`) is NOT streamed as events at all, only the wire capture holds it. `Events.Read` keeps open partials as `Block.Unfinished` (`scan.flush`). Any reader of the event stream must handle a block with no end.
+- **A turn cut by the output or wall limit has no `content_end` (2026-11-03, bug-076):** the SDK streams text/reasoning as `content_start` deltas and closes with `content_end`; a cut turn never closes, and its retry (`max_tokens_turn_recovery`) is NOT streamed as events at all, only the wire capture holds it. `Events.Read` keeps open partials as `Block.Unfinished` (`scan.flush`). Any reader of the event stream must handle a block with no end. Wire-only answers are merged by `Events.WireAnswers` by time overlap (bug-077); an unfinished block ends at its last delta, not at its flush.
 
 - [2026-11-03] A tool call cut by the output limit has input "{}" in the event stream (the SDK drops what it cannot parse); its arguments exist only in the wire's streamed deltas, now Request.Calls. Detectors over call arguments must read the wire when captured.
 - [2026-11-03] To set a detector threshold from data: cross-compile a throwaway `go test -c` measurement binary (CGO_ENABLED=0), scp it to the lane host, pipe `automaticum logs <run> --wire -json` per run into it, read-only; delete it after.

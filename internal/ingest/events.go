@@ -30,6 +30,11 @@ type Block struct {
 	// the output limit or the wall limit cut the turn. It is what its
 	// deltas added up to (bug-076).
 	Unfinished bool
+	// Start and End are when its first delta and its end were printed.
+	Start, End time.Time
+	// Request is the wire's request, for a block read from the wire
+	// because the event stream never had it.
+	Request int
 }
 
 // Events is what one pass over a run's event stream gives.
@@ -113,6 +118,10 @@ type Events struct {
 	// result, as the SDK's loop guard collects them from the request's
 	// messages (D75). A block's GivenTo says how much came before it.
 	Given strings.Builder
+	// wired is set once WireAnswers added the wire's answers.
+	wired bool
+	// turnOf is the turn each of TurnStarts started.
+	turnOf []int
 	// CutBlocks are what the reasoning-loop guard cut off: the stream up
 	// to its trip, which the SDK threw away and asked for again. They are
 	// not part of Blocks; the guard's replay reads them (070 §4).
@@ -352,8 +361,12 @@ type scan struct {
 	// What a block's deltas add up to, by kind, for a stream whose
 	// "content_end" does not repeat the whole block.
 	partial map[string]*bytes.Buffer
-	// partialTurn is the turn each partial block started in.
-	partialTurn map[string]int
+	// partialTurn is the turn each partial block started in, and
+	// partialStart when.
+	partialTurn  map[string]int
+	partialStart map[string]time.Time
+	// partialLast is when the last delta of each partial block came.
+	partialLast map[string]time.Time
 }
 
 // flush keeps what a block's deltas added up to when its "content_end"
@@ -364,7 +377,8 @@ type scan struct {
 func (sc *scan) flush(ev *Events) {
 	for _, kind := range []string{"reasoning", "text"} {
 		if buf := sc.partial[kind]; buf != nil && buf.Len() > 0 {
-			ev.Blocks = append(ev.Blocks, Block{Turn: sc.partialTurn[kind], Kind: kind, Text: buf.String(), GivenTo: ev.Given.Len(), Unfinished: true})
+			ev.Blocks = append(ev.Blocks, Block{Turn: sc.partialTurn[kind], Kind: kind, Text: buf.String(), GivenTo: ev.Given.Len(), Unfinished: true,
+				Start: sc.partialStart[kind], End: sc.partialLast[kind]})
 			buf.Reset()
 		}
 	}
@@ -393,7 +407,7 @@ func (ev *Events) Read(r io.Reader) error {
 		ev.NoticeTurns = map[string]int{}
 	}
 	rd := bufio.NewReaderSize(r, 1<<20)
-	sc := &scan{started: map[string]time.Time{}, inputs: map[string]string{}, partial: map[string]*bytes.Buffer{}, partialTurn: map[string]int{}}
+	sc := &scan{started: map[string]time.Time{}, inputs: map[string]string{}, partial: map[string]*bytes.Buffer{}, partialTurn: map[string]int{}, partialStart: map[string]time.Time{}, partialLast: map[string]time.Time{}}
 	for {
 		line, err := rd.ReadBytes('\n')
 		if len(bytes.TrimSpace(line)) > 0 {
@@ -524,6 +538,7 @@ func (ev *Events) line(line []byte, sc *scan) {
 		sc.turn = a.Iteration
 		if !l.T.IsZero() {
 			ev.TurnStarts = append(ev.TurnStarts, l.T)
+			ev.turnOf = append(ev.turnOf, a.Iteration)
 		}
 		if a.Iteration > ev.Iterations {
 			ev.Iterations = a.Iteration
@@ -547,21 +562,26 @@ func (ev *Events) line(line []byte, sc *scan) {
 				sc.partial[a.ContentType] = buf
 			}
 			if buf.Len() == 0 {
-				sc.partialTurn[a.ContentType] = sc.turn
+				sc.partialTurn[a.ContentType], sc.partialStart[a.ContentType] = sc.turn, l.T
 			}
+			sc.partialLast[a.ContentType] = l.T
 			buf.WriteString(a.Reasoning + a.Text)
 		}
 	case "content_end":
 		switch a.ContentType {
 		case "reasoning", "text":
 			text := a.Reasoning + a.Text
+			start := l.T
 			if buf := sc.partial[a.ContentType]; buf != nil {
 				if text == "" {
 					text = buf.String()
 				}
+				if buf.Len() > 0 {
+					start = sc.partialStart[a.ContentType]
+				}
 				buf.Reset()
 			}
-			ev.Blocks = append(ev.Blocks, Block{Turn: sc.turn, Kind: a.ContentType, Text: text, GivenTo: ev.Given.Len()})
+			ev.Blocks = append(ev.Blocks, Block{Turn: sc.turn, Kind: a.ContentType, Text: text, GivenTo: ev.Given.Len(), Start: start, End: l.T})
 			ev.Struggle = append(ev.Struggle, detect.StruggleEvent{Kind: a.ContentType, Turn: sc.turn, Text: text})
 			t := ev.turn(sc.turn)
 			if a.ContentType == "reasoning" {

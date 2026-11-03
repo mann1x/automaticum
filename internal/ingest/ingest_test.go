@@ -168,7 +168,7 @@ func TestReadWire(t *testing.T) {
 	}
 	q := reqs[1]
 	if !q.Agent || q.PromptTokens != 100 || q.CachedTokens != 60 || q.EvalTokens != 50 || q.DoneReason != "stop" ||
-		q.ThinkBudget != "medium" || q.ThinkBudgetTokens != 24000 || q.Empty || q.Failed {
+		q.ThinkBudget != "medium" || q.ThinkBudgetTokens != 24000 || q.Reasoning != "hm" || q.Visible != "ok" || q.Empty || q.Failed {
 		t.Errorf("agent request %+v", q)
 	}
 	if q.Options["num_ctx"] != 8192.0 || string(q.Body["think"]) != "true" || q.Body["messages"] != nil || q.Body["tools"] != nil {

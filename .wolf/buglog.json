@@ -1309,6 +1309,27 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-11-03T04:30:00+01:00"
+    },
+    {
+      "id": "bug-077",
+      "timestamp": "2026-11-03T05:45:00+01:00",
+      "error_message": "client request after bug-076: the SDK's max_tokens_turn_recovery answer (seq 17: 94,187 reasoning + 106,517 text chars, same loop) is not read by any detector",
+      "file": "internal/ingest/answers.go",
+      "root_cause": "the SDK never streams the retry as events (10 min with no event line); only the wire capture holds it, and ReadWire kept no reasoning",
+      "fix": "Request.Reasoning; Block.Start/End/Request; Events.WireAnswers adds an agent answer as a block when no event block of that kind overlaps its request window (time, not text); a stream without times adds none; idempotent; metric blocks.from_wire; AnalysisVersion 17. First attempt matched nothing because an unfinished block's End was its flush time, not its last delta (partialLast); turnAt first assumed turn = index+1 (turnOf)",
+      "tags": [
+        "ingest",
+        "wire",
+        "events",
+        "output-limit",
+        "recovery",
+        "blocks"
+      ],
+      "related_bugs": [
+        "bug-076"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-03T05:45:00+01:00"
     }
   ]
 }
