@@ -58,7 +58,7 @@ func detectCmd(ctx context.Context, args []string) error {
 	since := fs.String("since", "", "only runs started from this date (2026-11-01) or time (RFC 3339)")
 	until := fs.String("until", "", "only runs started before this date or time")
 	all := fs.Bool("all", false, "every run, when nothing else names or narrows them")
-	firings := fs.Bool("firings", false, "each firing: its finding's evidence, and every call with a swallowed argument")
+	firings := fs.Bool("firings", false, "each firing: its finding's evidence, every call with a swallowed argument and every argument with repeated definitions")
 	calls := fs.Bool("calls", false, "each run's calls by tool: failed (by error class), refused, unreadable, control-token argument names")
 	quiet := fs.Bool("quiet", false, "the totals only, no line per run")
 	finished := fs.Bool("finished", false, "leave out runs in flight")
@@ -488,6 +488,21 @@ func (o *detectOut) row(r *daemon.DetectRow) {
 		}
 		for _, s := range r.Swallowed {
 			fmt.Printf("    turn %-4d %s: %s swallowed %s: %q\n", s.Turn, s.Tool, s.In, s.Swallowed, s.Around)
+		}
+		for _, d := range r.Definitions {
+			where := fmt.Sprintf("turn %-4d", d.Turn)
+			if d.Request > 0 {
+				where = fmt.Sprintf("req  %-4d", d.Request)
+			}
+			var top []string
+			for _, n := range d.Top {
+				top = append(top, fmt.Sprintf("%s %d", n.Name, n.Count))
+			}
+			cut := ""
+			if d.Cut {
+				cut = ", cut off"
+			}
+			fmt.Printf("    %s %s: %s defines %d names %d times (%d repeated) in %s characters%s: %s\n", where, d.Tool, d.In, d.Names, d.Definitions, d.Repeated, human.Count(int64(d.Chars)), cut, strings.Join(top, ", "))
 		}
 	}
 }

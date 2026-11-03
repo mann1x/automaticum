@@ -19,6 +19,9 @@
 
 ## Key Learnings
 
+- [2026-11-03] A tool call cut by the output limit has input "{}" in the event stream (the SDK drops what it cannot parse); its arguments exist only in the wire's streamed deltas, now Request.Calls. Detectors over call arguments must read the wire when captured.
+- [2026-11-03] To set a detector threshold from data: cross-compile a throwaway `go test -c` measurement binary (CGO_ENABLED=0), scp it to the lane host, pipe `automaticum logs <run> --wire -json` per run into it, read-only; delete it after.
+
 - [2026-11-03] `ingest.Load` + `ingest.Derive` are the analysis without writes; `ingest.Run` = Load + Derive + write. Reuse them for any read-only rerun of detectors (`daemon/detect.go`). A run in flight has no wire capture until it ends, so swallowed_argument learns argument names only from its own calls.
 - [2026-11-03] Tool-call error classes already exist (070 §2, `ErrorClass` in events.go, on `store.ToolCall.ErrorClass`); never write a second classifier.
 
@@ -80,6 +83,8 @@
 - 2026-10-13: xollama's GPU host is `windows-2`. Job waiters need an exit-code file, a failure exit and a time bound.
 
 ## Decision Log
+
+- [2026-11-03] D134: duplicate_definitions (tool-call string argument redefining names > 3 times). Owner: "build it with your recommendation" = threshold from data: max over base-model + stub runs on blackswan-2 (371 runs) was 3; trained broke at 6/18/33/492.
 
 - [2026-11-03] D133: `automaticum detect` over any set of runs (070 §3.3). Owner: "there should be a command in automaticum to do it at any time ... single run or scanning multiple results, cohorts, lanes" and "make detect broad and covering all possible use cases". Read-only by default, POST records; in-flight runs partial.
 

@@ -78,3 +78,18 @@ Run `systemctl stop automaticumd`, `mv bin/automaticumd.prev bin/automaticumd` (
 - `automaticum.toml` on the host usually has no `token_file` line. The daemon then reads `<root>/config/token` (the default in `internal/config/local.go`). Grepping the TOML for `token_file` finds nothing, and that is not an error.
 - Check the file directly: `stat -c '%a %s' <root>/config/token; head -c7 <root>/config/token`. A file that starts `sha256:` holds the hash (D132), so the CLI needs `client_token_file` for the plain token. Any other file holds the plain token and keeps working with a new build.
 - Do not rewrite the token file during a deploy. It belongs to the installation, and client sessions use it.
+
+## Shared lane host: coordinate, don't auto-swap
+
+When the lane host is shared with a client running batches and with other GPU users, the owner wants a coordinated deploy, not an unattended idle-gated watcher. If you started a watcher script, stop it (TaskStop) before it swaps, and say so to the client.
+
+1. Stage the new build as `bin/automaticumd.new` and `bin/automaticum.new`, and compare sha256 on both ends. This is safe at any time.
+2. The client drains and pauses the lane. Ask them by mail; don't pause it yourself.
+3. Anyone else who claimed the host's GPU resource (see `claude-hooks-res status`) finishes and releases it.
+4. Claim it yourself: `claude-hooks-res acquire <host>/gpu<N>:exclusive -r "automaticum deploy"`.
+5. Check again that `automaticum status` shows the lane idle with `0 queued`, then mail the client that the deploy is starting.
+6. If `main` has moved past the staged commit, rebuild (`make build`) and stage again first.
+7. Do the swap in one `set -e` ssh script: back up the unit, `systemctl stop`, `mv` each binary to `.prev` and each `.new` into place, `daemon-reload`, `start`, check `is-active`, check out the commit in the repo, and run `automaticum status`.
+8. Run `claude-hooks-res release <host>/gpu<N>`, then mail the client DONE with the new version string, so they can resume the lane and queue batches again.
+
+While you wait, set a recurring mail check (CronCreate, e.g. hourly at a fixed minute). Its prompt holds the whole sequence and the rules: never disturb a running batch, never restart the daemon with a run live or queued, and make no owner decisions on the client's behalf.

@@ -50,6 +50,55 @@ type Request struct {
 	// ToolArgs are the argument names of each tool the request offered,
 	// from its schema (D131).
 	ToolArgs map[string][]string
+	// Calls are the tool calls the answer made, as the server streamed
+	// them: whole even when the generation was cut off, where the event
+	// stream has only what the SDK could parse.
+	Calls []WireCall
+}
+
+// WireCall is one tool call in an answer: its name and its arguments'
+// text as generated (JSON, or the start of it when cut off).
+type WireCall struct {
+	Name      string
+	Arguments string
+}
+
+// wireCallPart is a tool call, or a piece of one, in an answer: Ollama
+// sends each whole with arguments as an object, OpenAI streams pieces by
+// index with arguments as text.
+type wireCallPart struct {
+	Index    *int `json:"index"`
+	Function struct {
+		Name      string          `json:"name"`
+		Arguments json.RawMessage `json:"arguments"`
+	} `json:"function"`
+}
+
+// addCalls adds tool calls or pieces of them to an answer's calls.
+func (q *Request) addCalls(raw []json.RawMessage, streamed bool) {
+	for _, r := range raw {
+		var p wireCallPart
+		if json.Unmarshal(r, &p) != nil {
+			continue
+		}
+		args := string(p.Function.Arguments)
+		var text string
+		if json.Unmarshal(p.Function.Arguments, &text) == nil {
+			args = text
+		}
+		if !streamed || p.Index == nil {
+			q.Calls = append(q.Calls, WireCall{Name: p.Function.Name, Arguments: args})
+			continue
+		}
+		for len(q.Calls) <= *p.Index {
+			q.Calls = append(q.Calls, WireCall{})
+		}
+		c := &q.Calls[*p.Index]
+		if p.Function.Name != "" {
+			c.Name = p.Function.Name
+		}
+		c.Arguments += args
+	}
 }
 
 // toolArgs reads the argument names of each tool a request offers: the
@@ -224,6 +273,7 @@ func (q *Request) answer(body string) {
 		if m.Message.Content != "" || m.Message.Thinking != "" || len(m.Message.ToolCalls) > 0 {
 			something = true
 		}
+		q.addCalls(m.Message.ToolCalls, false)
 		visible.WriteString(m.Message.Content)
 		if m.Done {
 			q.DoneReason, q.ThinkBudget, q.ThinkBudgetTokens = m.DoneReason, m.ThinkBudget, m.ThinkBudgetTokens
@@ -332,6 +382,8 @@ func (q *Request) openAIAnswer(body string) {
 				}
 				visible.WriteString(m.Content)
 			}
+			q.addCalls(ch.Delta.ToolCalls, true)
+			q.addCalls(ch.Message.ToolCalls, false)
 			if ch.FinishReason != nil && *ch.FinishReason != "" {
 				q.DoneReason = *ch.FinishReason
 			}

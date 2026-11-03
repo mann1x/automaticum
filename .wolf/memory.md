@@ -1668,3 +1668,25 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 01:23 | deployed 8b6374f on blackswan-2 (lane idle after canary stop); found+fixed findings overwrite (cap_hit/guard_trip/control_markers lost), analysis 14 | internal/ingest/analyse.go, cap_test.go, 070 | fixed | ~15k |
+
+## Session: 2026-11-03 01:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-03 01:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-03 01:26
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-03 01:27
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 01:53 | Created internal/detect/duplicates.go | — | ~1322 |
+| 01:56 | duplicate_definitions detector (D134), threshold 3 measured on 371 blackswan-2 runs; ReadWire keeps tool calls; analysis 15, library 6 | detect/duplicates.go, ingest/duplicates.go, wire.go, 070, decisions | built | ~40k |

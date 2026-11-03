@@ -51,7 +51,7 @@ const SessionFork = "session_fork"
 // analysis records it as the metric analysis.version: the basis (020 §5)
 // says from it which detectors a run was analysed with, whether or not
 // they found anything.
-const AnalysisVersion = 14
+const AnalysisVersion = 15
 
 // Versions are the versions of the detectors this analysis applies:
 // ingest's own and the detector library's.
@@ -92,7 +92,7 @@ func Detectors() []string {
 var owned = map[string]bool{WireArm: true, CapHit: true, GPUResidency: true, ModelReloaded: true, ModelIdentity: true, detect.ShortUnitRepeat: true, detect.CharRun: true,
 	detect.SentenceRepeat: true, detect.Runaway: true, detect.RepeatedToolCall: true,
 	detect.ReasoningRepetition: true, detect.ReasoningLoop: true, detect.FailedIdenticalCall: true, detect.RepeatedCallResult: true,
-	detect.EditOscillation: true, detect.RereadLoop: true, SecondaryOracle: true, ClaimedNotPassed: true, GuardTrip: true, ControlMarkers: true, GuardReplay: true, StruggleSignals: true, OutsideWorkspace: true, detect.SwallowedArgument: true}
+	detect.EditOscillation: true, detect.RereadLoop: true, SecondaryOracle: true, ClaimedNotPassed: true, GuardTrip: true, ControlMarkers: true, GuardReplay: true, StruggleSignals: true, OutsideWorkspace: true, detect.SwallowedArgument: true, detect.DuplicateDefinitions: true}
 
 // Material is what a run's analysis reads: its record, its event stream,
 // its wire capture and its oracles' outputs, by name.
@@ -698,6 +698,7 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 	transactions(ev, m)
 	integrity(r, m, res)
 	swallowed(r.ID, ev, reqs, m, res)
+	duplicateDefinitions(r.ID, ev, reqs, m, res)
 	return res
 }
 

@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.26, 2026-11-03.
+**Status:** draft 0.27, 2026-11-03.
 
 ## 1. The rule: no custom script
 
@@ -606,6 +606,33 @@ the event stream.
   calls with the text around the name. A client's own count on its gates
   (a fixed list of editor argument names, found whether or not the call
   passed them) and this rule agreed on the runs read (2 and 19 calls).
+- **Duplicate definitions (D134, as built 2026-11-03, library version 6,
+  analysis version 15):** `duplicate_definitions` (warning) is a tool call
+  one of whose string arguments defines names it already defined, more
+  than 3 times. A definition is a line holding `function <name>`, or
+  starting with `def`, `fn` or `func` and a name, or starting with a name,
+  its parameters and an opening brace (a method), keywords left out. A run
+  whose requests were captured is read from the wire's calls, as the
+  server streamed them. A call the output limit cut has only `{}` in the
+  event stream; the wire has it as far as it went, and the finding marks
+  it cut. Other runs are read from the event stream's calls. The finding
+  gives the calls per tool, and up to five arguments with their
+  definitions, names, repeated definitions and most-defined names. The
+  metric is `tool_calls.duplicate_definitions` and its `.by_tool.<tool>`.
+  - **The 3 is measured, not chosen.** On 2026-11-03 a scan covered the 637
+    string arguments of 20 lines or more in the 371 runs then on the
+    client's lane host. Every base-model run (413 strings, 15 tasks) and
+    the harness's stub wrote at most 3. The reference game file itself has
+    3: methods of one name in several classes. The trained models that
+    broke wrote 6, 18, 33 and 492. The positive control is the call that
+    started it (`TestDuplicateDefinitionsCanary`): a trained model's editor
+    call of 218,643 characters, cut at 96,000 tokens, rewriting a file of
+    about 130 lines, with 1,541 definitions of 1,049 names.
+  - **Not covered:** C, C++, C# and Java functions, whose lines start with
+    a type, and the argument's size against the file it edits.
+- **Calls on the wire (analysis version 15):** `ReadWire` keeps the tool
+  calls of each answer (`Request.Calls`): OpenAI's streamed pieces joined
+  by index, and Ollama's whole calls.
 - **Oracles and the agent's own end (as built 2026-11-01, analysis version
   8):** `secondary_oracle` (warning, version 1), one per secondary oracle
   that did not pass or could not run (060 §2), and

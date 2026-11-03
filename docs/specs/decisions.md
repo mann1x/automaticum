@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-11-03 (revision 40).
+**Status:** current as of 2026-11-03 (revision 41).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -143,6 +143,7 @@ All dated 2026-10-12.
 | D131 | Swallowed arguments (070 §4, 2026-11-02, suggested by a client from its gates): a tool call one of whose string arguments holds the name of another argument of the same tool, taken from the tool's schema, followed by a colon, where that argument is missing from the call. A finding with its count per tool, a metric, and a column of `compare`. | 070 §4 |
 | D132 | Tokens stored hashed (010 §5, 2026-11-02): the daemon's `token_file` may hold the token or `sha256:<64 hex>`, and the daemon keeps only the hash, compared in constant time; the CLI reads the plain token from `client_token_file`, else from `token_file` when that is plain. Plain files keep working. | 010 §5 |
 | D133 | `automaticum detect` over any set of runs (070 §3.3, 2026-11-03): "there should be a command in automaticum to do it at any time, either on a single run or scanning multiple results, cohorts, lanes, etc.", and "make detect broad and covering all possible use cases". Every detector or those named, again on stored runs and on runs in flight (partial), chosen by run, batch, cohort, campaign, lane, arm, task, suite, model, verdict and time; totals by any axis, firings, call outcomes, `--fail-if`; nothing written unless `--record`. | 070 §3.3 |
+| D134 | Duplicate definitions in tool-call arguments (070 §4, 2026-11-03, suggested by a client from a canary stop; the owner: "build it with your recommendation"). The rule is set from the data: more than the most repeated definitions any base-model or stub run wrote in one string argument (3, measured over 371 runs). It reads the wire's calls, so a call cut by the output limit is seen. | 070 §4 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked

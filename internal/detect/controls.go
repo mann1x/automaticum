@@ -1,6 +1,7 @@
 package detect
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
@@ -205,12 +206,30 @@ func SelfTest() (results []ControlResult, ok bool) {
 		ok = ok && res.OK
 		results = append(results, res)
 	}
+	// Repeated definitions: a file whose functions are written again and
+	// again, against one class per method name.
+	stubs := strings.Repeat("function draw() {}\nfunction step() {}\n", 3)
+	for _, c := range []struct {
+		name string
+		text string
+		want []string
+	}{{"an edit that defines the same functions again and again", stubs, []string{DuplicateDefinitions}},
+		{"an edit with one method of a name per class", "class A {\n  update() {\n  }\n}\nclass B {\n  update() {\n  }\n}\nfunction main() {}\n", []string{}}} {
+		g := []string{}
+		in, _ := json.Marshal(map[string]string{"file_path": "a", "new_text": c.text})
+		if len(DuplicateDefinitionCalls([]Call{{Turn: 1, Tool: "editor", Input: string(in)}})) > 0 {
+			g = append(g, DuplicateDefinitions)
+		}
+		res := ControlResult{Control: c.name, Domain: "tool calls", Want: c.want, Got: g, OK: strings.Join(g, ",") == strings.Join(c.want, ",")}
+		ok = ok && res.OK
+		results = append(results, res)
+	}
 	return results, ok
 }
 
 var available = sync.OnceValue(func() map[string]bool {
 	out := map[string]bool{}
-	for _, d := range append(append([]string{}, Text...), RepeatedToolCall, FailedIdenticalCall, RepeatedCallResult, SwallowedArgument) {
+	for _, d := range append(append([]string{}, Text...), RepeatedToolCall, FailedIdenticalCall, RepeatedCallResult, SwallowedArgument, DuplicateDefinitions) {
 		out[d] = true
 	}
 	results, _ := SelfTest()

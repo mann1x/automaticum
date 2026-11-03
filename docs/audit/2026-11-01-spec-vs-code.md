@@ -621,6 +621,7 @@ Conventions: CLI dispatch = `cmd/automaticum/main.go:91` (one-word) and `:100-14
 | 090 §1 | `replay <run> --turn N [--endpoint E]` | SCHEDULED | M6 (replay); no code |
 | 090 §1 | `detect <file|run> [--runaway N]`, `--self-test` (+`--first-match`) | BUILT | client_cmds.go:720-722, GET /v1/runs/{id}/detect |
 | 070 §3.3 | `detect` over any set of runs, in flight included, totals, `--fail-if`, `--record` (D133, 2026-11-03) | BUILT | detect_cmds.go, daemon/detect.go `GET|POST /v1/detect`, ingest.Load/Derive/Outcomes; TestDetectRuns, TestOutcomes, TestDetectFailIf |
+| 070 §4 | duplicate_definitions over tool-call arguments, from the wire (D134, 2026-11-03) | BUILT | detect/duplicates.go, ingest/duplicates.go, wire.go Request.Calls; TestDuplicateDefinitionsCanary, TestDuplicateDefinitions, TestWireCalls |
 | 090 §1 | `embed start|status|stop [--where]` | SCHEDULED | M6 (semantic search); no code; also D52 |
 | 090 §1 | `reanalyse [--run|--batch] [--imported]` | BUILT | client_cmds.go:645-647, POST/GET /v1/reanalyse |
 | 090 §1 | `reanalyse --detector D` / `--where` | BUILT | ReanalyseRequest.Where/Detector, whereFilter, TestWhereFilter |

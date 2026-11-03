@@ -94,8 +94,10 @@ type DetectRow struct {
 	// Swallowed are all the calls with a swallowed argument; the finding
 	// quotes the first few.
 	Swallowed []detect.SwallowFiring `json:"swallowed,omitempty"`
-	Recorded  bool                   `json:"recorded,omitempty"`
-	Error     string                 `json:"error,omitempty"`
+	// Definitions are all the string arguments with repeated definitions.
+	Definitions []detect.DefinitionFiring `json:"definitions,omitempty"`
+	Recorded    bool                      `json:"recorded,omitempty"`
+	Error       string                    `json:"error,omitempty"`
 }
 
 // DetectEnd closes the answer.
@@ -505,6 +507,9 @@ func (d *Daemon) detectOne(ctx context.Context, t detectTarget, dq detectQuery, 
 	row.Outcomes = ingest.Outcomes(m.Events, m.Requests)
 	if dq.firings && slices.Contains(detectors, detect.SwallowedArgument) {
 		row.Swallowed = ingest.SwallowFirings(m.Events, m.Requests)
+	}
+	if dq.firings && slices.Contains(detectors, detect.DuplicateDefinitions) {
+		row.Definitions, _ = ingest.DefinitionFirings(m.Events, m.Requests)
 	}
 	if dq.group != "" {
 		var labels map[string]string

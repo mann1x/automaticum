@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-03T00:09:40.266Z
-> Files: 506 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-03T00:53:52.708Z
+> Files: 507 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -137,6 +137,12 @@
 - `timeline_cmds.go` — timelineLine (33 fields) (~944 tok)
 - `wait_cmds_test.go` — oldDaemon (23 fields); methods: ServeHTTP (~984 tok)
 - `wait_cmds.go` — waiter (139 fields) (~5130 tok)
+
+## cmd/automaticum/detect_cmds.go
+
+
+## cmd/automaticum/detect_cmds_test.go
+
 
 ## cmd/automaticumd/
 
@@ -309,6 +315,12 @@
 - `wait_test.go` — answer (28 fields) (~1096 tok)
 - `wait.go` — WaitView (70 fields) (~1835 tok)
 
+## internal/daemon/detect.go
+
+
+## internal/daemon/detect_test.go
+
+
 ## internal/detect/
 
 - `callguard_test.go` — TestCallGuard (~971 tok)
@@ -316,6 +328,7 @@
 - `controls.go` — Control (54 fields) (~3182 tok)
 - `detect_test.go` — TestSelfTest, TestShortUnit, TestShortUnitAgainstPattern, TestCharRun + 5 more (~2760 tok)
 - `detect.go` — is the detector library (spec 070 §3): degeneration and (~2939 tok)
+- `duplicates.go` — Struct: DefinitionFiring (~1322 tok)
 - `guards.go` (~1847 tok)
 - `guards258_test.go` — TestReasoningLoop258, TestRulesFor (~869 tok)
 - `guards258.go` — given (102 fields) (~2445 tok)
@@ -326,6 +339,9 @@
 - `struggle.go` — StruggleEvent (95 fields) (~2915 tok)
 - `swallow_test.go` — TestSwallowedArgs (~420 tok)
 - `swallow.go` — SwallowFiring (32 fields) (~1036 tok)
+
+## internal/detect/testdata/swallow_newline_calls.json
+
 
 ## internal/docker/
 
@@ -374,6 +390,12 @@
 - `turns.go` — replay (64 fields) (~2671 tok)
 - `wire.go` — Request (132 fields) (~3369 tok)
 - `wirearm.go` — Deviation (96 fields) (~3732 tok)
+
+## internal/ingest/outcomes.go
+
+
+## internal/ingest/outcomes_test.go
+
 
 ## internal/legacyimport/
 
@@ -896,23 +918,17 @@
 - `oeis_sequences.scm` (~536 tok)
 - `oeis_sequences2.scm` (~627 tok)
 
-## internal/daemon/detect.go
-- `GET|POST /v1/detect`: every detector again on any set of runs (run/batch/cohort/campaign globs, narrowed by lane/arm/task/suite/model/verdict/time), in flight included (partial), streamed as JSON lines; POST records (D133, 070 §3.3). (~4500 tok)
+## internal/detect/duplicates.go
+- `DuplicateDefinitions` detector (D134): `Definitions`, `StringArgs` (cut-off JSON), `DuplicateDefinitionCalls`; `DuplicateDefinitionsMax = 3` measured. (~1500 tok)
 
-## internal/daemon/detect_test.go
-- TestDetectRuns: selection, globs, firings, groups, cohort/campaign, in flight, record. (~2000 tok)
+## internal/detect/duplicates_test.go
+- TestDefinitions, TestDuplicateDefinitionCalls, TestDuplicateDefinitionsCanary (gz fixture). (~700 tok)
 
-## internal/ingest/outcomes.go
-- `Outcomes`: a run's calls by tool (failed by 070 §2 error class, refused, unreadable, not offered, control-token argument names). (~700 tok)
+## internal/detect/testdata/duplicate_definitions_call.json.gz
+- The cut-off 218,643-char editor call of run 20261103-000031-39ec08-001 request 13 (1541 defs / 1049 names). (binary)
 
-## internal/ingest/outcomes_test.go
-- TestOutcomes. (~500 tok)
+## internal/ingest/duplicates.go
+- `DefinitionFirings` (wire calls, else events), `duplicateDefinitions` metric + finding. (~700 tok)
 
-## internal/detect/testdata/swallow_newline_calls.json
-- A client's run's 44 calls (18 with new_text swallowed after a newline), the positive control of TestSwallowedNewline. (~7000 tok)
-
-## cmd/automaticum/detect_cmds.go
-- `automaticum detect`: file, --self-test, or over runs with totals by axis, --firings, --calls, --metric, --fail-if/--fail-scope, --record, --json. (~5000 tok)
-
-## cmd/automaticum/detect_cmds_test.go
-- TestDetectFailIf: --fail-if parsing, totals, firings text. (~600 tok)
+## internal/ingest/duplicates_test.go
+- TestDuplicateDefinitions: wire with a cut call, events fallback. (~600 tok)

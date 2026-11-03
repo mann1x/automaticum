@@ -116,3 +116,31 @@ func TestOpenAIThinkingBudget(t *testing.T) {
 		t.Errorf("a budget the tag owns: %+v", devs)
 	}
 }
+
+// The tool calls an answer made are kept whole from the wire: OpenAI's
+// pieces joined by index, Ollama's whole calls with arguments as an
+// object, and a call cut off by the length limit as far as it went.
+func TestWireCalls(t *testing.T) {
+	req := `{"model":"m","messages":[],"tools":[{"type":"function","function":{"name":"editor"}}],"stream":true}`
+	stream := strings.Join([]string{
+		`data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"a","function":{"name":"editor","arguments":"{\"file_path\":\"a\","}}]}}]}`,
+		`data: {"choices":[{"delta":{"tool_calls":[{"index":1,"id":"b","function":{"name":"read_files","arguments":"{}"}}]}}]}`,
+		`data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"\"new_text\":\"x\\ny"}}]}}]}`,
+		`data: {"choices":[{"delta":{},"finish_reason":"length"}]}`,
+		`data: [DONE]`, ``}, "\n")
+	line, _ := json.Marshal(map[string]any{"seq": 1, "url": "http://h/v1/chat/completions", "status": 200, "request_body": req, "response_body": stream})
+	ollama, _ := json.Marshal(map[string]any{"seq": 2, "url": "http://h/api/chat", "status": 200,
+		"request_body":  `{"model":"m","messages":[],"tools":[{"type":"function","function":{"name":"editor"}}]}`,
+		"response_body": `{"message":{"tool_calls":[{"function":{"name":"editor","arguments":{"file_path":"b"}}}]},"done":true,"done_reason":"stop"}`})
+	reqs, err := ReadWire(strings.NewReader(string(line) + "\n" + string(ollama) + "\n"))
+	if err != nil || len(reqs) != 2 {
+		t.Fatalf("%v %+v", err, reqs)
+	}
+	got := reqs[0].Calls
+	if len(got) != 2 || got[0].Name != "editor" || got[0].Arguments != `{"file_path":"a","new_text":"x\ny` || got[1].Name != "read_files" || got[1].Arguments != "{}" || reqs[0].DoneReason != "length" {
+		t.Errorf("openai calls %+v", got)
+	}
+	if c := reqs[1].Calls; len(c) != 1 || c[0].Name != "editor" || c[0].Arguments != `{"file_path":"b"}` {
+		t.Errorf("ollama calls %+v", c)
+	}
+}
