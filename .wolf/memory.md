@@ -1797,3 +1797,21 @@
 | 15:11 | tick: no mail; lane-1 idle, daemon up 6h23m NRestarts=0 | - | nothing to do | ~200 |
 | 16:15 | mail #2157 (backup_models): loopproxy arm/endpoint added on blackswan-2 + 3 FRs; replied #2158: FR1 exists ([daemon] private_tasks, private+canary required, export refuses private training tasks -> owner, D105); FR2 idle-on-bytes and FR3 per-request time/x-endpoint-meta -> owner as spec items | - | replied, nothing built | ~1500 |
 | 17:00 | D137 export private training tasks; D138 idle counts arriving bytes (runner receiving note, protocol 10); D139 wire first byte + x-endpoint-meta, analysis 21, run timeline -requests; specs 040/050/060/070/090, decisions rev 44 | export.go, wire.mjs, runner.mjs, protocol.go, render.go, wire.go, analyse.go, timeline_cmds.go | make test ok, runner 32/32 | ~40000 |
+
+## Session: 2026-11-04 16:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-04 16:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-04 16:36
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:10 | bc5cfd9 built (automaticum bed34271, automaticumd 6af3d03d), staged on blackswan-2 bin/*.new; asked backup_models (#2162) for a deploy window: binary swap + repo checkout + rebuild 11 lane images (protocol 10) | - | waiting for OK | ~2000 |
+| 17:15 | deployed bc5cfd9 on blackswan-2 (START #2164, DONE #2165): swap, repo, 11 lane images rebuilt (protocol 10), stub smoke PASS 20261104-161148-7f84c7, analysis 21; answered idle_s question | - | live | ~5000 |
+| 17:35 | D140 task pin [--write] (internal/task/pin.go, check_cmds.go), D141 config check; live: task pin --write on unpinned sh_logtriage reproduced c645bdeb; specs 090 0.31, decisions | check_cmds.go, pin.go, main.go | make test ok | ~15000 |

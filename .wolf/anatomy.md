@@ -122,6 +122,8 @@
 - `compare_cmds.go` — Declares list (~4058 tok)
 - `config_cmds_test.go` — TestParseInterspersed, TestCellTasks, TestNoticeMatch (~593 tok)
 - `config_cmds.go` — place (153 fields) (~4205 tok)
+- `check_cmds.go` — task pin [--write] (D140), config check (D141) (~1900 tok)
+- `check_cmds_test.go` — TestConfigCheck on a copy of examples/config (~700 tok)
 - `control_cmds.go` (~2935 tok)
 - `detect_cmds_test.go` — TestDetectFailIf (~606 tok)
 - `detect_cmds.go` — failTest (90 fields) (~6605 tok)
@@ -501,6 +503,8 @@
 ## internal/task/
 
 - `exec.go` — Interface: Executor (3 methods) (~5188 tok)
+- `pin.go` — LoadUnpinned, Locate, WritePins: pin a task's artefacts (task pin, D140) (~1100 tok)
+- `pin_test.go` — TestPin: empty, placeholder and missing sha256 (~800 tok)
 - `task_test.go` — TestLoadAll, TestLoadRejects, TestWorkspaceGit, TestHashChangesWithAnyFile + 4 more (~6959 tok)
 - `task.go` — loads tasks from the tasks directory, builds what they need, (~6068 tok)
 - `user_test.go` — TestUserScript (~1060 tok)

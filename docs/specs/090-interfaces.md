@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.30, 2026-11-04.
+**Status:** draft 0.31, 2026-11-04.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -12,13 +12,15 @@ codes.
 
 ```
 automaticum status                          # lanes, queue, what is running
+automaticum config check                    # the configuration, arms, models and tasks read as the daemon would at its start, with no daemon (D141)
 automaticum sdk add|ls|verify <build>        # SDK builds: install, list, reproduce with no network (040 §3.1)
 automaticum doctor [--lane L] [--arm A] [--task T] [--all]   # every gate, on every lane, now
 automaticum lane ls|show|pause|resume|drain|quarantine
 automaticum endpoint ls|probe|show|models
 automaticum arm ls|show|diff|validate
 automaticum basis show|diff
-automaticum task ls|show|verify
+automaticum task ls|show|verify|build
+automaticum task pin [--write] <suite/task | dir>   # build the artefacts, print or write the sha256s to pin (D140)
 automaticum oracle verify <task>
 automaticum suite import tbench2 -source D -commit C <task>...   # Terminal-Bench 2.0 tasks as tbench2, kept only if the oracle holds (066 §3)
 automaticum run start --arm A --task T [--task T2 ...] [--suite S ...] [-n 5] [--lane L] [--wall-s S] [--idle-s S] [--capture-requests]
@@ -49,7 +51,22 @@ ls|show|build`; `oracle verify`; `lane ls`; `endpoint ls` (prints no address
 unless asked); `run start|ls|show|tail|stop|abort|invalidate|identify` (`run identify <run>` adds where and on what a run ran to a record that lacks it, from today's configuration and catalogue, marked as added later, D74; `run held <run> --task T --n-decoded N --source S` records a held stream from the server's log and decides the run again, D136); `logs`
 (`--events`, `--wire`, `--runner`, `--oracle`, `--kind`); `legacy import`;
 `store check`. `task build` is new in this list: it builds a task's artefacts
-and checks their pinned hashes. Of these, `--dry-run` and
+and checks their pinned hashes.
+
+**Built on 2026-11-04 (D140, D141):** `task pin [--write] <suite/task |
+dir>` builds each artefact of a task whatever it pins, an empty `sha256`
+included, and prints the sha256 each build gave; `--write` puts them into
+the task's `task.toml` (the value replaced, or the key added after the
+artefact's name, every other line kept) and loads the task to check. The
+task is found by its directory under the repository's `tasks/` or the
+private root, or given as a directory, so a task still being written
+hides no other. `config check` reads the configuration directory as the
+daemon does at its start (`automaticum.toml`, lanes and endpoints, strict
+on unknown keys), the token, the `repo` with `tasks/` and `images/`,
+`data_root`, `archive_root` and `private_tasks`, every arm (each on its
+own, and the endpoint it names), the models and the tasks of both roots,
+and says each problem; it changes nothing and exits 1 on any problem, so a
+configuration edit is checked before a restart. Of these, `--dry-run` and
 `--idempotency-key` exist on `run start` so far.
 
 **Built in milestone 4 so far:** `compare` (070 §6); `run start` with

@@ -162,7 +162,12 @@ var nameRE = regexp.MustCompile(`^[a-z0-9][a-z0-9_.-]*$`)
 var shaRE = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 // Load reads and validates the task in dir.
-func Load(dir string) (*Task, error) {
+func Load(dir string) (*Task, error) { return load(dir, false) }
+
+// load reads and validates the task in dir; unpinned lets an artefact
+// whose sha256 is still empty through, pinned for now to unpinnedSHA, for
+// `task pin` to build it and write the result.
+func load(dir string, unpinned bool) (*Task, error) {
 	// Containers mount the task's directory, which takes an absolute path.
 	dir, err := filepath.Abs(dir)
 	if err != nil {
@@ -182,6 +187,13 @@ func Load(dir string) (*Task, error) {
 		return nil, fmt.Errorf("task: %s: unknown fields: %s", path, strings.Join(keys, ", "))
 	}
 	t.Dir = dir
+	if unpinned {
+		for i := range t.Artefacts {
+			if t.Artefacts[i].SHA256 == "" {
+				t.Artefacts[i].SHA256 = unpinnedSHA
+			}
+		}
+	}
 	if err := t.validate(); err != nil {
 		return nil, fmt.Errorf("task: %s: %w", path, err)
 	}

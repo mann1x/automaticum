@@ -87,6 +87,8 @@
 
 ## Decision Log
 
+- [2026-11-04] D140: `task pin [--write] <task|dir>` (owner: "go ahead with both, task pin and config check"). task.LoadUnpinned/Locate/WritePins in internal/task/pin.go.
+- [2026-11-04] D141: `config check`: daemon start-up reads without a daemon, exit 1 on a problem (same owner line).
 - [2026-11-04] D137: private training tasks export (owner in session: "private task can be exported"; also relayed by backup_models #2159). export.go refuses only !Training.
 - [2026-11-04] D138: idle limit counts bytes arriving on a model response (owner: "go ahead with FR2"). Runner note `receiving` every <=10 s, protocol 10.
 - [2026-11-04] D139: per-request first byte + x-endpoint-meta (header, SSE comments) in the wire capture; analysis 21 metrics; `run timeline -requests` (owner: "go ahead with ... FR3"). Stored, never judged on.

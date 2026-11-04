@@ -19,12 +19,14 @@ var version = "dev"
 const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
 
   version                       print the version
+  config check                  read the configuration, arms, models and tasks as the daemon would at its start; change nothing
   arm validate [<arm>...]       check arms; all of them when none is named
   arm show <arm>                the resolved arm, with the origin of every value
   arm diff <arm> <arm>          the fields in which two arms differ
   task ls                       the tasks
   task show <task>              one task and the hash of its files
   task build <task>             build the task's artefacts and check their hashes
+  task pin [--write] <task|dir> build the task's artefacts and print (or write) the sha256s to pin
   oracle verify <task>          prove the primary oracle against the fixtures
   suite import tbench2 -source D -commit C [<task>...]
                                 import Terminal-Bench 2.0 tasks as the held-out suite tbench2, kept only if the oracle holds [--repeats 3]
@@ -195,6 +197,8 @@ func main() {
 		"task ls":              taskLs,
 		"task show":            taskShow,
 		"task build":           taskBuild,
+		"task pin":             taskPin,
+		"config check":         configCheck,
 		"oracle verify":        oracleVerify,
 		"suite import":         suiteImport,
 		"lane ls":              laneLs,

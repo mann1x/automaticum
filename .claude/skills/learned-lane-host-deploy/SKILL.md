@@ -93,3 +93,23 @@ When the lane host is shared with a client running batches and with other GPU us
 8. Run `claude-hooks-res release <host>/gpu<N>`, then mail the client DONE with the new version string, so they can resume the lane and queue batches again.
 
 While you wait, set a recurring mail check (CronCreate, e.g. hourly at a fixed minute). Its prompt holds the whole sequence and the rules: never disturb a running batch, never restart the daemon with a run live or queued, and make no owner decisions on the client's behalf.
+
+## Deploying a runner protocol bump: lane images and a stub smoke
+
+Use this when the commit changes `const PROTOCOL` in `runner/runner.mjs`. A run started on a lane image built with the old protocol is SKIPPED, so the deploy has three steps.
+
+1. **Ask the client first.** Mail what changes, that the protocol goes N→N+1, the steps, how long it takes, and that no GPU is used. Wait for their OK. Mail START (and "queue nothing until DONE") and DONE with the deployed version.
+2. **Swap the binaries**, gated on the lane being idle, as usual: `status` must show `lane-1 .* idle` and `0 running, 0 queued`. Keep the old binaries as `.prev` and back up the unit. Then check out the repo at the commit (`git fetch -q origin && git checkout -q <sha>`).
+3. **Rebuild every lane image.** `automaticum image build` with no arguments builds them all, base first, then the layers in name order. That is 11 images today: base, cpp, dotnet, go, python, rust, typescript and the 4 `tb2-*` layers, which takes about 2 minutes. Run it in the background with its log under `$B/work/`, never /tmp.
+4. **Verify**:
+   - `automaticum image ls`: every CREATED time is new.
+   - `docker run --rm --entrypoint sh automaticum-lane:base -c 'grep -n "PROTOCOL = " /opt/automaticum/runner/runner.mjs'` shows the new number.
+   - `systemctl show automaticumd -p NRestarts` is 0, and `detect <a finished run>` reports the expected library and analysis versions.
+5. **Stub smoke, one run of your own.**
+   - The `stub` endpoint does not answer (`endpoint stub does not answer /api/tags`) until you start the stub server yourself. It must listen on the docker bridge gateway named in `config/endpoints/stub.toml`'s `base_url`. The scripts live in `$B/work/stub/` (`fix-answer.json` for `demo/answer`):
+     `cd $B/work; nohup $B/bin/automaticum stub serve -listen <gateway>:7412 -script stub/fix-answer.json > stub-smoke.log 2>&1 & echo $! > stub.pid`
+   - `automaticum run start --arm stub-sdk-<release> --task demo/answer` (there is no `--batch` flag), then `timeout 300 automaticum wait run <id>`. Expect PASS in about 30 s.
+   - Check the new feature on that run (`run show`, `run timeline -requests`).
+   - Stop the stub with `kill $(cat stub.pid)` and leave the lane idle with 0 queued.
+
+A CLI-only change (a new verb, nothing in the daemon or the runner) needs only the CLI binary swapped, with no restart and no image rebuild.
