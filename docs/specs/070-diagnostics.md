@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.33, 2026-11-03.
+**Status:** draft 0.34, 2026-11-04.
 
 ## 1. The rule: no custom script
 
@@ -24,6 +24,11 @@ after the run's first event it came, its tool calls and how many failed
 its cause; the SDK's notice of the same trip is folded into it), every
 other notice of the SDK but the context report each turn carries, session
 forks, mode switches and the agent's end (`--json` gives the moments).
+**From 2026-11-04 (D139):** `run timeline -requests <run>` adds each of the
+agent's model requests from the wire capture at the time it was sent: its
+status, when its first byte came, how long it took in all and what the
+endpoint said of it (`x-endpoint-meta`, up to 200 characters), so the
+time a proxy spent on rejected attempts can be told from the model's.
 
 **Decided by the owner (2026-11-02), D130:** the baseline is the
 baseline arm of the campaign or cohort the run's batch belongs to where
@@ -46,6 +51,11 @@ method is recorded.
 
 - **Time:** wall time (paused intervals excluded, 050 §4), time to first
   token, time per turn, time in tools against time in the model, idle gaps.
+  From analysis version 21 (2026-11-04, D139): `time.model_first_byte_ms`,
+  the agent's requests' time to the first byte of each answer summed,
+  beside `time.model_ms`, their time in all; and `requests.endpoint_meta`,
+  how many of them the endpoint described (`x-endpoint-meta`, 040 §7.1).
+  Both come from a runner of protocol 10 on and are absent before it.
 - **Volume:** requests, turns, tool calls by tool, tool failures by tool and by
   error class.
 - **Tokens:** prompt, cached, fresh, completion; completion split into

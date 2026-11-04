@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-03T17:00:00.372Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-04T11:00:00.892Z
 > Files: 502 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
@@ -8,7 +8,7 @@
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
 - `.gitleaks.toml` (~581 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~2916 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~3256 tok)
 - `CLAUDE.md` — automaticum (~6395 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
@@ -20,7 +20,7 @@
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~140992 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~141322 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~211 tok)
 - `score-history.jsonl` (~1860 tok)
@@ -35,13 +35,13 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~98124 tok)
+- `fingerprint.json` — Declares usage (~98081 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` (~9590 tok)
+- `current-session.jsonl` (~18663 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~94376 tok)
+- `roi-stats.json` (~95276 tok)
 - `state.json` (~41 tok)
 
 ## .claude/
@@ -79,7 +79,7 @@
 
 ## .claude/skills/learned-detector-measurement/
 
-- `SKILL.md` — Measuring a detector over every stored run on a lane host (~943 tok)
+- `SKILL.md` — Measuring a detector over every stored run on a lane host (~1590 tok)
 
 ## .claude/skills/learned-lane-host-deploy/
 
@@ -139,7 +139,7 @@
 - `stub_cmds.go` (~489 tok)
 - `suite_cmds.go` — plan (50 fields) (~1297 tok)
 - `timeline_cmds_test.go` — TestTimeline (~636 tok)
-- `timeline_cmds.go` — timelineLine (33 fields) (~944 tok)
+- `timeline_cmds.go` — run timeline (070 §1.1); -requests adds the wire's model requests (first byte, time, endpoint meta, D139) (~1400 tok)
 - `wait_cmds_test.go` — oldDaemon (23 fields); methods: ServeHTTP (~984 tok)
 - `wait_cmds.go` — waiter (139 fields) (~5130 tok)
 
@@ -170,7 +170,7 @@
 - `064-engine-adapters.md` — 064 — Engine adapters: Cerebriline as the engine of an external harness (~1057 tok)
 - `065-cell-contract.md` — 065 — The cell contract and exports (~4254 tok)
 - `066-suite-terminal-bench.md` — 066 — Suite: Terminal-Bench 2.0 (`tbench2`) (~2335 tok)
-- `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~15496 tok)
+- `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~15819 tok)
 - `080-store.md` — 080 — The store (~4525 tok)
 - `090-interfaces.md` — 090 — Interfaces (~5616 tok)
 - `100-legacy-import.md` — 100 — Import of the old harness's corpus (~3426 tok)
@@ -293,13 +293,13 @@
 - `compare.go` — CompareView (101 fields) (~6590 tok)
 - `control.go` — control (103 fields) (~8806 tok)
 - `daemon_test.go` — memState (122 fields); methods: Metrics, Findings, ReplaceMetrics, ReplaceToolCalls (~18217 tok)
-- `daemon.go` — is automaticumd without its main: the queue, one worker (~8659 tok)
+- `daemon.go` — is automaticumd without its main: the queue, one worker (~8683 tok)
 - `detect_test.go` — TestDetectRuns (~2187 tok)
-- `detect.go` — DetectLine (103 fields) (~5325 tok)
+- `detect.go` — DetectLine (103 fields) (~5334 tok)
 - `export_test.go` — TestExport (~1366 tok)
 - `export.go` — ExportMeta (48 fields) (~1796 tok)
-- `guardwatch_test.go` — TestWatchGuard (~489 tok)
-- `guardwatch.go` (~536 tok)
+- `guardwatch_test.go` — TestWatchGuard (~508 tok)
+- `guardwatch.go` (~543 tok)
 - `heartbeat.go` — Heartbeat (25 fields) (~863 tok)
 - `held_test.go` — TestRunHeld (~832 tok)
 - `lanerules.go` — InfraEnd (34 fields) (~1654 tok)
@@ -321,7 +321,7 @@
 
 - `callguard_test.go` — TestCallGuard (~971 tok)
 - `callguard.go` — GuardFiring (41 fields) (~1618 tok)
-- `controls.go` — Control (53 fields) (~4110 tok)
+- `controls.go` — Control (53 fields) (~4174 tok)
 - `detect_test.go` — TestSelfTest, TestShortUnit, TestShortUnitAgainstPattern, TestCharRun + 5 more (~2760 tok)
 - `detect.go` — is the detector library (spec 070 §3): degeneration and (~2939 tok)
 - `duplicates_test.go` — TestDefinitions, TestDuplicateDefinitionCalls, TestDuplicateDefinitionsCanary (~825 tok)
@@ -330,7 +330,7 @@
 - `guards258_test.go` — TestReasoningLoop258, TestRulesFor (~869 tok)
 - `guards258.go` — given (102 fields) (~2445 tok)
 - `reference_test.go` — expected (52 fields) (~2243 tok)
-- `repguard.go` — GuardFire; GuardText (paragraph, restated lines, reasoning_loop from library 8), GuardReasoning, GuardArgument (D135) (~1500 tok)
+- `repguard.go` — GuardFire (36 fields) (~1642 tok)
 - `restated_test.go` — TestRestatedText (~440 tok)
 - `restated.go` — RestatedLines is the SDK's measure of a text that writes its own long (~803 tok)
 - `spans_test.go` — TestSpansShortUnit, TestSpansSentenceLaterOnly, TestCycleStart (~398 tok)
@@ -366,7 +366,7 @@
 
 ## internal/ingest/
 
-- `analyse.go` — Interface: Blobs (34 methods) (~7578 tok)
+- `analyse.go` — Interface: Blobs (34 methods) (~7583 tok)
 - `answers_test.go` — TestWireAnswers (~705 tok)
 - `answers.go` (~698 tok)
 - `canary_test.go` — TestCanary (~680 tok)
@@ -389,8 +389,8 @@
 - `outcomes.go` — ToolOutcome (24 fields) (~715 tok)
 - `render_test.go` — TestRenderer (~628 tok)
 - `render.go` — Renderer (35 fields); methods: Turn, Line (~1056 tok)
-- `repguard_test.go` — TestRepetitionGuard (~782 tok)
-- `repguard.go` — GuardFire (50 fields) (~1603 tok)
+- `repguard_test.go` — TestRepetitionGuard (~793 tok)
+- `repguard.go` — GuardFire (50 fields) (~1640 tok)
 - `sample_test.go` — TestSample, TestDumpBlocks (~1010 tok)
 - `sampler.go` — Setting (43 fields) (~1398 tok)
 - `struggle_test.go` — TestStruggleSignals (~1164 tok)
@@ -516,12 +516,12 @@
 - `guards.mjs` — Guard actions as the SDK announces them: a "notice" event whose metadata (~1320 tok)
 - `package.json` — Node.js package manifest (~103 tok)
 - `plan.mjs` — The extension's switch_to_act_mode tool, ported from Cline 4.100.250 and (~780 tok)
-- `PROTOCOL.md` — The runner: protocol 9 (~2993 tok)
+- `PROTOCOL.md` — The runner: protocol 10 (receiving note, D138; wire first byte + endpoint_meta, D139) (~3300 tok)
 - `runner.mjs` — The runner: one agent session for one run, inside the lane's container. (~5823 tok)
 - `session.mjs` — unsupported lists what an arm asks for that this runner cannot do. (~2876 tok)
 - `tools.mjs` — The runner's own tools (D113). In a lane layer on a task's own image the (~501 tok)
 - `user.mjs` — The scripted user (040 §6.2): the task's rules, played against the (~1979 tok)
-- `wire.mjs` — createWire returns a fetch that appends one JSON line per request to (~1642 tok)
+- `wire.mjs` — createWire: one JSON line per request (timing incl. first byte, endpoint_meta); onActivity ticks while bytes arrive (D138) (~2100 tok)
 
 ## runner/sdk/4.100.250/
 

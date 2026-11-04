@@ -1,6 +1,6 @@
 # 050 — Orchestration: scheduling, gates, control
 
-**Status:** draft 0.22, 2026-11-03.
+**Status:** draft 0.23, 2026-11-04.
 
 ## 1. Scheduling
 
@@ -37,7 +37,9 @@
   <batch> --wall-s S` for the runs still queued (the run in flight keeps
   its limits). A batch's limit replaces both and may be longer; the run
   records it as set by the batch (020 §1). A campaign batch also takes
-  `suites` and `capture_requests` (D104).
+  `suites` and `capture_requests` (D104). The idle limit runs while the
+  runner's stream is silent; from protocol 10 the bytes of a model
+  response still arriving keep it from running (040 §7.1, D138).
 - Priorities, and reservations ("this lane is mine until 08:00").
 - Other things use these GPUs. A lane can be marked busy by an external signal
   and the scheduler waits. It never preempts someone else's work. One heavy job

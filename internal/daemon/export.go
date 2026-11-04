@@ -61,7 +61,9 @@ func (d *Daemon) handleExport(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusUnprocessableEntity, "run %s: %v", id, err)
 		return
 	}
-	if !t.Training || t.Private {
+	// A private training task exports too: its runs stay on the owner's
+	// hosts, in the directory the export writes (D137).
+	if !t.Training {
 		fail(w, http.StatusForbidden, "run %s is of %s/%s, which is not a training task (D105); only training runs are exported (D102)", id, t.Suite, t.ID)
 		return
 	}

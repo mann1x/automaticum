@@ -30,6 +30,11 @@ func (r *Renderer) Line(line []byte) []string {
 	}
 	switch l.K {
 	case "runner":
+		// A response's bytes still arriving (protocol 10) only keeps the
+		// idle clock from running: the transcript says nothing of it.
+		if l.Note == "receiving" {
+			return nil
+		}
 		return []string{"[runner] " + r.runnerNote(line, l)}
 	case "user":
 		var u map[string]any

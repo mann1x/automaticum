@@ -5,7 +5,7 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { createWire, describe, offersTools } from "../wire.mjs";
+import { createWire, describe, endpointMeta, offersTools } from "../wire.mjs";
 
 function serve(handler) {
 	return new Promise((resolve) => {
@@ -53,6 +53,55 @@ test("a streamed response is recorded whole and reaches the caller unchanged", a
 	assert.equal(rec.response_bytes, whole.length);
 	assert.equal(rec.response_sha256, createHash("sha256").update(whole).digest("hex"));
 	assert.ok(rec.ms_headers >= 0 && rec.ms_total >= rec.ms_headers && rec.ms_total >= 25);
+	assert.ok(rec.ms_first_byte >= rec.ms_headers && rec.ms_first_byte <= rec.ms_total);
+	assert.ok(rec.t_first_byte >= rec.t_headers && rec.t_first_byte <= rec.t_end);
+	assert.equal(rec.endpoint_meta, undefined, "an endpoint that says nothing has no endpoint_meta");
+});
+
+test("bytes arriving are activity, at most once per activityMs, for all requests", async () => {
+	const { srv, url } = await serve(async (req, res) => {
+		res.writeHead(200, { "content-type": "text/event-stream" });
+		for (let i = 0; i < 6; i++) {
+			res.write(": keepalive\n\n");
+			await new Promise((r) => setTimeout(r, 20));
+		}
+		res.end("data: [DONE]\n\n");
+	});
+	const file = join(mkdtempSync(join(tmpdir(), "wire-")), "wire.jsonl");
+	let clock = 0;
+	const ticks = [];
+	// Each reading of the clock moves it on 4 s: an activityMs of 10 s lets
+	// one tick through in every few chunks, never one per chunk.
+	const wire = createWire({ file, now: () => new Date((clock += 4000)), activityMs: 10000, onActivity: (a) => ticks.push(a) });
+	const response = await wire.fetch(url + "/v1/chat/completions", { method: "POST", body: "{}" });
+	await response.text();
+	await wire.close();
+	srv.close();
+	assert.ok(ticks.length >= 1 && ticks.length < 7, `ticks: ${ticks.length}`);
+	assert.equal(ticks[0].seq, 1);
+	assert.ok(ticks.every((t, i) => i === 0 || t.bytes > ticks[i - 1].bytes));
+	// Without onActivity nothing is called and nothing breaks.
+	const quiet = createWire({ file: file + ".2" });
+	const { srv: s2, url: u2 } = await serve((req, res) => res.end("ok"));
+	await (await quiet.fetch(u2)).text();
+	await quiet.close();
+	s2.close();
+});
+
+test("what the endpoint says of a request is kept: its header, then its SSE comments", async () => {
+	const { srv, url } = await serve((req, res) => {
+		res.writeHead(200, { "content-type": "text/event-stream", "x-endpoint-meta": '{"attempts":2}' });
+		res.end(': x-endpoint-meta {"accepted":2,"seconds":[30.5,12]}\n\ndata: {"choices":[]}\n\n:x-endpoint-meta not json\n\ndata: [DONE]\n\n');
+	});
+	const file = join(mkdtempSync(join(tmpdir(), "wire-")), "wire.jsonl");
+	const wire = createWire({ file });
+	await (await wire.fetch(url + "/v1/chat/completions", { method: "POST", body: "{}" })).text();
+	await wire.close();
+	srv.close();
+	const [rec] = lines(file);
+	assert.deepEqual(rec.endpoint_meta, [{ attempts: 2 }, { accepted: 2, seconds: [30.5, 12] }, "not json"]);
+	assert.equal(endpointMeta(null, "data: x\n\n"), null);
+	assert.deepEqual(endpointMeta("plain", ""), ["plain"]);
 });
 
 test("a failed request is recorded and still fails; an error status is a response", async () => {

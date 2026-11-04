@@ -1,4 +1,4 @@
-# The runner: protocol 9
+# The runner: protocol 10
 
 The runner is a Node program that runs **one** agent session for one run,
 inside the lane's container, and exits. The harness (`internal/run`) writes
@@ -67,6 +67,15 @@ the agent's shell finds only the image's tools; its `prepared` note says
 which were found (`private_tools`). An older image has no
 `/opt/automaticum/bin/node`, so the number went up.
 
+**Protocol 10 (2026-11-04):** bytes arriving on a model response are
+activity. While they arrive the runner notes `receiving` (`seq`, the
+request; `bytes`, read so far) at most every 10 s, so the harness's idle
+limit does not run out on a request that is alive but slow: keepalive
+comments, or a proxy holding the answer while it retries (D138). The wire
+capture adds each request's first body byte (`t_first_byte`,
+`ms_first_byte`) and what the endpoint said of it (`endpoint_meta`, D139).
+A protocol 9 runner would let such a run go idle, so the number went up.
+
 ## In
 
 `node runner.mjs /job/job.json`, with three mounts: `/job` (read-only),
@@ -104,15 +113,20 @@ One JSON object per line, each with a time `t` and a kind `k`.
 | `k` | content |
 |---|---|
 | `event` | `event`: one SDK session event, unchanged, errors described by hand |
-| `runner` | `note` and its fields: `prepared`, `config_resolved` (the SDK's own report), `wall_limit`, `interactive`, `restored`, `user_action_failed`, `workspace_git` (`head`), `mode_switched` (`from`, `to`, `source` user or agent, `messages`, `compaction_carried`), `fork` (`from`, `to`, `checkpoint`, `checkpoint_ref`, `workspace`, `messages`, `restarted`), ... |
+| `runner` | `note` and its fields: `prepared`, `config_resolved` (the SDK's own report), `wall_limit`, `interactive`, `restored`, `user_action_failed`, `workspace_git` (`head`), `mode_switched` (`from`, `to`, `source` user or agent, `messages`, `compaction_carried`), `receiving` (`seq`, `bytes`: a model response's bytes still arriving, at most every 10 s, protocol 10), `fork` (`from`, `to`, `checkpoint`, `checkpoint_ref`, `workspace`, `messages`, `restarted`), ... |
 | `user` | the scripted user: `on` (approval, question, turn, elapsed, completion, plan, resume), `rule` (from 1; 0 for the default), `do`, and what it answered or sent |
 | `end` | the last line, see below |
 
 ## Out: the output directory
 
 - `wire.jsonl`: one line per HTTP request the SDK made, with the request and
-  response bodies whole, their sizes, the response's sha256 and timing.
-  Credentials in headers are replaced by `[set]`.
+  response bodies whole, their sizes, the response's sha256 and timing
+  (`t_start`, `t_headers`, `t_first_byte`, `t_end`). `endpoint_meta` is what
+  the endpoint said of the request, when it said anything: its response
+  header `x-endpoint-meta`, then every SSE comment
+  `: x-endpoint-meta <json>` in the body, in order, each parsed as JSON or
+  kept as text (protocol 10, D139). Credentials in headers are replaced by
+  `[set]`.
 - `data/`: the SDK's data directory for this run.
 
 ## The last line
@@ -196,7 +210,7 @@ configuration; 4.100.266 does). From 4.100.266 the notice also says the
 limit that applied (`maxConsecutiveTrips`): one other than the arm's is a
 breach too.
 
-## What protocol 9 does not do
+## What protocol 10 does not do
 
 Escalation, sub-agents and teams, MCP approvals (no arm starts an MCP
 server), the emulation of editor behaviour (diagnostics after edits,

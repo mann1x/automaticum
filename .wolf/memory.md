@@ -1114,7 +1114,7 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-10-27 08:34
-> Consolidated session (13 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-27 10:17
 > Consolidated session (0 actions)
@@ -1123,7 +1123,7 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-10-27 10:18
-> Consolidated session (3 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-27 10:52
 > Consolidated session (0 actions)
@@ -1135,16 +1135,16 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-10-27 10:54
-> Consolidated session (1 actions)
-
-## Session: 2026-10-27 11:02
 > Consolidated session (0 actions)
 
 ## Session: 2026-10-27 11:02
 > Consolidated session (0 actions)
 
 ## Session: 2026-10-27 11:02
-> Consolidated session (7 actions)
+> Consolidated session (0 actions)
+
+## Session: 2026-10-27 11:02
+> Consolidated session (0 actions)
 
 ## Session: 2026-10-29 09:27
 
@@ -1752,3 +1752,48 @@
 | 19:11 | tick: no mail; sft5-s1200 gate: -001..-004 TIMEOUT, -005 running 8m30s, 5 queued; daemon healthy | - | hands off | ~300 |
 | 20:11 | tick: no mail; sft5-s1200 gate: -001..-006 TIMEOUT, -007 running 7m58s, 3 queued; daemon healthy | - | hands off | ~300 |
 | 21:16 | mail #2154 (backup_models): repetition_guard missed 1,002x 3-line unit on s1200 -007; added text rule reasoning_loop (SDK's ported rule, run's rule set + given) to GuardText; options through GuardFires/watchGuard/detect; control added; library 8, analysis 20; tests green; measurement queued on blackswan-2 after the gate (bg b6714woba) | internal/detect/repguard.go, controls.go, detect.go, internal/ingest/repguard.go, analyse.go, internal/daemon/{detect,guardwatch,daemon}.go | in progress | ~6000 |
+
+## Session: 2026-11-03 22:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-03 22:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-03 22:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-03 22:15
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:17 | deployed b607c2a on blackswan-2 (idle-gated, START #2155): self-test v8 37 controls, analysis 20, NRestarts=0, repo checkout b607c2a, unit backup .pre-b607c2a, bin/*.prev=eb5a1f3; detect -007 -> repetition_guard text.reasoning_loop at 5,960/31,535 (~2,592 tok, 48s); gpu1 released | blackswan-2 | done | ~3000 |
+| 23:11 | tick: no mail; #2155/#2156 still unread by backup_models; blackswan-2 b607c2a up 54m, lane-1 idle, 0 queued, NRestarts=0 | - | quiet | ~300 |
+| 00:11 | tick: no mail; blackswan-2 b607c2a up 1h54m, lane-1 idle, 0 queued, NRestarts=0 | - | quiet | ~200 |
+| 01:11 | tick: no mail; blackswan-2 b607c2a up 2h54m, lane-1 idle, 0 queued, NRestarts=0 | - | quiet | ~200 |
+| 02:11 | tick: no mail; blackswan-2 b607c2a up 3h54m, lane-1 idle, 0 queued, NRestarts=0 | - | quiet | ~200 |
+
+## Session: 2026-11-04 03:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 03:11 | tick: no mail; blackswan-2 b607c2a up 4h54m, NRestarts=0, lane-1 idle, 0 queued | - | nothing to do | ~200 |
+| 04:11 | tick: no mail; blackswan-2 b607c2a up 5h54m, NRestarts=0, lane-1 idle, 0 queued | - | nothing to do | ~200 |
+| 05:11 | tick: no mail; backup_models read #2155/#2156 (b607c2a noted, no reanalyse needed); blackswan-2 up 6h54m, NRestarts=0, lane-1 idle, 0 queued | - | nothing to do | ~200 |
+| 06:11 | tick: no mail; blackswan-2 b607c2a up 7h54m, NRestarts=0, lane-1 idle, 0 queued | - | nothing to do | ~200 |
+| 07:11 | tick: no mail; blackswan-2 b607c2a up 8h54m, NRestarts=0, lane-1 idle, 0 queued | - | nothing to do | ~200 |
+| 08:11 | tick: no mail; blackswan-2 b607c2a up 9h54m, NRestarts=0, lane-1 idle, 0 queued | - | nothing to do | ~200 |
+| 09:11 | tick: no mail; backup_models holds blackswan-2 gpu1 (sft5 s2000 gate, 10 manic_miner runs), restarted automaticumd cleanly 07:48Z (Deactivated successfully, NRestarts=0, still b607c2a); run -001 running 23m, 9 queued | - | observed, no action | ~400 |
+| 10:11 | tick: no mail; sft5 s2000 gate: -001/-002 TIMEOUT (wall 30m), -003 running 21m, 7 queued; daemon up 1h23m NRestarts=0 | - | observed, no action | ~300 |
+| 11:11 | tick: no mail; sft5 s2000 gate: -001..-004 TIMEOUT (wall 30m), -005 running 21m, 5 queued; daemon up 2h23m NRestarts=0 | - | observed, no action | ~300 |
+| 12:11 | tick: no mail; sft5 s2000 gate stopped by backup_models: -001..-006 TIMEOUT, -007 operator abort at 5m43s, -008..-010 SKIPPED; lane-1 idle, daemon up 3h23m NRestarts=0 | - | observed, no action | ~300 |
+| 13:11 | tick: no mail; lane-1 idle, daemon up 4h23m NRestarts=0; backup_models holds blackswan-2 gpu1 since 11:15Z for sft6 C8 data regen (llama :8263), not an automaticum batch | - | observed, no action | ~200 |
+| 14:11 | tick: no mail; lane-1 idle, daemon up 5h23m NRestarts=0 | - | nothing to do | ~200 |
+| 15:11 | tick: no mail; lane-1 idle, daemon up 6h23m NRestarts=0 | - | nothing to do | ~200 |
+| 16:15 | mail #2157 (backup_models): loopproxy arm/endpoint added on blackswan-2 + 3 FRs; replied #2158: FR1 exists ([daemon] private_tasks, private+canary required, export refuses private training tasks -> owner, D105); FR2 idle-on-bytes and FR3 per-request time/x-endpoint-meta -> owner as spec items | - | replied, nothing built | ~1500 |
+| 17:00 | D137 export private training tasks; D138 idle counts arriving bytes (runner receiving note, protocol 10); D139 wire first byte + x-endpoint-meta, analysis 21, run timeline -requests; specs 040/050/060/070/090, decisions rev 44 | export.go, wire.mjs, runner.mjs, protocol.go, render.go, wire.go, analyse.go, timeline_cmds.go | make test ok, runner 32/32 | ~40000 |

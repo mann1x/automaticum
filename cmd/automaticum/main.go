@@ -40,7 +40,7 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   run ls                        queued, running and finished runs
   run show <run>                one run's record
   run tail <run>                what a run prints, as it arrives; a queued run is waited for until it starts
-  run timeline <run>            the run turn by turn: calls and failures, guard trips, notices, forks, the end
+  run timeline [-requests] <run> the run turn by turn: calls and failures, guard trips, notices, forks, the end; -requests adds each model request's first byte, time and endpoint meta
   run stop <run>                take a queued run off the queue
   run abort <run>               end a run in flight
   run pause <run>               hold a run in flight between two model requests and free the endpoint of its model

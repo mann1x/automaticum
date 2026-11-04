@@ -1,6 +1,6 @@
 # 060 — Tasks, oracles and the suite interface
 
-**Status:** draft 0.14, 2026-11-01.
+**Status:** draft 0.15, 2026-11-04.
 
 ## 1. Scope
 
@@ -172,7 +172,14 @@ the daemon's local configuration names it (`private_tasks`), and it is read
 beside the repository's `tasks/`, in the same `<suite>/<task>/task.toml`
 layout. Every task there must say `private = true`; a private task needs a
 `canary` of 16 characters or more; the same suite and id in both roots is
-refused.
+refused. `private_tasks` is a top-level key of `automaticum.toml`.
+
+**Decided by the owner (2026-11-04, D137):** a private training task (a
+`train-*` suite in the private root, `training = true`) is exported like a
+public one (`export conversations`, 090 §1): the export writes to a
+directory on the owner's host, so its text leaves no host. Only a task that
+is not a training task is refused. The rule above still holds: export never
+sends a private task's text to a cloud endpoint.
 
 **Decided by the owner (2026-10-23, D105):** the training pool of
 omnimergekit's recovery (the multi-language suite's tasks and converted

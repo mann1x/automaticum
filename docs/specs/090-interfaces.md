@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.29, 2026-11-03.
+**Status:** draft 0.30, 2026-11-04.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -71,7 +71,7 @@ and `<dir>/manifest.jsonl`, its record to `<dir>/runs/<run>.json` (110
 §3.5); `--batch` also takes a pattern (`'k-pool-*'`). The route is
 `GET /v1/runs/{id}/export`, a tar of `meta.json`, `spans.jsonl` and the
 capture's files; it refuses a run of a task that is not a training task
-(403), an INVALID run (422) and a run without a capture (404), and the
+(403; a private training task exports, D137), an INVALID run (422) and a run without a capture (404), and the
 command names each one it passes over (110 §3.5). So a batch of held-out
 tasks (`custom/manic_miner`, `tbench2/*`) exports nothing, by design (D105):
 its runs are read with `run show -json` instead.
@@ -146,7 +146,7 @@ static-gate refusal of a start answers 422 with `gate` beside `error`.
   tool calls with how they ended, notices, the runner's notes, the scripted
   user and the end; `--raw` for the lines, `--max N` to cut long blocks).
   `logs` takes `--grep RE`, `--turn N`, `--render` and `--max`. `run
-  timeline <run>` is the per-run timeline of 070 §1.1. `status
+  timeline [-requests] <run>` is the per-run timeline of 070 §1.1 (`-requests` adds each model request, D139). `status
   --watch`. `run ls --lane L`.
 - **`reanalyse --where`** (`suite=, task=, arm_id=, model=, verdict=, lane=,
   batch=, since=, until=`) and `--detector D`.

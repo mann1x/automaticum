@@ -8,6 +8,7 @@ import (
 func TestRenderer(t *testing.T) {
 	lines := []string{
 		`{"t":"2026-11-01T18:00:00Z","k":"runner","note":"prepared"}`,
+		`{"t":"2026-11-01T18:00:00Z","k":"runner","note":"receiving","seq":1,"bytes":512}`,
 		`{"t":"2026-11-01T18:00:01Z","k":"event","event":{"type":"agent_event","payload":{"event":{"type":"iteration_start","iteration":1}}}}`,
 		`{"t":"2026-11-01T18:00:02Z","k":"event","event":{"type":"agent_event","payload":{"event":{"type":"content_start","contentType":"text","text":"Hel"}}}}`,
 		`{"t":"2026-11-01T18:00:03Z","k":"event","event":{"type":"agent_event","payload":{"event":{"type":"content_end","contentType":"text","text":"Hello there"}}}}`,
@@ -38,6 +39,9 @@ func TestRenderer(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in\n%s", want, got)
 		}
+	}
+	if strings.Contains(got, "receiving") {
+		t.Errorf("a receiving note is rendered:\n%s", got)
 	}
 	if strings.Contains(got, "Hel\n") || r.Turn() != 1 {
 		t.Errorf("a block's start was shown, or the turn is %d:\n%s", r.Turn(), got)

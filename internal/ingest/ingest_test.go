@@ -182,6 +182,21 @@ func TestReadWire(t *testing.T) {
 	}
 }
 
+// TestReadWireTiming: the first byte's time and what the endpoint said of a
+// request (protocol 10, D139), and none from an older runner.
+func TestReadWireTiming(t *testing.T) {
+	reqs := wire(t,
+		`{"seq":1,"url":"http://endpoint:8265/v1/chat/completions","status":200,"ms_total":45000,"ms_first_byte":31000.5,"endpoint_meta":[{"attempts":2},"plain"]}`,
+		`{"seq":2,"url":"http://endpoint:8265/v1/chat/completions","status":200,"ms_total":900}`,
+	)
+	if q := reqs[0]; q.FirstByteMS == nil || *q.FirstByteMS != 31000.5 || string(q.Meta) != `[{"attempts":2},"plain"]` {
+		t.Errorf("protocol 10: first byte %v, meta %s", q.FirstByteMS, q.Meta)
+	}
+	if q := reqs[1]; q.FirstByteMS != nil || len(q.Meta) != 0 {
+		t.Errorf("an older runner: first byte %v, meta %s", q.FirstByteMS, q.Meta)
+	}
+}
+
 func arm(t *testing.T, doc string) *config.Arm {
 	t.Helper()
 	var a config.Arm
@@ -347,7 +362,10 @@ func TestRun(t *testing.T) {
 			Provenance: json.RawMessage(`{"endpoint_before":{"parameters":"presence_penalty 1.5"}}`)},
 		refs: []store.BlobRef{{RunID: "r1", Kind: "events", Hash: he}, {RunID: "r1", Kind: "wire", Name: "wire.jsonl", Hash: hw},
 			{RunID: "r1", Kind: "oracle", Name: "game"}},
-		blobs: map[blob.Hash]string{he: strings.Join(lines, "\n"), hw: chat(1, sent, answer) + "\n" + chat(2, sent, answer)},
+		blobs: map[blob.Hash]string{he: strings.Join(lines, "\n"), hw: chat(1, sent, answer) + "\n" +
+			// From a runner of protocol 10: the first byte's time and what
+			// the endpoint said (D139); the first request has neither.
+			strings.Replace(chat(2, sent, answer), "{", `{"ms_first_byte":250,"endpoint_meta":[{"attempts":2}],`, 1)},
 		findings: []store.Finding{{RunID: "r1", Detector: "someone_else", Count: 1},
 			{RunID: "r1", Detector: WireArm, Count: 99}},
 	}
@@ -368,7 +386,7 @@ func TestRun(t *testing.T) {
 			"tokens.prompt.cached": 120, "tokens.prompt.fresh": 80, "tokens.completion": 100, "rate.generation_tok_s": 50,
 			"rate.prompt_tok_s": 20, "finish.stop": 2, "completions.empty": 0, "context.window": 8192, "context.peak_tokens": 150,
 			"context.cached_share": 0.6, "thinking.blocks": 1, "thinking.chars.max": 4, "thinking.budget_tokens.served": 24000,
-			"context.compactions": 0,
+			"context.compactions": 0, "time.model_first_byte_ms": 250, "requests.endpoint_meta": 1,
 		} {
 			if v, ok := got[name]; !ok || v != want {
 				t.Errorf("round %d: %s = %v (present %v), want %v", round, name, v, ok, want)

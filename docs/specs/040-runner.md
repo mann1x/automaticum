@@ -1,6 +1,6 @@
 # 040 — The runner
 
-**Status:** draft 1.11, 2026-10-29. Facts about the SDK in this file were read
+**Status:** draft 1.12, 2026-11-04. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
 running it. The parity table in §6 was checked row by row by the Cerebriline
 session on 2026-10-13 against its main branch (release 4.100.249 plus requests
@@ -456,9 +456,21 @@ The runner never runs the oracle and never sees it (060 §3).
 - **Out, on stdout:** one JSON object per line with a kind: `event` (an SDK
   event, unchanged, under `event`), `runner` (the runner's own notes), and one
   last `end` line. The harness stores the stream as it arrives and measures
-  idleness on it.
+  idleness on it. **Decided by the owner (2026-11-04, D138, protocol 10):**
+  bytes arriving on a model response are activity. While they arrive the
+  runner notes `receiving` (the request's `seq`, the bytes read so far) at
+  most every 10 s, the cadence the harness reads `/slots` at, so a request
+  that is alive but slow (keepalive comments, a proxy holding the answer
+  while it retries) does not run out the idle limit; the transcript
+  (`run tail`, `logs --render`) leaves the note out.
 - **Out, in the output directory:** the wire capture and the session's data
-  directory.
+  directory. **Decided by the owner (2026-11-04, D139, protocol 10):** each
+  request of the wire capture also carries when its response's first body
+  byte came (`t_first_byte`, `ms_first_byte`) and, when the endpoint said
+  anything of it, `endpoint_meta`: its response header `x-endpoint-meta`,
+  then every SSE comment `: x-endpoint-meta <json>` in the body, in order,
+  each parsed as JSON or kept as text. The harness stores it and shows it
+  (070 §1.1, §2); it judges nothing by it.
 - **The `end` line** carries an outcome (`completed`, `refused`, `invalid`,
   `wall_limit`, `error`) with its reason, how the agent ended, whether it
   claimed success, usage, the SDK release and package hash found installed,

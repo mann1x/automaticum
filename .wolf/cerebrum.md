@@ -59,6 +59,7 @@
 - Lane layers `COPY --from` the oracle image digest; check its Debian release first (bug-032).
 
 ## Do-Not-Repeat
+- 2026-11-04: before telling a client a config key, read `examples/config/automaticum.toml`: its keys are top-level (`private_tasks`), and `config.Local.Daemon` is only the Go field, never a `[daemon]` table (my wrong mail crash-looped automaticumd on blackswan-2, bug-080).
 - 2026-11-02: deploying to a lane host, copy binaries to `bin/<name>.new` and swap with `mv` after the idle check; never scp straight into `bin/` (it overwrote the CLI with no `.prev` copy; the busy daemon refused the write).
 
 - 2026-11-01: owner: "it can't be something is in the specs and not developed!" A spec requirement is built, or the spec says plainly "not built" with its milestone, or a decision drops it. Never leave a requirement (090 §5 wait, the mailbox) in the spec with no milestone and no code. Re-audit with docs/audit/ after each milestone.
@@ -86,6 +87,9 @@
 
 ## Decision Log
 
+- [2026-11-04] D137: private training tasks export (owner in session: "private task can be exported"; also relayed by backup_models #2159). export.go refuses only !Training.
+- [2026-11-04] D138: idle limit counts bytes arriving on a model response (owner: "go ahead with FR2"). Runner note `receiving` every <=10 s, protocol 10.
+- [2026-11-04] D139: per-request first byte + x-endpoint-meta (header, SSE comments) in the wire capture; analysis 21 metrics; `run timeline -requests` (owner: "go ahead with ... FR3"). Stored, never judged on.
 - [2026-11-03] D136: held stream = oracle decides (PASS if it passes, else FAIL; not ABORTED). Owner via backup_models "ok FAIL with oracle", then in session "Oracle decides". Proof: /slots n_decoded growing in the silence (live sampler, slots blob) or `run held` from the server log; the SDK's silence message alone stays ABORTED. Interim until the engine sends keepalives during holds.
 - [2026-11-03] D135: paragraph-repetition guard. Owner 07:49: build it, observe-only by default, an arm flag to make it stop; "shouldn't this guard be part of detect?" -> it is a detector (would-fire point, finding, detect column); stop = same rule live in the daemon, arm opt-in. Thresholds ported (guards.go) or measured on positives (sft5-s200 cap_hit) vs negatives (floor gates, sft3, sft3-s400, pool).
 - [2026-11-03] D134: duplicate_definitions (tool-call string argument redefining names > 3 times). Owner: "build it with your recommendation" = threshold from data: max over base-model + stub runs on blackswan-2 (371 runs) was 3; trained broke at 6/18/33/492.

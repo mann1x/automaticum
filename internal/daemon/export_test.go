@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -31,6 +33,30 @@ func captureTar(t *testing.T, reasoning string) string {
 	return buf.String()
 }
 
+// privateTrainingRoot is a private tasks root holding one training task,
+// train-own/sh_own, a copy of train-sh/sh_logtriage marked private.
+func privateTrainingRoot(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	dst := filepath.Join(root, "train-own", "sh_own")
+	if err := os.CopyFS(dst, os.DirFS("../../tasks/train-sh/sh_logtriage")); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(filepath.Join(dst, "task.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := strings.Replace(string(b), `id = "sh_logtriage"
+suite = "train-sh"`, `id = "sh_own"
+suite = "train-own"
+private = true
+canary = "own-canary-0123456789"`, 1)
+	if err := os.WriteFile(filepath.Join(dst, "task.toml"), []byte(s), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
 func TestExport(t *testing.T) {
 	g := newRig(t, false)
 	ctx := context.Background()
@@ -46,18 +72,21 @@ func TestExport(t *testing.T) {
 		{ID: "r3", Batch: "k-pool-r1", Suite: "train-sh", TaskID: "sh_logtriage", Verdict: store.Invalid, VerdictReason: "inherited field"},
 		{ID: "r4", Batch: "k-pool-r1", Suite: "train-sh", TaskID: "sh_logtriage", Verdict: store.Pass},
 		{ID: "r5", Batch: "k-heldout-v1", Suite: "train-sh", TaskID: "sh_logtriage", Verdict: store.Pass},
+		{ID: "r6", Batch: "k-pool-r1", Suite: "train-own", TaskID: "sh_own", Verdict: store.Fail},
 	} {
 		g.state.UpsertRun(ctx, &r)
 	}
 	g.d.ctl.Heldout["k-heldout-v1"] = true
-	for _, id := range []string{"r1", "r2", "r3", "r5"} {
+	// A private training task, in the private root, exports too (D137).
+	g.d.Local.Daemon.PrivateTasks = privateTrainingRoot(t)
+	for _, id := range []string{"r1", "r2", "r3", "r5", "r6"} {
 		g.state.refs = append(g.state.refs, store.BlobRef{RunID: id, Kind: "model_requests", Name: "requests", Hash: blob.Hash("cap")}, store.BlobRef{RunID: id, Kind: "events", Hash: blob.Hash("ev")})
 	}
 
 	for id, want := range map[string]int{"r2": http.StatusForbidden, "r3": http.StatusUnprocessableEntity, "r4": http.StatusNotFound, "nope": http.StatusNotFound,
 		// A held-out batch (D115) only when asked for by name; a held-out
 		// task never, even when asked.
-		"r5": http.StatusForbidden, "r5?heldout=1": http.StatusOK, "r2?heldout=1": http.StatusForbidden, "r1?heldout=0": http.StatusOK} {
+		"r5": http.StatusForbidden, "r5?heldout=1": http.StatusOK, "r2?heldout=1": http.StatusForbidden, "r1?heldout=0": http.StatusOK, "r6": http.StatusOK} {
 		path, q, _ := strings.Cut(id, "?")
 		if q != "" {
 			q = "?" + q

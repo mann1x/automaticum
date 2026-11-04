@@ -22,7 +22,7 @@ import { privateTools } from "./tools.mjs";
 import { createUser } from "./user.mjs";
 import { createWire, describe } from "./wire.mjs";
 
-const PROTOCOL = 9;
+const PROTOCOL = 10;
 const SDK_PACKAGE = "@cerebriline/sdk";
 const EXIT = { completed: 0, error: 1, refused: 3, invalid: 4, wall_limit: 5, guard_stop: 6 };
 
@@ -107,7 +107,11 @@ async function main() {
 	const dataDir = join(job.out, "data");
 	mkdirSync(dataDir, { recursive: true });
 
-	const wire = createWire({ file: join(job.out, "wire.jsonl") });
+	// Bytes arriving on a model response are activity: the note keeps the
+	// harness's idle clock from running while a slow request is alive
+	// (protocol 10, D138), at most every 10 s, the cadence the harness reads
+	// the endpoint's /slots at.
+	const wire = createWire({ file: join(job.out, "wire.jsonl"), onActivity: (a) => note("receiving", a) });
 	// The runner's own tools, off the agent's PATH (D113), found by the SDK
 	// that is imported next.
 	const tools = privateTools(join(dirname(fileURLToPath(import.meta.url)), "..", "bin"));

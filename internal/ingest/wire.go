@@ -18,6 +18,12 @@ type Request struct {
 	Status int
 	Failed bool // no response, or an error status
 	MS     float64
+	// FirstByteMS is how long the first byte of the response's body took,
+	// nil from a runner before protocol 10 or with no body (D139).
+	FirstByteMS *float64
+	// Meta is what the endpoint said of the request (x-endpoint-meta, its
+	// header then its SSE comments), as the runner kept it (D139).
+	Meta json.RawMessage
 	// Chat is true for a chat request, of either protocol: Ollama's
 	// /api/chat or an OpenAI-compatible .../chat/completions.
 	Chat bool
@@ -160,6 +166,8 @@ type wireLine struct {
 	URL          string          `json:"url"`
 	Status       int             `json:"status"`
 	MSTotal      float64         `json:"ms_total"`
+	MSFirstByte  *float64        `json:"ms_first_byte"`
+	EndpointMeta json.RawMessage `json:"endpoint_meta"`
 	TStart       time.Time       `json:"t_start"`
 	RequestBody  *string         `json:"request_body"`
 	ResponseBody *string         `json:"response_body"`
@@ -195,7 +203,7 @@ func ReadWire(r io.Reader) ([]Request, error) {
 }
 
 func request(l *wireLine) Request {
-	q := Request{Seq: l.Seq, Status: l.Status, MS: l.MSTotal, Start: l.TStart}
+	q := Request{Seq: l.Seq, Status: l.Status, MS: l.MSTotal, Start: l.TStart, FirstByteMS: l.MSFirstByte, Meta: l.EndpointMeta}
 	q.Path = l.URL
 	if i := strings.Index(l.URL, "://"); i >= 0 {
 		if j := strings.IndexByte(l.URL[i+3:], '/'); j >= 0 {

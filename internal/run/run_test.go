@@ -311,6 +311,18 @@ func TestVerdicts(t *testing.T) {
 			<-ctx.Done()
 			return docker.Result{ExitCode: 137}, ctx.Err()
 		}, store.Timeout, "idle limit"},
+		// Bytes arriving on a slow model response keep the run from going
+		// idle: the runner notes them (protocol 10, D138).
+		{"not idle while a response's bytes arrive", func(w *world) { one := 1; w.req.Arm.Limits.IdleS = &one }, func(ctx context.Context, s docker.Spec, out io.Writer) (docker.Result, error) {
+			fix(s)
+			io.WriteString(out, event)
+			for i := range 6 {
+				time.Sleep(400 * time.Millisecond)
+				fmt.Fprintf(out, `{"k":"runner","note":"receiving","seq":1,"bytes":%d}`+"\n", 100*(i+1))
+			}
+			io.WriteString(out, endLine(OutcomeCompleted, ""))
+			return docker.Result{}, nil
+		}, store.Pass, "oracle passed"},
 		{"aborted: crash", nil, func(_ context.Context, s docker.Spec, out io.Writer) (docker.Result, error) {
 			fix(s)
 			io.WriteString(out, event)

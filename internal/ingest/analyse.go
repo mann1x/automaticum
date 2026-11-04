@@ -52,7 +52,7 @@ const SessionFork = "session_fork"
 // analysis records it as the metric analysis.version: the basis (020 §5)
 // says from it which detectors a run was analysed with, whether or not
 // they found anything.
-const AnalysisVersion = 20
+const AnalysisVersion = 21
 
 // Versions are the versions of the detectors this analysis applies:
 // ingest's own and the detector library's.
@@ -374,7 +374,8 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 	if len(agent) > 0 {
 		var prompt, cached, eval, peak, empty int
 		var promptNS, evalNS int64
-		var modelMS float64
+		var modelMS, firstByteMS float64
+		firstBytes, metas := 0, 0
 		var perRequest []float64
 		done := map[string]int{}
 		for _, q := range agent {
@@ -384,6 +385,13 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 			promptNS += q.PromptNS
 			evalNS += q.EvalNS
 			modelMS += q.MS
+			if q.FirstByteMS != nil {
+				firstByteMS += *q.FirstByteMS
+				firstBytes++
+			}
+			if len(q.Meta) > 0 && string(q.Meta) != "null" {
+				metas++
+			}
 			peak = max(peak, q.PromptTokens+q.EvalTokens)
 			perRequest = append(perRequest, float64(q.EvalTokens))
 			if q.Empty {
@@ -403,6 +411,14 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 			done[reason]++
 		}
 		m("time.model_ms", modelMS)
+		// Time to the first byte of each answer, from a runner of protocol
+		// 10 on, and how many requests the endpoint described (D139).
+		if firstBytes > 0 {
+			m("time.model_first_byte_ms", firstByteMS)
+		}
+		if metas > 0 {
+			m("requests.endpoint_meta", float64(metas))
+		}
 		m("tokens.prompt", float64(prompt))
 		m("tokens.prompt.cached", float64(cached))
 		m("tokens.prompt.fresh", float64(prompt-cached))

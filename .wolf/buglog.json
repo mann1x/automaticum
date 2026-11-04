@@ -1365,6 +1365,23 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-03T22:12:09+01:00"
+    },
+    {
+      "id": "bug-080",
+      "timestamp": "2026-11-04T16:26:00+01:00",
+      "error_message": "config: automaticum.toml: unknown fields: daemon, daemon.private_tasks (automaticumd crash-looped 5 times on blackswan-2)",
+      "file": "(mail #2158)",
+      "root_cause": "I told a client to set private_tasks under [daemon], reading the Go struct name config.Local.Daemon as a TOML table; automaticum.toml is decoded straight into Daemon, so its keys are top-level",
+      "fix": "Client used the top-level key; corrected by mail. Before naming a config key, read examples/config/automaticum.toml, not the Go field path",
+      "tags": [
+        "config",
+        "mail",
+        "private_tasks",
+        "D105"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-04T16:26:00+01:00"
     }
   ]
 }

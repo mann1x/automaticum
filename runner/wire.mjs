@@ -5,6 +5,14 @@
 // dispatcher with its timeouts switched off), so `init` is handed on
 // untouched. The response is read through a clone, so the SDK gets the
 // original object and the stream it expects.
+//
+// While a response's bytes arrive, `onActivity` is called at most once per
+// `activityMs`: the runner notes it, so a request that is alive but slow
+// (keepalive comments, a proxy holding the answer while it retries) is not
+// taken for an idle run (protocol 10, D138). An endpoint may say what it
+// did for a request in a response header `x-endpoint-meta` or an SSE
+// comment `: x-endpoint-meta {json}`; both are kept as `endpoint_meta`
+// (D139).
 
 import { createHash } from "node:crypto";
 import { createWriteStream } from "node:fs";
@@ -47,21 +55,51 @@ function bodyOf(body) {
 	return { text: null, not_captured: `a ${body?.constructor?.name ?? typeof body} cannot be read without consuming it` };
 }
 
+const META_HEADER = "x-endpoint-meta";
+const META_COMMENT = /^:[ \t]?x-endpoint-meta[ \t]+(.+?)\r?$/gm;
+
+function metaValue(text) {
+	try {
+		return JSON.parse(text);
+	} catch {
+		return text;
+	}
+}
+
+// endpointMeta is what the endpoint said of a request: its header, then
+// every SSE comment that carries it, in order; null when it said nothing.
+export function endpointMeta(header, body) {
+	const out = [];
+	if (header !== undefined && header !== null && header !== "") out.push(metaValue(header));
+	if (body) for (const m of body.matchAll(META_COMMENT)) out.push(metaValue(m[1]));
+	return out.length > 0 ? out : null;
+}
+
 /**
  * createWire returns a fetch that appends one JSON line per request to
  * `file`, and the means to finish.
  *
  *   seq, method, url, request_headers, request_body, request_bytes
- *   t_start, t_headers, t_end (ISO), ms_headers, ms_total
+ *   t_start, t_headers, t_first_byte, t_end (ISO), ms_headers, ms_first_byte, ms_total
  *   status, response_headers, response_body, response_bytes, response_sha256
+ *   endpoint_meta (what the endpoint said of the request, D139)
  *   error (when the request or the reading of the response failed)
  */
-export function createWire({ file, fetch: inner = globalThis.fetch, now = () => new Date() }) {
+export function createWire({ file, fetch: inner = globalThis.fetch, now = () => new Date(), onActivity, activityMs = 10000 }) {
 	const out = createWriteStream(file, { flags: "a" });
 	const pending = new Set();
 	let seq = 0;
 	// answered counts the agent's requests the server answered (2xx).
 	let answered = 0;
+	// lastActivity is when onActivity was last called, for all requests.
+	let lastActivity = 0;
+	const activity = (seq, bytes) => {
+		if (!onActivity) return;
+		const t = now().getTime();
+		if (t - lastActivity < activityMs) return;
+		lastActivity = t;
+		onActivity({ seq, bytes });
+	};
 
 	const write = (record) =>
 		new Promise((resolve, reject) => out.write(JSON.stringify(record) + "\n", (err) => (err ? reject(err) : resolve())));
@@ -117,9 +155,15 @@ export function createWire({ file, fetch: inner = globalThis.fetch, now = () => 
 					if (copy.body) {
 						for await (const chunk of copy.body) {
 							const buf = Buffer.from(chunk);
+							if (bytes === 0 && buf.length > 0) {
+								const first = now();
+								record.t_first_byte = first.toISOString();
+								record.ms_first_byte = first - started;
+							}
 							hash.update(buf);
 							parts.push(buf);
 							bytes += buf.length;
+							activity(n, bytes);
 						}
 					}
 				} catch (err) {
@@ -129,6 +173,8 @@ export function createWire({ file, fetch: inner = globalThis.fetch, now = () => 
 				record.response_bytes = bytes;
 				record.response_sha256 = hash.digest("hex");
 			}
+			const meta = endpointMeta(response.headers?.get?.(META_HEADER), record.response_body);
+			if (meta) record.endpoint_meta = meta;
 			const ended = now();
 			record.t_end = ended.toISOString();
 			record.ms_total = ended - started;

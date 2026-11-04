@@ -54,3 +54,40 @@ func TestTimeline(t *testing.T) {
 		t.Errorf("timeline kept unasked: %d", len(plain.Timeline))
 	}
 }
+
+// With -requests, each of the agent's requests has a line at the time it
+// was sent, in its turn, with its first byte, its time and what the
+// endpoint said (D139); a probe has none.
+func TestTimelineRequests(t *testing.T) {
+	ev := &ingest.Events{KeepTimeline: true}
+	ev.Read(strings.NewReader(strings.Join([]string{
+		`{"t":"2026-01-02T03:04:00Z","k":"event","event":{"type":"agent_event","payload":{"event":{"type":"iteration_start","iteration":1}}}}`,
+		`{"t":"2026-01-02T03:05:00Z","k":"event","event":{"type":"agent_event","payload":{"event":{"type":"iteration_start","iteration":2}}}}`,
+	}, "\n")))
+	reqs, err := ingest.ReadWire(strings.NewReader(strings.Join([]string{
+		`{"seq":1,"url":"http://e/v1/models","status":200,"t_start":"2026-01-02T03:03:59Z"}`,
+		`{"seq":2,"url":"http://e/v1/chat/completions","status":200,"t_start":"2026-01-02T03:04:01Z","ms_total":45000,"ms_first_byte":31000,"endpoint_meta":[{"attempts":2}],"request_body":"{\"tools\":[{}]}"}`,
+		`{"seq":3,"url":"http://e/v1/chat/completions","status":200,"t_start":"2026-01-02T03:05:01Z","ms_total":900,"request_body":"{\"tools\":[{}]}"}`,
+	}, "\n")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := timelineLines(withRequestMoments(ev.Timeline, reqs), ev.First)
+	want := []struct {
+		turn int
+		what string
+	}{
+		{1, "turn 1"},
+		{1, `request 2 (200): first byte 31s, 45s in all; endpoint [{"attempts":2}]`},
+		{2, "turn 2"},
+		{2, "request 3 (200): 0.9s in all"},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("lines %+v", got)
+	}
+	for i, w := range want {
+		if got[i].turn != w.turn || got[i].what != w.what {
+			t.Errorf("line %d: %d %q, want %d %q", i, got[i].turn, got[i].what, w.turn, w.what)
+		}
+	}
+}
