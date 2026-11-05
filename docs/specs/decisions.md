@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-11-05 (revision 45).
+**Status:** current as of 2026-11-05 (revision 46).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -151,6 +151,7 @@ All dated 2026-10-12.
 | D139 | Time per model request and what the endpoint said of it (040 §7.1, 070 §1.1, §2, 2026-11-04, a client's request; the owner: "go ahead with ... FR3"). The wire capture records each request's first body byte (`t_first_byte`, `ms_first_byte`) and `endpoint_meta`, the response header `x-endpoint-meta` then every SSE comment `: x-endpoint-meta <json>`, in order (protocol 10); analysis 21 adds `time.model_first_byte_ms` and `requests.endpoint_meta`; `run timeline -requests` shows each request. Stored and shown, never judged on: the wall verdict is unchanged. | 040 §7.1, 070 §1.1, §2 |
 | D140 | `automaticum task pin [--write] <task>` (090 §1, 2026-11-04, a client's request; the owner: "go ahead with both, task pin and config check"). A client writing its own task with an artefact could pin it only from the error of a build against 64 zeros: the pinning build (`Env.Pin`) was reachable only from the Terminal-Bench importer. `task pin` builds each artefact whatever it pins, an empty `sha256` included, prints the sums, and with `--write` writes them into `task.toml` and loads the task. | 090 §1, 060 |
 | D141 | `automaticum config check` (090 §1, 2026-11-04, a client's request after a configuration key the daemon refused crash-looped it; the owner: "go ahead with both"). It reads the configuration as the daemon does at its start, every arm, model and task, and says each problem without a daemon; exit 1 on any. | 090 §1, 030 |
+| D142 | The arm template's default SDK release is 4.100.274 (`examples/config/arms/base.toml`, 2026-11-05, the owner: "integrate 4.100.274", then "harness default + host"). It replaces the release number of D54; every run still records the release it used. An arm that states its own `sdk_release` keeps it, so a client's running round is not moved: their arms move when they choose. | 040 §3 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked

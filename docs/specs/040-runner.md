@@ -1,6 +1,6 @@
 # 040 — The runner
 
-**Status:** draft 1.13, 2026-11-05. Facts about the SDK in this file were read
+**Status:** draft 1.14, 2026-11-05. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
 running it. The parity table in §6 was checked row by row by the Cerebriline
 session on 2026-10-13 against its main branch (release 4.100.249 plus requests
@@ -54,6 +54,8 @@ The harness build is part of the arm and of the basis.
   Milestone 2 runs on release 4.100.250, which contains requests 1 to 3
   (§8.2).
   The five first real runs used release 4.100.250 (§8.2, 110 §3.1).
+  **Decided by the owner (2026-11-05):** the arm template's default release
+  is 4.100.274 (D142); an arm that names its own release keeps it.
 - **How the release is established:** see §3.1. A run's record holds a
   release only once it is established, never the one its arm merely names.
   The SDK's own build constant is not used: it carries another number than

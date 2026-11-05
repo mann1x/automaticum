@@ -1810,3 +1810,27 @@
 | 11:32 | Created ../cline/sdk/packages/core/src/extensions/tools/executors/whole-file.test.ts | — | ~976 |
 | 11:37 | mail #2168 (backup_models): SDK sed/awk read 150MB run_tests whole -> runner OOM; owner 'fix the sdk': guard committed in cline main f79269d469 (sed/awk/grep/search_codebase refuse binary or >100MB before reading), 534 executor tests pass; not pushed/released; acked #2168 | ../cline executors | release pending owner | ~4000 |
 | 13:12 | SDK 4.100.274 released (owner ok): cline f79269d469 + 659dd0ef2d, tag v4.100.274, npm 5 pkgs + VSIX; pinned here runner/sdk/4.100.274 (bundle da8f7474), sdk verify reproduced, stub arm, X13 in 040/decisions, make test ok | runner/sdk/4.100.274, examples/config/arms/stub-sdk-4.100.274.toml, specs | committed | ~2000 |
+
+## Session: 2026-11-05 13:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-05 13:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-05 13:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-05 13:15
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:18 | blackswan-2: repo 30c6b1e (additions only), sdk add+verify 4.100.274 under the blackswan-2 build claim, no daemon restart; container proof: 274 sed refuses 150MB + ELF, 266 passes ELF through; mailed backup_models #2170 (arm switch = their call; lane stub smoke pending a free lane) | - | done | ~1500 |
+| 13:18 | tick: no mail (no reply to #2170 yet); backup_models restarted daemon 12:15Z cleanly at idle (bc5cfd9, NRestarts=0), now 6 lanes (3 loopproxy, 3 -g0), one round-3 batch per lane on antirep arms incl. new suite train-c3; last runs before restart all PASS | - | reported | ~300 |
+| 14:11 | tick: no mail; backup_models acked #2170: stays on 4.100.266 this sft6 round (81 runs pinned), 4.100.274 with next arms, no stub smoke wanted; bc5cfd9 up 56m NRestarts=0; 6 lanes busy, 3 PASS since restart; they stopped most round-3 queue and queued 17 new; lanes 1/3/5 spsc_ring_buffer ~56m alive (turns 49/41/37) | - | reported | ~300 |
+| 14:52 | owner 'integrate 4.100.274' -> 'harness default + host': D142, examples base.toml sdk_release 4.100.274, arm-stub.json regenerated, run/daemon tests moved, make test ok; host step (blackswan-2 base.toml + stub-sdk-4.100.274.toml) blocked by permission classifier, not done | examples/config/arms/base.toml, runner/test/arm-stub.json, internal/run/run_test.go, internal/daemon/daemon_test.go, specs | repo committed | ~2500 |

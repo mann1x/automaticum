@@ -102,3 +102,17 @@ Follow cline's `docs/protocols/BUILD-RELEASE-DEPLOY.md`:
 - Add the build to the `runner/sdk/` list in `CLAUDE.md` and the new files to `.wolf/anatomy.md`. Run `make test`.
 - Run the private-name scan, filtering `registry.npmjs.org/` out of the lockfile lines, then commit.
 - Mail the client that the release exists. Moving their arms' `sdk_release` changes the arm identity, so that decision is theirs.
+
+## Proving a tool fix in the installed bundle
+
+Once `sdk add` and `sdk verify` succeed for a release that fixes an SDK tool (sed, awk, grep, read_files), check the fix in the bundle that runs will actually load. The SDK repo's tests are not enough.
+
+1. Get the Node image: `NI=$(grep 'NodeImage = ' internal/sdk/sdk.go | sed 's/.*= "\(.*\)"/\1/')`.
+2. In a scratch directory (small files, then delete it), make the inputs. For a large file use `truncate -s 150400128 w/big` (sparse, so it costs no disk). For a binary use `printf '\x7fELF\x02\x01\x01\x00\x00' > w/small_elf`. Add a text file as the control.
+3. Write a probe that imports `/sdk/<ver>/node_modules/@cerebriline/core/dist/index.js`. Call `core.createDefaultExecutors({})` and then `ex.sed({ script: "1,10p", files, quiet: true }, "/w")`. Print the result and `process.memoryUsage().heapUsed`. There are no per-tool exports (`createSedExecutor` does not exist). To list the factories, parse the bundle's last `export{` block for names that match `Executor|DefaultTools`.
+4. Run `docker run --rm -v <scratch>/w:/w -v <scratch>/probe.mjs:/probe.mjs:ro -v <data_root>/sdk:/sdk:ro "$NI" node /probe.mjs <ver>`. Run it for the new release and for the previous one, so the mail can show the change side by side.
+5. Quote the tool's exact refusal text and the heap figure in the mail to the client.
+
+## Changing the harness default to the new release
+
+Only do this when the owner says so, and record it as a D-row. Follow the default-release pattern in CALIBER_LEARNINGS.md: `base.toml`, the regenerated `runner/test/arm-stub.json`, `internal/run/run_test.go` (`const release` and the expected build string), and `internal/daemon/daemon_test.go`. Then run `make test` and `cd runner && node --test test/`. Before you touch a lane host, list each arm's id and release with `automaticum arm show <a> --json | grep -o '"sdk_release":"[^"]*"'`. A client's arms move only when the client chooses.
