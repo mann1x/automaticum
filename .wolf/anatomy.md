@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-04T11:00:00.892Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-05T11:00:00.709Z
 > Files: 502 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
@@ -8,8 +8,8 @@
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
 - `.gitleaks.toml` (~581 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~3256 tok)
-- `CLAUDE.md` — automaticum (~6395 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~3725 tok)
+- `CLAUDE.md` — automaticum (~6454 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
 - `LICENSE` — Project license (~3029 tok)
@@ -20,10 +20,10 @@
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~141322 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~142300 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~211 tok)
-- `score-history.jsonl` (~1860 tok)
+- `score-history.jsonl` (~1889 tok)
 
 ## .caliber/backups/2026-10-12T20-16-19-461Z/
 
@@ -35,13 +35,13 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~98081 tok)
+- `fingerprint.json` — Declares usage (~98174 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` (~18663 tok)
+- `current-session.jsonl` (~63670 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~95276 tok)
+- `roi-stats.json` (~96706 tok)
 - `state.json` (~41 tok)
 
 ## .claude/
@@ -61,7 +61,7 @@
 - `openwolf.md` — OpenWolf protocol (~207 tok)
 - `runner-protocol.md` — Runner protocol conventions (~1427 tok)
 - `spec-conventions.md` — Spec conventions (~375 tok)
-- `task-loader.md` — Task loader conventions (~1465 tok)
+- `task-loader.md` — Task loader conventions (~1580 tok)
 - `wire-arm.md` — Wire detector conventions (~452 tok)
 - `wolf-hooks.md` — Hook conventions (~250 tok)
 
@@ -83,7 +83,7 @@
 
 ## .claude/skills/learned-lane-host-deploy/
 
-- `SKILL.md` — Deploying a new automaticum build to a lane host (~1582 tok)
+- `SKILL.md` — Deploying a new automaticum build to a lane host (~2183 tok)
 
 ## .claude/skills/learned-new-host-install/
 
@@ -117,20 +117,20 @@
 
 - `campaign_cmds.go` (~1628 tok)
 - `cell_cmds.go` — exitCode: names (~3525 tok)
+- `check_cmds_test.go` — TestConfigCheck (~731 tok)
+- `check_cmds.go` — pin (71 fields) (~1834 tok)
 - `client_cmds.go` — client (114 fields); methods: Error (~10778 tok)
 - `cohort_cmds.go` (~1633 tok)
 - `compare_cmds.go` — Declares list (~4058 tok)
 - `config_cmds_test.go` — TestParseInterspersed, TestCellTasks, TestNoticeMatch (~593 tok)
 - `config_cmds.go` — place (153 fields) (~4205 tok)
-- `check_cmds.go` — task pin [--write] (D140), config check (D141) (~1900 tok)
-- `check_cmds_test.go` — TestConfigCheck on a copy of examples/config (~700 tok)
 - `control_cmds.go` (~2935 tok)
 - `detect_cmds_test.go` — TestDetectFailIf (~606 tok)
 - `detect_cmds.go` — failTest (90 fields) (~6605 tok)
 - `exit_test.go` — TestExitOf (~153 tok)
 - `export_cmds.go` — result (100 fields); methods: Error (~2565 tok)
 - `image_cmds.go` — built (65 fields) (~1334 tok)
-- `main.go` — Command automaticum is the command line of automaticum. (~4176 tok)
+- `main.go` — Command automaticum is the command line of automaticum. (~4283 tok)
 - `report_cmds_test.go` — TestWriteRunsCSV, TestPositionalAndFormat (~426 tok)
 - `report_cmds.go` — Declares and (~4829 tok)
 - `rescore_cmds.go` (~956 tok)
@@ -140,8 +140,8 @@
 - `store_nocgo.go` — go:build !cgo (~128 tok)
 - `stub_cmds.go` (~489 tok)
 - `suite_cmds.go` — plan (50 fields) (~1297 tok)
-- `timeline_cmds_test.go` — TestTimeline (~636 tok)
-- `timeline_cmds.go` — run timeline (070 §1.1); -requests adds the wire's model requests (first byte, time, endpoint meta, D139) (~1400 tok)
+- `timeline_cmds_test.go` — TestTimeline, TestTimelineRequests (~1115 tok)
+- `timeline_cmds.go` — timelineLine (44 fields) (~1500 tok)
 - `wait_cmds_test.go` — oldDaemon (23 fields); methods: ServeHTTP (~984 tok)
 - `wait_cmds.go` — waiter (139 fields) (~5130 tok)
 
@@ -163,21 +163,21 @@
 - `010-architecture.md` — 010 — Architecture (~1763 tok)
 - `020-run-record.md` — 020 — The run record, verdicts and the basis (~4126 tok)
 - `030-configuration.md` — 030 — Configuration (~4093 tok)
-- `040-runner.md` — 040 — The runner (~9106 tok)
-- `050-orchestration.md` — 050 — Orchestration: scheduling, gates, control (~6785 tok)
-- `060-tasks-and-suites.md` — 060 — Tasks, oracles and the suite interface (~2546 tok)
+- `040-runner.md` — 040 — The runner (~9344 tok)
+- `050-orchestration.md` — 050 — Orchestration: scheduling, gates, control (~6826 tok)
+- `060-tasks-and-suites.md` — 060 — Tasks, oracles and the suite interface (~2665 tok)
 - `061-suite-bfcl.md` — 061 — Suite: BFCL (Berkeley Function-Calling Leaderboard) (~551 tok)
 - `062-suite-swe-bench.md` — 062 — Suite: SWE-bench and SWE-bench-style sets (~610 tok)
 - `063-suite-multi-language.md` — 063 — Suite: our own multi-language agentic suite (~823 tok)
 - `064-engine-adapters.md` — 064 — Engine adapters: Cerebriline as the engine of an external harness (~1057 tok)
 - `065-cell-contract.md` — 065 — The cell contract and exports (~4254 tok)
 - `066-suite-terminal-bench.md` — 066 — Suite: Terminal-Bench 2.0 (`tbench2`) (~2335 tok)
-- `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~15819 tok)
+- `070-diagnostics.md` — 070 — Diagnostics: metrics, detectors, statistics (~16000 tok)
 - `080-store.md` — 080 — The store (~4525 tok)
-- `090-interfaces.md` — 090 — Interfaces (~5616 tok)
+- `090-interfaces.md` — 090 — Interfaces (~5954 tok)
 - `100-legacy-import.md` — 100 — Import of the old harness's corpus (~3426 tok)
 - `110-acceptance-and-roadmap.md` — 110 — Acceptance and roadmap (~8040 tok)
-- `decisions.md` — Decisions and open questions (~10826 tok)
+- `decisions.md` — Decisions and open questions (~11425 tok)
 
 ## docs/specs/archive/
 
@@ -201,6 +201,7 @@
 - `stub-sdk-4.100.266.toml` — The stub arm on SDK release 4.100.266, for the harness's own tests of that (~64 tok)
 - `stub-sdk-4.100.268.toml` — The stub arm on SDK release 4.100.268, for the harness's own tests of that (~73 tok)
 - `stub-sdk-4.100.269.toml` — The stub arm on SDK release 4.100.269, for the harness's own tests of that (~71 tok)
+- `stub-sdk-4.100.274.toml` — The stub arm on SDK release 4.100.274: sed, awk and grep refuse a binary or a file over 100 MB (~70 tok)
 - `stub-stop-sdk-4.100.258.toml` — The stub arm on SDK release 4.100.258 that ends a run at the first trip of (~66 tok)
 - `stub-stop-sdk-4.100.259.toml` — The stub arm on SDK release 4.100.259 that ends a run at the first trip of (~64 tok)
 - `stub.toml` — An arm for the stub model server: used by the harness's own tests and for (~99 tok)
@@ -298,8 +299,8 @@
 - `daemon.go` — is automaticumd without its main: the queue, one worker (~8683 tok)
 - `detect_test.go` — TestDetectRuns (~2187 tok)
 - `detect.go` — DetectLine (103 fields) (~5334 tok)
-- `export_test.go` — TestExport (~1366 tok)
-- `export.go` — ExportMeta (48 fields) (~1796 tok)
+- `export_test.go` — TestExport (~1659 tok)
+- `export.go` — ExportMeta (48 fields) (~1828 tok)
 - `guardwatch_test.go` — TestWatchGuard (~508 tok)
 - `guardwatch.go` (~543 tok)
 - `heartbeat.go` — Heartbeat (25 fields) (~863 tok)
@@ -368,7 +369,7 @@
 
 ## internal/ingest/
 
-- `analyse.go` — Interface: Blobs (34 methods) (~7583 tok)
+- `analyse.go` — Interface: Blobs (34 methods) (~7718 tok)
 - `answers_test.go` — TestWireAnswers (~705 tok)
 - `answers.go` (~698 tok)
 - `canary_test.go` — TestCanary (~680 tok)
@@ -381,7 +382,7 @@
 - `events.go` — turns a run's stored raw material into what is queried: (~9659 tok)
 - `held_test.go` — TestHeldStream (~1106 tok)
 - `held.go` — ReadSlots, HeldStreamOf (~757 tok)
-- `ingest_test.go` — TestNoticeLog, TestReadEvents, TestReadWire, TestCompareWireClean, TestCompareWire (~11693 tok)
+- `ingest_test.go` — TestNoticeLog, TestReadEvents, TestReadWire, TestReadWireTiming + 2 more (~11998 tok)
 - `integrity_test.go` — TestIntegrity, TestSwallowed (~1032 tok)
 - `integrity.go` — dir (25 fields) (~830 tok)
 - `openai_test.go` — TestOpenAIWire, TestOpenAIWireFromStub, TestOpenAIThinkingBudget, TestWireCalls (~2180 tok)
@@ -389,8 +390,8 @@
 - `oracle.go` — oracleBrief (29 fields) (~1325 tok)
 - `outcomes_test.go` — TestOutcomes (~566 tok)
 - `outcomes.go` — ToolOutcome (24 fields) (~715 tok)
-- `render_test.go` — TestRenderer (~628 tok)
-- `render.go` — Renderer (35 fields); methods: Turn, Line (~1056 tok)
+- `render_test.go` — TestRenderer (~681 tok)
+- `render.go` — Renderer (37 fields); methods: Turn, Line (~1108 tok)
 - `repguard_test.go` — TestRepetitionGuard (~793 tok)
 - `repguard.go` — GuardFire (50 fields) (~1640 tok)
 - `sample_test.go` — TestSample, TestDumpBlocks (~1010 tok)
@@ -400,7 +401,7 @@
 - `swallow.go` — tool (23 fields) (~860 tok)
 - `turns_test.go` — TestTurnMetrics, TestEditsWithoutCheck, TestErrorClass, TestRereadsAndCarried (~2052 tok)
 - `turns.go` — replay (63 fields) (~2690 tok)
-- `wire.go` — Request (132 fields) (~3892 tok)
+- `wire.go` — Request (131 fields) (~4028 tok)
 - `wirearm.go` — Deviation (96 fields) (~3732 tok)
 
 ## internal/legacyimport/
@@ -434,7 +435,7 @@
 - `protocol.go` — executes one run: an arm on a task, once, on a lane. It (~2108 tok)
 - `rescore_test.go` — TestRescoreVerdict, TestUntar (~936 tok)
 - `rescore.go` — Rescore, Redecide, Untar (~1013 tok)
-- `run_test.go` — fakeState (73 fields); methods: UpsertRun, AddBlobRefs, Put, Check (~8732 tok)
+- `run_test.go` — fakeState (72 fields); methods: UpsertRun, AddBlobRefs, Put, Check (~8912 tok)
 - `run.go` — Interface: Engine (6 methods) (~11009 tok)
 - `slots_test.go` — TestReadSlots (~615 tok)
 - `slots.go` — SlotSample (46 fields) (~1128 tok)
@@ -503,10 +504,10 @@
 ## internal/task/
 
 - `exec.go` — Interface: Executor (3 methods) (~5188 tok)
-- `pin.go` — LoadUnpinned, Locate, WritePins: pin a task's artefacts (task pin, D140) (~1100 tok)
-- `pin_test.go` — TestPin: empty, placeholder and missing sha256 (~800 tok)
+- `pin_test.go` — TestPin (~883 tok)
+- `pin.go` — LoadUnpinned, Locate, WritePins (~1152 tok)
 - `task_test.go` — TestLoadAll, TestLoadRejects, TestWorkspaceGit, TestHashChangesWithAnyFile + 4 more (~6959 tok)
-- `task.go` — loads tasks from the tasks directory, builds what they need, (~6068 tok)
+- `task.go` — loads tasks from the tasks directory, builds what they need, (~6185 tok)
 - `user_test.go` — TestUserScript (~1060 tok)
 - `user.go` — User (45 fields) (~2600 tok)
 
@@ -520,12 +521,12 @@
 - `guards.mjs` — Guard actions as the SDK announces them: a "notice" event whose metadata (~1320 tok)
 - `package.json` — Node.js package manifest (~103 tok)
 - `plan.mjs` — The extension's switch_to_act_mode tool, ported from Cline 4.100.250 and (~780 tok)
-- `PROTOCOL.md` — The runner: protocol 10 (receiving note, D138; wire first byte + endpoint_meta, D139) (~3300 tok)
-- `runner.mjs` — The runner: one agent session for one run, inside the lane's container. (~5823 tok)
+- `PROTOCOL.md` — The runner: protocol 10 (~3239 tok)
+- `runner.mjs` — The runner: one agent session for one run, inside the lane's container. (~5899 tok)
 - `session.mjs` — unsupported lists what an arm asks for that this runner cannot do. (~2876 tok)
 - `tools.mjs` — The runner's own tools (D113). In a lane layer on a task's own image the (~501 tok)
 - `user.mjs` — The scripted user (040 §6.2): the task's rules, played against the (~1979 tok)
-- `wire.mjs` — createWire: one JSON line per request (timing incl. first byte, endpoint_meta); onActivity ticks while bytes arrive (D138) (~2100 tok)
+- `wire.mjs` — createWire returns a fetch that appends one JSON line per request to (~2130 tok)
 
 ## runner/sdk/4.100.250/
 
@@ -581,6 +582,12 @@
 - `package.json` — Node.js package manifest (~64 tok)
 - `sdk.toml` — SDK release 4.100.269, from the registry: as 4.100.268, and the Ollama (~110 tok)
 
+## runner/sdk/4.100.274/
+
+- `package-lock.json` — npm lock file (~52537 tok)
+- `package.json` — Node.js package manifest (~64 tok)
+- `sdk.toml` — SDK release 4.100.274, from the registry: as 4.100.269, and sed, awk, grep and search_codebase refuse a binary or a file over 100 MB (~200 tok)
+
 ## runner/test/
 
 - `arm-stub.json` (~287 tok)
@@ -589,7 +596,7 @@
 - `session.test.mjs` — stub: reportOf (~2499 tok)
 - `tools.test.mjs` — Declares dir (~450 tok)
 - `user.test.mjs` — Declares categories (~2112 tok)
-- `wire.test.mjs` — Declares serve (~1352 tok)
+- `wire.test.mjs` — Declares serve (~2022 tok)
 
 ## spike/001-store/
 
@@ -894,7 +901,3 @@
 - `nested_defines.scm` — Declares x (~308 tok)
 - `oeis_sequences.scm` (~519 tok)
 - `oeis_sequences2.scm` (~631 tok)
-- `oeis_sequences3.scm` (~684 tok)
-- `recursive_structures.scm` (~799 tok)
-- `test_read.scm` (~24 tok)
-- `variadic_functions.scm` — Declares and (~650 tok)

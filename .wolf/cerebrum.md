@@ -19,6 +19,8 @@
 
 ## Key Learnings
 
+- 2026-11-05: the SDK (`@cerebriline/*`) is the owner's own fork, the cline monorepo beside this one; executors live in `sdk/packages/core/src/extensions/tools/executors/`. A fix goes there on `main` with a Vitest beside the source, then release per its `docs/protocols/BUILD-RELEASE-DEPLOY.md` (bump `apps/vscode/package.json`, `release-notes/<v>.md`, push main, cut `mann1x/full-build-release`, push tag `v<v>`: the tag publishes npm and the VSIX). Releasing is outward-facing: ask the owner first. Then pin here with the learned-new-sdk-release skill and check the detectors' ported guard code is unchanged (`git diff --stat v<old> v<new> -- sdk/packages`).
+
 - **A turn cut by the output or wall limit has no `content_end` (2026-11-03, bug-076):** the SDK streams text/reasoning as `content_start` deltas and closes with `content_end`; a cut turn never closes, and its retry (`max_tokens_turn_recovery`) is NOT streamed as events at all, only the wire capture holds it. `Events.Read` keeps open partials as `Block.Unfinished` (`scan.flush`). Any reader of the event stream must handle a block with no end. Wire-only answers are merged by `Events.WireAnswers` by time overlap (bug-077); an unfinished block ends at its last delta, not at its flush.
 
 - [2026-11-03] A tool call cut by the output limit has input "{}" in the event stream (the SDK drops what it cannot parse); its arguments exist only in the wire's streamed deltas, now Request.Calls. Detectors over call arguments must read the wire when captured.

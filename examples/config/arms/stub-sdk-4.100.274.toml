@@ -1,0 +1,7 @@
+# The stub arm on SDK release 4.100.274, for the harness's own tests of that
+# build: the first whose sed, awk and grep refuse a binary or a file over
+# 100 MB instead of reading it whole (the runner's heap, exit 134).
+extends = "stub"
+
+[harness]
+sdk_release = "4.100.274"

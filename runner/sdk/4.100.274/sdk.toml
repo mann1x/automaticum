@@ -1,0 +1,13 @@
+# SDK release 4.100.274, from the registry: as 4.100.269, and sed, awk, grep
+# and search_codebase refuse a binary or a file over 100 MB (read_files' own
+# limit) before reading it whole, instead of holding it in one string: a sed
+# `1,10p` on a task's 150 MB compiled test runner took the runner out of heap
+# (exit 134, ABORTED; Cerebriline f79269d469). 4.100.270 to 4.100.273 changed
+# the extension, the media tools and MCP sign-in. @cerebriline/agents and llms
+# are unchanged from 4.100.269, and so is the guard and struggle code the
+# detectors replay (RulesFor's Rules258 holds); the prompt templates gain only
+# a media tool's placeholder. The lockfile takes the AI SDK provider
+# packages' patch releases (the same 381 packages).
+version = "4.100.274"
+source = "registry"
+bundle_sha256 = "da8f7474d4d33167c432f9a823979505c54e2ebd0349dbe93011acccd94edad1"
