@@ -1,0 +1,16 @@
+# SDK release 4.100.275, packed from the SDK's repository at da478ecc8a (tag
+# v4.100.275) and not on the registry: the release's publish job did not run,
+# so the packages were built by hand with the publish recipe (Bun 1.4.2, Node
+# 24.21.0) and carry the prerelease version 4.100.275-gda478ecc8a, so they
+# never share a version with a later registry 4.100.275. As 4.100.274, with
+# every finding of the 2026-11-08 tool audit fixed: the delimiter scan offers
+# only an edit a real parser accepts (bug-082), and the editor, apply_patch,
+# read_files, grep, sed, awk, search_codebase, run_commands, the plan-mode
+# guard, the document readers, the team, task-progress, sdd and library
+# tools no longer report what they did not establish. The lockfile keeps the
+# same 382 packages and takes the AI SDK and AWS SDK packages' patch
+# releases.
+version = "4.100.275-gda478ecc8a"
+source = "local"
+commit = "da478ecc8a"
+bundle_sha256 = "4ac9a070e4cc5f32b9f140c300f36d87aae4a31b5f0898797fa52e7533a526dc"

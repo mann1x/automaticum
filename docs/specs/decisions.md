@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-11-05 (revision 46).
+**Status:** current as of 2026-11-08 (revision 47).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -207,6 +207,7 @@ Requests to the Cerebriline SDK (040 §8). The owner approved the work on
 | X11 | An SDK release whose session abort reaches the capped-thinking note, the retrospective and the compaction requests, and whose note and retrospective stop streaming once they repeat themselves or pass the length they are cut to (bug-045); asked 2026-10-29. | released in 4.100.268 (2026-10-29, Cerebriline 21938f7f52), checked in the bundle | until then a run stopped at its wall while such a request streams is killed by the harness after the grace (`TIMEOUT`, no runner `end`) |
 | X12 | An SDK release whose Ollama provider's first-use probes (`/api/show`, the reinjection `/api/chat` pair) take the run's signal, so an abort while one waits ends the turn, and whose model and account reads are bounded (bug-047); asked 2026-10-29. | released in 4.100.269 (2026-10-29, Cerebriline f8ce4b3c51), checked in the bundle | until then a run stopped at its wall while a probe waits is killed by the harness after the grace (`TIMEOUT`, no runner `end`) |
 | X13 | An SDK release whose `sed`, `awk`, `grep` and `search_codebase` refuse a binary, or a file over `read_files`' own 100 MB limit, before reading it whole; asked 2026-11-05 by a client after a `sed` of a task's 150,400,128-byte compiled test runner took the runner out of heap (exit 134). | released in 4.100.274 (2026-11-05, Cerebriline f79269d469), checked in the bundle | until then such a call ends the run `ABORTED` |
+| X14 | An SDK release whose tool results claim only what the tool established, after a client's model was told by the delimiter scan to delete a correct closing brace (bug-082): every finding of the 2026-11-08 tool audit fixed, each edit the scan offers proved by a real parser; asked 2026-11-08 by the owner. | released as 4.100.275 (2026-11-08, Cerebriline da478ecc8a); not on the registry, so pinned as the local build `4.100.275+da478ecc8a` from the release's packed packages, checked in the bundle. Its loop guard also drops a verdict on a call once the files the call names change on disk, which the call guard's replay (D129) does not model yet | until then the scan can name a correct bracket as the one to delete, and other tools report what they did not check |
 
 ## 5. Not adopted
 

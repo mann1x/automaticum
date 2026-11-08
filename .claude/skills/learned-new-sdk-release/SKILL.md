@@ -116,3 +116,21 @@ Once `sdk add` and `sdk verify` succeed for a release that fixes an SDK tool (se
 ## Changing the harness default to the new release
 
 Only do this when the owner says so, and record it as a D-row. Follow the default-release pattern in CALIBER_LEARNINGS.md: `base.toml`, the regenerated `runner/test/arm-stub.json`, `internal/run/run_test.go` (`const release` and the expected build string), and `internal/daemon/daemon_test.go`. Then run `make test` and `cd runner && node --test test/`. Before you touch a lane host, list each arm's id and release with `automaticum arm show <a> --json | grep -o '"sdk_release":"[^"]*"'`. A client's arms move only when the client chooses.
+
+## A release that is not on the registry: a local build from its packs
+
+Use this when the SDK owner sends the release's packed packages because the release's npm publish did not run (for example, Actions is disabled on the SDK repo).
+
+1. **Check the packs.** Run `sha256sum -c SHA256SUMS` in the packs directory. Read each package's version and its `@cerebriline/*` dependencies with `tar -xOzf <tgz> package/package.json`. The packs carry a prerelease version such as `4.100.275-g<commit>`, so they never share a version with a later registry release.
+2. **Copy the packs to a gitignored directory**, `docs/local/sdk-<release>/packs/`. Never put them in a tracked path or in /tmp.
+3. **Make the definition directory** `runner/sdk/<release>+<commit>/`. In its `package.json`, name only `@cerebriline/sdk` under `dependencies`, as `file:../packs/cerebriline-sdk-<ver>.tgz`. Point the other four packages (`shared`, `llms`, `agents`, `core`) at their own `.tgz` files with `file:../packs/...` entries under `overrides`. Without the overrides, npm resolves those four from the registry.
+4. **Make the lockfile in the Node image**, with no install scripts:
+   `docker run --rm -v "$PWD/<def>:/w/def" -v "$PWD/<packs>:/w/packs:ro" -w /w/def --user "$(id -u):$(id -g)" -e HOME=/tmp -e npm_config_cache=/tmp/npmcache <NodeImage from internal/sdk/sdk.go> npm install --package-lock-only --ignore-scripts --no-audit --no-fund`
+   Then compare its `packages` keys with the previous release's lockfile. The count should match, and only patch versions should differ.
+5. **Write `sdk.toml`** with a comment saying what the build is and why it is local, plus `version = "<release>-g<commit>"`, `source = "local"` and `commit = "<commit>"`. Leave out `bundle_sha256`: the first install writes it.
+6. **Install and verify** with a CLI built by `CGO_ENABLED=0 go build -o <tmp>/am ./cmd/automaticum` and the local installation's `AUTOMATICUM_CONFIG`:
+   `<tmp>/am sdk add -repo "$PWD" -packs "$PWD/docs/local/sdk-<release>/packs" <release>+<commit>`, then `<tmp>/am sdk verify -repo "$PWD" <release>+<commit>`. The add step writes the hash into `sdk.toml`, which you commit. The verify step must report "reproduced".
+7. **Check the bundle itself.** Grep `<data_root>/sdk/<name>/node_modules/@cerebriline/core/dist/index.js` for strings the fixes added. Then compare the sha256 of `agents`, `llms` and `shared` `dist/index.js` with the previous release's. If `agents` and `llms` are unchanged, the reasoning-loop and struggle code the detectors replay has not moved.
+8. **Check the guard code in the SDK repo**, read-only: `git diff --name-only <old commit> <new commit> -- sdk | grep -i -E 'struggle|guard|loop|repetit'`. For each changed file, check whether `internal/detect` (`callguard.go`, `guards258.go`, `struggle.go`) replays it. Record any behaviour the replay does not model yet in the release's X row. Do not change the detectors without the owner.
+9. **Add the stub arm.** Name the file `examples/config/arms/stub-sdk-<release>.toml`, without `+<commit>`, because arm names may not contain `+`. Give it `extends = "stub"` and `[harness] sdk_release = "<release>+<commit>"`. Validate it with `AUTOMATICUM_CONFIG=$PWD/examples/config <tmp>/am arm validate stub-sdk-<release>`.
+10. **Record it.** Add an X row in `docs/specs/decisions.md` and in the 040 external-dependency table, and bump both Status lines. List the new directory in the CLAUDE.md layout and in `.wolf/anatomy.md`. Run `make test`. Changing the default release (base.toml) is a separate owner decision.

@@ -1,0 +1,15 @@
+{
+  "name": "automaticum-runner",
+  "private": true,
+  "version": "0.1.0",
+  "description": "The SDK bundle of one build: what `automaticum sdk add` installs.",
+  "dependencies": {
+    "@cerebriline/sdk": "file:../packs/cerebriline-sdk-4.100.275-gda478ecc8a.tgz"
+  },
+  "overrides": {
+    "@cerebriline/shared": "file:../packs/cerebriline-shared-4.100.275-gda478ecc8a.tgz",
+    "@cerebriline/llms": "file:../packs/cerebriline-llms-4.100.275-gda478ecc8a.tgz",
+    "@cerebriline/agents": "file:../packs/cerebriline-agents-4.100.275-gda478ecc8a.tgz",
+    "@cerebriline/core": "file:../packs/cerebriline-core-4.100.275-gda478ecc8a.tgz"
+  }
+}

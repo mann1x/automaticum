@@ -1,0 +1,8 @@
+# The stub arm on SDK release 4.100.275, packed from its tag and not on the
+# registry, for the harness's own tests of that build: the first with every
+# finding of the 2026-11-08 tool audit fixed, where the delimiter scan offers
+# only an edit a real parser accepts.
+extends = "stub"
+
+[harness]
+sdk_release = "4.100.275+da478ecc8a"

@@ -1,6 +1,6 @@
 # 040 — The runner
 
-**Status:** draft 1.14, 2026-11-05. Facts about the SDK in this file were read
+**Status:** draft 1.15, 2026-11-08. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
 running it. The parity table in §6 was checked row by row by the Cerebriline
 session on 2026-10-13 against its main branch (release 4.100.249 plus requests
@@ -520,6 +520,7 @@ code, not from trying. Each request is tracked in `decisions.md` section 4.
 | X11 | Let the session's **abort** reach the capped-thinking note, the retrospective and the compaction requests, and stop a runaway note (bug-045). | **released in 4.100.268** (2026-10-29) |
 | X12 | Let the session's **abort** reach the Ollama provider's first-use **probes**, and bound the model and account reads (bug-047). | **released in 4.100.269** (2026-10-29) |
 | X13 | Let `sed`, `awk`, `grep` and `search_codebase` refuse a **binary** or a file over 100 MB before reading it whole, instead of taking the runner out of heap (exit 134, `ABORTED`). | **released in 4.100.274** (2026-11-05) |
+| X14 | Let every tool result claim only what the tool established: the 2026-11-08 tool audit's findings, the delimiter scan's edits proved by a real parser (bug-082). | **released as 4.100.275** (2026-11-08), pinned as the local build `4.100.275+da478ecc8a` |
 | X6 | Confirmation of the parity inventory in §6, row by row. | done on 2026-10-13 for §6: 11 rows confirmed, 2 corrected, 6 added. §6.1 and §6.2 not checked |
 
 `INVALID` depends on X1 to X3, which is why they come first. More requests are
