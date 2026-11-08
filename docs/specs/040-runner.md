@@ -54,8 +54,8 @@ The harness build is part of the arm and of the basis.
   Milestone 2 runs on release 4.100.250, which contains requests 1 to 3
   (§8.2).
   The five first real runs used release 4.100.250 (§8.2, 110 §3.1).
-  **Decided by the owner (2026-11-05):** the arm template's default release
-  is 4.100.274 (D142); an arm that names its own release keeps it.
+  **Decided by the owner (2026-11-08):** the arm template's default release
+  is 4.100.276 (D143; 4.100.274 from 2026-11-05, D142); an arm that names its own release keeps it.
 - **How the release is established:** see §3.1. A run's record holds a
   release only once it is established, never the one its arm merely names.
   The SDK's own build constant is not used: it carries another number than
@@ -520,7 +520,7 @@ code, not from trying. Each request is tracked in `decisions.md` section 4.
 | X11 | Let the session's **abort** reach the capped-thinking note, the retrospective and the compaction requests, and stop a runaway note (bug-045). | **released in 4.100.268** (2026-10-29) |
 | X12 | Let the session's **abort** reach the Ollama provider's first-use **probes**, and bound the model and account reads (bug-047). | **released in 4.100.269** (2026-10-29) |
 | X13 | Let `sed`, `awk`, `grep` and `search_codebase` refuse a **binary** or a file over 100 MB before reading it whole, instead of taking the runner out of heap (exit 134, `ABORTED`). | **released in 4.100.274** (2026-11-05) |
-| X14 | Let every tool result claim only what the tool established: the 2026-11-08 tool audit's findings, the delimiter scan's edits proved by a real parser (bug-082). | **released as 4.100.275** (2026-11-08), pinned as the local build `4.100.275+da478ecc8a` |
+| X14 | Let every tool result claim only what the tool established: the 2026-11-08 tool audit's findings, the delimiter scan's edits proved by a real parser (bug-082). | **released as 4.100.275** (2026-11-08), first pinned as the local build `4.100.275+da478ecc8a`; on the registry as **4.100.276** (2026-11-08), the default (D143) |
 | X6 | Confirmation of the parity inventory in §6, row by row. | done on 2026-10-13 for §6: 11 rows confirmed, 2 corrected, 6 added. §6.1 and §6.2 not checked |
 
 `INVALID` depends on X1 to X3, which is why they come first. More requests are

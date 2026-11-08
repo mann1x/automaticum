@@ -668,3 +668,13 @@
 ## examples/config/arms/ (addition)
 
 - `stub-sdk-4.100.275.toml` — stub arm on the 4.100.275 local build (~80 tok)
+
+## runner/sdk/4.100.276/
+
+- `sdk.toml` — registry release 4.100.276 (Cerebriline 07731ff6fd), bundle eb0aa5c0, the default (D143) (~200 tok)
+- `package.json` — @cerebriline/sdk 4.100.276 (~80 tok)
+- `package-lock.json` — 382 packages (~60000 tok)
+
+## examples/config/arms/ (addition)
+
+- `stub-sdk-4.100.276.toml` — stub arm on 4.100.276 (~80 tok)

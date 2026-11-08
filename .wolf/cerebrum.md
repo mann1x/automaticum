@@ -74,6 +74,8 @@
 
 ## Decision Log
 
+- 2026-11-08 (D143): the arm template's default SDK release is 4.100.276 (owner: "integrate .276 when ready", read as D142's "integrate" = harness default + host). Arms that state their own release keep it.
+
 The full list is in docs/specs/decisions.md; keep this log in step with it.
 
 - D1-D101 (10-12 to 10-23): Go on hosts, Node in lanes; Docker and TOML; DuckDB, Lance and blobs; automaticum never launches model servers.

@@ -1,0 +1,12 @@
+# SDK release 4.100.276, from the registry: as 4.100.275 (the 2026-11-08
+# tool audit fixed, X14), and the audit's last minor items: the agents'
+# compaction note, the write-nudge retraction, the memory near-duplicate
+# check, the Library check's wording and the credential masking (hex forms
+# too, and a description of which forms are masked). Nothing the detectors
+# replay changed: runtime/safety and @cerebriline/agents are as in
+# 4.100.275, so CallGuard275 and Rules258 hold. The first registry release
+# with the audit fixes: it supersedes the local build 4.100.275+da478ecc8a.
+# The lockfile has the same 382 packages as that build.
+version = "4.100.276"
+source = "registry"
+bundle_sha256 = "eb0aa5c025cc4530faee75ce08ae0ec212ff4e3f044d33a1f761e46441d315d1"

@@ -372,7 +372,7 @@ func TestStartRunsInOrder(t *testing.T) {
 		t.Fatalf("start: %+v", resp)
 	}
 	for _, id := range resp.RunIDs {
-		if v := g.waitFinished(id); v.Verdict != "PASS" || v.Batch != "k-once" || v.SDKRelease != "4.100.274" {
+		if v := g.waitFinished(id); v.Verdict != "PASS" || v.Batch != "k-once" || v.SDKRelease != "4.100.276" {
 			t.Fatalf("run: %+v", v)
 		}
 	}

@@ -1881,3 +1881,20 @@
 | 14:15 | blackswan-2: repo 30c6b1e->88c66d2, sdk add+verify 4.100.275+da478ecc8a under the build claim (bundle 4ac9a070 as pinned), stub arm in host config, stub smoke 20261108-131001-f2d7b7 PASS 3.0s; no daemon restart (NRestarts=0); claim released; mailed backup_models START #2207 / DONE #2208, acked ollama #2205. Follow-up: CallGuard replay (D129) for 4.100.275's file-stamp verdict reset | - | installed | ~2500 |
 | 14:11 | tick: no mail (backup_models has DONE #2208 for 4.100.275); blackswan-2 bc5cfd9 up 11h50m, NRestarts=0, idle, 0 queued (PASS 1 = my stub smoke); gpu0 100% = backup_models sft7c training (claimed) | - | nothing to do | ~200 |
 | 15:10 | owner 'fix the call-guard replay': detect library 9 — CallGuard275 (4.100.275 loop guard forgets a failure/refusal once the call's files are written; writes from writing-tool success or run_commands' changed-files note, ShellWrites), CallGuardFor, Options.CallRules from the run's release; releaseAtLeast reads local builds (bug-084: RulesFor read 4.100.275-g… as unknown); tests; 070 §3.2 library 9, X14; make test ok | internal/detect/callguard.go, guards258.go, detect.go, internal/ingest/detectors.go, tests, docs/specs | done | ~25000 |
+
+## Session: 2026-11-08 14:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-08 14:51
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-08 14:51
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:20 | built 73ca844 (library 9) and staged on blackswan-2 as bin/*.new (sha256 match); asked backup_models for a swap window (#2212); asked ollama to mail when 4.100.276 is cut (#2213); hourly tick will act on replies | - | waiting for window and .276 | ~800 |
+| 15:45 | ollama #2211: 4.100.276 on npm (07731ff6fd; N2/N5b/N6b/N7b/N8). Pinned runner/sdk/4.100.276 (bundle eb0aa5c0, verify reproduced; runtime/safety + agents unchanged from 275, CallGuard275/Rules258 hold), stub arm, D143 template default 4.100.276 (owner 'integrate .276', D142 reading), X14/040/CLAUDE.md, arm-stub.json regenerated (only sdk_release differs); make test ok | runner/sdk/4.100.276, examples/config/arms, runner/test/arm-stub.json, internal/run, internal/daemon tests, docs/specs | done | ~6000 |

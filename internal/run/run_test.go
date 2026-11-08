@@ -183,7 +183,7 @@ func (e *fakeEngine) Run(ctx context.Context, s docker.Spec, _ time.Duration, st
 	return docker.Result{ID: "oracle-1"}, nil
 }
 
-const release = "4.100.274"
+const release = "4.100.276"
 
 func endLine(outcome string, more string) string {
 	return fmt.Sprintf(`{"k":"end","outcome":%q,"agent_end":"completed","claimed_success":true,"sdk":{"release":%q,"package_sha256":"abc"},"read_back":"compared"%s}`+"\n", outcome, release, more)
@@ -376,7 +376,7 @@ func TestVerdicts(t *testing.T) {
 			fix(s)
 			io.WriteString(out, event+endLine(OutcomeCompleted, ""))
 			return docker.Result{}, nil
-		}, store.Invalid, "build 4.100.274 of the arm is 4.100.249"},
+		}, store.Invalid, "build 4.100.276 of the arm is 4.100.249"},
 		{"skipped: lane may not use the endpoint", func(w *world) { w.req.Arm.Endpoint = "elsewhere" }, nil, store.Skipped, "may not use"},
 		{"skipped: endpoint lacks the model", func(w *world) { w.req.Arm.Model.Model = "absent:1" }, nil, store.Skipped, "does not have model"},
 	}
