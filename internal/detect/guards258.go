@@ -31,25 +31,39 @@ const (
 // RulesFor is the reasoning-loop rule set of an SDK release: Rules258 for
 // 4.100.258 and later, Rules250 for an earlier or an unknown release.
 func RulesFor(release string) string {
+	if releaseAtLeast(release, 4, 100, 258) {
+		return Rules258
+	}
+	return Rules250
+}
+
+// releaseAtLeast says whether a release is the given one or later. A local
+// build's suffix is not part of the number: "4.100.275+da478ecc8a" (an
+// arm's name for it) and "4.100.275-gda478ecc8a" (the package's version)
+// are both 4.100.275. A release that is not a number is never later.
+func releaseAtLeast(release string, major, minor, patch int) bool {
+	if i := strings.IndexAny(release, "+-"); i >= 0 {
+		release = release[:i]
+	}
 	parts := strings.Split(release, ".")
 	if len(parts) != 3 {
-		return Rules250
+		return false
 	}
 	n := make([]int, 3)
 	for i, p := range parts {
 		v, err := strconv.Atoi(p)
 		if err != nil {
-			return Rules250
+			return false
 		}
 		n[i] = v
 	}
-	switch {
-	case n[0] > 4 || (n[0] == 4 && n[1] > 100):
-		return Rules258
-	case n[0] == 4 && n[1] == 100 && n[2] >= 258:
-		return Rules258
+	want := []int{major, minor, patch}
+	for i := range n {
+		if n[i] != want[i] {
+			return n[i] > want[i]
+		}
 	}
-	return Rules250
+	return true
 }
 
 var lineNumber = regexp.MustCompile(`^\d+\s*\|\s?`)

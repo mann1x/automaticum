@@ -167,7 +167,7 @@ func SelfTest() (results []ControlResult, ok bool) {
 		{"the same read giving the same result", reread, []string{RepeatedCallResult}},
 		{"reads of different files", healthy, nil}} {
 		got := map[string]bool{}
-		for _, f := range CallGuard(c.calls, nil) {
+		for _, f := range CallGuard(c.calls, nil, "") {
 			if f.Rule == "same_result" {
 				got[RepeatedCallResult] = true
 			} else {

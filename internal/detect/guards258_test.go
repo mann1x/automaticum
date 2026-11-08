@@ -70,7 +70,9 @@ func TestReasoningLoop258(t *testing.T) {
 
 func TestRulesFor(t *testing.T) {
 	for in, want := range map[string]string{"4.100.251": Rules250, "4.100.257": Rules250, "4.100.258": Rules258, "4.100.269": Rules258,
-		"4.101.0": Rules258, "5.0.0": Rules258, "": Rules250, "dev": Rules250} {
+		"4.101.0": Rules258, "5.0.0": Rules258, "": Rules250, "dev": Rules250,
+		// A local build, by its arm name and by its package version.
+		"4.100.275+da478ecc8a": Rules258, "4.100.275-gda478ecc8a": Rules258, "4.100.257+abc": Rules250} {
 		if got := RulesFor(in); got != want {
 			t.Errorf("RulesFor(%q) = %s, want %s", in, got, want)
 		}

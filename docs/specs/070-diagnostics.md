@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.34, 2026-11-04.
+**Status:** draft 0.35, 2026-11-08.
 
 ## 1. The rule: no custom script
 
@@ -367,6 +367,21 @@ detector always reads with the release's defaults, so that runs compare.
   runaway size of 10,000 characters given explicitly (6 short-unit, 1
   letter-run, 363 sentence and 529 runaway firings). Criterion 8 of 110 §1
   is met for the detectors the requirements define.
+- **Library version 9 (2026-11-08).** The call guard of @cerebriline/core
+  4.100.275 (`CallGuard275`; `detect.CallGuardFor` the run's SDK build,
+  4.100.269 to 4.100.274 keep `CallGuard269`): a failure or a refusal is a
+  verdict on the files the call names as they were then, and once they are
+  written by anything the same call is judged afresh: its failures and
+  refusals are forgotten, its run of equal results is kept. The replay
+  knows a write from the record: a writing tool's success on the file, or
+  `run_commands`' note that the command changed or deleted it
+  (`detect.ShellWrites`, "NOTE: this command changed N files you had
+  read:" then one "  - <file>" line each). Files are compared lower-cased,
+  with slashes, relative to the workspace. A write the record does not
+  show (a command changing a file the model had not read) is not seen.
+  A local build's release is read by its number: `4.100.275+da478ecc8a`
+  and `4.100.275-gda478ecc8a` are 4.100.275, for this and for
+  `detect.RulesFor`, which read such a release as unknown before.
 - **Library version 4 (2026-11-02).** The swallowed-argument detector
   (D131, §4) and its two controls.
 - **Library version 3 (2026-11-01).** The SDK's call guard is replayed

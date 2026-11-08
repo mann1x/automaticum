@@ -1858,3 +1858,26 @@
 | 12:11 | mail #2199 ollama: sent the full text of bash m1-m7 and document minors d1-d8 (#2200), from the audit agents' reports; FINDINGS.md expanded. blackswan-2 bc5cfd9 up 9h50m, NRestarts=0, idle, 0 queued; gpu1 95% = backup_models' bm-889 probe (exclusive claim) | docs/local/sdk-audit-2026-11-08/FINDINGS.md | replied | ~3000 |
 | 13:11 | tick: no mail (SDK release held; ollama has the m1-m7/d1-d8 text); blackswan-2 bc5cfd9 up 10h50m, NRestarts=0, idle, 0 queued; gpu0 100% = backup_models' sft7c 200-step training (exclusive claim) | - | nothing to do | ~200 |
 | 14:30 | ollama #2202/#2204/#2205: 4.100.275 released (da478ecc8a, all FINDINGS fixed), not on npm; sent N2/N4/N7/N8 text (#2206). Pinned local build runner/sdk/4.100.275+da478ecc8a (packs kept in docs/local/sdk-4.100.275, bundle 4ac9a070, sdk verify reproduced), stub arm stub-sdk-4.100.275 (baf642b9a051), X14 in 040/decisions; core loop guard now forgets verdicts when named files change (CallGuard replay D129 does not model it yet); make test ok | runner/sdk/4.100.275+da478ecc8a, examples/config/arms/stub-sdk-4.100.275.toml, docs/specs, CLAUDE.md | pinned | ~6000 |
+
+## Session: 2026-11-08 14:05
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-08 14:05
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-08 14:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-08 14:07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 14:15 | blackswan-2: repo 30c6b1e->88c66d2, sdk add+verify 4.100.275+da478ecc8a under the build claim (bundle 4ac9a070 as pinned), stub arm in host config, stub smoke 20261108-131001-f2d7b7 PASS 3.0s; no daemon restart (NRestarts=0); claim released; mailed backup_models START #2207 / DONE #2208, acked ollama #2205. Follow-up: CallGuard replay (D129) for 4.100.275's file-stamp verdict reset | - | installed | ~2500 |
+| 14:11 | tick: no mail (backup_models has DONE #2208 for 4.100.275); blackswan-2 bc5cfd9 up 11h50m, NRestarts=0, idle, 0 queued (PASS 1 = my stub smoke); gpu0 100% = backup_models sft7c training (claimed) | - | nothing to do | ~200 |
+| 15:10 | owner 'fix the call-guard replay': detect library 9 — CallGuard275 (4.100.275 loop guard forgets a failure/refusal once the call's files are written; writes from writing-tool success or run_commands' changed-files note, ShellWrites), CallGuardFor, Options.CallRules from the run's release; releaseAtLeast reads local builds (bug-084: RulesFor read 4.100.275-g… as unknown); tests; 070 §3.2 library 9, X14; make test ok | internal/detect/callguard.go, guards258.go, detect.go, internal/ingest/detectors.go, tests, docs/specs | done | ~25000 |

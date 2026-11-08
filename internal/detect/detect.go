@@ -14,7 +14,7 @@ import (
 
 // Version is the version of the library's definitions. It changes when any
 // detector's answer on some input changes, and findings are then recomputed.
-const Version = "8"
+const Version = "9"
 
 // The detectors, by name.
 const (
@@ -64,6 +64,9 @@ type Options struct {
 	// of Rules258 passes over when the repetition is already in it.
 	Rules string
 	Given string
+	// CallRules is the call guard's rule set (CallGuardFor the run's SDK
+	// release); empty is CallGuard269.
+	CallRules string
 }
 
 // The two ways of matching; every finding says which one made it.

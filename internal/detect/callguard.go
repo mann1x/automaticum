@@ -1,6 +1,8 @@
 package detect
 
 import (
+	"encoding/json"
+	"fmt"
 	"regexp"
 	"strings"
 )
@@ -32,6 +34,30 @@ const (
 	SameResultSoft = 3 // results in a row, the next call included
 	SameResultHard = 6 // the same, for a writing tool
 )
+
+// The call guard's rule sets. CallGuard269 is the guard described above,
+// as @cerebriline/core 4.100.269 to 4.100.274 hold it. From 4.100.275
+// (CallGuard275) a failure or a refusal is a verdict on the files the call
+// names as they were then: the guard keeps their size and modification
+// time, and when the same call comes again after they changed, by any
+// write at all, its failures and refusals are forgotten and it is judged
+// afresh. Its run of equal results is kept. After the run the files are
+// gone, so a write is known from the record: a writing tool's success on
+// the file, or run_commands saying it changed or deleted the file
+// (ShellWrites). A write the record does not show -- a command that
+// changed a file the model had not read -- is not seen here either.
+const (
+	CallGuard269 = "call-guard-269"
+	CallGuard275 = "call-guard-275"
+)
+
+// CallGuardFor is the call guard's rule set of an SDK release.
+func CallGuardFor(release string) string {
+	if releaseAtLeast(release, 4, 100, 275) {
+		return CallGuard275
+	}
+	return CallGuard269
+}
 
 // The detectors of the call guard, and the two views of 070 §3 they give
 // (D129): edit oscillation is the guard's firings on writing tools (the
@@ -78,13 +104,34 @@ type callState struct {
 	lastResult string
 	repeats    int
 	paths      []string
+	// stamp is what the call's files were when it last failed or was
+	// refused, under CallGuard275: their write counts.
+	stamp   string
+	stamped bool
 }
 
-// CallGuard replays the guard over a run's calls. forks are the indexes of
-// the calls that came first after each fork of the session.
-func CallGuard(calls []Call, forks []int) []GuardFiring {
+// CallGuard replays the guard over a run's calls with a rule set
+// (CallGuardFor the run's release; empty is CallGuard269). forks are the
+// indexes of the calls that came first after each fork of the session.
+func CallGuard(calls []Call, forks []int, rules string) []GuardFiring {
 	var out []GuardFiring
 	state := map[string]*callState{}
+	stamps := rules == CallGuard275
+	// How many writes each file has had: a stamp's size and time stand
+	// for the writes before it.
+	writes := map[string]int{}
+	stampOf := func(paths []string) string {
+		var b strings.Builder
+		for _, p := range paths {
+			fmt.Fprintf(&b, "%s=%d\x00", stampPath(p), writes[stampPath(p)])
+		}
+		return b.String()
+	}
+	wrote := func(paths []string) {
+		for _, p := range paths {
+			writes[stampPath(p)]++
+		}
+	}
 	forkAt := map[int]bool{}
 	for _, f := range forks {
 		forkAt[f] = true
@@ -98,6 +145,9 @@ func CallGuard(calls []Call, forks []int) []GuardFiring {
 			turn, seen = c.Turn, map[string]bool{}
 		}
 		if unwatched[c.Tool] {
+			if stamps && c.Tool == "run_commands" {
+				wrote(ShellWrites(c.Result))
+			}
 			continue
 		}
 		key := c.Tool + ":" + c.Input
@@ -109,6 +159,9 @@ func CallGuard(calls []Call, forks []int) []GuardFiring {
 		if s == nil {
 			s = &callState{paths: c.Paths}
 			state[key] = s
+		}
+		if stamps && s.stamped && stampOf(c.Paths) != s.stamp {
+			s.failed, s.refused, s.strikes, s.stamped = 0, false, 0, false
 		}
 		fire := func(rule, kind string, n int) {
 			out = append(out, GuardFiring{Index: i, Turn: c.Turn, Tool: c.Tool, Input: cut(c.Input), Rule: rule, Kind: kind, Count: n})
@@ -142,8 +195,9 @@ func CallGuard(calls []Call, forks []int) []GuardFiring {
 		s.lastResult = sig
 		switch {
 		case !c.Failed:
-			s.failed, s.refused, s.strikes = 0, false, 0
+			s.failed, s.refused, s.strikes, s.stamped = 0, false, 0, false
 			if WritingTools[c.Tool] {
+				wrote(c.Paths)
 				for k, o := range state {
 					if k != key && overlap(o.paths, c.Paths) {
 						o.failed, o.refused, o.strikes = 0, false, 0
@@ -154,6 +208,70 @@ func CallGuard(calls []Call, forks []int) []GuardFiring {
 			s.refused = true
 		default:
 			s.failed++
+		}
+		if stamps && c.Failed && len(c.Paths) > 0 {
+			s.stamp, s.stamped = stampOf(c.Paths), true
+		}
+	}
+	return out
+}
+
+// stampPath is a file as both a call and run_commands' note can name it:
+// lower-cased, with slashes, relative to the workspace. The note names
+// files as the SDK resolved them, the call as the model wrote them.
+func stampPath(p string) string {
+	p = strings.ToLower(strings.ReplaceAll(p, `\`, "/"))
+	p = strings.TrimPrefix(p, "/workspace/")
+	for strings.HasPrefix(p, "./") {
+		p = p[2:]
+	}
+	return p
+}
+
+// ShellWrites are the files a run_commands result says the command changed
+// or deleted: the note the SDK adds after a command, "NOTE: this command
+// changed 2 files you had read:" (or "... were changed while this command
+// ran -- by it, or by another command running at the same time:"), then one
+// "  - <file>" line per file. The result is the tool's output as recorded,
+// JSON or text.
+func ShellWrites(result string) []string {
+	var texts []string
+	var v any
+	if json.Unmarshal([]byte(result), &v) == nil {
+		texts = jsonStrings(v, texts)
+	} else {
+		texts = []string{result}
+	}
+	var out []string
+	for _, text := range texts {
+		listing := false
+		for _, line := range strings.Split(text, "\n") {
+			switch {
+			case strings.HasPrefix(line, "NOTE: ") && strings.HasSuffix(line, ":") &&
+				(strings.Contains(line, " changed ") || strings.Contains(line, " deleted ")):
+				listing = true
+			case listing && strings.HasPrefix(line, "  - "):
+				out = append(out, strings.TrimPrefix(line, "  - "))
+			default:
+				listing = false
+			}
+		}
+	}
+	return out
+}
+
+// jsonStrings are the strings in a JSON value, appended to out.
+func jsonStrings(v any, out []string) []string {
+	switch x := v.(type) {
+	case string:
+		out = append(out, x)
+	case []any:
+		for _, e := range x {
+			out = jsonStrings(e, out)
+		}
+	case map[string]any:
+		for _, e := range x {
+			out = jsonStrings(e, out)
 		}
 	}
 	return out

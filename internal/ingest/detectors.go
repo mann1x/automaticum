@@ -25,7 +25,7 @@ type Firing struct {
 }
 
 // DetectOptions are the detector options a run is read with: the
-// reasoning-loop rules of its SDK build, and its task's prompt as the
+// reasoning-loop and call-guard rules of its SDK build, and its task's prompt as the
 // start of what the model was given.
 func DetectOptions(r *store.Run) detect.Options {
 	var task struct {
@@ -34,7 +34,7 @@ func DetectOptions(r *store.Run) detect.Options {
 		} `json:"task"`
 	}
 	json.Unmarshal(r.Provenance, &task)
-	return detect.Options{Rules: detect.RulesFor(r.Harness), Given: task.Task.Prompt}
+	return detect.Options{Rules: detect.RulesFor(r.Harness), CallRules: detect.CallGuardFor(r.Harness), Given: task.Task.Prompt}
 }
 
 // BlockOptions are the options for one of a run's blocks.
@@ -189,7 +189,7 @@ func detectorRun(runID string, ev *Events, opt detect.Options) ([]store.Finding,
 	}
 	// The SDK's call guard replayed (070 §3.2), and the two views of it
 	// that 070 §3 names (D129).
-	firings := detect.CallGuard(ev.Calls, ev.ForkCalls)
+	firings := detect.CallGuard(ev.Calls, ev.ForkCalls, opt.CallRules)
 	views := map[string][]detect.GuardFiring{}
 	for _, f := range firings {
 		turns.add("loop_detection", f.Turn)

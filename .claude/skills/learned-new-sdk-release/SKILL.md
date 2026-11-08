@@ -134,3 +134,23 @@ Use this when the SDK owner sends the release's packed packages because the rele
 8. **Check the guard code in the SDK repo**, read-only: `git diff --name-only <old commit> <new commit> -- sdk | grep -i -E 'struggle|guard|loop|repetit'`. For each changed file, check whether `internal/detect` (`callguard.go`, `guards258.go`, `struggle.go`) replays it. Record any behaviour the replay does not model yet in the release's X row. Do not change the detectors without the owner.
 9. **Add the stub arm.** Name the file `examples/config/arms/stub-sdk-<release>.toml`, without `+<commit>`, because arm names may not contain `+`. Give it `extends = "stub"` and `[harness] sdk_release = "<release>+<commit>"`. Validate it with `AUTOMATICUM_CONFIG=$PWD/examples/config <tmp>/am arm validate stub-sdk-<release>`.
 10. **Record it.** Add an X row in `docs/specs/decisions.md` and in the 040 external-dependency table, and bump both Status lines. List the new directory in the CLAUDE.md layout and in `.wolf/anatomy.md`. Run `make test`. Changing the default release (base.toml) is a separate owner decision.
+
+## Installing a pinned build on a running lane host
+
+Use this after the build is pinned and committed in the repo (for example a local build `<release>+<commit>`). It needs no binary swap and no daemon restart, so the lane-host deploy skill is not needed. `<root>` is the installation directory on the host. Never write the host's private name or paths in tracked files.
+
+1. `claude-hooks-res status`, then `claude-hooks-res acquire <host>/build:exclusive -r "<why>" --ttl 2h`. Check `automaticum status` on the host: nothing running or queued on the lane you will use. Leave a client's GPU work alone.
+2. Mail the client START. Say what you install, that there is no restart and the GPUs are untouched, that the arm template's default does not move, and any analysis caveats (for example a guard change the replay does not model yet).
+3. Copy the packed `.tgz` files and `SHA256SUMS` to `<root>/work/sdk-<release>/packs/` and run `sha256sum -c SHA256SUMS` there.
+4. `git -C <root>/repo fetch -q origin && git -C <root>/repo merge --ff-only -q origin/main`.
+5. With `AUTOMATICUM_CONFIG=<root>/config`, run `automaticum sdk add -repo <root>/repo -packs <packs> <build>`. Expect "the bundle is the one its definition pins". Then run `automaticum sdk verify -repo <root>/repo <build>` and expect "is reproduced: installed again with no network". The flags take a single dash.
+6. Copy `<root>/repo/examples/config/arms/stub-sdk-<release>.toml` into `<root>/config/arms/` (the host's config is its own copy) and run `automaticum arm validate stub-sdk-<release>`.
+7. Stub smoke run:
+   - The port must be free: `curl -s -m 3 http://<docker-bridge>:7412/api/version` must fail. Abort if it answers.
+   - `nohup automaticum stub serve -listen <docker-bridge>:7412 -script stub/fix-answer.json > stub-smoke.log 2>&1 & echo $! > stub.pid`, then check `/api/version`.
+   - `automaticum run start --arm stub-sdk-<release> --task demo/answer`. The batch line comes first, so take the run id with `grep -v batch | grep -oE '^[0-9]{8}-[0-9]{6}-[0-9a-f]{6}'`.
+   - `timeout 300 automaticum wait run <id>` must return 0. In `automaticum run show <id>`, check that the verdict is PASS and that `SDK release` is the package version (`<release>-g<commit>`).
+   - Stop the stub only after the wait returns, then check that its pid is gone.
+8. Run `systemctl show automaticumd -p NRestarts -p ActiveState`. It should show the same restart count and `active`. Release the claim (`claude-hooks-res release --claim <id>`).
+9. Mail the client DONE with the run id, the bundle hash, and the facts that there was no restart and nothing is queued. Tell them how to adopt the build: `[harness] sdk_release = "<build>"` in an arm. Arm ids change, so runs on the new build do not pool with older ones. Moving client arms or the template default is the client's or the owner's call, never yours.
+10. Log a row in `.wolf/memory.md` using neutral host names.
