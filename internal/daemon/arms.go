@@ -9,12 +9,13 @@ import (
 	"github.com/mann1x/automaticum/internal/store"
 )
 
-// runArm is what a run's arm says of itself: its id, model tag and
-// endpoint, or why it cannot be read.
+// runArm is what a run's arm says of itself: its id, model tag, endpoint
+// and SDK release, or why it cannot be read.
 type runArm struct {
 	ID       string
 	Model    string
 	Endpoint string
+	SDK      string
 	Problem  string
 }
 
@@ -42,7 +43,7 @@ func (d *Daemon) queuedArm(it store.QueueItem, c armCache) runArm {
 	if arm, _, err := d.armFor(it.Batch, it.Arm); err != nil {
 		a.Problem, _, _ = strings.Cut(err.Error(), "\n")
 	} else {
-		a = runArm{ID: arm.ID, Model: arm.Model.Model, Endpoint: arm.Endpoint}
+		a = runArm{ID: arm.ID, Model: arm.Model.Model, Endpoint: arm.Endpoint, SDK: arm.Harness.SDKRelease}
 	}
 	c[key] = a
 	return a
@@ -52,7 +53,7 @@ func (d *Daemon) queuedArm(it store.QueueItem, c armCache) runArm {
 func (d *Daemon) queuedArmView(it store.QueueItem, c armCache) RunView {
 	v := d.queuedView(it)
 	a := d.queuedArm(it, c)
-	v.ArmID, v.Model, v.Endpoint = a.ID, a.Model, a.Endpoint
+	v.ArmID, v.Model, v.Endpoint, v.SDKRelease = a.ID, a.Model, a.Endpoint, a.SDK
 	return v
 }
 
@@ -64,6 +65,7 @@ type ArmActivity struct {
 	ArmID    string `json:"arm_id,omitempty"`
 	Model    string `json:"model,omitempty"`
 	Endpoint string `json:"endpoint,omitempty"`
+	SDK      string `json:"sdk_release,omitempty"`
 	// Problem is why the arm cannot be read now; its queued runs will be
 	// skipped when they start unless it is fixed.
 	Problem string `json:"problem,omitempty"`
@@ -95,7 +97,7 @@ func (d *Daemon) handleArms(w http.ResponseWriter, r *http.Request) {
 		key := it.Arm + "\x00" + a.ID
 		e := by[key]
 		if e == nil {
-			e = &ArmActivity{Arm: it.Arm, ArmID: a.ID, Model: a.Model, Endpoint: a.Endpoint, Problem: a.Problem, Since: it.EnqueuedAt}
+			e = &ArmActivity{Arm: it.Arm, ArmID: a.ID, Model: a.Model, Endpoint: a.Endpoint, SDK: a.SDK, Problem: a.Problem, Since: it.EnqueuedAt}
 			by[key], batches[key] = e, map[string]bool{}
 		}
 		if it.EnqueuedAt.Before(e.Since) {

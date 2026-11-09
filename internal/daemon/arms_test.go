@@ -36,7 +36,7 @@ func TestActiveArms(t *testing.T) {
 			t.Errorf("%s: %d, %d runs, want %d", q, code, len(list), want)
 		}
 	}
-	if code, list := count("arm_id=" + started.ArmID + "&state=running"); len(list) != 1 || list[0].ID != first || list[0].ArmID != started.ArmID || list[0].Model != "stub:latest" {
+	if code, list := count("arm_id=" + started.ArmID + "&state=running"); len(list) != 1 || list[0].ID != first || list[0].ArmID != started.ArmID || list[0].Model != "stub:latest" || list[0].SDKRelease == "" {
 		t.Errorf("the running run: %d %+v", code, list)
 	}
 	if code := g.call("GET", "/v1/runs?state=done", nil, nil); code != 400 {
@@ -45,7 +45,7 @@ func TestActiveArms(t *testing.T) {
 
 	var arms []ArmActivity
 	g.call("GET", "/v1/arms", nil, &arms)
-	if len(arms) != 1 || arms[0].Arm != "act" || arms[0].ArmID != started.ArmID || arms[0].Running != 1 || arms[0].Queued != 2 ||
+	if len(arms) != 1 || arms[0].Arm != "act" || arms[0].ArmID != started.ArmID || arms[0].Running != 1 || arms[0].Queued != 2 || arms[0].SDK == "" ||
 		!slices.Equal(arms[0].Lanes, []string{"lane-1"}) || !slices.Equal(arms[0].RunningRuns, []string{first}) || len(arms[0].Batches) != 1 {
 		t.Fatalf("active arms: %+v", arms)
 	}

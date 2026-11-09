@@ -709,7 +709,7 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 	}
 	armID = arm.ID
 	f.mu.Lock()
-	f.armed = runArm{ID: arm.ID, Model: arm.Model.Model, Endpoint: arm.Endpoint}
+	f.armed = runArm{ID: arm.ID, Model: arm.Model.Model, Endpoint: arm.Endpoint, SDK: arm.Harness.SDKRelease}
 	f.mu.Unlock()
 	tk, err := task.Find(d.taskRoots(), it.Task)
 	if err != nil {

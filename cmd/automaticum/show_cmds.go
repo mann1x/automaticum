@@ -334,7 +334,7 @@ func mergeArms(files []armRow, acts []daemon.ArmActivity, only bool) []armRow {
 	for _, x := range acts {
 		i, ok := at[x.Arm+"\x00"+x.ArmID]
 		if !ok {
-			r := armRow{Name: x.Arm, ID: x.ArmID, Model: x.Model, Endpoint: x.Endpoint, Problem: x.Problem}
+			r := armRow{Name: x.Arm, ID: x.ArmID, Model: x.Model, Endpoint: x.Endpoint, SDK: x.SDK, Problem: x.Problem}
 			if r.Problem == "" && !only {
 				r.Problem = "not the arm its file says now"
 			}
