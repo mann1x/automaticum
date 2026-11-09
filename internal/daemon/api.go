@@ -233,7 +233,7 @@ type ReanalyseRequest struct {
 	// detectors' findings only.
 	Imported bool `json:"imported,omitempty"`
 	// Where narrows the runs by their fields: "key=value" joined by commas
-	// (suite, task, arm_id, model, verdict, lane, batch, since, until).
+	// (suite, task, arm, arm_id, model, verdict, lane, batch, since, until).
 	Where string `json:"where,omitempty"`
 	// Detector names one detector: every run is analysed whole, as always,
 	// and the answer says, for each run, how that detector's firings
@@ -887,7 +887,7 @@ const maxRunList = 10000
 func (d *Daemon) handleRuns(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	q := r.URL.Query()
-	f := store.RunFilter{Suite: q.Get("suite"), TaskID: q.Get("task"), ArmID: q.Get("arm_id"), Model: q.Get("model"), Batch: q.Get("batch"), Lane: q.Get("lane"), Verdict: store.Verdict(strings.ToUpper(q.Get("verdict")))}
+	f := store.RunFilter{Suite: q.Get("suite"), TaskID: q.Get("task"), ArmID: q.Get("arm_id"), ArmName: q.Get("arm"), Model: q.Get("model"), Batch: q.Get("batch"), Lane: q.Get("lane"), Verdict: store.Verdict(strings.ToUpper(q.Get("verdict")))}
 	// A task is named as everywhere else, "suite/task"; the store keeps
 	// the two apart. A bare task id still matches it in every suite.
 	if suite, id, ok := strings.Cut(f.TaskID, "/"); ok {
@@ -943,7 +943,7 @@ func (d *Daemon) handleRuns(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			v := d.queuedArmView(it, arms)
-			if f.ArmID != "" && v.ArmID != f.ArmID || f.Model != "" && v.Model != f.Model || state != "" && v.State != state {
+			if f.ArmID != "" && v.ArmID != f.ArmID || f.ArmName != "" && v.Arm != f.ArmName || f.Model != "" && v.Model != f.Model || state != "" && v.State != state {
 				continue
 			}
 			out = append(out, v)
@@ -1225,6 +1225,8 @@ func whereFilter(where string) (store.RunFilter, error) {
 			}
 		case "arm_id":
 			f.ArmID = v
+		case "arm":
+			f.ArmName = v
 		case "model":
 			f.Model = v
 		case "verdict":
@@ -1249,7 +1251,7 @@ func whereFilter(where string) (store.RunFilter, error) {
 				f.Until = t
 			}
 		default:
-			return f, fmt.Errorf("--where: there is no field %q; there are suite, task, arm_id, model, verdict, lane, batch, since, until", k)
+			return f, fmt.Errorf("--where: there is no field %q; there are suite, task, arm, arm_id, model, verdict, lane, batch, since, until", k)
 		}
 	}
 	return f, nil

@@ -375,6 +375,7 @@ func runLs(ctx context.Context, args []string) error {
 	arm := fs.String("arm", "", "only this arm, as its file in the checkout is now: runs of an earlier version of it are another arm; a queued run is of the arm it would start with now, a running one of the arm it started with")
 	state := fs.String("state", "", "only runs in this state: queued, running or finished")
 	armID := fs.String("arm-id", "", "only the arm with this id (in full, as arm show prints it)")
+	armName := fs.String("arm-name", "", "only runs started with the arm of this name, whatever its content: every version of it, and never another arm that resolves alike (those share an id)")
 	imported := fs.Bool("imported", false, "only runs imported from the old harness")
 	limit := fs.Int("limit", 30, "how many")
 	parse(fs, args)
@@ -392,7 +393,7 @@ func runLs(ctx context.Context, args []string) error {
 		}
 		*armID = a.ID
 	}
-	for k, v := range map[string]string{"batch": *batch, "verdict": *verdict, "task": *taskID, "suite": *suite, "model": *model, "arm_id": *armID, "state": *state} {
+	for k, v := range map[string]string{"batch": *batch, "verdict": *verdict, "task": *taskID, "suite": *suite, "model": *model, "arm_id": *armID, "arm": *armName, "state": *state} {
 		if v != "" {
 			q.Set(k, v)
 		}
@@ -884,7 +885,7 @@ func reanalyse(ctx context.Context, args []string) error {
 	fs.StringVar(&req.Run, "run", "", "one run")
 	fs.StringVar(&req.Batch, "batch", "", "the runs of one batch")
 	fs.BoolVar(&req.Imported, "imported", false, "also the imported runs, which get the detectors' findings only")
-	fs.StringVar(&req.Where, "where", "", "only runs whose fields match: key=value,... (suite, task, arm_id, model, verdict, lane, batch, since, until)")
+	fs.StringVar(&req.Where, "where", "", "only runs whose fields match: key=value,... (suite, task, arm, arm_id, model, verdict, lane, batch, since, until)")
 	fs.StringVar(&req.Detector, "detector", "", "say how this detector's firings changed on each run")
 	m := addMutation(fs)
 	if rest := parse(fs, args); len(rest) != 0 {

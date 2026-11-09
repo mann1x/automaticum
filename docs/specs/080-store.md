@@ -1,6 +1,6 @@
 # 080 — The store
 
-**Status:** draft 1.3, 2026-11-02. The spike has run (§7.4, and
+**Status:** draft 1.4, 2026-11-09. The spike has run (§7.4, and
 `spike/001-store/REPORT.md`) and the owner has confirmed the shape, with a
 review of the Lance binding at milestone 6.
 
@@ -146,6 +146,18 @@ engines can be revisited. The spike's test set becomes that interface's test
 suite.
 
 Also required: schema migrations, backup, and import of the old corpus (100).
+
+Schema migrations so far (`internal/store/duck`, `SchemaVersion`): versions 2
+and 3 added tables (the queue, run metrics). Version 4 (2026-11-09) adds the
+column `arm_name` to `runs`, the name of the arm a run was started with
+(`store.ArmName`: the resolved arm's name, else the arm its provenance says
+was asked for), filled on every write and, when an older database is
+opened, from each record. It lets runs be selected by an arm's name, which
+two arms that resolve alike do not share, as they share an id (090 §1). A
+build refuses a database of a newer version than its own, so going back to
+an older build after a migration needs the database as it was before: a
+deploy that migrates keeps a copy (`state.duckdb.pre-<commit>`) taken while
+the daemon is stopped.
 
 Never write large data to a RAM-backed directory. Never put the store on a
 volume that has stalled under log writes; the data root is a configured path

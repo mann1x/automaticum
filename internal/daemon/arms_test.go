@@ -75,4 +75,39 @@ func TestActiveArms(t *testing.T) {
 	if g.call("GET", "/v1/arms", nil, &arms); len(arms) != 0 {
 		t.Fatalf("active arms once all finished: %+v", arms)
 	}
+
+	// Another arm that resolves alike shares the id, never the name: the
+	// arm's name finds every version of it and nothing else.
+	write(t, dir, map[string]string{"arms/twin.toml": "extends = \"stub\"\n[limits]\nwall_s = 200\n"})
+	var twin StartResponse
+	if code := g.call("POST", "/v1/runs", StartRequest{Arm: "twin", Task: "answer"}, &twin); code != 202 {
+		t.Fatalf("start the twin: %d", code)
+	}
+	g.waitFinished(twin.RunIDs[0])
+	for q, want := range map[string]int{
+		"arm=act": 3, "arm=twin": 1, "arm=ac": 0, "arm_id=" + twin.ArmID: 3, "arm=act&arm_id=" + twin.ArmID: 2,
+	} {
+		if code, list := count(q); code != 200 || len(list) != want {
+			t.Errorf("%s: %d, %d runs, want %d", q, code, len(list), want)
+		}
+	}
+	// A queued run is found by its name too.
+	g.runner.mu.Lock()
+	g.runner.hold = make(chan struct{})
+	g.runner.started = make(chan string, 4)
+	g.runner.mu.Unlock()
+	if code := g.call("POST", "/v1/runs", StartRequest{Arm: "twin", Task: "answer", Count: 2}, &twin); code != 202 {
+		t.Fatalf("start the twin again: %d", code)
+	}
+	<-g.runner.started
+	if code, list := count("arm=twin&state=queued"); code != 200 || len(list) != 1 || list[0].Arm != "twin" {
+		t.Errorf("the twin's queued run: %d %+v", code, list)
+	}
+	if code, list := count("arm=act&state=queued"); code != 200 || len(list) != 0 {
+		t.Errorf("act's queued runs: %d %+v", code, list)
+	}
+	close(g.runner.hold)
+	for _, id := range twin.RunIDs {
+		g.waitFinished(id)
+	}
 }

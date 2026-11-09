@@ -111,7 +111,7 @@ func (s *memState) ListRuns(_ context.Context, f store.RunFilter) ([]store.Run, 
 		// As the store's own filter: each field given must equal the column.
 		if (f.Batch == "" || r.Batch == f.Batch) && (f.Verdict == "" || r.Verdict == f.Verdict) &&
 			(f.Suite == "" || r.Suite == f.Suite) && (f.TaskID == "" || r.TaskID == f.TaskID) &&
-			(f.ArmID == "" || r.ArmID == f.ArmID) && (f.Model == "" || r.Model == f.Model) && (f.Lane == "" || r.Lane == f.Lane) {
+			(f.ArmID == "" || r.ArmID == f.ArmID) && (f.ArmName == "" || store.ArmName(&r) == f.ArmName) && (f.Model == "" || r.Model == f.Model) && (f.Lane == "" || r.Lane == f.Lane) {
 			out = append(out, r)
 		}
 	}
@@ -224,7 +224,7 @@ func (f *fakeRunner) Execute(ctx context.Context, req run.Request) (*store.Run, 
 		panic(fault)
 	}
 	r := &store.Run{ID: req.ID, Batch: req.Batch, Campaign: req.Campaign, Cohort: req.Cohort, Suite: req.Task.Suite, TaskID: req.Task.ID, Lane: req.Lane, ArmID: req.Arm.ID,
-		StartedAt: time.Now().UTC(), Harness: req.Arm.Harness.SDKRelease, Verdict: store.Pass, VerdictReason: "oracle passed"}
+		StartedAt: time.Now().UTC(), Harness: req.Arm.Harness.SDKRelease, Verdict: store.Pass, VerdictReason: "oracle passed", Arm: req.Arm.Resolved()}
 	if req.OnStart != nil {
 		req.OnStart(r, "container-"+req.ID)
 	}
@@ -430,8 +430,7 @@ func TestStartRunsInOrder(t *testing.T) {
 	if g.call("GET", "/v1/runs?batch=k-once", nil, &list); len(list) != 3 {
 		t.Fatalf("list: %+v", list)
 	}
-	// A finished run says its arm by name, from its resolved arm (this
-	// rig's runner records none), and a task is filtered as it is named,
+	// A finished run says its arm by name, from its resolved arm, and a task is filtered as it is named,
 	// suite/task, as well as by its bare id.
 	if v := view(&store.Run{Suite: "demo", TaskID: "answer", Arm: json.RawMessage(`{"name":"stub"}`)}, false); v.Arm != "stub" {
 		t.Errorf("a finished run's arm: %q", v.Arm)
@@ -1615,17 +1614,16 @@ runs = 2
 	}
 	batch := v.Batches[0].Batch
 	var rv CampaignRetryView
-	// The run the abort skipped is retried; the fake runner's records name
-	// no arm, so the aborted one is refused here with that reason (a real
-	// record names its arm).
-	if code := g.call("POST", "/v1/campaigns/c3/retry?dry_run=1", nil, &rv); code != 200 || !rv.DryRun || len(rv.Batches) != 1 || len(rv.Batches[0].Retries) != 1 || rv.Batches[0].Refused[first] == "" {
+	// The run in flight that the abort ended and the queued one it skipped
+	// are both retried: each record names its arm.
+	if code := g.call("POST", "/v1/campaigns/c3/retry?dry_run=1", nil, &rv); code != 200 || !rv.DryRun || len(rv.Batches) != 1 || len(rv.Batches[0].Retries) != 2 || len(rv.Batches[0].Refused) != 0 {
 		t.Fatalf("retry, dry run: %d %+v", code, rv)
 	}
 	if q, _ := g.state.Queue(context.Background()); len(q) != 0 {
 		t.Fatalf("a dry run queued: %+v", q)
 	}
 	rv = CampaignRetryView{}
-	if code := g.call("POST", "/v1/campaigns/c3/retry", nil, &rv); code != 200 || len(rv.Batches) != 1 || rv.Batches[0].Batch != batch || len(rv.Batches[0].Retries) != 1 {
+	if code := g.call("POST", "/v1/campaigns/c3/retry", nil, &rv); code != 200 || len(rv.Batches) != 1 || rv.Batches[0].Batch != batch || len(rv.Batches[0].Retries) != 2 {
 		t.Fatalf("retry: %d %+v", code, rv)
 	}
 	close(g.runner.hold)

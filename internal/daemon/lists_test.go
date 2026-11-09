@@ -75,8 +75,8 @@ func TestBatchesAndLaneShow(t *testing.T) {
 }
 
 func TestWhereFilter(t *testing.T) {
-	f, err := whereFilter("task=demo/answer, verdict=pass,lane=lane-1,since=2026-10-01")
-	if err != nil || f.Suite != "demo" || f.TaskID != "answer" || f.Verdict != store.Pass || f.Lane != "lane-1" || f.Since.IsZero() {
+	f, err := whereFilter("task=demo/answer, verdict=pass,lane=lane-1,since=2026-10-01,arm=gate-g1")
+	if err != nil || f.Suite != "demo" || f.TaskID != "answer" || f.Verdict != store.Pass || f.Lane != "lane-1" || f.Since.IsZero() || f.ArmName != "gate-g1" {
 		t.Fatalf("%v %+v", err, f)
 	}
 	for _, bad := range []string{"nope=1", "verdict=MAYBE", "since=yesterday", "task"} {

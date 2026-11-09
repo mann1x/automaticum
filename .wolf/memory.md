@@ -209,3 +209,12 @@
 | 15:46 | blackswan-2 swapped to 455b77f (idle-gated, backup_models #2223): bin/*.prev kept, unit +ExecReload (.pre-455b77f), repo 455b77f; up, NRestarts=0, 6 lanes / 25 endpoints, sft9-s100 on lane-2 and sft9-s150 on lane-1 loaded; systemctl reload = SIGHUP reload ok; version label reads b497fba-dirty (built before the commit; code is 455b77f) | - | deployed | ~1500 |
 | 21:20 | bug-088 (backup_models #2231, owner): run ls -arm/-model now find queued and running runs (arm they started with / would start with now), run ls -state; GET /v1/arms and arm ls with RUNNING/QUEUED/LANES, -active, -running; TestActiveArms, TestMergeArms; 090 0.33 | internal/daemon/arms.go, api.go, daemon.go, cmd/automaticum/show_cmds.go, client_cmds.go | make test green | ~9000 |
 | 21:23 | 6203930 pushed; smoke-tested the real daemon binary on a scratch config (2 queued runs listed by run ls -arm/-model/-state and arm ls -active; clean drain); SDK release added to /v1/arms and queued run views |  internal/daemon/arms.go | ok | ~1500 |
+
+
+## Session: 2026-11-09 21:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:27 | 1719590 staged on blackswan-2 as bin/*.new (sha256 match), config check ok (47 arms, 24 models, 56 tasks); swap waits for a window from backup_models (#2232): 2 running, 7 queued on gatefix-g0/g1 | - | staged | ~600 |
+| 23:36 | blackswan-2 swapped to 1719590 (backup_models window #2239; gpu0/gpu1 claimed and released): bin/*.prev and unit .pre-1719590 kept, repo 1719590, NRestarts=0, all lanes idle; arm ls -active/-running, run ls -arm -state finished, SIGHUP reload verified on the host | - | deployed | ~1500 |
+| 23:52 | bug-089 (owner): run ls -arm-name / ?arm= / --where arm=; store schema 4 adds runs.arm_name (store.ArmName, backfilled on open); fake runner records the resolved arm; rehearsed on a copy of blackswan-2's state.duckdb: 935/935 named, shared id gate-g1|probe surfaced; deploy skill: back up state.duckdb on a schema bump | internal/store/duck/duck.go, store.go, internal/daemon/api.go, cmd/automaticum/client_cmds.go | make test + test-store green | ~12000 |

@@ -22,7 +22,7 @@ import (
 )
 
 // SchemaVersion is the version of the tables this package creates.
-const SchemaVersion = 3
+const SchemaVersion = 4
 
 const schema = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -40,7 +40,9 @@ CREATE TABLE IF NOT EXISTS runs (
 	provider         VARCHAR, model VARCHAR, endpoint VARCHAR,
 	thinking         VARCHAR, harness VARCHAR,
 	arm              VARCHAR, provenance VARCHAR,
-	imported         BOOLEAN, importer_version VARCHAR, missing VARCHAR
+	imported         BOOLEAN, importer_version VARCHAR, missing VARCHAR,
+	-- Version 4. The arm's name as the run was started with it (store.ArmName).
+	arm_name         VARCHAR
 );
 
 CREATE TABLE IF NOT EXISTS blob_refs (
@@ -127,12 +129,67 @@ func (s *State) migrate(ctx context.Context) error {
 	case v.Int64 > SchemaVersion:
 		return fmt.Errorf("duck: database has schema version %d, this build knows %d", v.Int64, SchemaVersion)
 	case v.Int64 < SchemaVersion:
-		// Every change so far only adds tables, which the schema above
-		// creates when they are missing.
+		// Versions 2 and 3 only add tables, which the schema above creates
+		// when they are missing. Version 4 adds a column to runs, filled
+		// from what each record already holds.
+		if v.Int64 < 4 {
+			if err := s.addArmName(ctx); err != nil {
+				return err
+			}
+		}
 		_, err := s.db.ExecContext(ctx, `INSERT INTO schema_version VALUES (?)`, SchemaVersion)
 		return err
 	}
 	return nil
+}
+
+// addArmName adds the arm_name column to a database of an earlier version
+// and fills it for every run there.
+func (s *State) addArmName(ctx context.Context) error {
+	if _, err := s.db.ExecContext(ctx, `ALTER TABLE runs ADD COLUMN IF NOT EXISTS arm_name VARCHAR`); err != nil {
+		return fmt.Errorf("duck: add arm_name: %w", err)
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT id, arm, provenance FROM runs WHERE arm_name IS NULL`)
+	if err != nil {
+		return fmt.Errorf("duck: read arms: %w", err)
+	}
+	names := map[string]string{}
+	for rows.Next() {
+		var id string
+		var arm, prov sql.NullString
+		if err := rows.Scan(&id, &arm, &prov); err != nil {
+			rows.Close()
+			return err
+		}
+		r := store.Run{Arm: json.RawMessage(arm.String), Provenance: json.RawMessage(prov.String)}
+		if !arm.Valid {
+			r.Arm = nil
+		}
+		if !prov.Valid {
+			r.Provenance = nil
+		}
+		names[id] = store.ArmName(&r)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	st, err := tx.PrepareContext(ctx, `UPDATE runs SET arm_name = ? WHERE id = ?`)
+	if err != nil {
+		return err
+	}
+	defer st.Close()
+	for id, name := range names {
+		if _, err := st.ExecContext(ctx, name, id); err != nil {
+			return fmt.Errorf("duck: fill arm_name of %s: %w", id, err)
+		}
+	}
+	return tx.Commit()
 }
 
 // Version returns the DuckDB library version.
@@ -166,11 +223,11 @@ func (s *State) UpsertRun(ctx context.Context, r *store.Run) error {
 	if r.ClaimedSuccess != nil {
 		claimed = sql.NullBool{Bool: *r.ClaimedSuccess, Valid: true}
 	}
-	_, err = s.db.ExecContext(ctx, `INSERT OR REPLACE INTO runs (`+runColumns+`) VALUES (`+placeholders(31)+`)`,
+	_, err = s.db.ExecContext(ctx, `INSERT OR REPLACE INTO runs (`+runColumns+`, arm_name) VALUES (`+placeholders(32)+`)`,
 		r.ID, r.Batch, r.Cell, r.Cohort, r.Campaign, r.Suite, r.TaskID, r.TaskVersion, r.ArmID, r.Lane, r.Host,
 		string(r.Verdict), r.OriginalVerdict, r.VerdictReason, string(r.PriorVerdict), r.AgentEnd, claimed,
 		nullTime(r.StartedAt), nullTime(r.EndedAt), r.WallMS, r.Paused, r.Provider, r.Model, r.Endpoint, r.Thinking, r.Harness,
-		string(r.Arm), string(r.Provenance), r.Imported, r.ImporterVersion, string(missing))
+		string(r.Arm), string(r.Provenance), r.Imported, r.ImporterVersion, string(missing), store.ArmName(r))
 	if err != nil {
 		return fmt.Errorf("duck: upsert run %s: %w", r.ID, err)
 	}
@@ -256,6 +313,9 @@ func where(f store.RunFilter) (string, []any) {
 	}
 	if f.ArmID != "" {
 		add("arm_id = ?", f.ArmID)
+	}
+	if f.ArmName != "" {
+		add("arm_name = ?", f.ArmName)
 	}
 	if f.Model != "" {
 		add("model = ?", f.Model)

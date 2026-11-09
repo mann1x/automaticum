@@ -282,3 +282,51 @@ func TestMetricsAndReads(t *testing.T) {
 		t.Fatalf("findings = %+v (err %v)", f, err)
 	}
 }
+
+// Runs are found by the name of the arm they were started with, which two
+// arms resolving alike (one id) do not share; a database of version 3 gets
+// the column filled from its records when it is opened.
+func TestArmName(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "state.duckdb")
+	s := open(t, path)
+	runs := []store.Run{
+		{ID: "r1", ArmID: "same", Arm: json.RawMessage(`{"name":"probe"}`), Verdict: store.Pass},
+		{ID: "r2", ArmID: "same", Arm: json.RawMessage(`{"name":"gate-g1"}`), Verdict: store.Fail},
+		// Skipped before its arm was read: the name it was asked by.
+		{ID: "r3", Provenance: json.RawMessage(`{"asked":{"arm":"gate-g1","task":"demo/answer"}}`), Verdict: store.Skipped},
+		{ID: "r4", Verdict: store.Pass, Imported: true},
+	}
+	for i := range runs {
+		if err := s.UpsertRun(ctx, &runs[i]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	check := func(when string) {
+		t.Helper()
+		for name, want := range map[string]int{"probe": 1, "gate-g1": 2, "gate": 0} {
+			if n, err := s.CountRuns(ctx, store.RunFilter{ArmName: name}); err != nil || n != int64(want) {
+				t.Errorf("%s: arm %s: %d runs (%v), want %d", when, name, n, err, want)
+			}
+		}
+		if n, _ := s.CountRuns(ctx, store.RunFilter{ArmID: "same"}); n != 2 {
+			t.Errorf("%s: arm id: %d runs, want 2", when, n)
+		}
+	}
+	check("written")
+
+	// Back to version 3: no column, then opened again.
+	for _, q := range []string{`ALTER TABLE runs DROP COLUMN arm_name`, `DELETE FROM schema_version`, `INSERT INTO schema_version VALUES (3)`} {
+		if _, err := s.db.ExecContext(ctx, q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	s.Close()
+	s = open(t, path)
+	defer s.Close()
+	var v int
+	if err := s.db.QueryRowContext(ctx, `SELECT max(version) FROM schema_version`).Scan(&v); err != nil || v != SchemaVersion {
+		t.Fatalf("schema version %d (%v)", v, err)
+	}
+	check("migrated")
+}

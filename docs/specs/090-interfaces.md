@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.33, 2026-11-09.
+**Status:** draft 0.34, 2026-11-09.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -137,6 +137,13 @@ started with, and its queued runs take the new one. An arm that can no
 longer be read is listed with why, since its queued runs will be skipped
 when they start.
 
+**Built on 2026-11-09, later:** `run ls --arm-name N` (`?arm=N`) keeps the
+runs started with the arm named N, whatever its content: every version of
+it, queued and running runs included, and never a run of another arm that
+resolves alike (two such arms share an id, so `--arm` and `--arm-id` find
+both). The name is stored with each run (080 §6, schema version 4).
+`--where arm=N` does the same for `reanalyse` and the reports.
+
 **Built on 2026-11-01 (§5):** `wait` and the route `GET
 /v1/wait/{kind}?id=&until=&seen=&hold=`; `run tail` of a queued run waits
 for it to start (before, the daemon answered 410 "has finished"); a
@@ -201,7 +208,7 @@ static-gate refusal of a start answers 422 with `gate` beside `error`.
   `logs` takes `--grep RE`, `--turn N`, `--render` and `--max`. `run
   timeline [-requests] <run>` is the per-run timeline of 070 §1.1 (`-requests` adds each model request, D139). `status
   --watch`. `run ls --lane L`.
-- **`reanalyse --where`** (`suite=, task=, arm_id=, model=, verdict=, lane=,
+- **`reanalyse --where`** (`suite=, task=, arm=, arm_id=, model=, verdict=, lane=,
   batch=, since=, until=`) and `--detector D`.
 - **Reports (070 §6):** `report run` (`run show`), `report cell` (`cell
   show`), `report batch <b>` and `report ab <a> <b>` (`compare`), `report

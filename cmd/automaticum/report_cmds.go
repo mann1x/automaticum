@@ -71,7 +71,7 @@ func positional(args []string) []string {
 func reportCensus(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("report census", flag.ExitOnError)
 	_, dial := addClient(fs)
-	where := fs.String("where", "", "which runs: suite=, task=, arm_id=, model=, verdict=, lane=, batch=, since=, until=, comma-separated")
+	where := fs.String("where", "", "which runs: suite=, task=, arm= (its name), arm_id=, model=, verdict=, lane=, batch=, since=, until=, comma-separated")
 	var batches list
 	fs.Var(&batches, "batch", "a batch; give it several times")
 	rest := parse(fs, args)
@@ -110,7 +110,7 @@ func reportCensus(ctx context.Context, args []string) error {
 func reportStruggle(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("report struggle", flag.ExitOnError)
 	_, dial := addClient(fs)
-	where := fs.String("where", "", "which runs: suite=, task=, arm_id=, model=, verdict=, lane=, batch=, since=, until=, comma-separated")
+	where := fs.String("where", "", "which runs: suite=, task=, arm= (its name), arm_id=, model=, verdict=, lane=, batch=, since=, until=, comma-separated")
 	var batches list
 	fs.Var(&batches, "batch", "a batch; give it several times")
 	rest := parse(fs, args)
@@ -160,7 +160,7 @@ func reportStruggle(ctx context.Context, args []string) error {
 func reportGuards(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("report guards", flag.ExitOnError)
 	_, dial := addClient(fs)
-	where := fs.String("where", "", "which runs: suite=, task=, arm_id=, model=, verdict=, lane=, batch=, since=, until=, comma-separated")
+	where := fs.String("where", "", "which runs: suite=, task=, arm= (its name), arm_id=, model=, verdict=, lane=, batch=, since=, until=, comma-separated")
 	kind := fs.String("kind", "", "unconfirmed (possible false alarms) or missed; both when empty")
 	var batches list
 	fs.Var(&batches, "batch", "a batch; give it several times")

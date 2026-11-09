@@ -21,6 +21,8 @@
 - Every spec requirement is either built, marked "not built" with its milestone, or dropped by a decision. Re-audit with docs/audit/ after each milestone. A noticed gap is a design flaw: name it and fix it.
 - Ship ready-made waiters (`automaticum wait ...`, `--each`, `--next --seen N`). Never make a client write its own polling loop.
 
+- 2026-11-09, the owner ("add -arm-name too, of course, I mean, it's not obvious it's needed?"): when a selector has a known blind spot, close it in the same change, without asking. If an identity-by-content filter (arm id) can match another arm, a by-name filter is part of the job. Don't end a report by offering obvious completions; do them.
+
 ## Key Learnings
 
 - Go harness for coding agents on @cerebriline/sdk. The truth is docs/specs plus decisions.md. archive/ is input only and the old harness is READ-ONLY. During a batch: no lane image or bin/ rebuild and no daemon restart.

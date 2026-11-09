@@ -1527,6 +1527,26 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-09T20:17:47.787906+00:00"
+    },
+    {
+      "id": "bug-089",
+      "timestamp": "2026-11-09T22:47:55.539444+00:00",
+      "error_message": "no way to select runs by arm name: -arm/-arm-id match by content identity, so two arms that resolve alike (a gate arm identical to a probe arm) count each other's runs (backup_models bug-916); owner: 'add -arm-name too, of course'",
+      "file": "internal/store/duck/duck.go",
+      "root_cause": "runs kept the arm's name only inside the resolved-arm and provenance JSON, with no column or filter; the daemon test rig's fake runner recorded no resolved arm, which hid name-based paths (and made TestCampaignAbortRetry expect a refusal a real record never gets).",
+      "fix": "store.ArmName and RunFilter.ArmName; DuckDB schema 4 adds runs.arm_name, written on every upsert and backfilled on open; ?arm= in /v1/runs (queued and running runs by queue name), --where arm=, run ls -arm-name; fake runner records req.Arm.Resolved(). TestArmName (duck, incl. migration from v3), TestActiveArms twin-arm case.",
+      "tags": [
+        "cli",
+        "run-ls",
+        "store",
+        "schema",
+        "migration"
+      ],
+      "related_bugs": [
+        "bug-088"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-09T22:47:55.539444+00:00"
     }
   ]
 }

@@ -144,3 +144,13 @@ Then run `systemctl daemon-reload` before `systemctl start`. When `systemctl sto
 - `systemctl reload automaticumd; sleep 2; automaticum config show`, then `journalctl -u automaticumd --since -2min | grep reload` should show `configuration reloaded: nothing changed source=signal`.
 - `systemctl show automaticumd -p NRestarts` should print 0.
 - The DONE mail names the rollback files: `bin/*.prev` and `automaticumd.service.pre-<sha>`.
+## A commit that raises the store's schema version
+
+Check `git diff <deployed>..<sha> -- internal/store/duck/duck.go | grep SchemaVersion`. A build refuses a database of a newer version than its own. So once the new daemon has migrated `state.duckdb`, `bin/automaticumd.prev` will not start on it. In the swap script, after `systemctl stop` and before `start`, copy the database:
+
+```bash
+cp -p $B/data/state.duckdb $B/data/state.duckdb.pre-<sha>
+[ -f $B/data/state.duckdb.wal ] && cp -p $B/data/state.duckdb.wal $B/data/state.duckdb.wal.pre-<sha>
+```
+
+Rollback then means stopping the daemon, restoring both files and the `.prev` binaries, and starting it again. Runs recorded after the swap are lost in a rollback, so say that in the DONE mail. Before the window, rehearse the migration on a copy of the host's database with the new build.

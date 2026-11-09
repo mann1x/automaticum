@@ -665,5 +665,5 @@
 
 ## internal/daemon/
 
-- `arms_test.go` — TestActiveArms: run ls by arm/model/state over queued and running runs, /v1/arms, an arm changed under a run (~790 tok)
+- `arms_test.go` — TestActiveArms: run ls by arm/model/state over queued and running runs, /v1/arms, an arm changed under a run, ?arm= by name vs a twin arm sharing the id (~790 tok)
 - `arms.go` — GET /v1/arms (ArmActivity: arms with runs running or queued); queuedArm/queuedArmView: a run not finished has the arm it started with or would start with now (runArm, armCache) (~1085 tok)

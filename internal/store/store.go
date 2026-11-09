@@ -163,9 +163,13 @@ type QueueItem struct {
 
 // RunFilter selects runs. Zero fields do not filter.
 type RunFilter struct {
-	Suite    string
-	TaskID   string
-	ArmID    string
+	Suite  string
+	TaskID string
+	ArmID  string
+	// ArmName is the arm's name as the run was started with it (ArmName),
+	// whatever its content: two arms that resolve alike share an id, never
+	// a name.
+	ArmName  string
 	Model    string
 	Verdict  Verdict
 	Batch    string
@@ -303,4 +307,26 @@ func (s *Store) Close() error {
 		}
 	}
 	return first
+}
+
+// ArmName is the name of the arm a run was started with: the resolved
+// arm's name, else the arm its provenance says was asked for (a run a gate
+// skipped before its arm was read). Empty when the record says neither, as
+// an imported run may not.
+func ArmName(r *Run) string {
+	var arm struct {
+		Name string `json:"name"`
+	}
+	if len(r.Arm) > 0 && json.Unmarshal(r.Arm, &arm) == nil && arm.Name != "" {
+		return arm.Name
+	}
+	var prov struct {
+		Asked struct {
+			Arm string `json:"arm"`
+		} `json:"asked"`
+	}
+	if len(r.Provenance) > 0 && json.Unmarshal(r.Provenance, &prov) == nil {
+		return prov.Asked.Arm
+	}
+	return ""
 }
