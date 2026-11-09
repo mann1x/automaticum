@@ -13,6 +13,8 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
+	"sync"
 	"syscall"
 	"time"
 
@@ -63,6 +65,12 @@ func serve(cfgDir string, log *slog.Logger) error {
 	if cfgDir == "" {
 		return errors.New("no configuration directory: give --config or set AUTOMATICUM_CONFIG")
 	}
+	// Taken before anything else, so that a signal sent while the daemon
+	// starts is handled, never the default that would stop it.
+	signal.Ignore(syscall.SIGPIPE)
+	sig := make(chan os.Signal, 8)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGUSR1, syscall.SIGUSR2, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(sig)
 	local, err := config.LoadLocal(cfgDir)
 	if err != nil {
 		return err
@@ -135,35 +143,123 @@ func serve(cfgDir string, log *slog.Logger) error {
 			}
 		}
 	}
-	srv := &http.Server{Handler: dm.Handler(), ReadHeaderTimeout: 10 * time.Second}
-	go func() {
-		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Error("the API stopped", "error", err)
-		}
-	}()
-	log.Info("automaticumd is up", "version", version, "listen", ln.Addr().String(), "lanes", len(local.Lanes), "endpoints", len(local.Endpoints))
+	api := &apiServer{handler: dm.Handler(), log: log}
+	api.serve(ln)
+	dm.Rebind = api.rebind
+	log.Info("automaticumd is up", "version", version, "listen", ln.Addr().String(), "lanes", len(local.LaneNames()), "endpoints", len(local.EndpointNames()))
 
-	// The first signal drains: the run in flight finishes, nothing else
-	// starts. A second one aborts it.
 	sctx, abort := context.WithCancel(ctx)
 	defer abort()
-	sig := make(chan os.Signal, 2)
-	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-sig
-		log.Info("draining: the run in flight finishes first; signal again to abort it")
-		dm.Drain()
-		<-sig
-		log.Warn("aborting the run in flight")
-		abort()
-	}()
+	go dm.WatchConfig(sctx)
+	go handleSignals(sctx, sig, dm, log, abort)
 	dm.Serve(sctx)
-	shut, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	srv.Shutdown(shut)
+	api.shutdown(5 * time.Second)
 	if err := state.Checkpoint(ctx); err != nil {
 		log.Error("checkpoint", "error", err)
 	}
 	log.Info("automaticumd stopped")
 	return nil
+}
+
+// handleSignals is what each signal asks of the daemon:
+//
+//   - SIGHUP reads the configuration again and puts it in force; a
+//     configuration that does not load leaves the one in force.
+//   - SIGUSR1 logs the state: the configuration, every lane, the queue.
+//   - SIGUSR2 logs every goroutine's stack, for a daemon that seems stuck.
+//   - SIGINT or SIGTERM drains: the runs in flight finish, nothing else
+//     starts, then the daemon stops. A second one aborts the runs in flight.
+//   - SIGPIPE is ignored: a log reader that goes away must not stop it.
+func handleSignals(ctx context.Context, sig <-chan os.Signal, dm *daemon.Daemon, log *slog.Logger, abort context.CancelFunc) {
+	stops := 0
+	for {
+		var s os.Signal
+		select {
+		case <-ctx.Done():
+			return
+		case s = <-sig:
+		}
+		switch s {
+		case syscall.SIGHUP:
+			log.Info("SIGHUP: reading the configuration again")
+			go dm.Reload(context.WithoutCancel(ctx), "signal", false)
+		case syscall.SIGUSR1:
+			go dm.DumpState(context.WithoutCancel(ctx))
+		case syscall.SIGUSR2:
+			buf := make([]byte, 1<<20)
+			for {
+				n := runtime.Stack(buf, true)
+				if n < len(buf) {
+					buf = buf[:n]
+					break
+				}
+				buf = make([]byte, 2*len(buf))
+			}
+			log.Info("SIGUSR2: every goroutine's stack", "stacks", string(buf))
+		default:
+			stops++
+			if stops == 1 {
+				log.Info("draining: the runs in flight finish first; signal again to abort them", "signal", s.String())
+				dm.Drain()
+				continue
+			}
+			log.Warn("aborting the runs in flight", "signal", s.String())
+			abort()
+			return
+		}
+	}
+}
+
+// apiServer is the API on its address. A reload that changes listen moves
+// it: the new address is bound and served before the old one is let go,
+// and requests in flight on the old one finish.
+type apiServer struct {
+	handler http.Handler
+	log     *slog.Logger
+	mu      sync.Mutex
+	srv     *http.Server
+}
+
+func (a *apiServer) serve(ln net.Listener) {
+	srv := &http.Server{Handler: a.handler, ReadHeaderTimeout: 10 * time.Second}
+	a.mu.Lock()
+	a.srv = srv
+	a.mu.Unlock()
+	go func() {
+		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			a.log.Error("the API stopped", "listen", ln.Addr().String(), "error", err)
+		}
+	}()
+}
+
+func (a *apiServer) rebind(addr string) error {
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+	a.mu.Lock()
+	old := a.srv
+	a.mu.Unlock()
+	a.serve(ln)
+	a.log.Info("the API moved", "listen", ln.Addr().String())
+	if old != nil {
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			defer cancel()
+			old.Shutdown(ctx)
+		}()
+	}
+	return nil
+}
+
+func (a *apiServer) shutdown(grace time.Duration) {
+	a.mu.Lock()
+	srv := a.srv
+	a.mu.Unlock()
+	if srv == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), grace)
+	defer cancel()
+	srv.Shutdown(ctx)
 }

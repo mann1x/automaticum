@@ -1,6 +1,6 @@
 # 050 — Orchestration: scheduling, gates, control
 
-**Status:** draft 0.23, 2026-11-04.
+**Status:** draft 0.24, 2026-11-09.
 
 ## 1. Scheduling
 
@@ -410,3 +410,24 @@ itself after repeated infrastructure failures (item 2 of the audit).
   `[notify] command` (§2), with a batch's end and each run's end besides.
 - A cell with any `SKIPPED` task is marked incomplete, and says so in its
   result file.
+- **Decided by the owner (2026-11-09, D144):** the daemon takes a changed
+  configuration while it runs, and nothing stops it unless that cannot be
+  avoided. **Built 2026-11-09:**
+  - A reload (SIGHUP, `config reload`, or the watcher, 090 §1) puts new,
+    changed and removed lanes and endpoints, `[notify]`, `free_floor_gb`,
+    `quarantine_after`, `archive_after_days`, `private_tasks`,
+    `watch_config`, the token and `listen` in force at once. A new `listen`
+    is bound before the old address is let go; one that cannot be bound
+    refuses the reload. Arms and models were already read at each use.
+  - `data_root`, `archive_root`, `docker_socket` and `repo` are held open
+    by the running daemon: a change to them keeps the old value until the
+    next start and is named (`restart` in `config show` and `status`).
+  - Runs in flight keep the lane and endpoint they started with. A lane
+    removed under a run finishes it, shown `removed` in `status`, and
+    starts nothing more. A queued run whose lane or endpoint the
+    configuration no longer has waits, with that reason, and starts once a
+    reload brings it back; it is never SKIPPED for it.
+  - A fault (a Go panic) in a run's handling ends that run ABORTED with
+    `harness fault: …`; the lane and the daemon go on. A fault in the
+    canary, campaign, heartbeat or archive loop is logged with its stack
+    and the loop starts again.

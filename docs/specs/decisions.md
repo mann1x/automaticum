@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-11-08 (revision 48).
+**Status:** current as of 2026-11-09 (revision 49).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -153,6 +153,7 @@ All dated 2026-10-12.
 | D141 | `automaticum config check` (090 §1, 2026-11-04, a client's request after a configuration key the daemon refused crash-looped it; the owner: "go ahead with both"). It reads the configuration as the daemon does at its start, every arm, model and task, and says each problem without a daemon; exit 1 on any. | 090 §1, 030 |
 | D142 | The arm template's default SDK release is 4.100.274 (`examples/config/arms/base.toml`, 2026-11-05, the owner: "integrate 4.100.274", then "harness default + host"). It replaces the release number of D54; every run still records the release it used. An arm that states its own `sdk_release` keeps it, so a client's running round is not moved: their arms move when they choose. | 040 §3 |
 | D143 | The arm template's default SDK release is 4.100.276 (`examples/config/arms/base.toml`, 2026-11-08, the owner: "integrate .276 when ready", read as D142's "integrate": harness default and host). It replaces D142's 4.100.274: 4.100.276 is the first registry release with every finding of the 2026-11-08 tool audit fixed (X14). An arm that states its own `sdk_release` keeps it. | 040 §3 |
+| D144 | The running daemon takes a changed configuration without a restart, and nothing stops it unless that cannot be avoided (050 §6, 090 §1, 030 §1; 2026-11-09, the owner: "a test automation harness that needs restart of the daemon for a change of lane or configuration? … this is not acceptable", then "do it properly this time, there must be full signal handling, extreme flexibility and nothing stops the test harness unless it's absolutely necessary, make it robust"). Reload on SIGHUP, `automaticum config reload` (`POST /v1/config/reload`, dry run) and a watcher of the directory (`watch_config`, on by default); validated as at the start, refused whole on any problem; lanes, endpoints, settings, the token and `listen` (rebound) live; `data_root`, `archive_root`, `docker_socket`, `repo` from the next start, named. Runs in flight keep their lane and endpoint; a removed lane finishes its run; queued runs without their lane or endpoint wait instead of SKIPPED. SIGUSR1 state, SIGUSR2 stacks, SIGPIPE ignored, signals taken from the first moment. A panic in a run ends it ABORTED (`harness fault`), in a loop restarts the loop. | 2026-11-09 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked

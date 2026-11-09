@@ -5,9 +5,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -18,17 +20,21 @@ import (
 // Local is the configuration of one installation: the directory given to the
 // daemon with --config. It holds addresses, paths and device bindings, so it
 // is never tracked in the repository.
+//
+// A running daemon reads it again whenever it changes (Reload), so every
+// reader goes through the accessors (Lane, LaneNames, Endpoint, MayUse,
+// Settings), never the fields: the fields are for building one.
 type Local struct {
 	Dir       string
 	Daemon    Daemon
 	Lanes     map[string]*Lane
 	Endpoints map[string]*Endpoint
 
+	// mu guards the fields above once the daemon runs, and cells.
+	mu sync.RWMutex
 	// cells are the endpoints mode C cells were given (065 §3.1), each
 	// with the lanes that may use it. They are not in the directory: the
-	// daemon adds them while it runs, so they are read through Endpoint
-	// and MayUse, under the lock.
-	mu    sync.RWMutex
+	// daemon adds them while it runs, and a reload keeps them.
 	cells map[string]cellEndpoint
 }
 
@@ -37,24 +43,63 @@ type cellEndpoint struct {
 	lanes    []string
 }
 
+// Lane returns the lane called name; nil when there is none.
+func (l *Local) Lane(name string) *Lane {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.Lanes[name]
+}
+
+// LaneNames returns the configured lanes' names, sorted.
+func (l *Local) LaneNames() []string {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	names := make([]string, 0, len(l.Lanes))
+	for n := range l.Lanes {
+		names = append(names, n)
+	}
+	slices.Sort(names)
+	return names
+}
+
+// EndpointNames returns the configured endpoints' names, sorted; cells'
+// are not among them.
+func (l *Local) EndpointNames() []string {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	names := make([]string, 0, len(l.Endpoints))
+	for n := range l.Endpoints {
+		names = append(names, n)
+	}
+	slices.Sort(names)
+	return names
+}
+
+// Settings returns automaticum.toml as it stands now.
+func (l *Local) Settings() Daemon {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.Daemon
+}
+
 // Endpoint returns the endpoint called name, a configured one or a cell's;
 // nil when there is none.
 func (l *Local) Endpoint(name string) *Endpoint {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 	if e := l.Endpoints[name]; e != nil {
 		return e
 	}
-	l.mu.RLock()
-	defer l.mu.RUnlock()
 	return l.cells[name].endpoint
 }
 
 // MayUse says whether lane may use the endpoint called name.
 func (l *Local) MayUse(lane, name string) bool {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 	if ln := l.Lanes[lane]; ln != nil && slices.Contains(ln.Endpoints, name) {
 		return true
 	}
-	l.mu.RLock()
-	defer l.mu.RUnlock()
 	c, ok := l.cells[name]
 	return ok && slices.Contains(c.lanes, lane)
 }
@@ -63,15 +108,15 @@ func (l *Local) MayUse(lane, name string) bool {
 // not be one of the configured endpoints'; a cell's endpoint of the same
 // name is replaced.
 func (l *Local) AddCellEndpoint(e *Endpoint, lanes []string) error {
-	if l.Endpoints[e.Name] != nil {
-		return fmt.Errorf("config: endpoint %s is configured; a cell cannot replace it", e.Name)
-	}
 	if !endpointKinds[e.Kind] {
 		return fmt.Errorf("config: endpoint %s: kind must be %s", e.Name, kindList)
 	}
-	e.Cell = true
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	if l.Endpoints[e.Name] != nil {
+		return fmt.Errorf("config: endpoint %s is configured; a cell cannot replace it", e.Name)
+	}
+	e.Cell = true
 	if l.cells == nil {
 		l.cells = map[string]cellEndpoint{}
 	}
@@ -115,7 +160,14 @@ type Daemon struct {
 	// harness's or the server's reason before the daemon quarantines the
 	// lane (D124): unset is 10, 0 never. A lane may set its own.
 	QuarantineAfter *int `toml:"quarantine_after"`
+	// WatchConfig makes the daemon read this directory again on its own
+	// whenever a file in it changes, as SIGHUP or `config reload` do.
+	// Unset is on.
+	WatchConfig *bool `toml:"watch_config"`
 }
+
+// Watches says whether the daemon reloads the directory when it changes.
+func (d Daemon) Watches() bool { return d.WatchConfig == nil || *d.WatchConfig }
 
 // DefaultQuarantineAfter is D124's number.
 const DefaultQuarantineAfter = 10
@@ -123,6 +175,8 @@ const DefaultQuarantineAfter = 10
 // QuarantineAfter is the lane's own number, else the installation's, else
 // D124's.
 func (l *Local) QuarantineAfter(lane string) int {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 	if ln := l.Lanes[lane]; ln != nil && ln.QuarantineAfter != nil {
 		return *ln.QuarantineAfter
 	}
@@ -266,8 +320,11 @@ func decodeStrict(path string, v any) error {
 	return nil
 }
 
-// LoadLocal reads and validates an installation's configuration directory.
-func LoadLocal(dir string) (*Local, error) {
+// LoadClient reads only what a client of the daemon needs: automaticum.toml,
+// for the daemon's address and the token files. A lane or endpoint file that
+// does not load, which the running daemon refuses and keeps serving
+// without, must not keep a client from asking it what it holds.
+func LoadClient(dir string) (*Local, error) {
 	dir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err
@@ -283,6 +340,17 @@ func LoadLocal(dir string) (*Local, error) {
 	if d.TokenFile == "" {
 		d.TokenFile = "token"
 	}
+	return l, nil
+}
+
+// LoadLocal reads and validates an installation's configuration directory.
+func LoadLocal(dir string) (*Local, error) {
+	l, err := LoadClient(dir)
+	if err != nil {
+		return nil, err
+	}
+	dir = l.Dir
+	d := &l.Daemon
 	var problems []string
 	bad := func(format string, args ...any) { problems = append(problems, fmt.Sprintf(format, args...)) }
 	for name, p := range map[string]string{"data_root": d.DataRoot, "repo": d.Repo} {
@@ -400,12 +468,13 @@ const tokenHashPrefix = "sha256:"
 // when it is set, else token_file's, which must then hold the token and
 // not its hash.
 func (l *Local) Token() (string, error) {
-	if l.Daemon.ClientTokenFile != "" {
-		return l.readToken(l.Daemon.ClientTokenFile)
+	d := l.Settings()
+	if d.ClientTokenFile != "" {
+		return l.readToken(d.ClientTokenFile)
 	}
-	t, err := l.readToken(l.Daemon.TokenFile)
+	t, err := l.readToken(d.TokenFile)
 	if err == nil && strings.HasPrefix(t, tokenHashPrefix) {
-		return "", fmt.Errorf("config: %s holds the token's hash: give the plain token in client_token_file", l.Daemon.TokenFile)
+		return "", fmt.Errorf("config: %s holds the token's hash: give the plain token in client_token_file", d.TokenFile)
 	}
 	return t, err
 }
@@ -413,14 +482,15 @@ func (l *Local) Token() (string, error) {
 // TokenHash returns the hex sha256 of the write token, the only form the
 // daemon keeps (010 §5): token_file holds the token or "sha256:<hex>".
 func (l *Local) TokenHash() (string, error) {
-	t, err := l.readToken(l.Daemon.TokenFile)
+	file := l.Settings().TokenFile
+	t, err := l.readToken(file)
 	if err != nil {
 		return "", err
 	}
 	if h, ok := strings.CutPrefix(t, tokenHashPrefix); ok {
 		h = strings.ToLower(h)
 		if b, err := hex.DecodeString(h); err != nil || len(b) != sha256.Size {
-			return "", fmt.Errorf("config: %s: a hashed token is sha256: and 64 hex digits", l.Daemon.TokenFile)
+			return "", fmt.Errorf("config: %s: a hashed token is sha256: and 64 hex digits", file)
 		}
 		return h, nil
 	}
@@ -471,4 +541,118 @@ func (l *Local) APIKey(e *Endpoint) (string, error) {
 		return "", fmt.Errorf("config: endpoint %s: %w", e.Name, err)
 	}
 	return strings.TrimSpace(string(b)), nil
+}
+
+// Change is what a reload of the configuration did.
+type Change struct {
+	// Added, Removed and Changed name lanes and endpoints, as "lane x" or
+	// "endpoint y", sorted.
+	Added   []string `json:"added,omitempty"`
+	Removed []string `json:"removed,omitempty"`
+	Changed []string `json:"changed,omitempty"`
+	// Settings are the keys of automaticum.toml that changed and now hold.
+	Settings []string `json:"settings,omitempty"`
+	// Restart are the keys that changed but hold only from the daemon's
+	// next start: the store and the container engine it has open. Their
+	// old values stay in force until then.
+	Restart []string `json:"restart,omitempty"`
+}
+
+// Empty says whether the reload changed nothing.
+func (c Change) Empty() bool {
+	return len(c.Added)+len(c.Removed)+len(c.Changed)+len(c.Settings)+len(c.Restart) == 0
+}
+
+// restartKeys are the settings a running daemon cannot take: it holds the
+// store and the blobs open under data_root and archive_root, the engine at
+// docker_socket, and its tasks, images and SDK builds under repo.
+var restartKeys = []string{"data_root", "archive_root", "docker_socket", "repo"}
+
+// Reload reads the directory again and puts what it holds in force at once,
+// for every reader. A directory that does not load, or that names as
+// configured an endpoint a cell already uses, changes nothing: the
+// configuration in force stays, whole, and the error says why. The settings
+// in restartKeys keep their old values until the next start and are named
+// in Change.Restart. Lanes and endpoints are new values, so whoever already
+// holds one, a run in flight, keeps what it started with.
+func (l *Local) Reload() (Change, error) {
+	next, err := LoadLocal(l.Dir)
+	if err != nil {
+		return Change{}, err
+	}
+	return l.Apply(next)
+}
+
+// Apply puts next in force as Reload does; next comes from LoadLocal.
+func (l *Local) Apply(next *Local) (Change, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for name := range next.Endpoints {
+		if _, ok := l.cells[name]; ok {
+			return Change{}, fmt.Errorf("config: endpoint %s is the name of a running cell's endpoint; rename it or stop the cell", name)
+		}
+	}
+	var c Change
+	diff := func(kind string, old, new map[string]any) {
+		for n, v := range new {
+			switch o, ok := old[n]; {
+			case !ok:
+				c.Added = append(c.Added, kind+" "+n)
+			case !reflect.DeepEqual(o, v):
+				c.Changed = append(c.Changed, kind+" "+n)
+			}
+		}
+		for n := range old {
+			if _, ok := new[n]; !ok {
+				c.Removed = append(c.Removed, kind+" "+n)
+			}
+		}
+	}
+	diff("lane", anyMap(l.Lanes), anyMap(next.Lanes))
+	diff("endpoint", anyMap(l.Endpoints), anyMap(next.Endpoints))
+	settings := next.Daemon
+	oldKeys, newKeys := settingKeys(l.Daemon), settingKeys(settings)
+	for _, k := range slices.Sorted(maps.Keys(newKeys)) {
+		if reflect.DeepEqual(oldKeys[k], newKeys[k]) {
+			continue
+		}
+		if slices.Contains(restartKeys, k) {
+			c.Restart = append(c.Restart, k)
+			continue
+		}
+		c.Settings = append(c.Settings, k)
+	}
+	// What only a start can take keeps its value until then.
+	settings.DataRoot, settings.ArchiveRoot = l.Daemon.DataRoot, l.Daemon.ArchiveRoot
+	settings.DockerSocket, settings.Repo = l.Daemon.DockerSocket, l.Daemon.Repo
+	if settings.ArchiveAfterDays > 0 && settings.ArchiveRoot == "" {
+		return Change{}, errors.New("config: archive_after_days needs archive_root, and archive_root takes a restart")
+	}
+	for _, s := range [][]string{c.Added, c.Removed, c.Changed} {
+		slices.Sort(s)
+	}
+	l.Lanes, l.Endpoints, l.Daemon = next.Lanes, next.Endpoints, settings
+	return c, nil
+}
+
+func anyMap[V any](m map[string]V) map[string]any {
+	out := make(map[string]any, len(m))
+	for k, v := range m {
+		out[k] = v
+	}
+	return out
+}
+
+// settingKeys gives automaticum.toml's values by their keys.
+func settingKeys(d Daemon) map[string]any {
+	out := map[string]any{}
+	v, t := reflect.ValueOf(d), reflect.TypeOf(d)
+	for i := range t.NumField() {
+		key, _, _ := strings.Cut(t.Field(i).Tag.Get("toml"), ",")
+		if key == "" || key == "-" {
+			continue
+		}
+		out[key] = v.Field(i).Interface()
+	}
+	return out
 }

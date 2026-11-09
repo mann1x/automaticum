@@ -35,9 +35,11 @@ type Status struct {
 	Draining bool      `json:"draining"`
 	// Heartbeat is the last heartbeat (050 §6), none in the first ten
 	// minutes.
-	Heartbeat *Heartbeat   `json:"heartbeat,omitempty"`
-	Lanes     []LaneStatus `json:"lanes"`
-	Queue     []QueueEntry `json:"queue"`
+	Heartbeat *Heartbeat `json:"heartbeat,omitempty"`
+	// Config is the configuration in force and its last reload.
+	Config *ConfigState `json:"config,omitempty"`
+	Lanes  []LaneStatus `json:"lanes"`
+	Queue  []QueueEntry `json:"queue"`
 }
 
 // LaneStatus is one lane in a Status.
@@ -52,6 +54,9 @@ type LaneStatus struct {
 	Endpoints []string  `json:"endpoints"`
 	// Waiting is why the lane's next run has not started.
 	Waiting string `json:"waiting,omitempty"`
+	// Removed says a reload took the lane out of the configuration while
+	// a run was in flight on it: the run finishes, nothing else starts.
+	Removed bool `json:"removed,omitempty"`
 	// Drained says the lane starts no run after the one in flight.
 	Drained bool `json:"drained,omitempty"`
 	// Quarantined is why the lane is out of use, when it is (050 §5).
@@ -326,6 +331,8 @@ func (d *Daemon) Handler() http.Handler {
 	d.init()
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /v1/status", d.handleStatus)
+	mux.HandleFunc("GET /v1/config", d.handleConfig)
+	mux.HandleFunc("POST /v1/config/reload", d.handleConfigReload)
 	mux.HandleFunc("GET /v1/runs", d.handleRuns)
 	mux.HandleFunc("POST /v1/runs", d.handleStart)
 	mux.HandleFunc("GET /v1/runs/{id}", d.handleRun)
@@ -407,7 +414,7 @@ func (d *Daemon) Handler() http.Handler {
 
 func (d *Daemon) allowed(r *http.Request) bool {
 	given := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-	if d.TokenHash != "" && subtle.ConstantTimeCompare([]byte(config.HashToken(given)), []byte(d.TokenHash)) == 1 {
+	if h := d.tokenHash(); h != "" && subtle.ConstantTimeCompare([]byte(config.HashToken(given)), []byte(h)) == 1 {
 		return true
 	}
 	if r.Method != http.MethodGet {
@@ -443,6 +450,8 @@ func (d *Daemon) status(ctx context.Context) (Status, error) {
 		rescoring[lane] = s
 	}
 	d.mu.Unlock()
+	cs := d.configState()
+	st.Config = &cs
 	states, err := d.State.LaneStates(ctx)
 	if err != nil {
 		return st, err
@@ -451,14 +460,22 @@ func (d *Daemon) status(ctx context.Context) (Status, error) {
 	for _, ls := range states {
 		stored[ls.Lane] = ls
 	}
-	var names []string
-	for n := range d.Local.Lanes {
-		names = append(names, n)
+	// A lane taken out of the configuration while it runs is shown until
+	// its run ends; it starts nothing more.
+	names := d.Local.LaneNames()
+	for n := range flying {
+		if !slices.Contains(names, n) {
+			names = append(names, n)
+		}
 	}
 	sort.Strings(names)
 	for _, n := range names {
-		l := d.Local.Lanes[n]
-		ls := LaneStatus{Lane: n, Host: l.Host, State: "idle", Endpoints: l.Endpoints}
+		ls := LaneStatus{Lane: n, State: "idle"}
+		if l := d.Local.Lane(n); l != nil {
+			ls.Host, ls.Endpoints = l.Host, l.Endpoints
+		} else {
+			ls.Removed = true
+		}
 		if s, ok := stored[n]; ok && s.State != "" {
 			ls.State = s.State
 			var det laneDetail
@@ -1248,25 +1265,23 @@ func (d *Daemon) handleDoctor(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusInternalServerError, "the tasks cannot be read: %v", err)
 		return
 	}
-	var lanes, names []string
-	for n := range d.Local.Lanes {
-		lanes = append(lanes, n)
-	}
+	var names []string
+	lanes := d.Local.LaneNames()
 	for n := range arms {
 		names = append(names, n)
 	}
-	sort.Strings(lanes)
 	sort.Strings(names)
 	out := []DoctorEntry{}
 	for _, lane := range lanes {
-		if v := q.Get("lane"); v != "" && v != lane {
+		l := d.Local.Lane(lane)
+		if v := q.Get("lane"); v != "" && v != lane || l == nil {
 			continue
 		}
 		for _, name := range names {
 			a := arms[name]
 			// Without a question about one arm, a lane is asked about the
 			// arms it could run.
-			if v := q.Get("arm"); v != "" && v != name || v == "" && !slices.Contains(d.Local.Lanes[lane].Endpoints, a.Endpoint) {
+			if v := q.Get("arm"); v != "" && v != name || v == "" && !slices.Contains(l.Endpoints, a.Endpoint) {
 				continue
 			}
 			for _, tk := range tasks {
@@ -1652,7 +1667,7 @@ func (d *Daemon) handleIdentify(w http.ResponseWriter, r *http.Request) {
 		inf.Model.Stated, inf.Model.NotStated = stated, stated.Missing()
 		inf.AddedLater = &run.AddedLater{At: now, Source: "the model's stated identity, from the catalogue"}
 	} else {
-		endpoint, lane := d.Local.Endpoints[arm.Endpoint], d.Local.Lanes[rec.Lane]
+		endpoint, lane := d.Local.Endpoint(arm.Endpoint), d.Local.Lane(rec.Lane)
 		if endpoint == nil || lane == nil {
 			fail(w, http.StatusConflict, "the configuration no longer has endpoint %q or lane %q of run %s", arm.Endpoint, rec.Lane, id)
 			return

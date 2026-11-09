@@ -208,6 +208,8 @@ type fakeRunner struct {
 	reqs []run.Request
 	// end, when set, is the verdict and reason every run ends with.
 	end *[2]string
+	// fault, when set, is what the next run panics with.
+	fault string
 }
 
 func (f *fakeRunner) Execute(ctx context.Context, req run.Request) (*store.Run, error) {
@@ -215,7 +217,12 @@ func (f *fakeRunner) Execute(ctx context.Context, req run.Request) (*store.Run, 
 	f.seen = append(f.seen, req.ID)
 	f.reqs = append(f.reqs, req)
 	hold := f.hold
+	fault := f.fault
+	f.fault = ""
 	f.mu.Unlock()
+	if fault != "" {
+		panic(fault)
+	}
 	r := &store.Run{ID: req.ID, Batch: req.Batch, Campaign: req.Campaign, Cohort: req.Cohort, Suite: req.Task.Suite, TaskID: req.Task.ID, Lane: req.Lane, ArmID: req.Arm.ID,
 		StartedAt: time.Now().UTC(), Harness: req.Arm.Harness.SDKRelease, Verdict: store.Pass, VerdictReason: "oracle passed"}
 	if req.OnStart != nil {

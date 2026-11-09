@@ -147,7 +147,7 @@ func (d *Daemon) handleRescore(w http.ResponseWriter, r *http.Request) {
 		if _, _, ok := run.Rescore(&rec, false); !ok {
 			continue
 		}
-		if d.Local.Lanes[rec.Lane] == nil {
+		if d.Local.Lane(rec.Lane) == nil {
 			fail(w, http.StatusConflict, "run %s ran on lane %s, which this installation no longer has", rec.ID, rec.Lane)
 			return
 		}

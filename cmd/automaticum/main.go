@@ -199,6 +199,8 @@ func main() {
 		"task build":           taskBuild,
 		"task pin":             taskPin,
 		"config check":         configCheck,
+		"config reload":        configReload,
+		"config show":          configShow,
 		"oracle verify":        oracleVerify,
 		"suite import":         suiteImport,
 		"lane ls":              laneLs,

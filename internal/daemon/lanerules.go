@@ -77,7 +77,7 @@ func (d *Daemon) countInfra(ctx context.Context, rec *store.Run) {
 // be run means busy, with the command's output or what went wrong as the
 // reason; any other exit means free.
 func (d *Daemon) laneBusy(ctx context.Context, lane string) (bool, string) {
-	ln := d.Local.Lanes[lane]
+	ln := d.Local.Lane(lane)
 	if ln == nil || len(ln.BusyCommand) == 0 {
 		return false, ""
 	}
@@ -123,7 +123,7 @@ type ReserveRequest struct {
 // that work starts on the lane while it lasts; a run in flight finishes.
 func (d *Daemon) handleReserve(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("lane")
-	if _, ok := d.Local.Lanes[name]; !ok {
+	if d.Local.Lane(name) == nil {
 		fail(w, http.StatusNotFound, "there is no lane %s", name)
 		return
 	}

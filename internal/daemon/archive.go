@@ -23,7 +23,7 @@ const archiveEvery = 24 * time.Hour
 // archive that cannot be reached moves and frees nothing and is notified.
 // An installation without archive_after_days archives nothing.
 func (d *Daemon) archiveLoop(ctx context.Context) {
-	days := d.Local.Daemon.ArchiveAfterDays
+	days := d.Local.Settings().ArchiveAfterDays
 	if d.Archiver == nil || days <= 0 {
 		return
 	}

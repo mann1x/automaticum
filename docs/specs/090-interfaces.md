@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.31, 2026-11-04.
+**Status:** draft 0.32, 2026-11-09.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -13,6 +13,8 @@ codes.
 ```
 automaticum status                          # lanes, queue, what is running
 automaticum config check                    # the configuration, arms, models and tasks read as the daemon would at its start, with no daemon (D141)
+automaticum config reload [--dry-run]       # the running daemon reads its configuration again and puts it in force, nothing stopped (D144)
+automaticum config show                     # the configuration in force, whether it is watched, the last reload and why it was refused (D144)
 automaticum sdk add|ls|verify <build>        # SDK builds: install, list, reproduce with no network (040 §3.1)
 automaticum doctor [--lane L] [--arm A] [--task T] [--all]   # every gate, on every lane, now
 automaticum lane ls|show|pause|resume|drain|quarantine
@@ -68,6 +70,22 @@ own, and the endpoint it names), the models and the tasks of both roots,
 and says each problem; it changes nothing and exits 1 on any problem, so a
 configuration edit is checked before a restart. Of these, `--dry-run` and
 `--idempotency-key` exist on `run start` so far.
+
+**Built on 2026-11-09 (D144):** the running daemon takes a changed
+configuration without a restart. `config reload` (`POST /v1/config/reload`,
+`?dry_run=1`; answered 422 with the reason when refused), SIGHUP, and, unless
+`watch_config = false`, any change to `automaticum.toml`, `lanes/`,
+`endpoints/` or the token files (read every two seconds, put in force once
+two reads agree) read the directory again with the checks of the start and
+put it in force for every reader at once. A directory that does not load
+changes nothing: the configuration in force stays, whole. `config show`
+(`GET /v1/config`, and `config` in `status`) says when it was loaded, how
+many reloads, whether it is watched and what the last reload did or why it
+was refused. The daemon's signals: SIGHUP reloads; SIGUSR1 logs the state
+(configuration, lanes, queue and why each waiting run waits); SIGUSR2 logs
+every goroutine's stack; the first SIGINT or SIGTERM drains and a second
+aborts (050 §5); SIGPIPE is ignored. All are taken from the first moment of
+the start, so none stops a daemon still starting.
 
 **Built in milestone 4 so far:** `compare` (070 §6); `run start` with
 several `--arm` and `--order`; `run pause|resume|retry`; `lane

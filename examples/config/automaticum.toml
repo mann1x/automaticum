@@ -12,6 +12,7 @@ token_file = "token"                        # mode 0600, 32 characters or more; 
 # client_token_file = "client-token"       # the plain token the CLI sends, when token_file holds the hash
 repo = "/opt/automaticum"                   # the checkout with tasks/ and images/; arms/ and models/ are in this directory (D118)
 private_tasks = ""                          # a second tasks root outside the public repo (D105); optional
+watch_config = true                         # put a change to this directory in force on its own, no restart (D144); false: SIGHUP or `config reload` only
 
 [notify]
 webhook = ""                                # a URL that gets one JSON object per notification, by POST; empty: none

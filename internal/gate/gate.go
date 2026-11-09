@@ -112,7 +112,7 @@ func Builtin() []Gate {
 // Run looks at everything once and returns every gate's answer. It asks the
 // endpoint for its identity; it never loads or unloads a model.
 func Run(ctx context.Context, in *Input) []Result {
-	in.lane = in.Local.Lanes[in.Lane]
+	in.lane = in.Local.Lane(in.Lane)
 	in.endpoint = in.Local.Endpoint(in.Arm.Endpoint)
 	if in.endpoint != nil {
 		key, err := in.Local.APIKey(in.endpoint)
@@ -362,11 +362,11 @@ func harness(ctx context.Context, in *Input) (Status, string) {
 
 func host(_ context.Context, in *Input) (Status, string) {
 	var notes []string
-	floor := uint64(in.Local.Daemon.FreeFloorGB) << 30
+	floor := uint64(in.Local.Settings().FreeFloorGB) << 30
 	if in.Free == nil {
 		return Unchecked, "free space cannot be read on this platform"
 	}
-	for _, dir := range []string{in.RunsDir, in.Local.Daemon.DataRoot} {
+	for _, dir := range []string{in.RunsDir, in.Local.Settings().DataRoot} {
 		if dir == "" {
 			continue
 		}
@@ -375,14 +375,14 @@ func host(_ context.Context, in *Input) (Status, string) {
 			return Refuse, "free space cannot be read: " + err.Error()
 		}
 		if floor > 0 && n < floor {
-			return Refuse, fmt.Sprintf("free space is %d GB, under the floor of %d GB", n>>30, in.Local.Daemon.FreeFloorGB)
+			return Refuse, fmt.Sprintf("free space is %d GB, under the floor of %d GB", n>>30, in.Local.Settings().FreeFloorGB)
 		}
 		notes = append(notes, fmt.Sprintf("%d GB free", n>>30))
 	}
 	if floor == 0 {
 		notes = append(notes, "no floor is configured")
 	} else {
-		notes = append(notes, fmt.Sprintf("floor %d GB", in.Local.Daemon.FreeFloorGB))
+		notes = append(notes, fmt.Sprintf("floor %d GB", in.Local.Settings().FreeFloorGB))
 	}
 	if b, err := os.ReadFile("/proc/sys/fs/inotify/max_user_watches"); err == nil {
 		notes = append(notes, "inotify watches "+strings.TrimSpace(string(b)))

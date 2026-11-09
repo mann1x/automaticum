@@ -84,7 +84,7 @@ func addClient(fs *flag.FlagSet) (place, func() (*client, error)) {
 	p := addPlace(fs)
 	name := fs.String("client", "", "your name, recorded with every change you make (default <user>@<host>)")
 	return p, func() (*client, error) {
-		l, err := p.local()
+		l, err := p.client()
 		if err != nil {
 			return nil, err
 		}
@@ -236,6 +236,19 @@ func statusOnce(ctx context.Context, c *client) error {
 		fmt.Printf("last heartbeat %s ago: %d running, %d queued; ended in the %s before it: %s\n",
 			ago(h.At), h.Running, h.Queued, human.Duration(h.At.Sub(h.Since)), countList(h.Ended))
 	}
+	if cf := st.Config; cf != nil {
+		fmt.Printf("configuration loaded %s ago, %d reloads", ago(cf.Loaded), cf.Reloads)
+		if cf.Watching {
+			fmt.Print(", watched")
+		}
+		fmt.Println()
+		if l := cf.Last; l != nil && l.Error != "" {
+			fmt.Printf("last reload REFUSED %s ago, the configuration in force stays: %s\n", ago(l.At), strings.ReplaceAll(l.Error, "\n", " "))
+		}
+		if len(cf.Restart) > 0 {
+			fmt.Printf("changed, held from the next start only: %s\n", strings.Join(cf.Restart, ", "))
+		}
+	}
 	fmt.Println()
 	w := table()
 	fmt.Fprintln(w, "LANE\tHOST\tSTATE\tRUN\tARM\tTASK\tFOR")
@@ -246,6 +259,9 @@ func statusOnce(ctx context.Context, c *client) error {
 	for _, l := range st.Lanes {
 		if l.Waiting != "" {
 			fmt.Printf("\n%s waits: %s\n", l.Lane, l.Waiting)
+		}
+		if l.Removed {
+			fmt.Printf("\n%s is no longer in the configuration: %s finishes, then the lane is gone\n", l.Lane, l.RunID)
 		}
 		if l.Drained && l.RunID != "" {
 			fmt.Printf("\n%s is drained: %s finishes, then nothing else starts\n", l.Lane, l.RunID)

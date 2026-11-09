@@ -100,7 +100,7 @@ func (d *Daemon) loadControl() {
 	if err != nil {
 		// Starting with lanes undrained would run what the operator stopped.
 		d.Log.Error("the control file cannot be read; every lane is drained until it is mended", "file", d.ControlFile, "error", err)
-		for name := range d.Local.Lanes {
+		for _, name := range d.Local.LaneNames() {
 			d.ctl.Drained[name] = time.Now().UTC()
 		}
 	}
@@ -291,7 +291,7 @@ type LaneControl struct {
 func (d *Daemon) handleLane(verb string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		name := r.PathValue("lane")
-		if _, ok := d.Local.Lanes[name]; !ok {
+		if d.Local.Lane(name) == nil {
 			fail(w, http.StatusNotFound, "there is no lane %s", name)
 			return
 		}
@@ -846,7 +846,7 @@ func (d *Daemon) retry(ctx context.Context, id, batch string, verdicts []store.V
 			}
 		}
 		if why == "" {
-			if _, ok := d.Local.Lanes[it.Lane]; !ok {
+			if d.Local.Lane(it.Lane) == nil {
 				why = "lane " + it.Lane + " is not in this installation"
 			}
 		}

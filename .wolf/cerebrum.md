@@ -6,6 +6,7 @@
 
 ## User Preferences
 
+- 2026-11-09, the owner: a daemon must take every configuration change live, handle signals fully, and never stop unless it truly cannot ("do I have to specify even the most basic things?"). Build the operational basics a long-running service needs without being told: live reload (SIGHUP, an API verb, a directory watch), validation before swap, graceful drain, fault isolation, clear status of what is pending a restart.
 - Only the owner turns an **Open** item into a decision. Carry a recommendation and ask in batches. Never quietly bend a decision to fit an import: record it and open an O item.
 - Do the owner's setup steps in the order listed. GitHub repos go under `mann1x`.
 - Public repo: neutral host names only, with no nicknames, private paths or addresses. The mapping is in docs/local/hosts.local.md (untracked).
@@ -55,6 +56,8 @@
 
 ## Do-Not-Repeat
 
+- 2026-11-09: never capture a config object's maps for direct reads in a long-running process. Read through locked accessors and swap whole after validating (config.Local.Reload/Apply); a run in flight keeps the value it took. Take signal handlers at the first moment of start-up (a default SIGHUP kills the process), ignore SIGPIPE, and let the CLI reach the daemon from automaticum.toml alone (config.LoadClient), never a full LoadLocal.
+
 - 2026-11-08: anything that compares SDK releases must read a local build's version (`4.100.275+<commit>` in an arm, `4.100.275-g<commit>` as the package and run record version): use detect's releaseAtLeast, never split on '.' and Atoi. When an SDK release changes a guard automaticum replays (loop-detection.ts, reasoning guards), add a release-gated rule set (`CallGuardFor`, `RulesFor`) and bump detect.Version; diff the guard file between release tags before adopting a release.
 
 - 2026-11-08: a tool hint that names an edit or a verdict must be proved by the authority it names (the parser, the oracle), never by a heuristic of its own. Its tests must use real code that passes that authority after the fix. The SDK's delimiter scan called a bracket-count edit 'checked' and deleted a correct } on the manic_miner seed (bug-082); its fixtures never parsed. vitest runs under Node and the CLI under Bun: test runtime-dependent code on both.
@@ -73,6 +76,8 @@
 - 2026-10-13: never invent detector, guard or limit numbers. xollama's GPU host is `windows-2`. Job waiters need an exit-code file, a failure exit and a time bound.
 
 ## Decision Log
+
+- 2026-11-09 (D144): the running daemon takes a changed configuration without a restart (SIGHUP, `config reload`, the `watch_config` watcher); refused whole on any problem; lanes, endpoints, settings, token, listen live; data_root/archive_root/docker_socket/repo from the next start, named; removed lanes finish their run; queued runs without lane/endpoint wait; panics end one run, not the daemon.
 
 - 2026-11-08 (D143): the arm template's default SDK release is 4.100.276 (owner: "integrate .276 when ready", read as D142's "integrate" = harness default + host). Arms that state their own release keep it.
 

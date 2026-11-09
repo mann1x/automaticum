@@ -12,6 +12,12 @@ Type=simple
 Environment=AUTOMATICUM_CONFIG=<root>/config
 WorkingDirectory=<root>/work
 ExecStart=<root>/bin/automaticumd --config <root>/config
+# A changed configuration is put in force without a restart (D144): the
+# daemon watches its directory, and `systemctl reload automaticumd` (SIGHUP)
+# or `automaticum config reload` read it at once. One that does not load
+# leaves the configuration in force; `automaticum config show` says why.
+# SIGUSR1 logs the state, SIGUSR2 every goroutine's stack.
+ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 RestartSec=10
 # The first SIGTERM drains (050 §5): the run in flight finishes, which takes

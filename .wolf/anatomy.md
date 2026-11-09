@@ -1,15 +1,15 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-08T11:00:00.278Z
-> Files: 512 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-09T14:10:30.242Z
+> Files: 513 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
 - `.gitleaks.toml` (~581 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~4297 tok)
-- `CLAUDE.md` — automaticum (~6486 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~4478 tok)
+- `CLAUDE.md` — automaticum (~6548 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
 - `LICENSE` — Project license (~3029 tok)
@@ -20,7 +20,7 @@
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~143253 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~144465 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~211 tok)
 - `score-history.jsonl` (~1918 tok)
@@ -35,12 +35,13 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~98020 tok)
+- `fingerprint.json` — Declares usage (~98009 tok)
 
 ## .caliber/learning/
 
+- `current-session.jsonl` (~48696 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~98145 tok)
+- `roi-stats.json` (~99681 tok)
 - `state.json` (~41 tok)
 
 ## .claude/
@@ -90,7 +91,7 @@
 
 ## .claude/skills/learned-new-sdk-release/
 
-- `SKILL.md` — Provisioning a new SDK release (~2354 tok)
+- `SKILL.md` — Provisioning a new SDK release (~3976 tok)
 
 ## .claude/skills/log-wolf-bug/
 
@@ -118,6 +119,7 @@
 - `cell_cmds.go` — exitCode: names (~3525 tok)
 - `check_cmds_test.go` — TestConfigCheck (~731 tok)
 - `check_cmds.go` — pin (71 fields) (~1834 tok)
+- `reload_cmds.go` — `config reload [--dry-run]` and `config show` (D144) (~900 tok)
 - `client_cmds.go` — client (114 fields); methods: Error (~10778 tok)
 - `cohort_cmds.go` (~1633 tok)
 - `compare_cmds.go` — Declares list (~4058 tok)
@@ -146,7 +148,7 @@
 
 ## cmd/automaticumd/
 
-- `main.go` — Command automaticumd is the daemon: it owns the store, works the queue on (~1680 tok)
+- `main.go` — Command automaticumd is the daemon; signals from the first moment (SIGHUP reload, USR1 state, USR2 stacks, INT/TERM drain then abort, PIPE ignored), apiServer rebinds listen live (D144) (~2600 tok)
 
 ## docs/audit/
 
@@ -156,9 +158,17 @@
 
 - `hosts.local.md` — Local mapping (untracked) (~540 tok)
 
+## docs/local/sdk-4.100.275/packs/
+
+- `cerebriline-agents-4.100.275-gda478ecc8a.tgz` (~23573 tok)
+- `cerebriline-sdk-4.100.275-gda478ecc8a.tgz` (~1303 tok)
+- `cerebriline-shared-4.100.275-gda478ecc8a.tgz` (~82519 tok)
+- `manifest.json` (~283 tok)
+- `SHA256SUMS` (~147 tok)
+
 ## docs/local/sdk-audit-2026-11-08/
 
-- `FINDINGS.md` — SDK tool audit, 2026-11-08 (owner order after the delimiter-scan bug) (~5028 tok)
+- `FINDINGS.md` — SDK tool audit, 2026-11-08 (owner order after the delimiter-scan bug) (~5529 tok)
 
 ## docs/local/sdk-audit-2026-11-08/checkers/
 
@@ -652,29 +662,12 @@
 - `f1292.log` (~0 tok)
 - `f1293.log` (~0 tok)
 - `f1294.log` (~0 tok)
-- `f1295.log` (~0 tok)
-- `f1296.log` (~0 tok)
-- `f1297.log` (~0 tok)
-- `f1298.log` (~0 tok)
-- `f1299.log` (~0 tok)
-- `f13.log` (~0 tok)
 
-## runner/sdk/4.100.275+da478ecc8a/
+## internal/daemon/
 
-- `sdk.toml` — local build of release 4.100.275 (Cerebriline da478ecc8a), version 4.100.275-gda478ecc8a, bundle 4ac9a070 (~250 tok)
-- `package.json` — the five @cerebriline packs as file:../packs/ dependencies and overrides (~150 tok)
-- `package-lock.json` — 382 packages (~60000 tok)
+- `reload.go` — Reload (SIGHUP, POST /v1/config/reload, WatchConfig every 2 s), ConfigState / GET /v1/config, DumpState; token and listen live; retiring lanes, waiting runs (D144) (~2800 tok)
+- `reload_test.go` — TestReloadLive, TestWatchConfig, TestFaultedRun (~2200 tok)
 
-## examples/config/arms/ (addition)
+## internal/config/
 
-- `stub-sdk-4.100.275.toml` — stub arm on the 4.100.275 local build (~80 tok)
-
-## runner/sdk/4.100.276/
-
-- `sdk.toml` — registry release 4.100.276 (Cerebriline 07731ff6fd), bundle eb0aa5c0, the default (D143) (~200 tok)
-- `package.json` — @cerebriline/sdk 4.100.276 (~80 tok)
-- `package-lock.json` — 382 packages (~60000 tok)
-
-## examples/config/arms/ (addition)
-
-- `stub-sdk-4.100.276.toml` — stub arm on 4.100.276 (~80 tok)
+- `reload_test.go` — TestReload: in force for every reader, refused whole on a bad directory, restart-only keys, cells survive, LoadClient past a broken lane (~1500 tok)

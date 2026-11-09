@@ -109,14 +109,14 @@ func (d *Daemon) addCell(batch string, c *CellSpec) error {
 // part of the basis and is never lowered quietly.
 func (d *Daemon) cellLanes(n int, asked string) ([]string, error) {
 	var names []string
-	for name := range d.Local.Lanes {
+	for _, name := range d.Local.LaneNames() {
 		if name != asked {
 			names = append(names, name)
 		}
 	}
 	sort.Strings(names)
 	if asked != "" {
-		if d.Local.Lanes[asked] == nil {
+		if d.Local.Lane(asked) == nil {
 			return nil, fmt.Errorf("this installation has no lane %q", asked)
 		}
 		names = append([]string{asked}, names...)

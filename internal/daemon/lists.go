@@ -189,8 +189,8 @@ type LaneView struct {
 func (d *Daemon) handleLaneShow(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	name := r.PathValue("lane")
-	l, ok := d.Local.Lanes[name]
-	if !ok {
+	l := d.Local.Lane(name)
+	if l == nil {
 		fail(w, http.StatusNotFound, "there is no lane %s", name)
 		return
 	}

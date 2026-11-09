@@ -1204,7 +1204,7 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-11-01 03:00
-> Consolidated session (10 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-01 18:58
 > Consolidated session (0 actions)
@@ -1216,16 +1216,16 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-11-01 18:59
-> Consolidated session (1 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-01 19:03
 > Consolidated session (0 actions)
 
 ## Session: 2026-11-01 19:03
-> Consolidated session (7 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-01 19:56
-> Consolidated session (5 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-01 20:22
 > Consolidated session (0 actions)
@@ -1237,16 +1237,16 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-11-01 20:24
-> Consolidated session (3 actions)
-
-## Session: 2026-11-01 20:35
 > Consolidated session (0 actions)
 
 ## Session: 2026-11-01 20:35
 > Consolidated session (0 actions)
 
 ## Session: 2026-11-01 20:35
-> Consolidated session (2 actions)
+> Consolidated session (0 actions)
+
+## Session: 2026-11-01 20:35
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-01 20:43
 > Consolidated session (0 actions)
@@ -1255,7 +1255,7 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-11-01 20:44
-> Consolidated session (1 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-01 20:51
 > Consolidated session (0 actions)
@@ -1267,7 +1267,7 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-11-01 21:11
-> Consolidated session (1 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-01 21:13
 > Consolidated session (0 actions)
@@ -1276,7 +1276,7 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-11-01 21:14
-> Consolidated session (4 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-01 21:25
 > Consolidated session (0 actions)
@@ -1285,7 +1285,7 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-11-01 21:27
-> Consolidated session (2 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-01 21:38
 > Consolidated session (0 actions)
@@ -1297,10 +1297,10 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-11-01 21:40
-> Consolidated session (2 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-01 22:39
-> Consolidated session (1 actions)
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-01 22:41
 > Consolidated session (0 actions)
@@ -1315,124 +1315,64 @@
 > Consolidated session (0 actions)
 
 ## Session: 2026-11-02 04:00
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
-| 08:38 | deployed e1b9d80 on blackswan-2 (daemon+CLI, unit TimeoutStopSec=infinity, repo checkout) after backup_models released the hold (#2104); mailed #2105 | bin/, unit | daemon up, detect library 3 live | ~6000 |
-| 08:43 | Created internal/detect/struggle.go | — | ~2723 |
-| 08:45 | Created internal/ingest/struggle.go | — | ~1282 |
-| 08:45 | Edited internal/ingest/struggle.go | 8→4 lines | ~18 |
-| 08:45 | Edited internal/ingest/struggle.go | 2→3 lines | ~27 |
-| 08:46 | Created internal/detect/struggle_test.go | — | ~1944 |
-| 08:46 | Edited internal/detect/struggle_test.go | 7→5 lines | ~71 |
-| 08:46 | Edited internal/detect/struggle_test.go | 7→8 lines | ~36 |
-| 08:52 | D126 struggle signals (SDK detector replayed, report struggle), change protocol transactions.*, report guards review queue; analysis 10 | internal/detect/struggle.go, internal/ingest/struggle.go, internal/daemon/report.go, cmd report_cmds.go, 070/090/audit | tests pass | ~30000 |
+> Consolidated session (9 actions)
 
 ## Session: 2026-11-02 08:54
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-02 08:54
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-02 08:54
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
-| 09:13 | endpoint [price] + cost.money, loop_components, compare --group / report skew, run timeline, O40 (baseline), outside_workspace from container changes; analysis 11 | config, run, docker, ingest, daemon, cmd, 030/065/070/090/110/decisions/audit | tests pass | ~45000 |
+> Consolidated session (1 actions)
 
 ## Session: 2026-11-02 09:15
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-02 09:15
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-02 09:16
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-02 09:17
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-02 09:20
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-02 09:20
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
-| 10:20 | Created internal/detect/swallow.go | — | ~950 |
-| 10:23 | D130 run show baseline (campaign baseline key, else parent), D131 swallowed_argument detector (schemas from wire, library 4, analysis 12), matched backup_models' scan on runs 006/008 | detect/swallow.go, ingest/swallow.go, daemon/baseline.go, config, cmd | tests pass | ~25000 |
+> Consolidated session (2 actions)
 
 ## Session: 2026-11-02 10:25
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-02 10:25
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-02 10:25
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
-| 10:34 | deployed 815fb25 on blackswan-2 (idle-gated, owner's go); mailed backup_models #2107/#2108 | bin/, repo checkout | daemon up, library 4 | ~4000 |
+> Consolidated session (1 actions)
 
 ## Session: 2026-11-02 11:53
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
-| 12:40 | audit item 5: re-checked every NOT BUILT/PARTIAL row (17 stale built, 20 stale evidence, 16 now SCHEDULED); built mode C engine_note (000 §2), limits steps/output tokens (020 §1), --client attribution (010 §5), archive_after_days (D31), task-version pooling refusal --pool-versions (020 §4) | internal/daemon/{cell,compare,mutate,api,campaign,canary,archive}.go, internal/run/run.go, internal/config/local.go, cmd/automaticum, specs 000/010/020/030/050/065/070/080/090, audit | make test ok | ~60k |
+> Consolidated session (1 actions)
 
 ## Session: 2026-11-02 12:10
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-02 12:11
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-02 12:11
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
-| 12:55 | D132 tokens stored hashed: token_file token or sha256:<hex>, daemon keeps TokenHash only, CLI client_token_file | internal/config/local.go, internal/daemon/{api,daemon}.go, cmd/automaticumd/main.go, 010, decisions rev 39, audit | tests ok | ~8k |
+> Consolidated session (1 actions)
 
 ## Session: 2026-11-02 12:35
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-02 12:35
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
+> Consolidated session (0 actions)
 
 ## Session: 2026-11-02 13:30
-
-| Time | Action | File(s) | Outcome | ~Tokens |
-|------|--------|---------|---------|--------|
-| 01:03 | Created internal/ingest/outcomes.go | — | ~911 |
-| 01:06 | Created internal/daemon/detect.go | — | ~4822 |
-| 01:08 | Created cmd/automaticum/detect_cmds.go | — | ~5854 |
-| 01:09 | Created internal/daemon/detect_test.go | — | ~1978 |
-| 01:12 | detect over any set of runs (D133) + swallow newline form (library 5, analysis 13) | daemon/detect.go, detect_cmds.go, ingest/outcomes.go, detect/swallow.go, specs 070/090/decisions | built, make test ok | ~60k |
+> Consolidated session (5 actions)
 
 ## Session: 2026-11-03 01:13
 
@@ -1898,3 +1838,52 @@
 |------|--------|---------|---------|--------|
 | 15:20 | built 73ca844 (library 9) and staged on blackswan-2 as bin/*.new (sha256 match); asked backup_models for a swap window (#2212); asked ollama to mail when 4.100.276 is cut (#2213); hourly tick will act on replies | - | waiting for window and .276 | ~800 |
 | 15:45 | ollama #2211: 4.100.276 on npm (07731ff6fd; N2/N5b/N6b/N7b/N8). Pinned runner/sdk/4.100.276 (bundle eb0aa5c0, verify reproduced; runtime/safety + agents unchanged from 275, CallGuard275/Rules258 hold), stub arm, D143 template default 4.100.276 (owner 'integrate .276', D142 reading), X14/040/CLAUDE.md, arm-stub.json regenerated (only sdk_release differs); make test ok | runner/sdk/4.100.276, examples/config/arms, runner/test/arm-stub.json, internal/run, internal/daemon tests, docs/specs | done | ~6000 |
+
+## Session: 2026-11-08 14:58
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-08 14:59
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 16:00 | b497fba rebuilt and restaged on blackswan-2 (sha256 match); mailed backup_models #2214 (window: swap + host base.toml -> 4.100.276; only stub/stub-plan inherit base, every g4 arm pins 262/266 via g4-128e/shipped); waiting on the blackswan-2 build claim (opencoti, shared) for sdk add 4.100.276 | - | waiting | ~1500 |
+| 16:12 | blackswan-2 under the blackswan-2 build claim: repo ff to b497fba, sdk add+verify 4.100.276 (bundle eb0aa5c0 as pinned), stub arm, stub smoke 20261108-141122-11a150 PASS 3.2s; no restart; claim released. Swap to b497fba + host base.toml 4.100.276 still waiting for backup_models' window (#2214) | - | installed | ~1200 |
+| 15:11 | tick: no mail (backup_models has not answered #2212/#2214); blackswan-2 bc5cfd9 up 12h51m, NRestarts=0, idle, 0 queued; b497fba staged as .new; gpu0 99% = backup_models sft7c training | - | waiting for window | ~200 |
+| 16:55 | owner 'not in use' + backup_models go #2215: blackswan-2 swapped bc5cfd9 -> b497fba (library 9, analysis 21; .prev kept, unit backup .pre-b497fba), host base.toml 4.100.274 -> 4.100.276 (backup work/base.toml.pre-d143); arm ids: only stub + stub-plan changed, 38 unchanged; stub smoke 20261108-145359-8a607b PASS on 4.100.276; NRestarts=0; claim released; START #2216, DONE follows | - | deployed | ~2000 |
+| 16:11 | tick: no mail (backup_models has DONE #2217); blackswan-2 b497fba up 18m, NRestarts=0, idle, 0 queued (PASS 1 = my stub smoke); gpu0 100% = backup_models sft7c training | - | nothing to do | ~200 |
+
+## Session: 2026-11-08 17:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:11 | tick: no mail (backup_models acked DONE: they move g4-128e-bf16-c13-shipped to 4.100.276 themselves); blackswan-2 b497fba up 1h18m, NRestarts=0, idle, 0 queued; both GPUs idle (sft7c training ended) | - | nothing to do | ~200 |
+| 18:11 | tick: no mail; blackswan-2 b497fba up 2h18m, NRestarts=0, idle, 0 queued; gpu1 100% = backup_models' bm-889 length-battery servers (their exclusive claim since 16:15Z) | - | nothing to do | ~200 |
+| 19:11 | tick: no mail; blackswan-2 b497fba up 3h18m, NRestarts=0, idle, 0 queued; gpu1 97% = backup_models' length battery (their claim) | - | nothing to do | ~200 |
+| 20:11 | tick: no mail; blackswan-2 b497fba up 4h18m, NRestarts=0, idle, 0 queued; both GPUs free (backup_models' length battery gone, theirs) | - | nothing to do | ~200 |
+| 21:11 | tick: no mail; blackswan-2 b497fba up 5h18m, NRestarts=0, idle, 0 queued; both GPUs free | - | nothing to do | ~200 |
+| 22:11 | tick: no mail; blackswan-2 b497fba up 6h18m, NRestarts=0, idle, 0 queued; gpu0 100% = backup_models' sft8 training (their exclusive claim since 20:17Z) | - | nothing to do | ~200 |
+| 23:11 | tick: no mail; blackswan-2 b497fba up 7h18m, NRestarts=0, idle, 0 queued; gpu0 100% = backup_models' sft8 training (theirs) | - | nothing to do | ~200 |
+| 00:11 | tick: no mail; blackswan-2 b497fba up 8h18m, NRestarts=0, idle, 0 queued; gpu0 0% but backup_models' sft8 trainer alive (2h55m, writing ~550 MB/s = checkpoint save) | - | nothing to do | ~300 |
+| 01:11 | tick: no mail; blackswan-2 b497fba up 9h18m, NRestarts=0, idle, 0 queued; gpu0 back at 100%, backup_models' sft8 trainer alive 3h54m (the 00:11 dip was a checkpoint save) | - | nothing to do | ~200 |
+| 02:11 | tick: no mail; blackswan-2 b497fba up 10h18m, NRestarts=0, idle, 0 queued; gpu0 100%, backup_models' sft8 trainer alive 4h54m | - | nothing to do | ~200 |
+| 03:11 | tick: no mail; blackswan-2 b497fba up 11h18m, NRestarts=0, idle, 0 queued; both GPUs free, backup_models' sft8 trainer gone and their blackswan-2 claims released (theirs to judge done/failed) | - | nothing to do | ~200 |
+
+## Session: 2026-11-09 04:00
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 04:11 | tick: no mail; blackswan-2 b497fba up 12h18m, NRestarts=0, idle, 0 queued; both GPUs free | - | nothing to do | ~200 |
+| 05:11 | tick: no mail; blackswan-2 b497fba up 13h18m, NRestarts=0, idle, 0 queued; both GPUs free | - | nothing to do | ~200 |
+| 06:11 | tick: no mail; blackswan-2 b497fba up 14h18m, NRestarts=0, idle, 0 queued; both GPUs free | - | nothing to do | ~200 |
+| 07:11 | tick: no mail; blackswan-2 b497fba restarted by backup_models ~06:08Z (NRestarts=0, deliberate); their sft8-v8 manic gate batch (SDK 4.100.276) -001 running 2m50s on lane-1, 9 queued; gpu1 = their claim | - | nothing to do; watch batch | ~200 |
+| 08:11 | tick: no mail; blackswan-2 b497fba up 1h03m, NRestarts=0; backup_models' sft8-v8 gate: -001/-002 TIMEOUT at the 30m wall (their batch limit), -003 running 1m57s, 7 queued; gpu1 = their claim | - | nothing to do; batch moving | ~250 |
+| 09:11 | tick: no mail; blackswan-2 b497fba up 2h03m, NRestarts=0; sft8-v8 gate: -001..-004 TIMEOUT at the 30m wall, -005 running, 5 queued; gpu1 = their claim | - | nothing to do; batch moving | ~200 |
+| 10:11 | tick: no mail; blackswan-2 b497fba up 3h03m, NRestarts=0; sft8-v8 gate: -001..-006 TIMEOUT at the 30m wall, -007 running, 3 queued; gpu1 = their claim | - | nothing to do; batch moving | ~200 |
+| 11:11 | tick: no mail; blackswan-2 b497fba up 4h03m, NRestarts=0; sft8-v8 gate: -007 PASS (14m04s), others TIMEOUT at 30m wall, -009 running, 1 queued (-010) | - | nothing to do; batch moving | ~200 |
+| 12:11 | tick: no mail; blackswan-2 b497fba up 5h03m, NRestarts=0, idle, 0 queued; sft8-v8 gate done: 1 PASS (-007) / 9 TIMEOUT at the 30m wall; gpu0 100% = backup_models' sft9 training (their claim since 11:04Z) | - | nothing to do | ~200 |
+| 13:11 | tick: no mail; blackswan-2 b497fba up 6h03m, NRestarts=0, idle, 0 queued; gpu0 100% = backup_models' sft9 training (theirs) | - | nothing to do | ~200 |
+| 14:11 | tick: no mail; blackswan-2 b497fba restarted ~12:51Z by backup_models (NRestarts=0, deliberate), idle, 0 queued; gpu0 99% sft9 training, gpu1 97% their sft9 step-50 probe server (length battery first, 4 manic runs to come) | - | nothing to do | ~200 |
+| 15:10 | Created internal/daemon/reload.go | — | ~2783 |
+| 15:30 | owner-reported defect (no live config reload): D144 built — config.Local accessors + Reload/Apply, daemon Reload (SIGHUP, POST /v1/config/reload, watch_config watcher), listen rebind, token live, retiring lanes, waiting runs, panic isolation, signals HUP/USR1/USR2/PIPE from first moment, CLI config reload/show, LoadClient; tests + real-binary run; bug-085..087 | internal/config, internal/daemon, cmd/automaticumd, cmd/automaticum, specs 030/050/090, decisions | built, make test green | ~60000 |

@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"sync"
@@ -96,6 +97,14 @@ type Daemon struct {
 	// every five seconds.
 	CampaignEvery time.Duration
 	ControlTokens func(ctx context.Context, arm string) ([]string, error)
+	// Rebind moves the API to a new address when a reload changes listen;
+	// nil leaves it where it is. It must bind the new address before it
+	// lets the old one go, and return an error, binding nothing, when it
+	// cannot.
+	Rebind func(addr string) error
+	// WatchEvery is how often WatchConfig reads the configuration
+	// directory; zero means every two seconds.
+	WatchEvery time.Duration
 	// Oracle runs a task's oracle on a workspace, for a rescore (D121);
 	// *task.Env's RunOracle is one. Store keeps what a rescore makes;
 	// *blob.Store's Put is one. Without both no rescore runs.
@@ -120,8 +129,9 @@ type Daemon struct {
 	notified map[string]bool
 	// lastBeat is the last heartbeat.
 	lastBeat *Heartbeat
-	// atCapacity says, by run, that it waits because its endpoint serves
-	// as many runs as its capacity (050 §1).
+	// atCapacity says, by run, why it waits: its endpoint serves as many
+	// runs as its capacity (050 §1), or its lane or endpoint is not in the
+	// configuration in force.
 	atCapacity map[string]string
 	// batchTold is how many finished runs a batch had when its end was
 	// last notified.
@@ -131,6 +141,15 @@ type Daemon struct {
 	campaignMu sync.Mutex
 	// idemMu serves requests with an idempotency key one at a time.
 	idemMu sync.Mutex
+	// reloadMu makes reloads one at a time; cfgMu guards what follows.
+	reloadMu   sync.Mutex
+	cfgMu      sync.Mutex
+	liveToken  string // the token's hash since a reload; TokenHash before
+	lastReload *ReloadResult
+	reloads    int
+	loaded     time.Time
+	restart    []string
+	watching   bool
 }
 
 // flight is a run in flight on a lane.
@@ -308,42 +327,7 @@ func (d *Daemon) Recover(ctx context.Context) error {
 		if ls.State != "running" {
 			continue
 		}
-		var det laneDetail
-		json.Unmarshal(ls.Detail, &det)
-		if det.ContainerID != "" && d.Containers != nil {
-			if err := d.Containers.Kill(ctx, det.ContainerID, ""); err != nil {
-				d.Log.Info("recover: kill", "container", det.ContainerID, "result", err)
-			}
-			if err := d.Containers.Remove(ctx, det.ContainerID); err != nil {
-				d.Log.Info("recover: remove", "container", det.ContainerID, "result", err)
-			}
-		}
-		if ls.RunID != "" {
-			if _, err := d.State.GetRun(ctx, ls.RunID); errors.Is(err, store.ErrNotFound) {
-				r := det.Run
-				if r == nil {
-					r = &store.Run{ID: ls.RunID, Lane: ls.Lane, StartedAt: ls.UpdatedAt}
-				}
-				r.Verdict, r.VerdictReason = store.Aborted, "daemon restart"
-				r.EndedAt = time.Now().UTC()
-				if !r.StartedAt.IsZero() {
-					r.WallMS = r.EndedAt.Sub(r.StartedAt).Milliseconds()
-				}
-				if err := d.State.UpsertRun(ctx, r); err != nil {
-					return fmt.Errorf("recover: run %s: %w", ls.RunID, err)
-				}
-				d.Log.Warn("recover: run in flight at restart is ABORTED", "run", ls.RunID, "lane", ls.Lane)
-			} else if err != nil {
-				return err
-			}
-			if err := d.State.Unqueue(ctx, ls.RunID); err != nil {
-				return err
-			}
-			if d.RunsDir != "" {
-				os.RemoveAll(filepath.Join(d.RunsDir, ls.RunID))
-			}
-		}
-		if err := d.State.SetLaneState(ctx, store.LaneState{Lane: ls.Lane, State: "idle"}); err != nil {
+		if err := d.abortStranded(ctx, ls, "daemon restart"); err != nil {
 			return err
 		}
 	}
@@ -361,12 +345,104 @@ func (d *Daemon) Recover(ctx context.Context) error {
 			return err
 		}
 	}
-	for name := range d.Local.Lanes {
+	for _, name := range d.Local.LaneNames() {
 		if err := d.State.SetLaneState(ctx, store.LaneState{Lane: name, State: "idle"}); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// abortStranded ends a run its lane's state says is in flight while nothing
+// runs it any more, after a restart or a fault: its container is killed and
+// removed, it is recorded ABORTED with reason unless it has a record, it
+// leaves the queue and the lane is idle again.
+func (d *Daemon) abortStranded(ctx context.Context, ls store.LaneState, reason string) error {
+	var det laneDetail
+	json.Unmarshal(ls.Detail, &det)
+	if det.ContainerID != "" && d.Containers != nil {
+		if err := d.Containers.Kill(ctx, det.ContainerID, ""); err != nil {
+			d.Log.Info("recover: kill", "container", det.ContainerID, "result", err)
+		}
+		if err := d.Containers.Remove(ctx, det.ContainerID); err != nil {
+			d.Log.Info("recover: remove", "container", det.ContainerID, "result", err)
+		}
+	}
+	if ls.RunID != "" {
+		if _, err := d.State.GetRun(ctx, ls.RunID); errors.Is(err, store.ErrNotFound) {
+			r := det.Run
+			if r == nil {
+				r = &store.Run{ID: ls.RunID, Lane: ls.Lane, StartedAt: ls.UpdatedAt}
+			}
+			r.Verdict, r.VerdictReason = store.Aborted, reason
+			r.EndedAt = time.Now().UTC()
+			if !r.StartedAt.IsZero() {
+				r.WallMS = r.EndedAt.Sub(r.StartedAt).Milliseconds()
+			}
+			if err := d.State.UpsertRun(ctx, r); err != nil {
+				return fmt.Errorf("aborting run %s: %w", ls.RunID, err)
+			}
+			d.Log.Warn("run in flight is ABORTED", "run", ls.RunID, "lane", ls.Lane, "reason", reason)
+		} else if err != nil {
+			return err
+		}
+		if err := d.State.Unqueue(ctx, ls.RunID); err != nil {
+			return err
+		}
+		if d.RunsDir != "" {
+			os.RemoveAll(filepath.Join(d.RunsDir, ls.RunID))
+		}
+	}
+	if err := d.State.SetLaneState(ctx, store.LaneState{Lane: ls.Lane, State: "idle"}); err != nil {
+		return err
+	}
+	return nil
+}
+
+// abandonFlight ends a run whose flight stopped on a fault: from the lane's
+// state when it holds the run, else from the queue item.
+func (d *Daemon) abandonFlight(ctx context.Context, f *flight, reason string) {
+	ls := store.LaneState{Lane: f.item.Lane, RunID: f.runID}
+	if states, err := d.State.LaneStates(ctx); err == nil {
+		for _, s := range states {
+			if s.Lane == f.item.Lane && s.RunID == f.runID {
+				ls = s
+			}
+		}
+	}
+	if ls.UpdatedAt.IsZero() {
+		ls.UpdatedAt = f.started.UTC()
+	}
+	if err := d.abortStranded(ctx, ls, reason); err != nil {
+		d.Log.Error("the faulted run cannot be ended", "run", f.runID, "error", err)
+	}
+}
+
+// guard runs fn and turns a panic in it into a logged error, so that one
+// fault does not stop the daemon and every run on it. It returns the panic,
+// nil when there was none.
+func (d *Daemon) guard(what string, fn func()) (fault any) {
+	defer func() {
+		if p := recover(); p != nil {
+			fault = p
+			d.Log.Error("recovered from a fault; the daemon goes on", "in", what, "panic", fmt.Sprint(p), "stack", string(debug.Stack()))
+		}
+	}()
+	fn()
+	return nil
+}
+
+// keep runs loop until ctx ends, starting it again after a fault.
+func (d *Daemon) keep(ctx context.Context, what string, loop func(context.Context)) {
+	for ctx.Err() == nil {
+		if d.guard(what, func() { loop(ctx) }) == nil {
+			return
+		}
+		select {
+		case <-ctx.Done():
+		case <-time.After(watchEvery):
+		}
+	}
 }
 
 // Serve works the queue until ctx ends or the daemon has drained. Ending
@@ -376,10 +452,10 @@ func (d *Daemon) Serve(ctx context.Context) {
 	var wg sync.WaitGroup
 	canary, stopCanary := context.WithCancel(ctx)
 	defer stopCanary()
-	go d.canaryLoop(canary)
-	go d.campaignLoop(canary)
-	go d.heartbeatLoop(canary)
-	go d.archiveLoop(canary)
+	go d.keep(canary, "the canary", d.canaryLoop)
+	go d.keep(canary, "the campaigns", d.campaignLoop)
+	go d.keep(canary, "the heartbeat", d.heartbeatLoop)
+	go d.keep(canary, "the archive", d.archiveLoop)
 	for {
 		d.mu.Lock()
 		draining := d.draining
@@ -464,6 +540,12 @@ func (d *Daemon) startReady(ctx context.Context, wg *sync.WaitGroup) {
 		if d.stopped(it) != "" {
 			busy = true
 		}
+		// A lane taken out of the configuration starts nothing; its
+		// queued runs wait for it to come back, or to be moved.
+		if !busy && d.Local.Lane(it.Lane) == nil {
+			busy = true
+			d.atCapacity[it.RunID] = fmt.Sprintf("lane %s is not in the configuration", it.Lane)
+		}
 		d.mu.Unlock()
 		if busy {
 			continue
@@ -503,7 +585,14 @@ func (d *Daemon) startReady(ctx context.Context, wg *sync.WaitGroup) {
 			// The daemon's own end aborts the run, with that cause.
 			stop := context.AfterFunc(ctx, func() { f.cancel(run.ErrDaemonStop) })
 			defer stop()
-			waiting := d.fly(fctx, f)
+			var waiting bool
+			if p := d.guard("run "+f.runID, func() { waiting = d.fly(fctx, f) }); p != nil {
+				// A fault in the harness ends this run, not the daemon:
+				// the run is ABORTED and the lane goes on.
+				f.cancel(fmt.Errorf("harness fault: %v", p))
+				d.abandonFlight(context.WithoutCancel(ctx), f, fmt.Sprintf("harness fault: %v", p))
+				waiting = false
+			}
 			if !waiting {
 				// Before the lane is free: a quarantine this end sets
 				// must hold for the next run (D124).
@@ -543,7 +632,11 @@ func (d *Daemon) endpointFull(it store.QueueItem) (string, string) {
 		return "", ""
 	}
 	ep := d.Local.Endpoint(arm.Endpoint)
-	if ep == nil || ep.Cell || ep.Capacity < 1 {
+	if ep == nil {
+		// Waiting, not SKIPPED: the endpoint may be added by a reload.
+		return arm.Endpoint, fmt.Sprintf("endpoint %s is not in the configuration", arm.Endpoint)
+	}
+	if ep.Cell || ep.Capacity < 1 {
 		return arm.Endpoint, ""
 	}
 	d.mu.Lock()
@@ -778,7 +871,11 @@ func (d *Daemon) laneFor(arm *config.Arm, asked string, requires []string) (stri
 	may := func(lane string) bool { return d.Local.MayUse(lane, arm.Endpoint) }
 	missing := func(lane string) []string {
 		var out []string
-		have := d.Local.Lanes[lane].Labels
+		l := d.Local.Lane(lane)
+		if l == nil {
+			return requires
+		}
+		have := l.Labels
 		for _, r := range requires {
 			k, v, _ := strings.Cut(r, "=")
 			if got, ok := have[strings.TrimSpace(k)]; !ok || got != strings.TrimSpace(v) {
@@ -788,7 +885,7 @@ func (d *Daemon) laneFor(arm *config.Arm, asked string, requires []string) (stri
 		return out
 	}
 	if asked != "" {
-		l := d.Local.Lanes[asked]
+		l := d.Local.Lane(asked)
 		switch {
 		case l == nil:
 			return "", fmt.Errorf("this installation has no lane %q", asked)
@@ -801,7 +898,7 @@ func (d *Daemon) laneFor(arm *config.Arm, asked string, requires []string) (stri
 		return asked, nil
 	}
 	var names []string
-	for n := range d.Local.Lanes {
+	for _, n := range d.Local.LaneNames() {
 		if may(n) && len(missing(n)) == 0 {
 			names = append(names, n)
 		}
@@ -841,7 +938,7 @@ type Notification struct {
 func (d *Daemon) notify(ctx context.Context, n Notification) {
 	n.Source, n.Time = "automaticum", time.Now().UTC()
 	d.Log.Warn(n.Kind+" "+n.Status, "gate", n.Gate, "run", n.Run, "batch", n.Batch, "lane", n.Lane, "detail", n.Detail)
-	cfg := d.Local.Daemon.Notify
+	cfg := d.Local.Settings().Notify
 	if !cfg.Sends(n.Kind) {
 		return
 	}
@@ -957,7 +1054,7 @@ func verdictLine(c map[string]int) string {
 func (d *Daemon) taskRoots() task.Roots {
 	r := task.Roots{Public: filepath.Join(d.Repo, "tasks")}
 	if d.Local != nil {
-		r.Private = d.Local.Daemon.PrivateTasks
+		r.Private = d.Local.Settings().PrivateTasks
 	}
 	return r
 }

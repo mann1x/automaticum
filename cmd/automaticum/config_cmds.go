@@ -42,6 +42,15 @@ func (p place) local() (*config.Local, error) {
 	return config.LoadLocal(*p.cfg)
 }
 
+// client loads what a client of the daemon needs: its address and token,
+// whatever the state of the lanes and endpoints (config.LoadClient).
+func (p place) client() (*config.Local, error) {
+	if *p.cfg == "" {
+		return nil, errors.New("no configuration directory: give --config or set AUTOMATICUM_CONFIG")
+	}
+	return config.LoadClient(*p.cfg)
+}
+
 // root is the checkout: the flag, else the configuration's, else here.
 func (p place) root() string {
 	if *p.repo != "" {

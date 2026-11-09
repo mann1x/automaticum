@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.24, 2026-11-03.
+**Status:** draft 0.25, 2026-11-09.
 
 ## 1. Rules
 
@@ -44,6 +44,12 @@ runner/sdk/<build>/       tracked: one SDK build's manifest, lockfile and pinned
 campaigns/*.toml          tracked (milestone 4)
 suites/*.toml             tracked (milestone 5): source, pinned version, scorer
 ```
+
+**Decided by the owner (2026-11-09, D144):** the running daemon reads the
+directory again whenever it changes (`watch_config`, on unless `false`),
+on SIGHUP and on `automaticum config reload`, with the checks of the start;
+a directory that does not load leaves the configuration in force whole.
+What it reloads and what waits for a restart is in 050 §6.
 
 ## 2. Lanes
 

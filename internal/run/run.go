@@ -389,7 +389,7 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 	// Harness is the SDK release once it is established, never the one the
 	// arm merely names: first by the lane image's label, then by what the
 	// runner finds installed.
-	if l := x.Local.Lanes[req.Lane]; l != nil {
+	if l := x.Local.Lane(req.Lane); l != nil {
 		r.Host = l.Host
 	}
 	var p provenance
@@ -806,7 +806,7 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 // not, if so.
 func (x *Executor) before(ctx context.Context, req Request, p *provenance) (*config.Lane, *config.Endpoint, string) {
 	a, t := req.Arm, req.Task
-	lane := x.Local.Lanes[req.Lane]
+	lane := x.Local.Lane(req.Lane)
 	if lane == nil {
 		return nil, nil, fmt.Sprintf("this installation has no lane %q", req.Lane)
 	}
@@ -862,13 +862,13 @@ func (x *Executor) before(ctx context.Context, req Request, p *provenance) (*con
 	}
 	p.SDK.Version, p.SDK.Source, p.SDK.Commit = def.Version, def.Source, def.Commit
 	p.SDK.BundleSHA256, p.SDK.LockSHA256 = rec.BundleSHA256, rec.LockSHA256
-	if x.Free != nil && x.Local.Daemon.FreeFloorGB > 0 {
+	if x.Free != nil && x.Local.Settings().FreeFloorGB > 0 {
 		free, err := x.Free(x.RunsDir)
 		if err != nil {
 			return nil, nil, "free space cannot be read: " + err.Error()
 		}
-		if free < uint64(x.Local.Daemon.FreeFloorGB)<<30 {
-			return nil, nil, fmt.Sprintf("free space is %d GB, under the floor of %d GB", free>>30, x.Local.Daemon.FreeFloorGB)
+		if free < uint64(x.Local.Settings().FreeFloorGB)<<30 {
+			return nil, nil, fmt.Sprintf("free space is %d GB, under the floor of %d GB", free>>30, x.Local.Settings().FreeFloorGB)
 		}
 	}
 	return lane, endpoint, ""

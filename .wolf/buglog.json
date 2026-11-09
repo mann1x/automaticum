@@ -376,7 +376,7 @@
       "error_message": "demo/plan on the stub ended FAIL twice after a working plan->act switch: editor 'unavailable tool' in plan mode, then 'Read before editing: answer.txt has not been read in this session'",
       "file": "(untracked) work/stub/fix-plan.json",
       "root_cause": "the stub script ignored the arm's no-tool-call nudge (each text-only reply is answered once before a run ends), so its turns went out of step; and the read-before-edit guard forgets reads made in plan mode once the session is restarted in act mode",
-      "fix": "stub script answers the nudge in both halves and reads again in act mode; the guard behaviour recorded in 040 \u00a76.2 and asked of Cerebriline",
+      "fix": "stub script answers the nudge in both halves and reads again in act mode; the guard behaviour recorded in 040 §6.2 and asked of Cerebriline",
       "tags": [
         "stub",
         "scripted-user",
@@ -410,7 +410,7 @@
     {
       "id": "bug-025",
       "timestamp": "2026-10-16T00:10:00+02:00",
-      "error_message": "after a plan->act switch the editor was refused: 'Read before editing: \u2026 has not been read in this session'",
+      "error_message": "after a plan->act switch the editor was refused: 'Read before editing: … has not been read in this session'",
       "file": "runner/runner.mjs",
       "root_cause": "core makes a fresh read-receipt registry per session unless one is passed; the extension passes one registry for its controller's lifetime, the runner passed none",
       "fix": "ClineCore.create capabilities.readReceipts = sdk.createReadReceipts(), one per run; plan demo without a re-read now PASS",
@@ -433,7 +433,7 @@
       "timestamp": "2026-10-16T00:40:00+02:00",
       "error_message": "mode C cell with --endpoint-kind llamacpp: agent error 'Unknown or disabled provider \"llamacpp\".' before any chat request; verdict FAIL",
       "file": "internal/config/cell.go",
-      "root_cause": "Arm.ForCell set model.provider to the endpoint kind; the SDK has no provider llamacpp (kind llamacpp is an OpenAI-compatible llama-server, 030 \u00a73); cell_test asserted the wrong provider",
+      "root_cause": "Arm.ForCell set model.provider to the endpoint kind; the SDK has no provider llamacpp (kind llamacpp is an OpenAI-compatible llama-server, 030 §3); cell_test asserted the wrong provider",
       "fix": "ProviderFor(kind): llamacpp -> openai-compatible; test corrected; the broken stub run invalidated with the reason; rerun PASS with every sampler field on the wire",
       "tags": [
         "mode-c",
@@ -558,7 +558,7 @@
       "error_message": "task: tasks/train-game/space_invaders/task.toml: fixture seed: no files",
       "file": "internal/task/task.go",
       "root_cause": "validate refused any [[fixture]] without files, though Verify lays fixture files over the prepared seed, so an empty fixture is exactly the seed; all 17 training tasks from backup_models declare the seed fixture that way",
-      "fix": "A fixture with no files is allowed when expect = \"fail\" (the seed); refused for expect = \"pass\". TestSeedFixture; 060 \u00a73",
+      "fix": "A fixture with no files is allowed when expect = \"fail\" (the seed); refused for expect = \"pass\". TestSeedFixture; 060 §3",
       "tags": [
         "task-loader",
         "fixture",
@@ -697,7 +697,7 @@
       "error_message": "SKIPPED: the runner refused to start: the job speaks protocol 8, this runner 5 (stub run on tbench2 on linux-gpu-1)",
       "file": "images/layers/tb2-*/Dockerfile",
       "root_cause": "The local automaticum-lane:base was built before protocol 8; a layer copies the runner from the base, so the tb2 layers had runner protocol 5.",
-      "fix": "image build base before the tb2 layers (written in every layer's header and 066 \u00a75).",
+      "fix": "image build base before the tb2 layers (written in every layer's header and 066 §5).",
       "tags": [
         "lane-image",
         "protocol",
@@ -711,7 +711,7 @@
     {
       "id": "bug-042",
       "timestamp": "2026-10-25T10:12:00+01:00",
-      "error_message": "TestDeclared: run_as \"\" and \"root\" \u2014 the task-level run_as written by TaskTOML was read as labels.run_as",
+      "error_message": "TestDeclared: run_as \"\" and \"root\" — the task-level run_as written by TaskTOML was read as labels.run_as",
       "file": "internal/suite/tbench2/tbench2.go",
       "root_cause": "TaskTOML wrote the top-level run_as key after the [labels] table header, so TOML put it in that table",
       "fix": "write run_as right after prompt, before the first table",
@@ -843,9 +843,9 @@
     {
       "id": "bug-049",
       "timestamp": "2026-11-01T18:30:00Z",
-      "error_message": "Owner: `automaticum wait` is in spec 090 \u00a71/\u00a75 but not built; sessions wrote their own waiters (`run tail > /dev/null`) and re-armed them after every run; `run tail` of a queued run answered 410 'has finished'",
+      "error_message": "Owner: `automaticum wait` is in spec 090 §1/§5 but not built; sessions wrote their own waiters (`run tail > /dev/null`) and re-armed them after every run; `run tail` of a queued run answered 410 'has finished'",
       "file": "cmd/automaticum/wait_cmds.go, internal/wait/wait.go, internal/daemon/wait.go",
-      "root_cause": "090 \u00a75 listed the wait primitives and the mailbox notifications as requirements with no milestone; nobody built them and the spec never said 'not built'. handleStream treats any run without a flight that the store knows as finished, and a queued run's lookup reached that branch.",
+      "root_cause": "090 §5 listed the wait primitives and the mailbox notifications as requirements with no milestone; nobody built them and the spec never said 'not built'. handleStream treats any run without a flight that the store knows as finished, and a queued run's lookup reached that branch.",
       "fix": "Built internal/wait (conditions, snapshots), GET /v1/wait/{kind} held up to 55 s and woken by poke/bump, and `automaticum wait run|batch|cell|campaign|lane|idle` with --until/--next/--each/--any/--timeout, exit 0/4/5, a fallback that polls an older daemon, and retries while the daemon restarts. run tail waits for a queued run to start.",
       "tags": [
         "wait",
@@ -861,7 +861,7 @@
     {
       "id": "bug-050",
       "timestamp": "2026-11-01T18:30:00Z",
-      "error_message": "Notification only for gates, canary and campaign end; no mailbox, no batch end, no stopped batch (050 \u00a76, 090 \u00a75)",
+      "error_message": "Notification only for gates, canary and campaign end; no mailbox, no batch end, no stopped batch (050 §6, 090 §5)",
       "file": "internal/daemon/daemon.go, internal/daemon/control.go, internal/config/local.go",
       "root_cause": "Milestone 3 built the webhook and the log only (D62); the rest was carried forward with no milestone.",
       "fix": "[notify] command (JSON on stdin, AUTOMATICUM_NOTIFY_* env) and [notify] events; notifyEnd sends run end and batch finished (once per finished count), stopBatch sends batch stopped.",
@@ -877,10 +877,10 @@
     {
       "id": "bug-051",
       "timestamp": "2026-11-01T18:30:00Z",
-      "error_message": "Example systemd unit TimeoutStopSec=120 + SIGKILL kills a draining daemon after 2 minutes; the 30-minute run in flight is then ABORTED(daemon restart), against 050 \u00a75 (first signal drains)",
+      "error_message": "Example systemd unit TimeoutStopSec=120 + SIGKILL kills a draining daemon after 2 minutes; the 30-minute run in flight is then ABORTED(daemon restart), against 050 §5 (first signal drains)",
       "file": "examples/systemd/automaticumd.service",
       "root_cause": "The unit's stop timeout was set without the drain semantics in mind.",
-      "fix": "TimeoutStopSec=infinity, SendSIGKILL=no, with the drain-then-restart recipe in a comment; 050 \u00a75 says so.",
+      "fix": "TimeoutStopSec=infinity, SendSIGKILL=no, with the drain-then-restart recipe in a comment; 050 §5 says so.",
       "tags": [
         "systemd",
         "drain",
@@ -893,7 +893,7 @@
     {
       "id": "bug-052",
       "timestamp": "2026-11-01T18:30:00Z",
-      "error_message": "`cell run` exits 70 with no refusal.json when a static gate refuses the whole start (422), against 065 \u00a72.1 (exit 20)",
+      "error_message": "`cell run` exits 70 with no refusal.json when a static gate refuses the whole start (422), against 065 §2.1 (exit 20)",
       "file": "cmd/automaticum/cell_cmds.go, internal/daemon/api.go",
       "root_cause": "The 2026-10-25 static-gate refusal returned a plain error string; the CLI could not tell a gate refusal from an internal error.",
       "fix": "The 422 carries `gate` (gateRefusal, apiError.Gate); the client returns *apiErr; cell run writes refusal.json with code 20 and exits 20.",
@@ -1014,7 +1014,7 @@
       "timestamp": "2026-11-01T20:45:00+01:00",
       "error_message": "a run whose server failed mid-run (connection refused, 503, rate limit) after the SDK's retries went to the oracle and could be counted FAIL",
       "file": "internal/run/run.go",
-      "root_cause": "only D89's case (no request answered) was ABORTED; 050 \u00a74 says infrastructure errors are never the model's failure",
+      "root_cause": "only D89's case (no request answered) was ABORTED; 050 §4 says infrastructure errors are never the model's failure",
       "fix": "run.Fault ports the SDK's refusal/transport patterns (llms Kr: Mk, _k); Facts.Infra set from agent_error when agent_end is error; Decide: pass outranks it, otherwise ABORTED",
       "tags": [
         "verdict",
@@ -1454,6 +1454,62 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-11-08T14:20:00Z"
+    },
+    {
+      "id": "bug-085",
+      "timestamp": "2026-11-09T14:22:25.976057+00:00",
+      "error_message": "Owner: 'a test automation harness that needs restart of the daemon for a change of lane or configuration? ... this is not acceptable' (client: a new endpoint/lane binding only took effect after systemctl restart automaticumd, which disrupts runs in flight)",
+      "file": "internal/config/local.go, internal/daemon/reload.go, cmd/automaticumd/main.go",
+      "root_cause": "LoadLocal ran once at start; the *config.Local maps were captured by the daemon, executor and gates and read directly; no SIGHUP handler, no reload verb, no watcher. Only SIGINT/SIGTERM were handled, and only after start-up.",
+      "fix": "Local readers go through locked accessors (Lane, LaneNames, Endpoint, MayUse, Settings); Local.Reload/Apply swap lanes, endpoints and settings atomically after full validation (refused whole on any problem); Daemon.Reload from SIGHUP, POST /v1/config/reload (dry run) and WatchConfig (watch_config, default on); token and listen live (rebind before release); data_root/archive_root/docker_socket/repo named as restart-only; removed lanes retire after their run; queued runs on a missing lane/endpoint wait instead of SKIPPED; signals taken at the first moment (HUP, USR1 state, USR2 stacks, PIPE ignored); panics in a run end it ABORTED 'harness fault', panics in loops restart the loop. Tests TestReload, TestReloadLive, TestWatchConfig, TestFaultedRun; real binary exercised with every signal.",
+      "tags": [
+        "daemon",
+        "config",
+        "reload",
+        "sighup",
+        "signals",
+        "robustness",
+        "owner-reported"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-09T14:22:25.976057+00:00"
+    },
+    {
+      "id": "bug-086",
+      "timestamp": "2026-11-09T14:22:25.976057+00:00",
+      "error_message": "automaticum config show / status failed with a toml error while the directory held a broken lane file, though the running daemon kept serving",
+      "file": "cmd/automaticum/client_cmds.go",
+      "root_cause": "The CLI's daemon client loaded and validated the whole configuration directory (LoadLocal) only to learn the daemon's address and token.",
+      "fix": "config.LoadClient reads only automaticum.toml; addClient uses place.client(). Found by exercising the real binary with a broken lane file.",
+      "tags": [
+        "cli",
+        "config",
+        "reload",
+        "robustness"
+      ],
+      "related_bugs": [
+        "bug-085"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-09T14:22:25.976057+00:00"
+    },
+    {
+      "id": "bug-087",
+      "timestamp": "2026-11-09T14:22:25.976057+00:00",
+      "error_message": "config show kept naming 'repo' as held until the next start after repo was set back to its running value",
+      "file": "internal/daemon/reload.go",
+      "root_cause": "recordReload accumulated Change.Restart keys across reloads instead of taking the latest set.",
+      "fix": "d.restart = the latest reload's Restart (the values in force keep the start's, so each reload names every key still pending); covered in TestReloadLive.",
+      "tags": [
+        "daemon",
+        "reload"
+      ],
+      "related_bugs": [
+        "bug-085"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-09T14:22:25.976057+00:00"
     }
   ]
 }
