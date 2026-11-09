@@ -170,6 +170,8 @@ type flight struct {
 	// held is true while the runner says the run is held between two
 	// requests.
 	held bool
+	// armed is the arm as the run read it when it started.
+	armed runArm
 }
 
 // holding says whether the run is held, and whether it is over.
@@ -706,6 +708,9 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 		return false
 	}
 	armID = arm.ID
+	f.mu.Lock()
+	f.armed = runArm{ID: arm.ID, Model: arm.Model.Model, Endpoint: arm.Endpoint}
+	f.mu.Unlock()
 	tk, err := task.Find(d.taskRoots(), it.Task)
 	if err != nil {
 		skip("the task cannot be used: " + err.Error())

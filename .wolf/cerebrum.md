@@ -57,6 +57,8 @@
 
 ## Do-Not-Repeat
 
+- 2026-11-09: a filter or list must cover runs in every state, queued and running included, or say loudly what it leaves out. A run not finished still has an arm (the one it started with, or would start with now). Every noun the harness runs needs a way to see what is active (`arm ls --active`, `run ls --state`): ask "can a person and an assistant see what is running right now, by this noun?" before calling a command done (bug-088).
+
 - 2026-11-09: never capture a config object's maps for direct reads in a long-running process. Read through locked accessors and swap whole after validating (config.Local.Reload/Apply); a run in flight keeps the value it took. Take signal handlers at the first moment of start-up (a default SIGHUP kills the process), ignore SIGPIPE, and let the CLI reach the daemon from automaticum.toml alone (config.LoadClient), never a full LoadLocal.
 
 - 2026-11-08: anything that compares SDK releases must read a local build's version (`4.100.275+<commit>` in an arm, `4.100.275-g<commit>` as the package and run record version): use detect's releaseAtLeast, never split on '.' and Atoi. When an SDK release changes a guard automaticum replays (loop-detection.ts, reasoning guards), add a release-gated rule set (`CallGuardFor`, `RulesFor`) and bump detect.Version; diff the guard file between release tags before adopting a release.

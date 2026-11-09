@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.32, 2026-11-09.
+**Status:** draft 0.33, 2026-11-09.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -117,8 +117,25 @@ before, `suite/task` matched no finished run), and `--suite`, `--model`,
 `--arm` and `--arm-id`. `--arm` is the arm as its file in the checkout is
 now, so runs of an earlier version of it, another identity, are left out.
 The table has an ARM column, the arm's name as the record says it. The
-route is `GET /v1/runs?task=&suite=&model=&arm_id=`; a queued run, which
-has no model or arm id yet, is listed only when neither is asked.
+route is `GET /v1/runs?task=&suite=&model=&arm_id=`. (Until 2026-11-09 a
+queued or running run was left out whenever an arm or a model was asked;
+see below.)
+
+**Built on 2026-11-09:** a run not finished is found by its arm and model
+as a finished one is. A running run is of the arm it started with, and a
+queued run of the arm it would start with now, read from its file (the arm
+is fixed when a run starts). So `run ls --arm A` lists a batch in flight,
+not only what has finished. `run ls --state queued|running|finished`
+(`?state=`) keeps the runs in one state. `arm ls` lists, beside each arm in
+the configuration, its runs RUNNING and QUEUED and the lanes they run on.
+`arm ls --active` lists only the arms with runs running or queued, and
+`arm ls --running` only those with a run in flight; both come from the
+daemon (`GET /v1/arms[?running=1]`: each arm's id, model, endpoint, runs in
+flight, lanes, batches, counts and since when). An arm whose file changed
+while a run of it was in flight is two entries: the run keeps the arm it
+started with, and its queued runs take the new one. An arm that can no
+longer be read is listed with why, since its queued runs will be skipped
+when they start.
 
 **Built on 2026-11-01 (§5):** `wait` and the route `GET
 /v1/wait/{kind}?id=&until=&seen=&hold=`; `run tail` of a queued run waits
@@ -174,7 +191,8 @@ static-gate refusal of a start answers 422 with `gate` beside `error`.
 - **Cells:** `cell show <batch> [--runs]` and `cell ls`. The batch a `cell
   run` starts carries its suite (the `Automaticum-Cell` header), and the
   cell view's `suite` and `subset` are filled from it.
-- **Configuration:** `arm ls`, `endpoint show|models|probe`, and `task
+- **Configuration:** `arm ls [--active|--running]` (each arm with its
+  runs running and queued, 2026-11-09), `endpoint show|models|probe`, and `task
   verify` (the artefacts' pinned hashes, and whether the environment is
   proven).
 - **Reading:** `run tail` renders the transcript (turns, reasoning, text,

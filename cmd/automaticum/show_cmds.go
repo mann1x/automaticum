@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -226,52 +227,128 @@ func cellShow(ctx context.Context, args []string) error {
 
 // armLs lists the installation's arms (D118): name, id, model, endpoint and
 // SDK build. An arm that does not load is listed with why.
-func armLs(_ context.Context, args []string) error {
+// armRow is one arm in arm ls: its file's arm, and what the daemon does
+// with it (GET /v1/arms).
+type armRow struct {
+	Name        string   `json:"name"`
+	ID          string   `json:"id,omitempty"`
+	Model       string   `json:"model,omitempty"`
+	Endpoint    string   `json:"endpoint,omitempty"`
+	SDK         string   `json:"sdk_release,omitempty"`
+	Problem     string   `json:"problem,omitempty"`
+	Running     int      `json:"running"`
+	Queued      int      `json:"queued"`
+	RunningRuns []string `json:"running_runs,omitempty"`
+	Lanes       []string `json:"lanes,omitempty"`
+	Batches     []string `json:"batches,omitempty"`
+}
+
+// armLs lists the arms in the configuration with what the daemon is doing
+// with each: runs running and queued. -active lists only the arms with runs
+// running or queued, -running only those with a run in flight; both come
+// from the daemon, and include an arm whose file has changed or gone since
+// its runs were queued.
+func armLs(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("arm ls", flag.ExitOnError)
-	p := addPlace(fs)
+	p, dial := addClient(fs)
+	active := fs.Bool("active", false, "only the arms with runs running or queued")
+	running := fs.Bool("running", false, "only the arms with a run in flight")
 	parse(fs, args)
-	dir, err := p.arms()
+	only := *active || *running
+	// What the daemon runs: needed for -active and -running, shown
+	// beside the files otherwise.
+	var acts []daemon.ArmActivity
+	known := true
+	c, err := dial()
+	if err == nil {
+		path := "/v1/arms"
+		if *running {
+			path += "?running=1"
+		}
+		err = c.do(ctx, "GET", path, nil, &acts)
+		var ae *apiErr
+		if errors.As(err, &ae) && ae.Status == 404 {
+			err = errors.New("this daemon is older than the list of arms it runs; deploy the new build")
+		}
+	}
 	if err != nil {
-		return err
+		if only {
+			return err
+		}
+		known = false
+		fmt.Fprintf(os.Stderr, "RUNNING and QUEUED are not known: %v\n", err)
 	}
-	paths, err := filepath.Glob(filepath.Join(dir, "*.toml"))
-	if err != nil {
-		return err
-	}
-	type row struct {
-		Name     string `json:"name"`
-		ID       string `json:"id,omitempty"`
-		Model    string `json:"model,omitempty"`
-		Endpoint string `json:"endpoint,omitempty"`
-		SDK      string `json:"sdk_release,omitempty"`
-		Problem  string `json:"problem,omitempty"`
-	}
-	var rows []row
-	for _, path := range paths {
-		name := strings.TrimSuffix(filepath.Base(path), ".toml")
-		a, err := config.LoadArm(dir, name)
+	var files []armRow
+	if !only {
+		dir, err := p.arms()
 		if err != nil {
-			rows = append(rows, row{Name: name, Problem: firstLine(err.Error())})
-			continue
+			return err
 		}
-		if a.Template {
-			continue
+		paths, err := filepath.Glob(filepath.Join(dir, "*.toml"))
+		if err != nil {
+			return err
 		}
-		rows = append(rows, row{Name: name, ID: a.ID, Model: a.Model.Model, Endpoint: a.Endpoint, SDK: a.Harness.SDKRelease})
+		for _, path := range paths {
+			name := strings.TrimSuffix(filepath.Base(path), ".toml")
+			a, err := config.LoadArm(dir, name)
+			if err != nil {
+				files = append(files, armRow{Name: name, Problem: firstLine(err.Error())})
+				continue
+			}
+			if a.Template {
+				continue
+			}
+			files = append(files, armRow{Name: name, ID: a.ID, Model: a.Model.Model, Endpoint: a.Endpoint, SDK: a.Harness.SDKRelease})
+		}
 	}
+	rows := mergeArms(files, acts, only)
 	if *p.json {
 		return printJSON(rows)
 	}
 	w := table()
-	fmt.Fprintln(w, "ARM\tID\tMODEL\tENDPOINT\tSDK\tPROBLEM")
+	fmt.Fprintln(w, "ARM\tID\tRUNNING\tQUEUED\tLANES\tMODEL\tENDPOINT\tSDK\tPROBLEM")
 	for _, r := range rows {
 		id := r.ID
 		if len(id) > 12 {
 			id = id[:12]
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", r.Name, id, r.Model, r.Endpoint, r.SDK, r.Problem)
+		run, queued := "-", "-"
+		if known {
+			run, queued = fmt.Sprint(r.Running), fmt.Sprint(r.Queued)
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", r.Name, id, run, queued, strings.Join(r.Lanes, ","), r.Model, r.Endpoint, r.SDK, r.Problem)
 	}
 	return w.Flush()
+}
+
+// mergeArms puts the daemon's activity on the arm files' rows, matched by
+// name and id. Activity no file row has is a row of its own: an arm whose
+// file says another arm now (its runs started with, or were queued as, the
+// earlier one), or one whose file is gone. only lists the activity alone.
+func mergeArms(files []armRow, acts []daemon.ArmActivity, only bool) []armRow {
+	rows := slices.Clone(files)
+	at := map[string]int{}
+	for i, r := range rows {
+		at[r.Name+"\x00"+r.ID] = i
+	}
+	for _, x := range acts {
+		i, ok := at[x.Arm+"\x00"+x.ArmID]
+		if !ok {
+			r := armRow{Name: x.Arm, ID: x.ArmID, Model: x.Model, Endpoint: x.Endpoint, Problem: x.Problem}
+			if r.Problem == "" && !only {
+				r.Problem = "not the arm its file says now"
+			}
+			rows = append(rows, r)
+			i = len(rows) - 1
+		}
+		r := &rows[i]
+		r.Running, r.Queued = x.Running, x.Queued
+		r.RunningRuns, r.Lanes, r.Batches = x.RunningRuns, x.Lanes, x.Batches
+	}
+	if rows == nil {
+		rows = []armRow{}
+	}
+	return rows
 }
 
 func firstLine(s string) string {

@@ -1,15 +1,15 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-09T14:10:30.242Z
-> Files: 513 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-09T20:16:47.044Z
+> Files: 514 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
 - `.gitleaks.toml` (~581 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~4478 tok)
-- `CLAUDE.md` — automaticum (~6548 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~4698 tok)
+- `CLAUDE.md` — automaticum (~6733 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
 - `LICENSE` — Project license (~3029 tok)
@@ -20,10 +20,10 @@
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~144465 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~146524 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~211 tok)
-- `score-history.jsonl` (~1918 tok)
+- `score-history.jsonl` (~1947 tok)
 
 ## .caliber/backups/2026-10-12T20-16-19-461Z/
 
@@ -35,14 +35,14 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~98009 tok)
+- `fingerprint.json` — Declares usage (~97989 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` (~48696 tok)
+- `current-session.jsonl` (~1424 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~99681 tok)
-- `state.json` (~41 tok)
+- `roi-stats.json` (~101586 tok)
+- `state.json` (~40 tok)
 
 ## .claude/
 
@@ -61,7 +61,7 @@
 - `openwolf.md` — OpenWolf protocol (~207 tok)
 - `runner-protocol.md` — Runner protocol conventions (~1427 tok)
 - `spec-conventions.md` — Spec conventions (~375 tok)
-- `task-loader.md` — Task loader conventions (~1580 tok)
+- `task-loader.md` — Task loader conventions (~1596 tok)
 - `wire-arm.md` — Wire detector conventions (~452 tok)
 - `wolf-hooks.md` — Hook conventions (~250 tok)
 
@@ -83,7 +83,7 @@
 
 ## .claude/skills/learned-lane-host-deploy/
 
-- `SKILL.md` — Deploying a new automaticum build to a lane host (~2183 tok)
+- `SKILL.md` — Deploying a new automaticum build to a lane host (~2632 tok)
 
 ## .claude/skills/learned-new-host-install/
 
@@ -119,24 +119,25 @@
 - `cell_cmds.go` — exitCode: names (~3525 tok)
 - `check_cmds_test.go` — TestConfigCheck (~731 tok)
 - `check_cmds.go` — pin (71 fields) (~1834 tok)
-- `reload_cmds.go` — `config reload [--dry-run]` and `config show` (D144) (~900 tok)
-- `client_cmds.go` — client (114 fields); methods: Error (~10778 tok)
+- `client_cmds.go` — client (108 fields); methods: Error (~10958 tok)
 - `cohort_cmds.go` (~1633 tok)
 - `compare_cmds.go` — Declares list (~4058 tok)
 - `config_cmds_test.go` — TestParseInterspersed, TestCellTasks, TestNoticeMatch (~593 tok)
-- `config_cmds.go` — place (153 fields) (~4205 tok)
+- `config_cmds.go` — place (152 fields) (~4304 tok)
 - `control_cmds.go` (~2935 tok)
 - `detect_cmds_test.go` — TestDetectFailIf (~606 tok)
 - `detect_cmds.go` — failTest (90 fields) (~6605 tok)
 - `exit_test.go` — TestExitOf (~153 tok)
 - `export_cmds.go` — result (100 fields); methods: Error (~2565 tok)
 - `image_cmds.go` — built (65 fields) (~1334 tok)
-- `main.go` — Command automaticum is the command line of automaticum. (~4283 tok)
+- `main.go` — Command automaticum is the command line of automaticum. (~4305 tok)
+- `reload_cmds.go` (~900 tok)
 - `report_cmds_test.go` — TestWriteRunsCSV, TestPositionalAndFormat (~426 tok)
 - `report_cmds.go` — Declares and (~4829 tok)
 - `rescore_cmds.go` (~956 tok)
 - `sdk_cmds.go` — row (57 fields) (~1545 tok)
-- `show_cmds.go` — row (125 fields) (~4854 tok)
+- `arm_ls_test.go` — TestMergeArms (~450 tok)
+- `show_cmds.go` — lane show, batch ls, cell show|ls, arm ls [--active|--running] (armRow, mergeArms: files with the daemon's /v1/arms), endpoint show|models|probe, task verify (~5268 tok)
 - `store_cgo.go` — go:build cgo (~2147 tok)
 - `store_nocgo.go` — go:build !cgo (~128 tok)
 - `stub_cmds.go` (~489 tok)
@@ -148,7 +149,7 @@
 
 ## cmd/automaticumd/
 
-- `main.go` — Command automaticumd is the daemon; signals from the first moment (SIGHUP reload, USR1 state, USR2 stacks, INT/TERM drain then abort, PIPE ignored), apiServer rebinds listen live (D144) (~2600 tok)
+- `main.go` — Command automaticumd is the daemon: it owns the store, works the queue on (~2450 tok)
 
 ## docs/audit/
 
@@ -661,13 +662,8 @@
 - `f1291.log` (~0 tok)
 - `f1292.log` (~0 tok)
 - `f1293.log` (~0 tok)
-- `f1294.log` (~0 tok)
 
 ## internal/daemon/
 
-- `reload.go` — Reload (SIGHUP, POST /v1/config/reload, WatchConfig every 2 s), ConfigState / GET /v1/config, DumpState; token and listen live; retiring lanes, waiting runs (D144) (~2800 tok)
-- `reload_test.go` — TestReloadLive, TestWatchConfig, TestFaultedRun (~2200 tok)
-
-## internal/config/
-
-- `reload_test.go` — TestReload: in force for every reader, refused whole on a bad directory, restart-only keys, cells survive, LoadClient past a broken lane (~1500 tok)
+- `arms_test.go` — TestActiveArms: run ls by arm/model/state over queued and running runs, /v1/arms, an arm changed under a run (~790 tok)
+- `arms.go` — GET /v1/arms (ArmActivity: arms with runs running or queued); queuedArm/queuedArmView: a run not finished has the arm it started with or would start with now (runArm, armCache) (~1085 tok)

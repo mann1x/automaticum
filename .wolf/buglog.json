@@ -1510,6 +1510,23 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-11-09T14:22:25.976057+00:00"
+    },
+    {
+      "id": "bug-088",
+      "timestamp": "2026-11-09T20:17:47.787906+00:00",
+      "error_message": "run ls -arm <arm> returns [] for a batch in flight (1 running, 4 queued) with no warning; no way to list the arms running (owner: 'list the running arms ... it's missing')",
+      "file": "internal/daemon/api.go",
+      "root_cause": "handleRuns listed queued/running runs only when neither arm_id nor model was asked, since a run gets its arm_id in the record only when it finishes; arm ls read arm files only and never asked the daemon.",
+      "fix": "A run not finished has the arm it started with (flight.armed, set in fly) or would start with now (armFor), so arm_id and model filters match it; run ls -state; GET /v1/arms and arm ls with RUNNING/QUEUED/LANES, -active, -running. TestActiveArms, TestMergeArms.",
+      "tags": [
+        "cli",
+        "run-ls",
+        "arm-ls",
+        "usability"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-09T20:17:47.787906+00:00"
     }
   ]
 }

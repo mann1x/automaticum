@@ -365,6 +365,7 @@ func (d *Daemon) Handler() http.Handler {
 		mux.HandleFunc("POST /v1/lanes/{lane}/"+verb, d.handleLane(verb))
 	}
 	mux.HandleFunc("GET /v1/batches", d.handleBatches)
+	mux.HandleFunc("GET /v1/arms", d.handleArms)
 	mux.HandleFunc("GET /v1/batches/{batch}", d.handleBatch)
 	mux.HandleFunc("GET /v1/lanes/{lane}", d.handleLaneShow)
 	mux.HandleFunc("GET /v1/wait/{kind}", d.handleWait)
@@ -916,23 +917,44 @@ func (d *Daemon) handleRuns(w http.ResponseWriter, r *http.Request) {
 		}
 		f.Limit = v
 	}
+	state := q.Get("state")
+	switch state {
+	case "", "queued", "running", "finished":
+	default:
+		fail(w, http.StatusBadRequest, "state %q: give queued, running or finished", state)
+		return
+	}
 	out := []RunView{}
-	// What has not finished comes first; it has no record yet, so it is
-	// listed only when the filter asks nothing a queued run cannot say.
-	if f.Verdict == "" && f.Imported == nil && f.Model == "" && f.ArmID == "" {
+	// What has not finished comes first. It has no record yet: its arm is
+	// the one it started with, or, while it waits, the one it would start
+	// with now, so an arm or a model finds it as it finds a finished run.
+	// Only a verdict or an import is something it cannot have.
+	if f.Verdict == "" && f.Imported == nil && state != "finished" {
 		queue, err := d.State.Queue(ctx)
 		if err != nil {
 			fail(w, http.StatusInternalServerError, "%v", err)
 			return
 		}
+		arms := armCache{}
 		for i := len(queue) - 1; i >= 0; i-- {
 			it := queue[i]
 			suite, id, _ := strings.Cut(it.Task, "/")
 			if f.Batch != "" && it.Batch != f.Batch || f.Lane != "" && it.Lane != f.Lane || f.Suite != "" && suite != f.Suite || f.TaskID != "" && id != f.TaskID {
 				continue
 			}
-			out = append(out, d.queuedView(it))
+			v := d.queuedArmView(it, arms)
+			if f.ArmID != "" && v.ArmID != f.ArmID || f.Model != "" && v.Model != f.Model || state != "" && v.State != state {
+				continue
+			}
+			out = append(out, v)
 		}
+	}
+	if state == "queued" || state == "running" {
+		if len(out) > f.Limit {
+			out = out[:f.Limit]
+		}
+		reply(w, http.StatusOK, out)
+		return
 	}
 	runs, err := d.State.ListRuns(ctx, f)
 	if err != nil {
@@ -978,7 +1000,7 @@ func (d *Daemon) handleRun(w http.ResponseWriter, r *http.Request) {
 		}
 		for _, it := range queue {
 			if it.RunID == id {
-				v := d.queuedView(it)
+				v := d.queuedArmView(it, armCache{})
 				d.retryLinks(&v)
 				reply(w, http.StatusOK, v)
 				return

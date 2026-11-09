@@ -372,7 +372,8 @@ func runLs(ctx context.Context, args []string) error {
 	taskID := fs.String("task", "", "only this task (suite/task, or a bare task id in any suite)")
 	suite := fs.String("suite", "", "only this suite")
 	model := fs.String("model", "", "only this model tag")
-	arm := fs.String("arm", "", "only this arm, as its file in the checkout is now: runs of an earlier version of it are another arm")
+	arm := fs.String("arm", "", "only this arm, as its file in the checkout is now: runs of an earlier version of it are another arm; a queued run is of the arm it would start with now, a running one of the arm it started with")
+	state := fs.String("state", "", "only runs in this state: queued, running or finished")
 	armID := fs.String("arm-id", "", "only the arm with this id (in full, as arm show prints it)")
 	imported := fs.Bool("imported", false, "only runs imported from the old harness")
 	limit := fs.Int("limit", 30, "how many")
@@ -391,7 +392,7 @@ func runLs(ctx context.Context, args []string) error {
 		}
 		*armID = a.ID
 	}
-	for k, v := range map[string]string{"batch": *batch, "verdict": *verdict, "task": *taskID, "suite": *suite, "model": *model, "arm_id": *armID} {
+	for k, v := range map[string]string{"batch": *batch, "verdict": *verdict, "task": *taskID, "suite": *suite, "model": *model, "arm_id": *armID, "state": *state} {
 		if v != "" {
 			q.Set(k, v)
 		}
