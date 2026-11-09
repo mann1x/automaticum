@@ -113,3 +113,34 @@ Use this when the commit changes `const PROTOCOL` in `runner/runner.mjs`. A run 
    - Stop the stub with `kill $(cat stub.pid)` and leave the lane idle with 0 queued.
 
 A CLI-only change (a new verb, nothing in the daemon or the runner) needs only the CLI binary swapped, with no restart and no image rebuild.
+
+## Addendum: checks learned from the D144 swap (2026-11-09)
+
+### Before staging
+- Commit first, then build. A binary built before `git commit` reports the previous sha plus `-dirty` in `version`, `status` and the log. Check that `./bin/automaticum version` shows the commit you are deploying.
+
+### After staging, before asking for a window
+- Check the host's live configuration with the staged CLI while the old daemon still serves:
+
+```bash
+ssh <alias> 'B=<root>; AUTOMATICUM_CONFIG=$B/config $B/bin/automaticum.new config check --repo $B/repo; grep -n ExecReload /etc/systemd/system/automaticumd.service || echo no-ExecReload'
+```
+
+- Put the result in the mail asking for a window, for example: your configuration passes with the new build, N arms, N models, N tasks.
+
+### Unit without ExecReload (hosts installed before D144)
+In the same idle-gated ssh script, after the idle check and before `systemctl stop`:
+
+```bash
+U=/etc/systemd/system/automaticumd.service
+cp -p $U $U.pre-<sha>
+grep -q "^ExecReload=" $U || sed -i "/^ExecStart=/a ExecReload=/bin/kill -HUP \$MAINPID" $U
+```
+
+Then run `systemctl daemon-reload` before `systemctl start`. When `systemctl stop` warns "unit file changed on disk", that is expected.
+
+### After the swap
+- `automaticum lane show <lane>` for every lane the client named. It lists the endpoints that are now loaded. Clients often install endpoint files ahead of time and wait for this before they queue.
+- `systemctl reload automaticumd; sleep 2; automaticum config show`, then `journalctl -u automaticumd --since -2min | grep reload` should show `configuration reloaded: nothing changed source=signal`.
+- `systemctl show automaticumd -p NRestarts` should print 0.
+- The DONE mail names the rollback files: `bin/*.prev` and `automaticumd.service.pre-<sha>`.

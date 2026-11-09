@@ -6,6 +6,7 @@
 
 ## User Preferences
 
+- 2026-11-09, the owner: keep .wolf/memory.md to useful actions only. Do not append a row for a status tick that changed nothing ("no mail, nothing to do"); log a tick only when it acted (a deploy, a mail answered, a failure found).
 - 2026-11-09, the owner: a daemon must take every configuration change live, handle signals fully, and never stop unless it truly cannot ("do I have to specify even the most basic things?"). Build the operational basics a long-running service needs without being told: live reload (SIGHUP, an API verb, a directory watch), validation before swap, graceful drain, fault isolation, clear status of what is pending a restart.
 - Only the owner turns an **Open** item into a decision. Carry a recommendation and ask in batches. Never quietly bend a decision to fit an import: record it and open an O item.
 - Do the owner's setup steps in the order listed. GitHub repos go under `mann1x`.
