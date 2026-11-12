@@ -52,7 +52,7 @@ func detectCmd(ctx context.Context, args []string) error {
 	fs.Var(&models, "model", "only runs of this model (a glob; leaves out runs in flight)")
 	fs.Var(&verdicts, "verdict", "only runs with this verdict (leaves out runs in flight)")
 	fs.Var(&detectors, "detector", "only this detector (any number; a detector may also be given bare); default every one")
-	fs.Var(&metrics, "metric", "also this metric, a name, a prefix or a glob (any number); summed and averaged in the totals")
+	fs.Var(&metrics, "metric", "only this metric, a name, a prefix or a glob (any number), or none; --json carries every metric of each run by default, the text shows only those named (070 §3.3)")
 	fs.Var(&groups, "group", "totals by: batch, arm, arm_id, cohort, campaign, lane, task, model, state, verdict, arm.<field>, label.<label> or finding.<detector> (any number; default batch, arm and cohort)")
 	fs.Var(&failIf, "fail-if", `exit 1 when this holds, e.g. "swallowed_argument>0", "runs_with.reasoning_loop>=2", "share.swallowed_argument>0.1", "failed>10", "metric.tool_calls.failed>5" (any number; any one holding fails)`)
 	scope := fs.String("fail-scope", "total", "what --fail-if is tested on: total (all runs together), run (each run), or a totals axis (each group)")
@@ -109,8 +109,17 @@ func detectCmd(ctx context.Context, args []string) error {
 	if *scope != "total" && *scope != "run" && !slices.Contains(groups, *scope) {
 		return fmt.Errorf("--fail-scope %q: total, run, or one of the --group axes (%s)", *scope, strings.Join(groups, ", "))
 	}
+	// Every metric unless narrowed: an older daemon left them out unless
+	// named, so the default is asked for by name.
+	shownMetrics := len(metrics) > 0 && !slices.Contains(metrics, "none")
+	if len(metrics) == 0 {
+		metrics = list{"*"}
+	}
 	for _, t := range tests {
-		if m, ok := strings.CutPrefix(t.name, "metric."); ok && !slices.Contains(metrics, m) {
+		if m, ok := strings.CutPrefix(t.name, "metric."); ok && !slices.Contains(metrics, m) && !slices.Contains(metrics, "*") {
+			if slices.Contains(metrics, "none") {
+				return fmt.Errorf("--fail-if %q needs metric %s, and --metric none leaves every metric out", t.text, m)
+			}
 			metrics = append(metrics, m)
 		}
 		if d := strings.TrimPrefix(strings.TrimPrefix(t.name, "runs_with."), "share."); slices.Contains(known, d) && len(detectors) > 0 && !slices.Contains(detectors, d) {
@@ -151,7 +160,7 @@ func detectCmd(ctx context.Context, args []string) error {
 		return err
 	}
 	defer resp.Body.Close()
-	out := detectOut{json: c.json, quiet: *quiet, firings: *firings, calls: *calls, detectors: detectors, groups: groups}
+	out := detectOut{json: c.json, quiet: *quiet, firings: *firings, calls: *calls, detectors: detectors, groups: groups, metrics: shownMetrics, asked: metrics}
 	dec := json.NewDecoder(resp.Body)
 	for {
 		var l daemon.DetectLine
@@ -303,11 +312,34 @@ type total struct {
 	ByTool       map[string]float64 `json:"by_tool,omitempty"`
 	Errors       map[string]int     `json:"errors,omitempty"`
 	Metrics      map[string]float64 `json:"metrics_sum,omitempty"`
-	metricRuns   map[string]int
+	// MetricRuns is how many runs carried a metrics block: a metric's
+	// mean is over them, a run without the key counting as zero (a guard
+	// that did not trip has no key).
+	MetricRuns int `json:"metric_runs,omitempty"`
+	// Loops is the reasoning-loop guard's work over the runs, from their
+	// metrics.
+	Loops *loopTotal `json:"loops,omitempty"`
 }
 
+// loopTotal is how often the reasoning-loop guard cut a turn, against the
+// time the model spent generating: guard_trips.reasoning_loop.cut and
+// time.model_ms, summed over the runs that carry metrics.
+type loopTotal struct {
+	Cuts       float64 `json:"reasoning_loop_cuts"`
+	RunsWith   int     `json:"runs_with_cuts"`
+	ModelMS    float64 `json:"model_ms"`
+	PerModelHr float64 `json:"cuts_per_model_hour"`
+}
+
+// The metric names the loop totals read; the cut key is exact, since its
+// causes are counted under it too (guard_trips.reasoning_loop.cut.<cause>).
+const (
+	cutMetric   = "guard_trips.reasoning_loop.cut"
+	modelMetric = "time.model_ms"
+)
+
 func newTotal(value string) *total {
-	return &total{Value: value, Firings: map[string]int{}, RunsWith: map[string]int{}, Metrics: map[string]float64{}, metricRuns: map[string]int{}}
+	return &total{Value: value, Firings: map[string]int{}, RunsWith: map[string]int{}, Metrics: map[string]float64{}}
 }
 
 func (t *total) add(r *daemon.DetectRow) {
@@ -348,9 +380,27 @@ func (t *total) add(r *daemon.DetectRow) {
 			t.Errors[o.Tool+": "+class] += n
 		}
 	}
+	if r.Metrics == nil {
+		return
+	}
+	t.MetricRuns++
 	for k, v := range r.Metrics {
 		t.Metrics[k] += v
-		t.metricRuns[k]++
+	}
+	_, hasCut := r.Metrics[cutMetric]
+	_, hasTime := r.Metrics[modelMetric]
+	if hasCut || hasTime || t.Loops != nil {
+		if t.Loops == nil {
+			t.Loops = &loopTotal{}
+		}
+		t.Loops.Cuts += r.Metrics[cutMetric]
+		t.Loops.ModelMS += r.Metrics[modelMetric]
+		if r.Metrics[cutMetric] > 0 {
+			t.Loops.RunsWith++
+		}
+		if t.Loops.ModelMS > 0 {
+			t.Loops.PerModelHr = t.Loops.Cuts / (t.Loops.ModelMS / 3.6e6)
+		}
 	}
 }
 
@@ -415,16 +465,32 @@ func (f failTest) holds(t *total) bool {
 // detectOut prints the answer as it comes, and the totals at its end.
 type detectOut struct {
 	json, quiet, firings, calls bool
-	detectors, groups           []string
-	head                        *daemon.DetectHeader
-	rows                        []*daemon.DetectRow
-	end                         *daemon.DetectEnd
-	failed                      int
-	printedHead                 bool
+	// metrics: the text shows the metrics (they were named); asked is
+	// what was asked of the daemon, to say so when an older daemon does
+	// not.
+	metrics           bool
+	asked             []string
+	detectors, groups []string
+	head              *daemon.DetectHeader
+	rows              []*daemon.DetectRow
+	end               *daemon.DetectEnd
+	failed            int
+	printedHead       bool
 }
 
 func (o *detectOut) header(h *daemon.DetectHeader) {
 	o.head = h
+	if h.Metrics == "" {
+		// An older daemon does not say; it gave what was asked by name.
+		switch {
+		case slices.Contains(o.asked, "none"):
+			h.Metrics = "none"
+		case slices.Contains(o.asked, "*"):
+			h.Metrics = "all"
+		default:
+			h.Metrics, h.MetricPatterns = "matching", o.asked
+		}
+	}
 	if o.json {
 		return
 	}
@@ -476,8 +542,10 @@ func (o *detectOut) row(r *daemon.DetectRow) {
 			fmt.Printf("    %s: %s\n", t.Tool, outcomeText(t))
 		}
 	}
-	for _, k := range slices.Sorted(maps.Keys(r.Metrics)) {
-		fmt.Printf("    %s = %s\n", k, strconv.FormatFloat(r.Metrics[k], 'f', -1, 64))
+	if o.metrics {
+		for _, k := range slices.Sorted(maps.Keys(r.Metrics)) {
+			fmt.Printf("    %s = %s\n", k, strconv.FormatFloat(r.Metrics[k], 'f', -1, 64))
+		}
 	}
 	if o.firings {
 		for _, f := range r.Findings {
@@ -666,9 +734,24 @@ func (o *detectOut) finish(tests []failTest, scope string) []string {
 	if all.ControlNames+all.Unreadable+all.NotOffered > 0 {
 		fmt.Printf("calls with control-token argument names %d, with unreadable arguments %d, of tools never offered %d\n", all.ControlNames, all.Unreadable, all.NotOffered)
 	}
-	for _, k := range slices.Sorted(maps.Keys(all.Metrics)) {
-		fmt.Printf("%s: sum %s, mean %s over %d runs\n", k, strconv.FormatFloat(all.Metrics[k], 'f', -1, 64),
-			strconv.FormatFloat(all.Metrics[k]/float64(all.metricRuns[k]), 'f', 3, 64), all.metricRuns[k])
+	if o.metrics {
+		for _, k := range slices.Sorted(maps.Keys(all.Metrics)) {
+			fmt.Printf("%s: sum %s, mean %s over %d runs\n", k, strconv.FormatFloat(all.Metrics[k], 'f', -1, 64),
+				strconv.FormatFloat(all.Metrics[k]/float64(all.MetricRuns), 'f', 3, 64), all.MetricRuns)
+		}
+	}
+	for _, axis := range o.groups {
+		if axis != "batch" || len(groups[axis]) < 2 {
+			continue
+		}
+		for _, t := range groups[axis] {
+			if t.Loops != nil {
+				fmt.Printf("%s: %s\n", t.Value, loopText(t))
+			}
+		}
+	}
+	if all.Loops != nil {
+		fmt.Printf("all: %s\n", loopText(all))
 	}
 	fmt.Printf("%d runs read in %s", o.end.Runs, o.end.Took)
 	if o.end.Failed > 0 {
@@ -701,4 +784,15 @@ func orDash(s string) string {
 		return "-"
 	}
 	return s
+}
+
+// loopText is a total's reasoning-loop line.
+func loopText(t *total) string {
+	l := t.Loops
+	rate := "no model time"
+	if l.ModelMS > 0 {
+		rate = strconv.FormatFloat(l.PerModelHr, 'f', 2, 64) + " per model hour"
+	}
+	return fmt.Sprintf("reasoning-loop cuts %s in %d of %d runs, %s (model time %s)",
+		strconv.FormatFloat(l.Cuts, 'f', -1, 64), l.RunsWith, t.MetricRuns, rate, human.Duration(time.Duration(l.ModelMS)*time.Millisecond))
 }

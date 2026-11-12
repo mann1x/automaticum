@@ -114,6 +114,24 @@ func TestDetectRuns(t *testing.T) {
 	if fs, _ := g.state.Findings(context.Background(), "r1"); len(fs) != 0 {
 		t.Errorf("a read wrote findings: %+v", fs)
 	}
+	// Every metric by default (070 §3.3), and the header says so.
+	if h.Metrics != "all" || len(r1.Metrics) < 20 || r1.Metrics["tool_calls.swallowed_argument"] != 2 {
+		t.Errorf("default metrics: %q, %d metrics", h.Metrics, len(r1.Metrics))
+	}
+	// none leaves them out, as null, and the header says so; it takes no
+	// other metric.
+	_, h, rows, _, _ = readDetect(t, g, "GET", "run=r1&metric=none", false)
+	if h.Metrics != "none" || rows[0].Metrics != nil {
+		t.Errorf("metric=none: %q %v", h.Metrics, rows[0].Metrics)
+	}
+	if code, _, _, _, msg := readDetect(t, g, "GET", "run=r1&metric=none&metric=time.*", false); code != 400 || msg == "" {
+		t.Errorf("none with another metric: %d %q", code, msg)
+	}
+	// A pattern that matches nothing gives an empty block, not a missing one.
+	_, h, rows, _, _ = readDetect(t, g, "GET", "run=r1&metric=no.such.metric", false)
+	if h.Metrics != "matching" || len(h.MetricPatterns) != 1 || rows[0].Metrics == nil || len(rows[0].Metrics) != 0 {
+		t.Errorf("a pattern that matches nothing: %q %v %v", h.Metrics, h.MetricPatterns, rows[0].Metrics)
+	}
 
 	// One detector, its firings, narrowed by model; runs named bare.
 	_, h, rows, _, _ = readDetect(t, g, "GET", "run=r1&run=r3&detector=swallowed_argument&firings=1&model=m1&metric=tool_calls.swallowed_argument", false)

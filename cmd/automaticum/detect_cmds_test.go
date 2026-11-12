@@ -48,3 +48,31 @@ func TestDetectFailIf(t *testing.T) {
 		t.Error(outcomeText(rows[0].Outcomes[0]))
 	}
 }
+
+// The totals' reasoning-loop line: the guard's cuts (the exact key, not
+// its causes under it) against the model's time, over the runs that carry
+// metrics; a run without the cut key is a run without cuts, and a mean is
+// over every run with metrics.
+func TestDetectLoopTotals(t *testing.T) {
+	rows := []*daemon.DetectRow{
+		{Run: "a", Metrics: map[string]float64{"guard_trips.reasoning_loop.cut": 3, "guard_trips.reasoning_loop.cut.answer_loop": 3, "time.model_ms": 1_800_000}},
+		{Run: "b", Metrics: map[string]float64{"time.model_ms": 1_800_000}},
+		{Run: "c"},
+	}
+	all := newTotal("all")
+	for _, r := range rows {
+		all.add(r)
+	}
+	l := all.Loops
+	if l == nil || l.Cuts != 3 || l.RunsWith != 1 || l.ModelMS != 3_600_000 || l.PerModelHr != 3 || all.MetricRuns != 2 || all.Runs != 3 {
+		t.Fatalf("%+v %+v", all, l)
+	}
+	if got := loopText(all); got != "reasoning-loop cuts 3 in 1 of 2 runs, 3.00 per model hour (model time 1h 00m 00s)" {
+		t.Errorf("%q", got)
+	}
+	none := newTotal("x")
+	none.add(rows[2])
+	if none.Loops != nil || none.MetricRuns != 0 {
+		t.Errorf("no metrics: %+v", none)
+	}
+}

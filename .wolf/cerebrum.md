@@ -58,6 +58,7 @@
 - Verify an audit gap against the code before building it. A batch id is not its runs' prefix: read `batch` from `run show -json`.
 
 ## Do-Not-Repeat
+- 2026-11-12: a JSON field that may be "not asked" must never share its encoding with "empty": no omitempty on an opt-in block, and the header says what was included (bug-094: clients read a missing metrics block as zeros).
 
 - 2026-11-12 (owner: "why v4 and v5 should not be comparable? don't be silly"): a task version bump is not automatically a comparability boundary. Ask what the measurement is: if the verdict is unchanged, or a stored workspace can be scored by the new oracle (rescore), the versions are comparable. Never copy a client's "boundary" wording without checking it against the verdict pattern.
 
@@ -88,6 +89,7 @@
 
 ## Decision Log
 
+- 2026-11-12 (D147): `detect --json` carries every metric by default (owner: "mail automaticum to add the metrics"); `--metric` narrows, `--metric none` opts out; header `metrics_included`; row `metrics` null only when not asked; totals `loops` = reasoning_loop cuts per model hour. Thresholded loop measures (maxrep>=20, thinking share in loop blocks) left out until a threshold is given.
 - 2026-11-12 (D146): a server already running is one automated step (owner: "it must read all the aliases, it's ridiculously complex to start a new arm ... including asking the idempotency key"). Probe takes id, aliases or /props model_alias; endpoint `forward_to` (daemon forwards a loopback-only server, no socat); run start preflights the endpoint before queueing (`--no-preflight`); `automaticum run server` writes/reuses endpoint + arm (server sampler by default, sampler.owner = "tag"), attaches an idle lane, proposes the key, reloads, starts.
 - 2026-11-12 (D145): manic_miner task version 5: the oracle's top-level `ok` is runs AND game_logic.ok; the old meaning is `runs`. v4 and v5 are comparable (owner); a run rescored by a later version's oracle is compared at that version (compare/report ab/basis show).
 

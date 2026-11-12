@@ -56,6 +56,14 @@ type DetectHeader struct {
 	InFlight  int      `json:"in_flight"`
 	Group     string   `json:"group,omitempty"`
 	Record    bool     `json:"record,omitempty"`
+	// Metrics says which of each run's metrics are in its row (070 §3.3):
+	// "all" (the default), "none" (metric=none), or "matching" the
+	// patterns in MetricPatterns. With "all" or "matching" every readable
+	// row has a metrics object, empty when nothing matched; with "none"
+	// it is null. A guard_trips key absent from a full block is a guard
+	// that did not trip.
+	Metrics        string   `json:"metrics_included"`
+	MetricPatterns []string `json:"metric_patterns,omitempty"`
 }
 
 // DetectRow is one run read again.
@@ -86,7 +94,7 @@ type DetectRow struct {
 	// ByTool are the metrics counted per tool (a name with ".by_tool."),
 	// by the metric's name before it, then by tool.
 	ByTool   map[string]map[string]float64 `json:"by_tool,omitempty"`
-	Metrics  map[string]float64            `json:"metrics,omitempty"`
+	Metrics  map[string]float64            `json:"metrics"`
 	Outcomes []ingest.ToolOutcome          `json:"tool_outcomes"`
 	// Group is the run's value of an arm., label. or finding. axis.
 	Group    string          `json:"group,omitempty"`
@@ -115,9 +123,12 @@ type detectQuery struct {
 	runs, batches, cohorts, campaigns            []string
 	lanes, arms, tasks, suites, models, verdicts []string
 	detectors, metrics                           []string
-	since, until                                 time.Time
-	group                                        string
-	firings, imported, finished, all, record     bool
+	// allMetrics and noMetrics: the metric parameter was absent or "*",
+	// or "none".
+	allMetrics, noMetrics                    bool
+	since, until                             time.Time
+	group                                    string
+	firings, imported, finished, all, record bool
 }
 
 // list is a parameter given any number of times, or comma-separated.
@@ -141,6 +152,15 @@ func readDetectQuery(r *http.Request) (detectQuery, error) {
 		detectors: list(q, "detector"), metrics: list(q, "metric"), group: q.Get("group"),
 		firings: q.Get("firings") == "1", imported: q.Get("imported") == "1", finished: q.Get("finished") == "1",
 		all: q.Get("all") == "1", record: r.Method == http.MethodPost,
+	}
+	switch {
+	case slices.Contains(dq.metrics, "none"):
+		if len(dq.metrics) > 1 {
+			return dq, errors.New(`metric=none leaves every metric out; it takes no other metric`)
+		}
+		dq.noMetrics, dq.metrics = true, nil
+	case len(dq.metrics) == 0 || slices.Contains(dq.metrics, "*"):
+		dq.allMetrics, dq.metrics = true, nil
 	}
 	for _, v := range list(q, "verdict") {
 		v = strings.ToUpper(v)
@@ -391,7 +411,8 @@ func (d *Daemon) handleDetectRuns(w http.ResponseWriter, r *http.Request) {
 	}
 	start := time.Now()
 	send(DetectLine{Header: &DetectHeader{Library: detect.Version, Analysis: ingest.AnalysisVersion, Versions: ingest.VersionsText(),
-		Detectors: detectors, Runs: len(targets), InFlight: inFlight, Group: dq.group, Record: dq.record}})
+		Detectors: detectors, Runs: len(targets), InFlight: inFlight, Group: dq.group, Record: dq.record,
+		Metrics: dq.metricsIncluded(), MetricPatterns: dq.metrics}})
 
 	// A few runs at a time, sent in order as each is ready.
 	rows := make([]*DetectRow, len(targets))
@@ -480,6 +501,11 @@ func (d *Daemon) detectOne(ctx context.Context, t detectTarget, dq detectQuery, 
 	}
 	res := ingest.Derive(m)
 	row.Blocks, row.Calls = len(m.Events.Blocks), len(m.Events.Calls)
+	if !dq.noMetrics {
+		// Asked for, the block is there even when nothing matched: a
+		// missing block is never read as zeros.
+		row.Metrics = map[string]float64{}
+	}
 	for _, f := range res.Findings {
 		if _, ok := row.Firings[f.Detector]; ok {
 			row.Firings[f.Detector] += max(1, f.Count)
@@ -498,12 +524,9 @@ func (d *Daemon) detectOne(ctx context.Context, t detectTarget, dq detectQuery, 
 			}
 			row.ByTool[base][tool] = mt.Value
 		}
-		if slices.ContainsFunc(dq.metrics, func(p string) bool {
+		if dq.allMetrics || slices.ContainsFunc(dq.metrics, func(p string) bool {
 			return mt.Name == p || strings.HasPrefix(mt.Name, p+".") || match([]string{p}, mt.Name)
 		}) {
-			if row.Metrics == nil {
-				row.Metrics = map[string]float64{}
-			}
 			row.Metrics[mt.Name] = mt.Value
 		}
 	}
@@ -545,4 +568,15 @@ func (d *Daemon) detectOne(ctx context.Context, t detectTarget, dq detectQuery, 
 		}
 	}
 	return row
+}
+
+// metricsIncluded names which metrics the rows carry.
+func (dq detectQuery) metricsIncluded() string {
+	switch {
+	case dq.noMetrics:
+		return "none"
+	case dq.allMetrics:
+		return "all"
+	}
+	return "matching"
 }

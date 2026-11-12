@@ -1623,6 +1623,24 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-11-12T18:10:00+01:00"
+    },
+    {
+      "id": "bug-094",
+      "timestamp": "2026-11-12T18:40:00+01:00",
+      "error_message": "detect -json returns runs with no \"metrics\" key at all; a client's loop-row script read it as zeros (ZeroDivisionError on model hours)",
+      "file": "internal/daemon/detect.go",
+      "root_cause": "Metrics were opt-in (--metric) and the row's metrics field was omitempty, so 'not asked' and 'nothing matched' both looked like a missing block, and nothing in the header said metrics were left out.",
+      "fix": "Every metric by default (the CLI asks metric=* so an older daemon complies), --metric narrows, --metric none opts out; header metrics_included/metric_patterns; a row's metrics is {} when asked and nothing matched, null only when not asked; totals' mean over runs with metrics; loops total (reasoning_loop cuts per model hour). D147.",
+      "tags": [
+        "detect",
+        "metrics",
+        "json",
+        "contract",
+        "D147"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-12T18:40:00+01:00"
     }
   ]
 }

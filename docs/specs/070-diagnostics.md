@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.36, 2026-11-12.
+**Status:** draft 0.37, 2026-11-12.
 
 ## 1. The rule: no custom script
 
@@ -500,13 +500,28 @@ nothing.
   - each detector's firings now (a finding counts its `Count`, at least
     one), and, for a finished run, what its stored findings say, so a
     changed rule shows what it changes;
-  - the metrics counted per tool (`….by_tool.<tool>`) and any metric asked
-    with `--metric` (a name, a prefix or a glob);
+  - the metrics counted per tool (`….by_tool.<tool>`), and its metrics
+    (below);
   - its calls by tool: failed, by their 070 §2 error class; refused; with
     arguments that are not a JSON object; of a tool no request offered
     (said only when the requests were captured); and with an argument name
     holding a control token or a piece of one (`<|`, `|>`, the markers of
     `control_markers`).
+- **Metrics (D147, 2026-11-12, the owner: "mail automaticum to add the
+  metrics").** Each readable run's row carries a `metrics` object with
+  **every** metric its analysis gives (the same names `report run` and
+  `compare` read: `time.*`, `tokens.*`, `guard_trips.*`, `thinking.*`,
+  `tool_calls.*`, `oracle.*` and the rest) unless narrowed: `--metric`
+  (a name, a prefix or a glob, any number) keeps only those, and
+  `--metric none` leaves them all out. The header says which:
+  `metrics_included` is `all`, `none` or `matching` (with
+  `metric_patterns`). With `all` or `matching` every readable row has the
+  object, empty when nothing matched; with `none`, and on a row that could
+  not be read, it is `null`. A missing metric is therefore never a silent
+  zero, except one that is absent by design: a guard that did not trip has
+  no `guard_trips.<guard>` key, which reads as zero. The text output shows
+  the metrics only when `--metric` names them. A `--fail-if
+  metric.<name>` test is read from the same metrics.
 - **`--firings`** adds each finding with its evidence, and every call with
   a swallowed argument (the finding quotes five), with the text around it.
   **`--calls`** prints the calls by tool for each run.
@@ -516,7 +531,16 @@ nothing.
   `label.<label>`, `finding.<detector>`). Each total gives the runs, calls,
   failed calls, and per detector the firings and the runs it fired in;
   the overall total also gives the failed calls by error class, and each
-  metric asked, summed and averaged.
+  metric summed and averaged (`metrics_sum`; a mean is over the
+  `metric_runs`, the runs that carried metrics, a run without a key
+  counting as zero). Every total with the metrics also gives the
+  reasoning-loop guard's work (`loops`): `reasoning_loop_cuts`, the sum of
+  `guard_trips.reasoning_loop.cut` (the exact key; its causes are counted
+  under it), `runs_with_cuts`, `model_ms`, the sum of `time.model_ms`, and
+  `cuts_per_model_hour`; the text prints it per batch and overall. A
+  measure that needs a threshold of its own (a block's repeat count, the
+  share of thinking inside loop blocks) is not in it until its threshold
+  is given.
 - **`--fail-if "EXPR"`** (any number) exits 1 when one holds. `EXPR` is
   `NAME OP NUMBER`, with `OP` one of `>`, `>=`, `<`, `<=`, `==`, `!=`.
   `NAME` is a detector (its firings), `runs_with.<detector>`,
