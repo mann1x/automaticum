@@ -41,7 +41,7 @@ func TestBlockRepeatsAsLoopscan(t *testing.T) {
 // with where each value came from.
 func TestThresholds(t *testing.T) {
 	for _, th := range Thresholds() {
-		if th.Source == "" || th.Doc == "" || (th.Origin != "sdk" && th.Origin != "owner" && th.Origin != "harness") {
+		if th.Source == "" || th.Doc == "" || (th.Origin != "sdk" && th.Origin != "owner") {
 			t.Errorf("%s: origin %q, source %q", th.Name, th.Origin, th.Source)
 		}
 	}

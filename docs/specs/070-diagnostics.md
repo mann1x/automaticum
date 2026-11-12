@@ -574,9 +574,11 @@ nothing.
   `call_guard.*`, `struggle.*`: origin `sdk`, each with the release and
   class its numbers are read from), `duplicate_definitions.max` (D134),
   `capped.tolerance_tokens` (omnimergekit's, 070 §5), `canary.requests`
-  (D84), the loop-block four, and `model_reloaded.min_load_seconds`, whose
-  origin is `harness`: set in automaticum with no owner decision on
-  record, the owner's to confirm. Sizes of what a finding quotes are not
+  (D84), the loop-block four, and `model_reloaded.min_load_seconds` (1 s,
+  the owner, 2026-11-12: "keep 1 second, unless it's set manually with a
+  proper value in edge cases, there's no safe default value which is
+  better than 1 second"; it reads Ollama's and xOllama's `load_duration`,
+  which other servers do not send). Sizes of what a finding quotes are not
   thresholds and are not registered. An override reaches the analysis at
   ingest, `detect`, `reanalyse`, the guard watch of `stop_on`
   (`repetition_guard`), the export's loop spans and the first-generations

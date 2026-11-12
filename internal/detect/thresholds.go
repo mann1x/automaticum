@@ -28,10 +28,9 @@ type Threshold struct {
 	// Min is the smallest value an override may take (a count the
 	// detector divides by must be 1 or more); zero by default.
 	Min float64 `json:"min,omitempty"`
-	// Origin is "sdk" (the SDK's own value for the same rule), "owner"
+	// Origin is "sdk" (the SDK's own value for the same rule) or "owner"
 	// (the SDK has no such rule; the owner set it, or a document or
-	// decision of the owner's did) or "harness" (set in automaticum with
-	// no owner decision on record: the owner's to confirm).
+	// decision of the owner's did).
 	Origin string `json:"origin"`
 	// Source says exactly where the default comes from.
 	Source string `json:"source"`
@@ -165,7 +164,7 @@ var thresholds = []Threshold{
 	{Name: ThStruggleTxns, Default: StruggleFailedTransactions, Integer: true, Min: 1, Origin: "sdk", Source: srcStruggle, Doc: "attempts thrown away on which it nudges"},
 	{Name: ThCapTolerance, Default: 16, Integer: true, Origin: "owner", Source: "owner: omnimergekit's number (070 §5): a server may stop a few tokens early", Doc: "tokens short of a declared limit at which a completion still counts as capped"},
 	{Name: ThCanaryRequests, Default: 5, Integer: true, Min: 1, Origin: "owner", Source: "owner D84 (050 §3.3)", Doc: "finished requests of a batch the first-generations canary judges"},
-	{Name: ThReloadSeconds, Default: 1, Origin: "harness", Source: "automaticum (070 §2, model_reloaded): a model in memory answers load in milliseconds, a load takes seconds; no owner decision on record", Doc: "load time in seconds from which a request counts as a model reload"},
+	{Name: ThReloadSeconds, Default: 1, Origin: "owner", Source: "owner 2026-11-12 (D148): \"keep 1 second, unless it's set manually with a proper value in edge cases, there's no safe default value which is better than 1 second\" (a load takes from under a second to minutes with the model's size; in memory it answers in milliseconds)", Doc: "load time in seconds from which a request counts as a model reload"},
 	{Name: ThDuplicateMax, Default: DuplicateDefinitionsMax, Integer: true, Origin: "owner", Source: "owner D134 (2026-11-03, \"build it with your recommendation\"): measured over 371 base-model and stub runs; the SDK has no such rule", Doc: "definitions of one name in its class, in one string argument, above which it fires"},
 	{Name: BlockMaxRepeat, Default: 20, Integer: true, Origin: "owner", Source: ownerLoopscan,
 		Doc: "a reasoning block whose most repeated unit is written this many times or more is a loop block"},

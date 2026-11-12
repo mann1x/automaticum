@@ -5,6 +5,7 @@
 > Last updated: 2026-11-08
 
 ## User Preferences
+- 2026-11-12 (owner: "measuring is not going to change anything. what do you measure? a 0.5b model? or a 120b model?"): do not offer to derive a default from stored data when the quantity varies with model size or hardware; a default must be safe across all of them, and edge cases are set by hand through the override. model_reloaded.min_load_seconds stays 1 s.
 
 - 2026-11-09, the owner: keep .wolf/memory.md to useful actions only. Do not append a row for a status tick that changed nothing ("no mail, nothing to do"); log a tick only when it acted (a deploy, a mail answered, a failure found).
 - 2026-11-09, the owner: a daemon must take every configuration change live, handle signals fully, and never stop unless it truly cannot ("do I have to specify even the most basic things?"). Build the operational basics a long-running service needs without being told: live reload (SIGHUP, an API verb, a directory watch), validation before swap, graceful drain, fault isolation, clear status of what is pending a restart.
@@ -90,6 +91,7 @@
 - 2026-10-13: never invent detector, guard or limit numbers. xollama's GPU host is `windows-2`. Job waiters need an exit-code file, a failure exit and a time bound.
 
 ## Decision Log
+- 2026-11-12 (D148): model_reloaded.min_load_seconds = 1 s is the owner's ("keep 1 second ... there's no safe default value which is better than 1 second"); origin owner, no harness origin remains.
 
 - 2026-11-12 (D148): every detector/measure threshold: default from the SDK where it has the rule, else the owner (source recorded); overridable per installation ([thresholds] in automaticum.toml) and per detect read (--threshold); every read records effective value + from (sdk/owner default, config, cli). Loop blocks: block max_repeat >= 20 (owner; SDK has no per-block repeat rule), unit rules ported from the client's loopscan and proven equal on 43 blocks. Not per arm: guards that change the run already live in the arm.
 - 2026-11-12 (D147): `detect --json` carries every metric by default (owner: "mail automaticum to add the metrics"); `--metric` narrows, `--metric none` opts out; header `metrics_included`; row `metrics` null only when not asked; totals `loops` = reasoning_loop cuts per model hour. Thresholded loop measures (maxrep>=20, thinking share in loop blocks) left out until a threshold is given.
