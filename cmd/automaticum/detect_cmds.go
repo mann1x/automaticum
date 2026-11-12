@@ -40,7 +40,7 @@ func detectCmd(ctx context.Context, args []string) error {
 	size := fs.Int("runaway", 0, "the block size, in characters, that counts as a runaway (a file only; 0 reports none)")
 	sdkRel := fs.String("sdk", "", "a file only: the SDK release whose reasoning-loop rules to read with (4.100.258 on have the block cycle); empty reads with the 4.100.250 rules")
 	first := fs.Bool("first-match", false, "a file only: look at the first repeat alone, as the older reference code did (a blind spot; for reproducing older counts)")
-	var runs, batches, cohorts, campaigns, lanes, arms, tasks, suites, models, verdicts, detectors, metrics, groups, failIf list
+	var runs, batches, cohorts, campaigns, lanes, arms, tasks, suites, models, verdicts, detectors, metrics, groups, failIf, thresholds list
 	fs.Var(&runs, "run", "a run (any number; a run may also be given bare)")
 	fs.Var(&batches, "batch", "a batch, or a glob of batches (k-gate-*)")
 	fs.Var(&cohorts, "cohort", "a cohort's batches (a glob)")
@@ -53,6 +53,8 @@ func detectCmd(ctx context.Context, args []string) error {
 	fs.Var(&verdicts, "verdict", "only runs with this verdict (leaves out runs in flight)")
 	fs.Var(&detectors, "detector", "only this detector (any number; a detector may also be given bare); default every one")
 	fs.Var(&metrics, "metric", "only this metric, a name, a prefix or a glob (any number), or none; --json carries every metric of each run by default, the text shows only those named (070 §3.3)")
+	fs.Var(&thresholds, "threshold", "a threshold for this read, name=number (any number), over the installation's [thresholds] and the defaults; `detect --thresholds` lists them (D148)")
+	listTh := fs.Bool("thresholds", false, "list every threshold: its default, where the default comes from, and what it decides")
 	fs.Var(&groups, "group", "totals by: batch, arm, arm_id, cohort, campaign, lane, task, model, state, verdict, arm.<field>, label.<label> or finding.<detector> (any number; default batch, arm and cohort)")
 	fs.Var(&failIf, "fail-if", `exit 1 when this holds, e.g. "swallowed_argument>0", "runs_with.reasoning_loop>=2", "share.swallowed_argument>0.1", "failed>10", "metric.tool_calls.failed>5" (any number; any one holding fails)`)
 	scope := fs.String("fail-scope", "total", "what --fail-if is tested on: total (all runs together), run (each run), or a totals axis (each group)")
@@ -66,6 +68,12 @@ func detectCmd(ctx context.Context, args []string) error {
 	imported := fs.Bool("imported", false, "also the imported runs of the older harness")
 	record := fs.Bool("record", false, "also store the new analysis on the finished runs, as reanalyse does (needs the daemon's token)")
 	rest := parse(fs, args)
+	if *listTh {
+		return printThresholds(*p.json)
+	}
+	if _, err := detect.ParseValues(thresholds); err != nil {
+		return err
+	}
 	if *self {
 		return detectSelfTest(*p.json)
 	}
@@ -128,7 +136,7 @@ func detectCmd(ctx context.Context, args []string) error {
 	}
 	q := url.Values{}
 	for k, l := range map[string]list{"run": runs, "batch": batches, "cohort": cohorts, "campaign": campaigns, "lane": lanes, "arm": arms, "task": tasks,
-		"suite": suites, "model": models, "verdict": verdicts, "detector": detectors, "metric": metrics} {
+		"suite": suites, "model": models, "verdict": verdicts, "detector": detectors, "metric": metrics, "threshold": thresholds} {
 		for _, v := range l {
 			q.Add(k, v)
 		}
@@ -329,6 +337,22 @@ type loopTotal struct {
 	RunsWith   int     `json:"runs_with_cuts"`
 	ModelMS    float64 `json:"model_ms"`
 	PerModelHr float64 `json:"cuts_per_model_hour"`
+	// The loop blocks (D148): reasoning blocks whose most repeated unit is
+	// written reasoning_block.max_repeat times or more
+	// (thinking.loop_blocks), their characters and their share of all
+	// reasoning characters; a run loops when it has a cut or a loop block;
+	// loops per model hour counts the cuts and the loop blocks.
+	LoopBlocks    float64 `json:"loop_blocks"`
+	LoopChars     float64 `json:"loop_block_chars"`
+	ThinkingChars float64 `json:"thinking_chars"`
+	LoopShare     float64 `json:"loop_block_share"`
+	RunsLooping   int     `json:"runs_looping"`
+	LoopsPerHr    float64 `json:"loops_per_model_hour"`
+	MaxRepeat     float64 `json:"max_repeat"`
+	// Thresholds are the values the loop blocks were counted at, and where
+	// each came from: the header's, repeated so a total is never read
+	// without them.
+	Thresholds []detect.Effective `json:"thresholds,omitempty"`
 }
 
 // The metric names the loop totals read; the cut key is exact, since its
@@ -389,7 +413,8 @@ func (t *total) add(r *daemon.DetectRow) {
 	}
 	_, hasCut := r.Metrics[cutMetric]
 	_, hasTime := r.Metrics[modelMetric]
-	if hasCut || hasTime || t.Loops != nil {
+	_, hasBlocks := r.Metrics["thinking.loop_blocks"]
+	if hasCut || hasTime || hasBlocks || t.Loops != nil {
 		if t.Loops == nil {
 			t.Loops = &loopTotal{}
 		}
@@ -398,8 +423,20 @@ func (t *total) add(r *daemon.DetectRow) {
 		if r.Metrics[cutMetric] > 0 {
 			t.Loops.RunsWith++
 		}
-		if t.Loops.ModelMS > 0 {
-			t.Loops.PerModelHr = t.Loops.Cuts / (t.Loops.ModelMS / 3.6e6)
+		l := t.Loops
+		l.LoopBlocks += r.Metrics["thinking.loop_blocks"]
+		l.LoopChars += r.Metrics["thinking.loop_block_chars"]
+		l.ThinkingChars += r.Metrics["thinking.chars.sum"]
+		l.MaxRepeat = max(l.MaxRepeat, r.Metrics["thinking.max_repeat"])
+		if r.Metrics[cutMetric] > 0 || r.Metrics["thinking.loop_blocks"] > 0 {
+			l.RunsLooping++
+		}
+		if l.ThinkingChars > 0 {
+			l.LoopShare = l.LoopChars / l.ThinkingChars
+		}
+		if l.ModelMS > 0 {
+			l.PerModelHr = l.Cuts / (l.ModelMS / 3.6e6)
+			l.LoopsPerHr = (l.Cuts + l.LoopBlocks) / (l.ModelMS / 3.6e6)
 		}
 	}
 }
@@ -507,6 +544,15 @@ func (o *detectOut) header(h *daemon.DetectHeader) {
 		rec = "the new analysis is recorded on the finished runs"
 	}
 	fmt.Printf("detector library version %s, analysis version %d; %d runs%s; %s; %s\n", h.Library, h.Analysis, h.Runs, in, which, rec)
+	var moved []string
+	for _, e := range h.Thresholds {
+		if e.From == "config" || e.From == "cli" {
+			moved = append(moved, fmt.Sprintf("%s=%s (%s; default %s)", e.Name, strconv.FormatFloat(e.Value, 'f', -1, 64), e.From, strconv.FormatFloat(e.Default, 'f', -1, 64)))
+		}
+	}
+	if len(moved) > 0 {
+		fmt.Printf("thresholds not at their default: %s\n", strings.Join(moved, ", "))
+	}
 }
 
 func (o *detectOut) row(r *daemon.DetectRow) {
@@ -683,6 +729,20 @@ func (o *detectOut) finish(tests []failTest, scope string) []string {
 	for _, r := range o.rows {
 		all.add(r)
 	}
+	// Each loops total carries the values its loop blocks were counted at.
+	var blockTh []detect.Effective
+	if o.head != nil {
+		for _, e := range o.head.Thresholds {
+			if strings.HasPrefix(e.Name, "reasoning_block.") {
+				blockTh = append(blockTh, e)
+			}
+		}
+	}
+	for _, t := range append([]*total{all}, slices.Concat(slices.Collect(maps.Values(groups))...)...) {
+		if t.Loops != nil {
+			t.Loops.Thresholds = blockTh
+		}
+	}
 	var held []string
 	check := func(where string, t *total) {
 		for _, f := range tests {
@@ -793,6 +853,40 @@ func loopText(t *total) string {
 	if l.ModelMS > 0 {
 		rate = strconv.FormatFloat(l.PerModelHr, 'f', 2, 64) + " per model hour"
 	}
-	return fmt.Sprintf("reasoning-loop cuts %s in %d of %d runs, %s (model time %s)",
+	text := fmt.Sprintf("reasoning-loop cuts %s in %d of %d runs, %s (model time %s)",
 		strconv.FormatFloat(l.Cuts, 'f', -1, 64), l.RunsWith, t.MetricRuns, rate, human.Duration(time.Duration(l.ModelMS)*time.Millisecond))
+	if l.ThinkingChars == 0 && l.LoopBlocks == 0 {
+		return text
+	}
+	at := ""
+	for _, e := range l.Thresholds {
+		if e.Name == detect.BlockMaxRepeat {
+			at = fmt.Sprintf(" (max_repeat >= %s, %s)", strconv.FormatFloat(e.Value, 'f', -1, 64), e.From)
+		}
+	}
+	loops := "no model time"
+	if l.ModelMS > 0 {
+		loops = strconv.FormatFloat(l.LoopsPerHr, 'f', 2, 64) + " loops per model hour"
+	}
+	return text + fmt.Sprintf("; loop blocks %s%s, %.1f%% of thinking; %d runs looping; %s; largest repeat %s",
+		strconv.FormatFloat(l.LoopBlocks, 'f', -1, 64), at, 100*l.LoopShare, l.RunsLooping, loops, strconv.FormatFloat(l.MaxRepeat, 'f', -1, 64))
+}
+
+// printThresholds lists every threshold.
+func printThresholds(asJSON bool) error {
+	all := detect.Thresholds()
+	if asJSON {
+		return printJSON(all)
+	}
+	w := table()
+	fmt.Fprintln(w, "THRESHOLD\tDEFAULT\tFROM\tWHAT IT DECIDES\t")
+	for _, t := range all {
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t\n", t.Name, strconv.FormatFloat(t.Default, 'f', -1, 64), t.Origin, t.Doc)
+	}
+	w.Flush()
+	for _, t := range all {
+		fmt.Printf("%s: %s\n", t.Name, t.Source)
+	}
+	fmt.Println("override: [thresholds] in automaticum.toml (the installation), --threshold name=number (one detect)")
+	return nil
 }

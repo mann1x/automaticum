@@ -180,3 +180,30 @@ func TestForwardTo(t *testing.T) {
 		})
 	}
 }
+
+// [thresholds] overrides the detectors' and measures' defaults (D148): a
+// name no threshold has, or a count that is not whole, is refused; a
+// change is taken by a reload.
+func TestThresholdsSetting(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string]string{"automaticum.toml": reloadSettings + "[thresholds]\n\"reasoning_block.max_repeat\" = 15\n", "token": "t",
+		"endpoints/a.toml": endpoint("1"), "lanes/lane-1.toml": lane("a")}
+	reloadDir(t, dir, files)
+	l, err := LoadLocal(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l.Settings().Thresholds["reasoning_block.max_repeat"] != 15 {
+		t.Errorf("%v", l.Settings().Thresholds)
+	}
+	for _, bad := range []string{"\"reasoning_block.nope\" = 1\n", "\"reasoning_block.max_repeat\" = 2.5\n"} {
+		reloadDir(t, dir, map[string]string{"automaticum.toml": reloadSettings + "[thresholds]\n" + bad})
+		if _, err := l.Reload(); err == nil || !strings.Contains(err.Error(), "[thresholds]") {
+			t.Errorf("%q: %v", bad, err)
+		}
+	}
+	reloadDir(t, dir, map[string]string{"automaticum.toml": reloadSettings + "[thresholds]\n\"reasoning_block.max_repeat\" = 25\n"})
+	if c, err := l.Reload(); err != nil || l.Settings().Thresholds["reasoning_block.max_repeat"] != 25 || !slices.Contains(c.Settings, "thresholds") {
+		t.Errorf("reload: %v %+v %v", err, c, l.Settings().Thresholds)
+	}
+}

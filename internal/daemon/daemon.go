@@ -833,7 +833,7 @@ func (d *Daemon) fly(ctx context.Context, f *flight) (waiting bool) {
 	if r.Verdict != store.Skipped {
 		// A run that failed to be analysed is still a run: its material is
 		// stored and `reanalyse` can be run again.
-		if res, err := ingest.Run(context.WithoutCancel(ctx), d.State, d.Blobs, r.ID); err != nil {
+		if res, err := ingest.Run(context.WithoutCancel(ctx), d.State, d.Blobs, r.ID, d.thresholds()); err != nil {
 			log.Error("the run could not be analysed", "error", err)
 		} else {
 			log.Info("run analysed", "metrics", len(res.Metrics), "tool_calls", len(res.ToolCalls), "findings", len(res.Findings))
@@ -1068,4 +1068,10 @@ func (d *Daemon) taskRoots() task.Roots {
 		r.Private = d.Local.Settings().PrivateTasks
 	}
 	return r
+}
+
+// thresholds are the installation's overrides of the detectors' and
+// measures' thresholds (D148, automaticum.toml [thresholds]).
+func (d *Daemon) thresholds() detect.Values {
+	return detect.Values(d.Local.Settings().Thresholds)
 }

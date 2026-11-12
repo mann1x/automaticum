@@ -127,6 +127,33 @@ func TestDetectRuns(t *testing.T) {
 	if code, _, _, _, msg := readDetect(t, g, "GET", "run=r1&metric=none&metric=time.*", false); code != 400 || msg == "" {
 		t.Errorf("none with another metric: %d %q", code, msg)
 	}
+	// Thresholds (D148): every one in the header with its value and where it
+	// came from; a command's override is read with and named; an unknown
+	// one is refused.
+	_, h, rows, _, _ = readDetect(t, g, "GET", "run=r1&threshold=reasoning_block.max_repeat%3D3", false)
+	var mr detect.Effective
+	for _, e := range h.Thresholds {
+		if e.Name == detect.BlockMaxRepeat {
+			mr = e
+		}
+	}
+	if mr.Value != 3 || mr.From != "cli" || mr.Default != 20 || len(h.Thresholds) != len(detect.Thresholds()) {
+		t.Errorf("thresholds in the header: %+v", h.Thresholds)
+	}
+	if _, ok := rows[0].Metrics["thinking.loop_block_threshold"]; ok && rows[0].Metrics["thinking.loop_block_threshold"] != 3 {
+		t.Errorf("read at %v, asked 3", rows[0].Metrics["thinking.loop_block_threshold"])
+	}
+	if code, _, _, _, msg := readDetect(t, g, "GET", "run=r1&threshold=nope%3D1", false); code != 400 || !strings.Contains(msg, "no threshold") {
+		t.Errorf("an unknown threshold: %d %q", code, msg)
+	}
+	g.d.Local.Daemon.Thresholds = map[string]float64{detect.BlockMaxRepeat: 7}
+	_, h, _, _, _ = readDetect(t, g, "GET", "run=r1", false)
+	for _, e := range h.Thresholds {
+		if e.Name == detect.BlockMaxRepeat && (e.Value != 7 || e.From != "config") {
+			t.Errorf("the installation's: %+v", e)
+		}
+	}
+	g.d.Local.Daemon.Thresholds = nil
 	// A pattern that matches nothing gives an empty block, not a missing one.
 	_, h, rows, _, _ = readDetect(t, g, "GET", "run=r1&metric=no.such.metric", false)
 	if h.Metrics != "matching" || len(h.MetricPatterns) != 1 || rows[0].Metrics == nil || len(rows[0].Metrics) != 0 {

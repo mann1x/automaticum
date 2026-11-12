@@ -24,6 +24,7 @@
 - 2026-11-09, the owner ("add -arm-name too, of course, I mean, it's not obvious it's needed?"): when a selector has a known blind spot, close it in the same change, without asking. If an identity-by-content filter (arm id) can match another arm, a by-name filter is part of the job. Don't end a report by offering obvious completions; do them.
 
 ## Key Learnings
+- A threshold ported from a client script is checked against that script's own code: score the cases with the script verbatim (Python) into testdata and compare (internal/detect/testdata/block_repeats.json).
 
 - Go harness for coding agents on @cerebriline/sdk. The truth is docs/specs plus decisions.md. archive/ is input only and the old harness is READ-ONLY. During a batch: no lane image or bin/ rebuild and no daemon restart.
 - Host GCC 10 can't link DuckDB, so packages that import `internal/store/duck` use `make build`. A store command goes in `store_cgo.go` with a stub in `store_nocgo.go`. The old corpus has private strings (never quote it) and streams of up to 5 GB, so corpus walks are daemon jobs.
@@ -89,6 +90,7 @@
 
 ## Decision Log
 
+- 2026-11-12 (D148): every detector/measure threshold: default from the SDK where it has the rule, else the owner (source recorded); overridable per installation ([thresholds] in automaticum.toml) and per detect read (--threshold); every read records effective value + from (sdk/owner default, config, cli). Loop blocks: block max_repeat >= 20 (owner; SDK has no per-block repeat rule), unit rules ported from the client's loopscan and proven equal on 43 blocks. Not per arm: guards that change the run already live in the arm.
 - 2026-11-12 (D147): `detect --json` carries every metric by default (owner: "mail automaticum to add the metrics"); `--metric` narrows, `--metric none` opts out; header `metrics_included`; row `metrics` null only when not asked; totals `loops` = reasoning_loop cuts per model hour. Thresholded loop measures (maxrep>=20, thinking share in loop blocks) left out until a threshold is given.
 - 2026-11-12 (D146): a server already running is one automated step (owner: "it must read all the aliases, it's ridiculously complex to start a new arm ... including asking the idempotency key"). Probe takes id, aliases or /props model_alias; endpoint `forward_to` (daemon forwards a loopback-only server, no socat); run start preflights the endpoint before queueing (`--no-preflight`); `automaticum run server` writes/reuses endpoint + arm (server sampler by default, sampler.owner = "tag"), attaches an idle lane, proposes the key, reloads, starts.
 - 2026-11-12 (D145): manic_miner task version 5: the oracle's top-level `ok` is runs AND game_logic.ok; the old meaning is `runs`. v4 and v5 are comparable (owner); a run rescored by a later version's oracle is compared at that version (compare/report ab/basis show).

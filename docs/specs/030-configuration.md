@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.27, 2026-11-12.
+**Status:** draft 0.28, 2026-11-12.
 
 ## 1. Rules
 
@@ -51,6 +51,21 @@ on SIGHUP and on `automaticum config reload`, with the checks of the start;
 a directory that does not load leaves the configuration in force whole.
 What it reloads and what waits for a restart is in 050 §6. Arms, models and
 tasks need no reload: each run reads them when it starts (050 §6).
+
+**Decided by the owner (2026-11-12, D148):** every number a detector or a
+measure decides with is a threshold whose default is the SDK's own value
+where the SDK has the rule, else the owner's, and says which
+(`automaticum detect --thresholds` lists them). An installation overrides
+any of them in `automaticum.toml`'s `[thresholds]` table
+(`"reasoning_block.max_repeat" = 15`); a name no threshold has, a count
+that is not whole or a value below zero refuses the directory. A reload
+takes a change. The analysis of every run and every `detect` read with the
+installation's values, and one `detect` may override them again with
+`--threshold` (070 §3.3). Thresholds are not part of an arm: what changes
+the run itself, the guards the SDK runs, is already stated in the arm's
+`[guards]`; a threshold here only changes how a run is read, so it belongs
+to the installation and to the read, and every read records the values it
+used.
 
 ## 2. Lanes
 

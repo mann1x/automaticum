@@ -64,6 +64,10 @@ type DetectHeader struct {
 	// that did not trip.
 	Metrics        string   `json:"metrics_included"`
 	MetricPatterns []string `json:"metric_patterns,omitempty"`
+	// Thresholds are every threshold the runs were read with: its value,
+	// where the value came from (sdk or owner default, config, cli) and
+	// the default's source (D148).
+	Thresholds []detect.Effective `json:"thresholds"`
 }
 
 // DetectRow is one run read again.
@@ -125,7 +129,12 @@ type detectQuery struct {
 	detectors, metrics                           []string
 	// allMetrics and noMetrics: the metric parameter was absent or "*",
 	// or "none".
-	allMetrics, noMetrics                    bool
+	allMetrics, noMetrics bool
+	// cliThresholds are the command's --threshold overrides; thresholds
+	// the values read with, the installation's and the command's laid
+	// over the defaults (D148).
+	cliThresholds                            detect.Values
+	thresholds                               detect.Values
 	since, until                             time.Time
 	group                                    string
 	firings, imported, finished, all, record bool
@@ -162,6 +171,11 @@ func readDetectQuery(r *http.Request) (detectQuery, error) {
 	case len(dq.metrics) == 0 || slices.Contains(dq.metrics, "*"):
 		dq.allMetrics, dq.metrics = true, nil
 	}
+	th, err := detect.ParseValues(q["threshold"])
+	if err != nil {
+		return dq, err
+	}
+	dq.cliThresholds = th
 	for _, v := range list(q, "verdict") {
 		v = strings.ToUpper(v)
 		if !strings.ContainsAny(v, "*?[") && !store.Verdict(v).Valid() {
@@ -373,6 +387,8 @@ func (d *Daemon) handleDetectRuns(w http.ResponseWriter, r *http.Request) {
 	if dryRun(r) {
 		dq.record = false
 	}
+	var effective []detect.Effective
+	dq.thresholds, effective = detect.Resolve(d.thresholds(), dq.cliThresholds)
 	var arms map[string]*config.Arm
 	var tasks map[string]*task.Task
 	inFlight := 0
@@ -412,7 +428,7 @@ func (d *Daemon) handleDetectRuns(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	send(DetectLine{Header: &DetectHeader{Library: detect.Version, Analysis: ingest.AnalysisVersion, Versions: ingest.VersionsText(),
 		Detectors: detectors, Runs: len(targets), InFlight: inFlight, Group: dq.group, Record: dq.record,
-		Metrics: dq.metricsIncluded(), MetricPatterns: dq.metrics}})
+		Metrics: dq.metricsIncluded(), MetricPatterns: dq.metrics, Thresholds: effective}})
 
 	// A few runs at a time, sent in order as each is ready.
 	rows := make([]*DetectRow, len(targets))
@@ -499,6 +515,7 @@ func (d *Daemon) detectOne(ctx context.Context, t detectTarget, dq detectQuery, 
 		row.Error = err.Error()
 		return row
 	}
+	m.Thresholds = dq.thresholds
 	res := ingest.Derive(m)
 	row.Blocks, row.Calls = len(m.Events.Blocks), len(m.Events.Calls)
 	if !dq.noMetrics {
@@ -560,7 +577,7 @@ func (d *Daemon) detectOne(ctx context.Context, t detectTarget, dq detectQuery, 
 			}
 		}
 		if dq.record {
-			if _, err := ingest.Run(ctx, d.State, d.Blobs, t.rec.ID); err != nil {
+			if _, err := ingest.Run(ctx, d.State, d.Blobs, t.rec.ID, dq.thresholds); err != nil {
 				row.Error = "the analysis was not recorded: " + err.Error()
 			} else {
 				row.Recorded = true

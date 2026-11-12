@@ -1,10 +1,14 @@
 package main
 
 import (
+	"encoding/json"
+	"io"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/mann1x/automaticum/internal/daemon"
+	"github.com/mann1x/automaticum/internal/detect"
 	"github.com/mann1x/automaticum/internal/ingest"
 )
 
@@ -75,4 +79,67 @@ func TestDetectLoopTotals(t *testing.T) {
 	if none.Loops != nil || none.MetricRuns != 0 {
 		t.Errorf("no metrics: %+v", none)
 	}
+}
+
+// The loop blocks in the totals (D148): summed beside the cuts; a run
+// loops with a cut or a loop block; loops per model hour counts both; the
+// share is of all thinking characters; every loops total carries the
+// thresholds the header read with.
+func TestDetectLoopBlockTotals(t *testing.T) {
+	rows := []*daemon.DetectRow{
+		{Run: "a", Batch: "b1", Metrics: map[string]float64{"guard_trips.reasoning_loop.cut": 1, "time.model_ms": 1_800_000,
+			"thinking.loop_blocks": 2, "thinking.loop_block_chars": 300, "thinking.chars.sum": 1000, "thinking.max_repeat": 31}},
+		{Run: "b", Batch: "b1", Metrics: map[string]float64{"time.model_ms": 1_800_000, "thinking.loop_blocks": 1, "thinking.loop_block_chars": 200,
+			"thinking.chars.sum": 1000, "thinking.max_repeat": 22}},
+		{Run: "c", Batch: "b2", Metrics: map[string]float64{"time.model_ms": 3_600_000, "thinking.chars.sum": 500, "thinking.max_repeat": 4}},
+	}
+	o := &detectOut{json: true, groups: []string{"batch"}, end: &daemon.DetectEnd{Runs: 3},
+		head: &daemon.DetectHeader{Thresholds: []detect.Effective{{Name: detect.BlockMaxRepeat, Value: 20, From: "owner default"}, {Name: "other.x", Value: 1}}}}
+	for _, r := range rows {
+		o.rows = append(o.rows, r)
+	}
+	out := captureStdout(t, func() { o.finish(nil, "total") })
+	var doc struct {
+		Total  total
+		Groups map[string][]total
+	}
+	if err := json.Unmarshal([]byte(out), &doc); err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+	l := doc.Total.Loops
+	if l == nil || l.LoopBlocks != 3 || l.RunsLooping != 2 || l.LoopChars != 500 || l.ThinkingChars != 2500 || l.LoopShare != 0.2 ||
+		l.LoopsPerHr != 2 || l.PerModelHr != 0.5 || l.MaxRepeat != 31 || len(l.Thresholds) != 1 || l.Thresholds[0].Name != detect.BlockMaxRepeat {
+		t.Errorf("total loops %+v", l)
+	}
+	if g := doc.Groups["batch"]; len(g) != 2 || g[0].Loops == nil || len(g[0].Loops.Thresholds) != 1 || g[0].Loops.RunsLooping != 2 {
+		t.Errorf("batch groups %+v", g)
+	}
+	all := newTotal("all")
+	for _, r := range rows {
+		all.add(r)
+	}
+	all.Loops.Thresholds = o.head.Thresholds[:1]
+	if got := loopText(all); !strings.Contains(got, "loop blocks 3 (max_repeat >= 20, owner default), 20.0% of thinking; 2 runs looping; 2.00 loops per model hour; largest repeat 31") {
+		t.Errorf("%q", got)
+	}
+}
+
+// captureStdout runs f and returns what it printed.
+func captureStdout(t *testing.T, f func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := os.Stdout
+	os.Stdout = w
+	done := make(chan string)
+	go func() {
+		b, _ := io.ReadAll(r)
+		done <- string(b)
+	}()
+	f()
+	w.Close()
+	os.Stdout = old
+	return <-done
 }

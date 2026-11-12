@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/mann1x/automaticum/internal/detect"
 	"maps"
 	"net"
 	"net/url"
@@ -165,6 +166,12 @@ type Daemon struct {
 	// whenever a file in it changes, as SIGHUP or `config reload` do.
 	// Unset is on.
 	WatchConfig *bool `toml:"watch_config"`
+	// Thresholds override the defaults of the detectors' and measures'
+	// thresholds for this installation (D148): the [thresholds] table,
+	// name = number. The analysis of every run and every `detect` read
+	// with them, and records them; `detect --threshold` overrides them in
+	// turn. Taken by a reload.
+	Thresholds map[string]float64 `toml:"thresholds"`
 }
 
 // Watches says whether the daemon reloads the directory when it changes.
@@ -379,6 +386,9 @@ func LoadLocal(dir string) (*Local, error) {
 	}
 	if d.FreeFloorGB <= 0 {
 		bad("automaticum.toml: free_floor_gb must be stated and positive")
+	}
+	if err := detect.Values(d.Thresholds).Check(); err != nil {
+		bad("automaticum.toml: [thresholds]: %v", err)
 	}
 	if len(d.Notify.Command) > 0 && strings.TrimSpace(d.Notify.Command[0]) == "" {
 		bad("automaticum.toml: [notify] command must start with a program")

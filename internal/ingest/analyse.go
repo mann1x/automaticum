@@ -104,6 +104,9 @@ type Material struct {
 	Oracles  map[string]string
 	// Slots are the readings of the endpoint's /slots during the run.
 	Slots []run.SlotSample
+	// Thresholds override the measures' defaults (D148); nil is every
+	// default.
+	Thresholds detect.Values
 }
 
 // Load reads a run's stored material.
@@ -174,7 +177,7 @@ func Derive(m *Material) *Result {
 		res = &Result{Blocks: m.Events.Blocks}
 		res.Findings, _ = detectorFindings(r.ID, m.Events, detect.Options{})
 	} else {
-		res = Analyse(r, m.Events, m.Requests)
+		res = AnalyseWith(r, m.Events, m.Requests, m.Thresholds)
 		heldStream(r, m.Slots, func(name string, v float64) {
 			res.Metrics = append(res.Metrics, store.Metric{RunID: r.ID, Name: name, Value: v})
 		}, res)
@@ -198,11 +201,12 @@ func Owned(detector string) bool { return owned[detector] }
 // An imported run gets the detectors' findings and nothing else: its tool
 // calls were written by the importer and it has no wire capture, so the
 // metrics that need one do not exist for it (D65).
-func Run(ctx context.Context, st store.State, blobs Blobs, runID string) (*Result, error) {
+func Run(ctx context.Context, st store.State, blobs Blobs, runID string, th detect.Values) (*Result, error) {
 	m, err := Load(ctx, st, blobs, runID)
 	if err != nil {
 		return nil, err
 	}
+	m.Thresholds = th
 	r := m.Run
 	res := Derive(m)
 	old, err := st.Findings(ctx, runID)
@@ -256,6 +260,11 @@ func severity(accepted bool) string {
 // Analyse derives everything from a run record and what was read from its
 // event stream and wire capture. It reads and writes nothing.
 func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
+	return AnalyseWith(r, ev, reqs, nil)
+}
+
+// AnalyseWith is Analyse with the thresholds given (D148).
+func AnalyseWith(r *store.Run, ev *Events, reqs []Request, th detect.Values) *Result {
 	fromWire := ev.WireAnswers(reqs)
 	res := &Result{Blocks: ev.Blocks}
 	m := func(name string, v float64) {
@@ -532,6 +541,7 @@ func Analyse(r *store.Run, ev *Events, reqs []Request) *Result {
 		}
 	}
 	m("thinking.blocks", float64(len(reasoning)))
+	loopBlocks(m, ev.Blocks, th)
 	// Blocks cut off before their end, read from their deltas (bug-076).
 	m("blocks.unfinished", float64(unfinished))
 	// Answers only the wire had, read from it (bug-077).
@@ -807,4 +817,42 @@ func distribution(m func(string, float64), name string, v []float64) {
 	m(name+".p50", rank(0.50))
 	m(name+".p90", rank(0.90))
 	m(name+".max", s[len(s)-1])
+}
+
+// loopBlocks measures the reasoning blocks by their most repeated unit
+// (D148, detect.BlockRepeats): the largest count of any block, the blocks
+// at or above reasoning_block.max_repeat, their characters and their share
+// of all reasoning characters, and the threshold they were counted at, so
+// that runs read at different thresholds are never summed unseen.
+func loopBlocks(m func(string, float64), blocks []Block, th detect.Values) {
+	limit := th.Int(detect.BlockMaxRepeat)
+	most, loops := 0, 0
+	var chars, inLoops float64
+	seen := false
+	for _, b := range blocks {
+		if b.Kind != "reasoning" {
+			continue
+		}
+		seen = true
+		n := float64(len([]rune(b.Text)))
+		chars += n
+		br := detect.BlockRepeats(b.Text, th)
+		most = max(most, br.Max)
+		if br.Max >= limit && br.Max > 0 {
+			loops++
+			inLoops += n
+		}
+	}
+	if !seen {
+		return
+	}
+	m("thinking.max_repeat", float64(most))
+	m("thinking.loop_blocks", float64(loops))
+	m("thinking.loop_block_chars", inLoops)
+	share := 0.0
+	if chars > 0 {
+		share = inLoops / chars
+	}
+	m("thinking.loop_block_share", share)
+	m("thinking.loop_block_threshold", float64(limit))
 }

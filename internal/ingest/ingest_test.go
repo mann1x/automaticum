@@ -370,7 +370,7 @@ func TestRun(t *testing.T) {
 			{RunID: "r1", Detector: WireArm, Count: 99}},
 	}
 	for round := 0; round < 2; round++ { // a second ingest changes nothing
-		if _, err := Run(context.Background(), m, m, "r1"); err != nil {
+		if _, err := Run(context.Background(), m, m, "r1", nil); err != nil {
 			t.Fatal(err)
 		}
 		got := map[string]float64{}
@@ -569,7 +569,7 @@ func TestRunImported(t *testing.T) {
 		metrics:  []store.Metric{{RunID: "old", Name: "kept", Value: 1}},
 		calls:    []store.ToolCall{{RunID: "old", Tool: "from the importer"}},
 	}
-	res, err := Run(context.Background(), m, m, "old")
+	res, err := Run(context.Background(), m, m, "old", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -614,7 +614,7 @@ func TestEndpointConductInvalidates(t *testing.T) {
 	partly := json.RawMessage(`{"endpoint_after":{"loaded":{"size":100,"size_vram":60}}}`)
 	m := &memory{run: store.Run{ID: "r", Verdict: store.Pass, Arm: json.RawMessage(`{"model":{"model":"m:1"}}`), Provenance: partly}}
 	ctx := context.Background()
-	if _, err := Run(ctx, m, m, "r"); err != nil {
+	if _, err := Run(ctx, m, m, "r", nil); err != nil {
 		t.Fatal(err)
 	}
 	if m.run.Verdict != store.Invalid || m.run.PriorVerdict != store.Pass || !strings.Contains(m.run.VerdictReason, "partly on the GPU (60%)") {
@@ -624,25 +624,25 @@ func TestEndpointConductInvalidates(t *testing.T) {
 		t.Errorf("findings: %+v", m.findings)
 	}
 	// Analysed again, nothing changes.
-	Run(ctx, m, m, "r")
+	Run(ctx, m, m, "r", nil)
 	if m.run.Verdict != store.Invalid || m.run.PriorVerdict != store.Pass {
 		t.Errorf("a second analysis: %s (was %s)", m.run.Verdict, m.run.PriorVerdict)
 	}
 	// The cause gone, the verdict comes back.
 	m.run.Provenance = json.RawMessage(`{"endpoint_after":{"loaded":{"size":100,"size_vram":100}}}`)
-	Run(ctx, m, m, "r")
+	Run(ctx, m, m, "r", nil)
 	if m.run.Verdict != store.Pass || m.run.PriorVerdict != "" || m.run.VerdictReason != "" {
 		t.Errorf("cause gone: %s (was %s), %q", m.run.Verdict, m.run.PriorVerdict, m.run.VerdictReason)
 	}
 	// An arm that accepts it: the finding stays, as a note.
 	m.run.Provenance, m.run.Arm = partly, json.RawMessage(`{"model":{"model":"m:1"},"accepts":{"partial_gpu":true}}`)
-	Run(ctx, m, m, "r")
+	Run(ctx, m, m, "r", nil)
 	if m.run.Verdict != store.Pass || len(m.findings) != 1 || m.findings[0].Severity != "note" {
 		t.Errorf("accepted: %s, %+v", m.run.Verdict, m.findings)
 	}
 	// An operator's INVALID is not this rule's to take back.
 	m.run.Verdict, m.run.PriorVerdict, m.run.VerdictReason = store.Invalid, store.Pass, "operator: wrong lane"
-	Run(ctx, m, m, "r")
+	Run(ctx, m, m, "r", nil)
 	if m.run.Verdict != store.Invalid {
 		t.Errorf("an operator's verdict was changed to %s", m.run.Verdict)
 	}
@@ -673,7 +673,7 @@ func TestReloadAfterPause(t *testing.T) {
 		refs:  []store.BlobRef{{RunID: "r", Kind: "wire", Name: "wire.jsonl", Hash: hw}},
 		blobs: map[blob.Hash]string{hw: wire}}
 	ctx := context.Background()
-	if _, err := Run(ctx, m, m, "r"); err != nil {
+	if _, err := Run(ctx, m, m, "r", nil); err != nil {
 		t.Fatal(err)
 	}
 	if m.run.Verdict != store.Pass || m.run.PriorVerdict != "" {
@@ -695,7 +695,7 @@ func TestReloadAfterPause(t *testing.T) {
 		line(3, "2026-10-14T12:30:00Z", 0.01),
 		line(4, "2026-10-14T12:31:00Z", 26.5),
 	}, "\n")
-	Run(ctx, m, m, "r")
+	Run(ctx, m, m, "r", nil)
 	if m.run.Verdict != store.Invalid || !strings.Contains(m.run.VerdictReason, "loaded again") {
 		t.Errorf("a reload not after the release: %s, %q", m.run.Verdict, m.run.VerdictReason)
 	}
@@ -839,5 +839,33 @@ func TestUnfinishedBlocks(t *testing.T) {
 	}
 	if !fired {
 		t.Errorf("no loop finding on the cut loop: %+v", f)
+	}
+}
+
+// The loop-block metrics (D148): the largest repeat, the blocks at or over
+// reasoning_block.max_repeat, their characters and share, and the
+// threshold itself; text blocks are not read; a run without reasoning has
+// none of them.
+func TestLoopBlocks(t *testing.T) {
+	loop := strings.Repeat("Let me check line 90 of the file again because the brace count is off.\n", 25)
+	calm := "I read the file. The parser closes every block, so the test should pass now without any change.\n"
+	got := map[string]float64{}
+	m := func(n string, v float64) { got[n] = v }
+	blocks := []Block{{Kind: "reasoning", Text: loop}, {Kind: "reasoning", Text: calm}, {Kind: "text", Text: loop}}
+	loopBlocks(m, blocks, nil)
+	want := float64(len([]rune(loop))) / float64(len([]rune(loop))+len([]rune(calm)))
+	if got["thinking.max_repeat"] != 25 || got["thinking.loop_blocks"] != 1 || got["thinking.loop_block_chars"] != float64(len(loop)) ||
+		got["thinking.loop_block_share"] != want || got["thinking.loop_block_threshold"] != 20 {
+		t.Errorf("%v", got)
+	}
+	got = map[string]float64{}
+	loopBlocks(m, blocks, detect.Values{detect.BlockMaxRepeat: 30})
+	if got["thinking.loop_blocks"] != 0 || got["thinking.loop_block_threshold"] != 30 || got["thinking.max_repeat"] != 25 {
+		t.Errorf("at 30: %v", got)
+	}
+	got = map[string]float64{}
+	loopBlocks(m, blocks[2:], nil)
+	if len(got) != 0 {
+		t.Errorf("no reasoning: %v", got)
 	}
 }

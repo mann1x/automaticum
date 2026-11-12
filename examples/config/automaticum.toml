@@ -14,6 +14,12 @@ repo = "/opt/automaticum"                   # the checkout with tasks/ and image
 private_tasks = ""                          # a second tasks root outside the public repo (D105); optional
 watch_config = true                         # put a change to this directory in force on its own, no restart (D144); false: SIGHUP or `config reload` only
 
+# The detectors' and measures' thresholds, over their defaults (D148): the
+# SDK's own value where the SDK has the rule, else the owner's. The list,
+# with each default and its source: `automaticum detect --thresholds`.
+# [thresholds]
+# "reasoning_block.max_repeat" = 20
+
 [notify]
 webhook = ""                                # a URL that gets one JSON object per notification, by POST; empty: none
 command = []                                # a program and its arguments, run per notification with the JSON on stdin (a mailbox client); empty: none

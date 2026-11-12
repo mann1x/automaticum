@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-12T17:06:12.477Z
-> Files: 514 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-12T17:39:39.978Z
+> Files: 515 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -663,3 +663,7 @@
 - `f1290.log` (~0 tok)
 - `f1291.log` (~0 tok)
 - `f1292.log` (~0 tok)
+
+## internal/detect/
+
+- `thresholds.go` — Struct: Threshold (~2088 tok)

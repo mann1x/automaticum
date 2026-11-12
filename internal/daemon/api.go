@@ -1166,7 +1166,7 @@ func (d *Daemon) reanalyse(job *ReanalyseStatus, ids []string) {
 			defer wg.Done()
 			for id := range next {
 				before := d.firings(ctx, id, job.Request.Detector)
-				_, err := ingest.Run(ctx, d.State, d.Blobs, id)
+				_, err := ingest.Run(ctx, d.State, d.Blobs, id, d.thresholds())
 				after := d.firings(ctx, id, job.Request.Detector)
 				d.mu.Lock()
 				job.Done++
@@ -1751,7 +1751,7 @@ func (d *Daemon) handleIdentify(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusInternalServerError, "%v", err)
 		return
 	}
-	if _, err := ingest.Run(ctx, d.State, d.Blobs, id); err != nil {
+	if _, err := ingest.Run(ctx, d.State, d.Blobs, id, d.thresholds()); err != nil {
 		fail(w, http.StatusInternalServerError, "the record is written, the analysis failed: %v", err)
 		return
 	}
@@ -1821,7 +1821,7 @@ func (d *Daemon) handleHeld(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusInternalServerError, "%v", err)
 		return
 	}
-	if _, err := ingest.Run(ctx, d.State, d.Blobs, id); err != nil {
+	if _, err := ingest.Run(ctx, d.State, d.Blobs, id, d.thresholds()); err != nil {
 		d.Log.Error("the run could not be analysed again", "run", id, "error", err)
 	}
 	reply(w, http.StatusOK, view(rec, false))

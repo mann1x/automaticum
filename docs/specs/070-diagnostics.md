@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.37, 2026-11-12.
+**Status:** draft 0.38, 2026-11-12.
 
 ## 1. The rule: no custom script
 
@@ -538,9 +538,41 @@ nothing.
   `guard_trips.reasoning_loop.cut` (the exact key; its causes are counted
   under it), `runs_with_cuts`, `model_ms`, the sum of `time.model_ms`, and
   `cuts_per_model_hour`; the text prints it per batch and overall. A
-  measure that needs a threshold of its own (a block's repeat count, the
-  share of thinking inside loop blocks) is not in it until its threshold
-  is given.
+  `loops` also gives the loop blocks (D148): `loop_blocks` and
+  `loop_block_chars`, summed from `thinking.loop_blocks` and
+  `thinking.loop_block_chars`, `thinking_chars` and `loop_block_share`
+  (their share of all reasoning characters), `runs_looping` (runs with a
+  cut or a loop block), `loops_per_model_hour` (cuts and loop blocks over
+  the model hours), `max_repeat`, and `thresholds`: the values the loop
+  blocks were counted at and where each came from, repeated from the
+  header so a total is never read without them.
+- **Loop blocks (D148, 2026-11-12, the owner: "the thresholds comes from
+  the SDK but as defaults. automaticum must be flexible so it needs to
+  have the thresholds customizable. tell automaticum to add both").** The
+  analysis reads each reasoning block for its most repeated unit, as the
+  client's loopscan did: the block is cut into lines, and each line after
+  a `.`, `!` or `?` followed by a space; a unit of
+  `reasoning_block.unit_min_chars` (40) characters or more is compared by
+  its first `reasoning_block.key_chars` (80) letters and digits in lower
+  case, and left out when that key has fewer than
+  `reasoning_block.key_min_chars` (20). A block whose most repeated unit
+  is written `reasoning_block.max_repeat` (20) times or more is a loop
+  block. The SDK has no rule that counts a block's repeats this way (its
+  reasoning-loop guard counts cycles of consecutive lines, its argument
+  guard third copies), so the four defaults are the owner's. Each run's
+  metrics: `thinking.max_repeat` (the largest count of any block),
+  `thinking.loop_blocks`, `thinking.loop_block_chars`,
+  `thinking.loop_block_share`, and `thinking.loop_block_threshold`, the
+  threshold they were counted at, so stored runs read at different values
+  are never summed unseen.
+- **Thresholds (D148).** `--threshold name=number` (any number) reads with
+  those values over the installation's `[thresholds]` (030 §1) and the
+  defaults; `--thresholds` lists every threshold with its default, where
+  the default comes from and what it decides. The header's `thresholds`
+  gives every threshold the runs were read with: `value`, `from` (`sdk
+  default`, `owner default`, `config` or `cli`), `default` and
+  `default_source`; the text names those not at their default.
+  `--record` stores the analysis read at those values.
 - **`--fail-if "EXPR"`** (any number) exits 1 when one holds. `EXPR` is
   `NAME OP NUMBER`, with `OP` one of `>`, `>=`, `<`, `<=`, `==`, `!=`.
   `NAME` is a detector (its firings), `runs_with.<detector>`,
