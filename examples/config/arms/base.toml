@@ -90,6 +90,6 @@ wall_s = 7200
 idle_s = 1800
 
 [harness]
-# The release an arm runs unless it states its own (D143, 2026-11-08; was
-# 4.100.274, D142, and 4.100.250, D54).
-sdk_release = "4.100.276"
+# The release an arm runs unless it states its own (D152, 2026-11-12; was
+# 4.100.276, D143, 4.100.274, D142, and 4.100.250, D54).
+sdk_release = "4.100.277"

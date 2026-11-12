@@ -154,3 +154,23 @@ Use this after the build is pinned and committed in the repo (for example a loca
 8. Run `systemctl show automaticumd -p NRestarts -p ActiveState`. It should show the same restart count and `active`. Release the claim (`claude-hooks-res release --claim <id>`).
 9. Mail the client DONE with the run id, the bundle hash, and the facts that there was no restart and nothing is queued. Tell them how to adopt the build: `[harness] sdk_release = "<build>"` in an arm. Arm ids change, so runs on the new build do not pool with older ones. Moving client arms or the template default is the client's or the owner's call, never yours.
 10. Log a row in `.wolf/memory.md` using neutral host names.
+
+## Addendum (2026-11-12, adopting 4.100.277)
+
+### Pinning
+1. Confirm the release is on the registry: `curl -s https://registry.npmjs.org/@cerebriline%2fsdk | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['dist-tags']['latest'], d['time'].get('<ver>'))"`.
+2. `mkdir runner/sdk/<ver>`; copy the previous pin's `package.json` with the version changed (`sed 's/<prev>/<ver>/'`).
+3. Make the lockfile in the pinned Node image (`NodeImage` in `internal/sdk/sdk.go`) as your own uid, with an npm cache on persistent disk (never /tmp): `docker run --rm -v "$PWD/runner/sdk/<ver>:/w" -v <cache>:/npmcache -w /w --user "$(id -u):$(id -g)" -e npm_config_cache=/npmcache <NodeImage> npm install --package-lock-only --ignore-scripts --no-audit --no-fund`.
+4. Diff the lockfile against the previous pin's (packages removed, added, changed) in Python over `json.load(...)['packages']`. Check the packages the SDK owner was asked to bump (Dependabot alerts).
+5. **Write a stub `sdk.toml` first** (`version = "<ver>"`, `source = "registry"`); `sdk add` fails without it. Then, with `AUTOMATICUM_CONFIG=<local config>`: `am sdk add -repo "$PWD" <ver>` (appends `bundle_sha256`) and `am sdk verify -repo "$PWD" <ver>` (must say "reproduced"). Use a CLI built with `CGO_ENABLED=0 go build -o <scratch>/am ./cmd/automaticum`.
+6. Replace the stub comment in `sdk.toml` with what the release changes, its dependency changes and whether the replayed guard sources changed.
+
+### Checking the build
+- List the exports: `docker run --rm -v <data_root>/sdk/<ver>/node_modules:/x/node_modules:ro -w /x <NodeImage> node --input-type=module -e "const s=await import('@cerebriline/sdk'); for (const k of [...]) console.log(k, typeof s[k]);"`. Importing the bundle by file path fails with ERR_MODULE_NOT_FOUND.
+- Read the declarations under `node_modules/@cerebriline/core/dist/**/*.d.ts`; read an implementation in the minified `dist/index.js` by finding its local name with `(\w+) as <exportName>\b`.
+- Check that the replayed guards did not change: `git -C <sdk repo> diff --stat v<old> v<new> -- sdk/packages/core/src/runtime/safety sdk/packages/agents sdk/packages/core/src/runtime/session-runtime-orchestrator.ts` (empty means CallGuard/Rules mappings carry over).
+- If the runner uses new exports, keep the older builds' path too and prove both give the model the same text: run one probe script in the lane image with each build's `node_modules` mounted, and diff the outputs with timings stripped.
+- Run an end-to-end stub session through `runner.mjs` with a stub arm on the new release (see the CALIBER_LEARNINGS e2e pattern), and read the tool results off `out/wire.jsonl`.
+
+### Adopting as the default
+Read the previous adoption commit (`git show --stat <commit>`) and change the same files: `examples/config/arms/base.toml`, a new `stub-sdk-<ver>.toml`, the old stub arm's comment, `internal/daemon/daemon_test.go`, `internal/run/run_test.go` (`const release` and the "build <ver> of the arm" string), `internal/detect/callguard_test.go` (map row), `runner/test/arm-stub.json` (regenerate with `am arm show -json stub`). Then run the Go tests for detect, daemon, run and config, then `make test` in the background, and `node --test test/` in `runner/`. Update 040 §3 and the X row in both 040 §8 and decisions.md §4, add the D row, the CLAUDE.md layout (`runner/sdk/` list and the default release), `.wolf/anatomy.md`, and mirror the decision in `.wolf/cerebrum.md`. If the job and the last line are unchanged, the protocol number stays; note this in `runner/PROTOCOL.md`.

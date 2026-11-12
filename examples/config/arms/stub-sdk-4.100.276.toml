@@ -1,6 +1,6 @@
 # The stub arm on SDK release 4.100.276, for the harness's own tests of that
 # build: the first registry release with every finding of the 2026-11-08
-# tool audit fixed, and the template's default (D143).
+# tool audit fixed, and the template's default until 4.100.277 (D143, D152).
 extends = "stub"
 
 [harness]

@@ -19,9 +19,8 @@ import { fileURLToPath } from "node:url";
 import { BUNDLED_SKILLS_ON_BY_DEFAULT, buildConfig, compareResolved, derivedFromArm, unsupported } from "./session.mjs";
 import { ACT_MODE_CONTINUATION_PROMPT, createSwitchToActModeTool, withSwitchTool } from "./plan.mjs";
 import { guardTrip, limitBreach, reasoningLimitAnswer, stopsOn } from "./guards.mjs";
-import { chromePath, createBrowserDriver, createRenderDriver, mermaidPath } from "./browser.mjs";
-import { createCheckFileTool, createEditorDiagnosticsHooks } from "./editor.mjs";
-import { createLspHost } from "./lsp.mjs";
+import { chromePath, mermaidPath } from "./browser.mjs";
+import { buildBrowserDrivers, buildLsp } from "./host.mjs";
 import { privateTools } from "./tools.mjs";
 import { createUser } from "./user.mjs";
 import { createWire, describe } from "./wire.mjs";
@@ -210,36 +209,24 @@ async function main() {
 	// 4a. The editor's language servers, for an arm with [agent.lsp]
 	// (040 §6.1, D149): ask_lsp as the extension builds it, the extension's
 	// check_file reading their diagnostics, and the diagnostics after
-	// edits. The servers of the workspace's languages start now, as an
+	// edits; the SDK's halves from 4.100.277, the runner's ports before
+	// (host.mjs). The servers of the workspace's languages start now, as an
 	// editor's do when it opens the folder; any other on its first question.
 	const lspArm = arm.agent.lsp?.enabled === true ? arm.agent.lsp : null;
-	let lsp = null;
-	let lspTools = [];
-	let lspHooks;
-	if (lspArm) {
-		let lspErrors = 0;
-		lsp = createLspHost({
-			cwd: job.workspace,
-			onError: (message, error) => {
-				if (++lspErrors <= 20) note("lsp_error", { message, error: describe(error).message });
-			},
-		});
-		const onError = (message, error) => note("lsp_error", { message, error: describe(error).message });
-		lspTools = [
-			sdk.createAskLspTool({ cwd: job.workspace, provider: lsp.provider, onError }),
-			createCheckFileTool({ createTool: sdk.createTool, describeDelimiterBalance: sdk.describeDelimiterBalance, cwd: job.workspace, lsp }),
-		];
-		if (lspArm.diagnostics_after_edits !== false) {
-			lspHooks = createEditorDiagnosticsHooks({ cwd: job.workspace, lsp, describeDelimiterBalance: sdk.describeDelimiterBalance, note });
-		}
-	}
+	const lspBuilt = lspArm
+		? buildLsp({ sdk, cwd: job.workspace, note, diagnosticsAfterEdits: lspArm.diagnostics_after_edits !== false })
+		: null;
+	const lsp = lspBuilt?.host ?? null;
+	const lspTools = lspBuilt?.tools ?? [];
+	const lspHooks = lspBuilt?.hooks;
 	const lspStarted = lsp ? lsp.prewarm() : [];
 
 	// 4b. The browser, for an arm with [agent.browser] (040 §6.1.3, D150):
 	// the SDK's browser, render_image and transform_image tools on the
-	// extension's drivers, ported, and the lane's Chrome. Nothing starts
-	// until the agent calls one.
+	// extension's drivers (the SDK's from 4.100.277, the runner's ports
+	// before) and the lane's Chrome. Nothing starts until the agent calls one.
 	let browserTools = [];
+	let browserSource = null;
 	if (arm.agent.browser?.enabled === true) {
 		const onError = (message, error) => note("browser_error", { message, error: describe(error).message });
 		const writeImage = async (absolutePath, data) => {
@@ -247,11 +234,12 @@ async function main() {
 			await writeFileAsync(absolutePath, data);
 		};
 		const fileExists = async (absolutePath) => existsSync(absolutePath) && statSync(absolutePath).isFile();
-		const render = () => createRenderDriver({ renderRootId: sdk.RENDER_ROOT_ID });
+		const drivers = buildBrowserDrivers({ sdk });
+		browserSource = drivers.source;
 		browserTools = [
-			sdk.createBrowserTool({ cwd: job.workspace, createDriver: () => createBrowserDriver(), onError }),
-			sdk.createRenderImageTool({ cwd: job.workspace, createDriver: render, writeFile: writeImage, onError }),
-			sdk.createTransformImageTool({ cwd: job.workspace, createDriver: render, fileExists, writeFile: writeImage, onError }),
+			sdk.createBrowserTool({ cwd: job.workspace, createDriver: drivers.createDriver, onError }),
+			sdk.createRenderImageTool({ cwd: job.workspace, createDriver: drivers.createRenderDriver, writeFile: writeImage, onError }),
+			sdk.createTransformImageTool({ cwd: job.workspace, createDriver: drivers.createRenderDriver, fileExists, writeFile: writeImage, onError }),
 		];
 	}
 	note("prepared", {
@@ -265,9 +253,18 @@ async function main() {
 		system_prompt_sha256: sha(firstPrompt),
 		system_prompt_bytes: Buffer.byteLength(firstPrompt),
 		lsp: lsp
-			? { tools: lspTools.map((t) => t.name), diagnostics_after_edits: lspHooks !== undefined, started: lspStarted, servers: lsp.status() }
+			? {
+					tools: lspTools.map((t) => t.name),
+					diagnostics_after_edits: lspHooks !== undefined,
+					source: lspBuilt.source,
+					started: lspStarted,
+					servers: lsp.status(),
+				}
 			: null,
-		browser: browserTools.length > 0 ? { tools: browserTools.map((t) => t.name), chrome: chromePath() ?? null, mermaid: mermaidPath() !== undefined } : null,
+		browser:
+			browserTools.length > 0
+				? { tools: browserTools.map((t) => t.name), source: browserSource, chrome: chromePath() ?? null, mermaid: mermaidPath() !== undefined }
+				: null,
 	});
 
 	// 5a. The hold (PROTOCOL.md): while the file "hold" stands next to the

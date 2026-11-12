@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-12T20:01:06.873Z
-> Files: 523 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-12T21:05:30.647Z
+> Files: 528 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -664,14 +664,13 @@
 - `f1291.log` (~0 tok)
 - `f1292.log` (~0 tok)
 
-## images/browser/
-
-- `package.json` — puppeteer-core 23.11.1 and Mermaid 11.16.1 for the lane's browser (D150) (~150 tok)
-- `package-lock.json` — their lockfile, npm ci'd by images/base/Dockerfile beside Chrome for Testing 131 (~large)
-
 ## images/base/
 
 - `Dockerfile` — Docker container definition (~1280 tok)
+
+## images/browser/
+
+- `package.json` — puppeteer-core 23.11.1 and Mermaid 11.16.1 for the lane's browser (D150) (~150 tok)
 
 ## images/lsp/
 
@@ -684,13 +683,26 @@
 ## runner/
 
 - `browser.mjs` — The extension's DEFAULT_BROWSER_SETTINGS viewport. (~3129 tok)
-- `editor.mjs` — The extension's check_file and diagnostics after edits (editor/apply_patch), ported word for word from 4.100.276, read from lsp.mjs (D149) (~5200 tok)
 - `browser.mjs` — the extension's BrowserSession (local mode) and renderWithChrome, ported, on Chrome under /opt/automaticum/browser, for browser/render_image/transform_image (D150) (~3600 tok)
+- `editor.mjs` — The extension's check_file and diagnostics after edits (editor/apply_patch), ported word for word from 4.100.276, read from lsp.mjs (D149) (~5200 tok)
+- `host.mjs` — buildLsp/buildBrowserDrivers: the SDK's own LSP host, check_file, diagnostics hooks and Chrome drivers on a build that exports them (4.100.277 on), else lsp.mjs/editor.mjs/browser.mjs; maps the SDK hooks' trace to the editor_diagnostics note; `source` (D152) (~1427 tok)
 - `lsp.mjs` — createLspHost: language servers per lane language under /opt/automaticum/lsp; ask_lsp's CodeIntelProvider; push/pull diagnostics store; server requests answered (D149) (~6700 tok)
 
 ## runner/test/
 
 - `browser.test.mjs` — the browser and render drivers on a fake puppeteer: launch options, console text, timeouts, close (~1500 tok)
 - `editor.test.mjs` — check_file, diagnostics after edits, rendering, settling, on a fake host (~2100 tok)
-- `fixtures/fake-lsp.mjs` — a language server for the tests: asks workspace/configuration, publishes BAD/WARN diagnostics, echoes document events (~900 tok)
+- `fixtures/fake-lsp.mjs` — a language server for the tests: asks workspace/configuration, publishes BAD/WARN diagnostics, echoes document events; FAKE_PULL answers pulls only from a client that says it pulls, FAKE_PUSH_DELAY_MS delays pushes (~1100 tok)
+- `host.test.mjs` — host.mjs on a fake 4.100.277 SDK and an older one: which halves, server specs and probe check, trace -> note, error notes, Chrome driver options (~1927 tok)
 - `lsp.test.mjs` — the host against test/fixtures/fake-lsp.mjs: questions, server requests, didChange, diagnostics, a broken server (~1300 tok)
+
+## runner/sdk/4.100.277/
+
+- `package.json` — the SDK bundle of build 4.100.277: @cerebriline/sdk 4.100.277 (~60 tok)
+- `package-lock.json` — 372 packages (simple-git 4.0.2, zod 4.6.7, undici 6.29.1; no dify-ai-provider) (~45000 tok)
+- `sdk.toml` — what 4.100.277 changes (X15: the host halves in core, transform_image fixed, dependency bumps), bundle_sha256 85c83693… (~350 tok)
+
+## examples/config/arms/ (4.100.277)
+
+- `base.toml` — the template every arm extends; [harness] sdk_release = 4.100.277 (D152)
+- `stub-sdk-4.100.277.toml` — the stub arm on SDK 4.100.277, for the harness's own tests (~70 tok)

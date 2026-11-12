@@ -126,7 +126,7 @@ func TestCallGuard275(t *testing.T) {
 
 func TestCallGuardFor(t *testing.T) {
 	for in, want := range map[string]string{"4.100.269": CallGuard269, "4.100.274": CallGuard269, "4.100.275": CallGuard275,
-		"4.100.275+da478ecc8a": CallGuard275, "4.100.275-gda478ecc8a": CallGuard275, "4.100.276": CallGuard275, "": CallGuard269} {
+		"4.100.275+da478ecc8a": CallGuard275, "4.100.275-gda478ecc8a": CallGuard275, "4.100.276": CallGuard275, "4.100.277": CallGuard275, "": CallGuard269} {
 		if got := CallGuardFor(in); got != want {
 			t.Errorf("CallGuardFor(%q) = %s, want %s", in, got, want)
 		}

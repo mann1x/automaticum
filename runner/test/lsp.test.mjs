@@ -75,6 +75,51 @@ test("the host answers ask_lsp's questions, answers the server's own requests an
 	assert.equal(status.find((s) => s.server === "missing").installed, false);
 });
 
+function pullServer(env) {
+	return [{ name: "fake", command: process.execPath, args: [fake], probe: fake, languages: ["javascript"], settings: { fake: { answer: 1 } }, env }];
+}
+
+test("pull diagnostics: the client says it pulls, so a server that serves pulls answers one", async (t) => {
+	const dir = workspace();
+	const host = createLspHost({ cwd: dir, servers: pullServer({ FAKE_PULL: "1", FAKE_PUSH_DELAY_MS: "5000" }) });
+	t.after(() => host.dispose());
+	const file = join(dir, "a.js");
+	await host.touch(file);
+	await settle();
+	const [d] = await host.readDiagnostics();
+	assert.equal(d.pending, false);
+	assert.deepEqual(d.diagnostics.map((x) => x.message), ["bad thing"], "answered by the pull, long before the push");
+	assert.match(await host.provider.hover({ filePath: file, line: 0, character: 0 }), /events=open,pull/);
+});
+
+test("a refused pull leaves the file pending until the server pushes (bug-097)", async (t) => {
+	const dir = workspace();
+	// Announces pulls, refuses every one: what the HTML server did to a
+	// client that did not say it pulls.
+	const host = createLspHost({ cwd: dir, servers: pullServer({ FAKE_PULL: "1", FAKE_PUSH_DELAY_MS: "600" }) });
+	t.after(() => host.dispose());
+	const file = join(dir, "a.js");
+	// Make the client look as if it did not pull: the fake refuses then.
+	const { LspConnection } = await import("../lsp.mjs");
+	const realRequest = LspConnection.prototype.request;
+	LspConnection.prototype.request = function (method, params, timeout) {
+		if (method === "initialize") params = { ...params, capabilities: { ...params.capabilities, textDocument: { ...params.capabilities.textDocument, diagnostic: undefined } } };
+		return realRequest.call(this, method, params, timeout);
+	};
+	t.after(() => {
+		LspConnection.prototype.request = realRequest;
+	});
+	await host.touch(file);
+	await settle(250);
+	let [d] = await host.readDiagnostics();
+	assert.equal(d.pending, true, "the refusal says nothing about the file");
+	assert.deepEqual(d.diagnostics, []);
+	await settle(900);
+	[d] = await host.readDiagnostics();
+	assert.equal(d.pending, false);
+	assert.deepEqual(d.diagnostics.map((x) => x.message), ["bad thing"]);
+});
+
 test("a server that cannot start answers nothing and says why", async (t) => {
 	const dir = workspace();
 	const errors = [];

@@ -1682,6 +1682,27 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-11-12T21:20:00+01:00"
+    },
+    {
+      "id": "bug-097",
+      "timestamp": "2026-11-12T21:30:18+00:00",
+      "error_message": "runner/lsp.mjs (the port used on SDK <= 4.100.276): check_file reported 'manic_miner.html: no problems reported by the editor' for a page whose script has 12 errors, every time, when the file was checked on its own; the SDK 4.100.277 host reported the 12",
+      "file": "runner/lsp.mjs",
+      "root_cause": "The client never said it pulls diagnostics (no textDocument.diagnostic capability), so vscode-langservers-extracted's HTML server refused the pull with 'Unhandled method textDocument/diagnostic'; the host then stored an empty, settled (pending:false) list for the file, and check_file's settle loop returned it before the server's push (about 1.5 s after the open) arrived. Not seen before because earlier probes touched the file and waited, or checked a TypeScript file first.",
+      "fix": "Advertise textDocument.diagnostic {dynamicRegistration:false} as VS Code and the SDK do (the HTML server then answers the pull), and leave the file pending when a pull is refused (noPull) so the push decides. fake-lsp gained FAKE_PULL/FAKE_PUSH_DELAY_MS; two lsp tests (the second fails without the fix). Verified in the image: 276 and 277 paths give the model the same text.",
+      "tags": [
+        "lsp",
+        "pull-diagnostics",
+        "html",
+        "check_file",
+        "runner",
+        "parity"
+      ],
+      "related_bugs": [
+        "bug-095"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-12T21:30:18+00:00"
     }
   ]
 }

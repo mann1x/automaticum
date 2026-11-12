@@ -244,6 +244,11 @@ export class LspConnection {
 						documentSymbol: { hierarchicalDocumentSymbolSupport: true },
 						callHierarchy: {},
 						publishDiagnostics: { relatedInformation: false, versionSupport: true },
+						// Pull diagnostics, as VS Code and the SDK (4.100.277) say:
+						// a server built on vscode-languageserver refuses a pull
+						// from a client that does not (the HTML server answers
+						// "Unhandled method textDocument/diagnostic").
+						diagnostic: { dynamicRegistration: false },
 					},
 					workspace: { symbol: {}, workspaceFolders: true, configuration: true },
 					window: { workDoneProgress: false },
@@ -584,6 +589,9 @@ export function createLspHost({ cwd, root = LSP_ROOT, servers, onError } = {}) {
 			connection
 				.pull(absolute)
 				.then((list) => {
+					// A refused pull says nothing about the file: it stays
+					// pending until the server pushes (bug-097).
+					if (list === undefined && connection.noPull) return;
 					const now = diagnostics.get(absolute);
 					diagnostics.set(absolute, { diagnostics: list ?? now?.diagnostics ?? [], pending: false });
 				})

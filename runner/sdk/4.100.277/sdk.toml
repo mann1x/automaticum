@@ -1,0 +1,16 @@
+# SDK release 4.100.277, from the registry (Cerebriline e93a2ca3d9): as
+# 4.100.276, and the host halves of the editor's tools moved into core
+# (X15): createLspHost, createDiagnosticsCheckFileTool,
+# createEditorDiagnosticsHooks, createChromeBrowserDriver,
+# createChromeRenderDriver, the functions the extension's own check_file,
+# post-edit report and browser now run; the runner takes them on this build
+# (runner/host.mjs). transform_image's page binds planTransform by its own
+# name, so it works minified. Dependencies: simple-git 4.0.2 with
+# @simple-git/argv-parser 2.0.1, zod 4.6.7, dify-ai-provider an optional peer
+# (its undici 5/6 and busboy gone), undici 6.29.1: the lockfile has 372
+# packages (382 in 4.100.276) and no open Dependabot alert. Nothing the
+# detectors replay changed: runtime/safety, the orchestrator and
+# @cerebriline/agents are as in 4.100.276, so CallGuard275 and Rules258 hold.
+version = "4.100.277"
+source = "registry"
+bundle_sha256 = "85c83693485193493359be56ca015f684b359c08d073c7d658dceb59725a3135"

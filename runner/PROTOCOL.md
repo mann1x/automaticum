@@ -99,6 +99,17 @@ the Chrome found, whether Mermaid is there), and what the tools failed at is
 a `browser_error` note. A protocol 10 runner would ignore either field, so
 the number went up.
 
+From SDK release 4.100.277 (still protocol 11, D152): on a build that
+exports them, the language-server host, `check_file`, the diagnostics after
+edits and both Chrome drivers are the SDK's own (`createLspHost`,
+`createDiagnosticsCheckFileTool`, `createEditorDiagnosticsHooks`,
+`createChromeBrowserDriver`, `createChromeRenderDriver`, X15), chosen in
+`host.mjs`, given the image's servers and Chrome; an older build gets
+`lsp.mjs`, `editor.mjs` and `browser.mjs`. The `prepared` note's `lsp` and
+`browser` gain `source` (`sdk` or `runner`); the notes are the same either
+way (the SDK hooks' trace is written as the `editor_diagnostics` note).
+Nothing in the job or the last line changed, so the number did not.
+
 ## In
 
 `node runner.mjs /job/job.json`, with three mounts: `/job` (read-only),

@@ -1,0 +1,7 @@
+# The stub arm on SDK release 4.100.277, for the harness's own tests of that
+# build: the host halves of ask_lsp, check_file, the diagnostics after edits
+# and the browser in core (X15), the template's default (D152).
+extends = "stub"
+
+[harness]
+sdk_release = "4.100.277"

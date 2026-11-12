@@ -65,7 +65,7 @@ RUN apt-get update \
  && /opt/automaticum/browser/chrome-linux64/chrome --version
 
 WORKDIR /opt/automaticum/runner
-COPY runner/package.json runner/runner.mjs runner/guards.mjs runner/plan.mjs runner/session.mjs runner/tools.mjs runner/user.mjs runner/wire.mjs runner/lsp.mjs runner/editor.mjs runner/browser.mjs ./
+COPY runner/package.json runner/runner.mjs runner/guards.mjs runner/plan.mjs runner/session.mjs runner/tools.mjs runner/user.mjs runner/wire.mjs runner/lsp.mjs runner/editor.mjs runner/browser.mjs runner/host.mjs ./
 # Where the SDK bundle is mounted, and the runner's own prefix (D113): it
 # starts as /opt/automaticum/bin/node, here Node of the image itself.
 RUN mkdir node_modules \

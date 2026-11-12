@@ -1,6 +1,6 @@
 # 040 — The runner
 
-**Status:** draft 1.18, 2026-11-12. Facts about the SDK in this file were read
+**Status:** draft 1.19, 2026-11-12. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
 running it. The parity table in §6 was checked row by row by the Cerebriline
 session on 2026-10-13 against its main branch (release 4.100.249 plus requests
@@ -54,8 +54,9 @@ The harness build is part of the arm and of the basis.
   Milestone 2 runs on release 4.100.250, which contains requests 1 to 3
   (§8.2).
   The five first real runs used release 4.100.250 (§8.2, 110 §3.1).
-  **Decided by the owner (2026-11-08):** the arm template's default release
-  is 4.100.276 (D143; 4.100.274 from 2026-11-05, D142); an arm that names its own release keeps it.
+  **Decided by the owner (2026-11-12):** the arm template's default release
+  is 4.100.277 (D152; 4.100.276 from 2026-11-08, D143; 4.100.274 from
+  2026-11-05, D142); an arm that names its own release keeps it.
 - **How the release is established:** see §3.1. A run's record holds a
   release only once it is established, never the one its arm merely names.
   The SDK's own build constant is not used: it carries another number than
@@ -347,7 +348,20 @@ and without them.
   an editor answers (left null, the CSS validator fails and the HTML server
   then reports nothing for the page); the HTML server gets VS Code's defaults
   for the settings it reads. The servers of the workspace's languages start
-  with the session, as an editor's do when it opens the folder.
+  with the session, as an editor's do when it opens the folder. It says it
+  pulls diagnostics, as VS Code does: a server built on vscode-languageserver
+  refuses a pull from a client that does not, and a refused pull leaves the
+  file waiting for the server's push rather than reported clean (bug-097).
+- **The SDK's halves, from 4.100.277** (X15, D152): a build that exports
+  `createLspHost`, `createDiagnosticsCheckFileTool` and
+  `createEditorDiagnosticsHooks` gets them (`runner/host.mjs`), the functions
+  the extension's own `check_file`, post-edit report and Problems renderer
+  run from that release; the runner hands them the lane's servers
+  (`serverSpecs`, each found by its probe under the prefix, never on a PATH)
+  and notes the hooks' trace as the same `editor_diagnostics`. An older
+  build gets the runner's ports below. The `prepared` note says which:
+  `lsp.source` is `sdk` or `runner`. On the stub, both give the model the
+  same text for the same workspace.
 - **Diagnostics after edits** (`runner/editor.mjs`, ported from
   `apps/vscode/src/sdk/editor-diagnostics.ts`): every rule of §6.1.1 is
   copied, budgets included (250 ms polls, 2,000 ms). One addition: before
@@ -390,17 +404,22 @@ chrome in the lane".
   its HTML stops changing, console messages and page errors only, a quiet
   console waited for, a PNG screenshot) and `renderWithChrome` (a Chrome per
   render, Mermaid drawn in the page). Whether the model sees the screenshot
-  is the SDK tool's decision, from the model's image support.
+  is the SDK tool's decision, from the model's image support. From 4.100.277
+  the SDK's own `createChromeBrowserDriver` and `createChromeRenderDriver`
+  (the same ports, moved into core, X15) replace these on a build that
+  exports them, on the lane's Chrome, Mermaid and puppeteer-core;
+  `browser.source` in the `prepared` note says whose ran (D152).
 - **Container differences.** `--no-sandbox` (Chrome's sandbox needs user
   namespaces Docker does not give) and `--disable-dev-shm-usage` (a 64 MB
   `/dev/shm`). The extension's custom arguments and remote browser are user
   settings, unset by default, and not offered.
-- **A defect of the SDK, kept.** In 4.100.276 `transform_image` fails on
+- **A defect of the SDK, kept on the builds that have it.** Up to 4.100.276 `transform_image` fails on
   every call in a minified build: the page calls `planTransform` by name
   while the bundle inlines it under its minified name. The extension's
   production build minifies too, so the plugin is taken to fail the same
   way; the runner does not patch the SDK's output, and the fix is asked of
-  the SDK (§8).
+  the SDK (§8). Fixed in 4.100.277: the page binds `planTransform` by its own
+  name, and the tool writes its image on the stub.
 
 ### 6.2 The scripted user
 
@@ -646,7 +665,7 @@ code, not from trying. Each request is tracked in `decisions.md` section 4.
 | X12 | Let the session's **abort** reach the Ollama provider's first-use **probes**, and bound the model and account reads (bug-047). | **released in 4.100.269** (2026-10-29) |
 | X13 | Let `sed`, `awk`, `grep` and `search_codebase` refuse a **binary** or a file over 100 MB before reading it whole, instead of taking the runner out of heap (exit 134, `ABORTED`). | **released in 4.100.274** (2026-11-05) |
 | X14 | Let every tool result claim only what the tool established: the 2026-11-08 tool audit's findings, the delimiter scan's edits proved by a real parser (bug-082). | **released as 4.100.275** (2026-11-08), first pinned as the local build `4.100.275+da478ecc8a`; on the registry as **4.100.276** (2026-11-08), the default (D143) |
-| X15 | Fix the CLI's LSP client (server requests answered and told apart from responses, didChange, settings objects, the HTML server's settings and TypeScript path, the missing servers, the extension's symbol lookup) and `transform_image`'s minified `planTransform`; make the two browser drivers agree; move the host halves of `ask_lsp`, the diagnostics, `check_file` and the browser and render drivers into core, so the runner imports them instead of its ports (D149, D150). | asked 2026-11-12 (owner); the runner's ports serve until a release lands |
+| X15 | Fix the CLI's LSP client (server requests answered and told apart from responses, didChange, settings objects, the HTML server's settings and TypeScript path, the missing servers, the extension's symbol lookup) and `transform_image`'s minified `planTransform`; make the two browser drivers agree; move the host halves of `ask_lsp`, the diagnostics, `check_file` and the browser and render drivers into core, so the runner imports them instead of its ports (D149, D150). | asked 2026-11-12 (owner); **released as 4.100.277** (2026-11-12): taken by the runner on that build, the ports serve older ones (D152) |
 | X6 | Confirmation of the parity inventory in §6, row by row. | done on 2026-10-13 for §6: 11 rows confirmed, 2 corrected, 6 added. §6.1 and §6.2 not checked |
 
 `INVALID` depends on X1 to X3, which is why they come first. More requests are

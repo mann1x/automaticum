@@ -25,6 +25,8 @@
 - 2026-11-09, the owner ("add -arm-name too, of course, I mean, it's not obvious it's needed?"): when a selector has a known blind spot, close it in the same change, without asking. If an identity-by-content filter (arm id) can match another arm, a by-name filter is part of the job. Don't end a report by offering obvious completions; do them.
 
 ## Key Learnings
+- 2026-11-12: a client that sends `textDocument/diagnostic` must also advertise `capabilities.textDocument.diagnostic`: servers built on vscode-languageserver (the HTML server) refuse the pull otherwise, and a host that then records an empty settled list makes check_file say clean before the push arrives (bug-097). When the runner has two paths for one tool (the SDK's halves on 4.100.277+, its ports before, `runner/host.mjs`), run the same probe on both builds in the image and diff what the model reads.
+- 2026-11-12: Dependabot alerts on mann1x/automaticum are almost all in `runner/sdk/<ver>/package-lock.json` (the SDK's own dependencies: simple-git via @cerebriline/core, dify-ai-provider's nested undici/busboy, zod). Never bump them in our lockfile (it would change the SDK build and its bundle_sha256): ask the SDK owner session for a release, pin it, and dismiss older pins' alerts as tolerable_risk. `tasks/tbench2/*/oracle/requirements.txt` is the pinned scorer (never edited); `images/lsp` alerts come from bash-language-server's exact pins (zod 3.25.76, editorconfig 3.0.2). Fetch with `gh api --paginate --jq '.[] | [...] | @tsv'`, never by splitting concatenated pages.
 
 - 2026-11-12: the SDK's CLI and extension drivers differ (browser: headless true vs "shell", 15 s vs 7 s, extra request-failure lines); for plugin parity port the extension's (BrowserSession, renderWithChrome), never the CLI's. Code the SDK inlines by Function.toString() breaks under minification (transform_image's planTransform, bug-096): test SDK page builders by running their built output.
 
@@ -96,6 +98,7 @@
 - 2026-10-13: never invent detector, guard or limit numbers. xollama's GPU host is `windows-2`. Job waiters need an exit-code file, a failure exit and a time bound.
 
 ## Decision Log
+- 2026-11-12 D152: SDK 4.100.277 is the arm template's default (owner: "mail ollama to fix the sdk bugs and release a new one, then integrate it", read as D142/D143's "integrate"). It releases X15: the runner uses the SDK's createLspHost, createDiagnosticsCheckFileTool, createEditorDiagnosticsHooks, createChromeBrowserDriver, createChromeRenderDriver when the build exports them (runner/host.mjs), its own ports on older builds; prepared note `source`. No protocol bump (job and last line unchanged).
 
 - 2026-11-12 D151: Library tools and semantic search are not emulated for now (owner: "we don't need the library tools and the semantic search now"). Do not propose them as next work until the owner asks.
 
