@@ -1,6 +1,6 @@
 # 040 — The runner
 
-**Status:** draft 1.16, 2026-11-12. Facts about the SDK in this file were read
+**Status:** draft 1.17, 2026-11-12. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
 running it. The parity table in §6 was checked row by row by the Cerebriline
 session on 2026-10-13 against its main branch (release 4.100.249 plus requests
@@ -187,8 +187,8 @@ and how the runner provides it:
 | Slash commands (`/compact`, `/smol`, the built-ins) | none: the extension expands them before the prompt is sent | expanded by the runner, like mentions (§8, request 4) |
 | Escalation and check approvals | `escalation.approve` and `atomicProtocol.approveCheck`, on the session configuration. Leaving `approveCheck` out is a behaviour of its own (a host with no user), not an approval | scripted user; the arm states whether the hook is supplied |
 | MCP tools | `extraTools` | arm field: which servers, started inside the container |
-| Browser tool | present only where a Chrome is found | arm field; the lane image provides the browser or the tool is absent |
-| `render_image`, `transform_image`, `generate_icon` | extension only, through the same browser driver; the CLI registers none | the runner supplies the driver, or they are absent and the wire tool list shows it |
+| Browser tool | present only where a Chrome is found | `[agent.browser]`: the lane's Chrome and the extension's driver (§6.1.3, D150); without, absent |
+| `render_image`, `transform_image`, `generate_icon` | extension only, through the same browser driver; the CLI registers none | `[agent.browser]`: `render_image` and `transform_image` on the extension's render driver (§6.1.3); `generate_icon` is a media tool, absent as by default |
 | `check_file` tool | the extension registers its own, which reads the editor's diagnostics (`apps/vscode/src/sdk/check-file-tool.ts`); the SDK adds a syntax-only one of its own only to a host that names none | with `[agent.lsp]`: the extension's tool, ported, reading the lane's language servers (§6.1.2, D149). Without: the SDK's syntax check, a different description and answer under the same name, a recorded difference |
 | `ask_lsp` tool | extra tool on the extension's code-intelligence provider (VS Code's language servers); the CLI has one on its own LSP client | with `[agent.lsp]`: the SDK's own tool on the runner's language servers (§6.1.2, D149); without, absent |
 | Replaced executors | the extension supplies its own `editor`, `applyPatch`, `readFile` and `semanticSearch` executors, sharing one registry of read receipts | **the runner replaces none** and records that the SDK's own executors ran. If it ever replaces the reader it must share the registry, or edits are refused as "not read in this session" |
@@ -285,8 +285,8 @@ that installation, not from the default.
 | `check_file` | always | `[agent.lsp]`: emulated (§6.1.2); otherwise the SDK's syntax check |
 | `ask_lsp` | always | `[agent.lsp]`: emulated (§6.1.2); otherwise absent |
 | `list_files` | always, on VS Code's file search, which honours the user's excludes | the SDK's own, on the local file system, which the SDK adds to a host that names none: no editor excludes, a recorded difference |
-| `browser` | on unless the user turns it off (`cline.browserTool`); Chrome is started on the first call | absent: no Chrome in the lane images. The CLI has a driver (`apps/cli/src/runtime/browser-support.ts`); the emulation is a Chrome under the runner's prefix and that driver, as an arm field. Not built |
-| `render_image`, `transform_image` | always, on the same Chrome | absent until the browser is |
+| `browser` | on unless the user turns it off (`cline.browserTool`); Chrome is started on the first call | `[agent.browser]`: emulated (§6.1.3, D150) |
+| `render_image`, `transform_image` | always, on the same Chrome | `[agent.browser]`: emulated (§6.1.3) |
 | media tools (`generate_image`, `generate_icon`, audio, video) | off until an endpoint and a model are configured | absent, as by default |
 | `sdd` | only when a spec-driven skill is on | absent, as by default (no arm turns such a skill on) |
 | Library tools (`library_*`) | only when the Library panel has them on; search by meaning with an embedding endpoint | absent, as by default. The owner's sessions use them (about 400 calls): an emulation needs the Library's index and an embedding endpoint, as an arm field. Not built |
@@ -363,6 +363,43 @@ and without them.
   package does not ship them); a file changed by the agent's shell is seen
   when it is next asked about or edited, not when it changes; no `list_files`
   excludes and no semantic search (§6 audit).
+
+#### 6.1.3 The browser (as built, D150)
+
+**Decided by the owner (2026-11-12, D150):** "add the browser too, with
+chrome in the lane".
+
+- **Arm field.** `[agent.browser] enabled = true` gives the run the SDK's
+  `browser`, `render_image` and `transform_image`; left out or off, the arm
+  keeps its identity. One of them alone is taken away with
+  `agent.disabled_tools`.
+- **Chrome.** Chrome for Testing 131.0.6778.204, the revision puppeteer-core
+  23.11.1 expects (the version the SDK's hosts use), pinned by checksum, with
+  puppeteer-core and Mermaid 11.16.1 (the extension's) from a lockfile
+  (`images/browser`), under `/opt/automaticum/browser`, on no PATH of the
+  agent (D113). Its libraries are those of its own `deb.deps`, less `wget`,
+  `xdg-utils` and GTK. In the base, so in every language layer; the `cpp`
+  layer installs the same libraries under Debian 13's names. A Terminal-Bench
+  layer has none (its image is the task's own, and libraries would change
+  it): the `prepared` note says `chrome: null` and the tool says so.
+- **Drivers** (`runner/browser.mjs`): ported from the extension, not the
+  CLI, whose driver gives the model other text: `BrowserSession`'s local mode
+  (headless `shell`, its user agent, the default 900x600 viewport, a page
+  loaded to `domcontentloaded` and `networkidle2` within 7 s and then until
+  its HTML stops changing, console messages and page errors only, a quiet
+  console waited for, a PNG screenshot) and `renderWithChrome` (a Chrome per
+  render, Mermaid drawn in the page). Whether the model sees the screenshot
+  is the SDK tool's decision, from the model's image support.
+- **Container differences.** `--no-sandbox` (Chrome's sandbox needs user
+  namespaces Docker does not give) and `--disable-dev-shm-usage` (a 64 MB
+  `/dev/shm`). The extension's custom arguments and remote browser are user
+  settings, unset by default, and not offered.
+- **A defect of the SDK, kept.** In 4.100.276 `transform_image` fails on
+  every call in a minified build: the page calls `planTransform` by name
+  while the bundle inlines it under its minified name. The extension's
+  production build minifies too, so the plugin is taken to fail the same
+  way; the runner does not patch the SDK's output, and the fix is asked of
+  the SDK (§8).
 
 ### 6.2 The scripted user
 
@@ -608,6 +645,7 @@ code, not from trying. Each request is tracked in `decisions.md` section 4.
 | X12 | Let the session's **abort** reach the Ollama provider's first-use **probes**, and bound the model and account reads (bug-047). | **released in 4.100.269** (2026-10-29) |
 | X13 | Let `sed`, `awk`, `grep` and `search_codebase` refuse a **binary** or a file over 100 MB before reading it whole, instead of taking the runner out of heap (exit 134, `ABORTED`). | **released in 4.100.274** (2026-11-05) |
 | X14 | Let every tool result claim only what the tool established: the 2026-11-08 tool audit's findings, the delimiter scan's edits proved by a real parser (bug-082). | **released as 4.100.275** (2026-11-08), first pinned as the local build `4.100.275+da478ecc8a`; on the registry as **4.100.276** (2026-11-08), the default (D143) |
+| X15 | Fix the CLI's LSP client (server requests answered and told apart from responses, didChange, settings objects, the HTML server's settings and TypeScript path, the missing servers, the extension's symbol lookup) and `transform_image`'s minified `planTransform`; make the two browser drivers agree; move the host halves of `ask_lsp`, the diagnostics, `check_file` and the browser and render drivers into core, so the runner imports them instead of its ports (D149, D150). | asked 2026-11-12 (owner); the runner's ports serve until a release lands |
 | X6 | Confirmation of the parity inventory in §6, row by row. | done on 2026-10-13 for §6: 11 rows confirmed, 2 corrected, 6 added. §6.1 and §6.2 not checked |
 
 `INVALID` depends on X1 to X3, which is why they come first. More requests are

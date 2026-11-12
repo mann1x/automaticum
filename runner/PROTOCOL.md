@@ -90,8 +90,14 @@ every server with its languages and whether it is installed. Each edit the
 diagnostics after edits looked at is an `editor_diagnostics` note (`tool`,
 `targets`, `before`, `after`, `block_chars`, `balance_chars`, `regressed`);
 what a server failed at is an `lsp_error` note (at most 20 from the host),
-and a failure of the hooks themselves `editor_diagnostics_failed`. A
-protocol 10 runner would ignore the field, so the number went up.
+and a failure of the hooks themselves `editor_diagnostics_failed`. An arm
+with `[agent.browser] enabled = true` (040 §6.1.3, D150) gets the SDK's
+`browser`, `render_image` and `transform_image` on the extension's drivers
+(`browser.mjs`) and the image's Chrome under `/opt/automaticum/browser`;
+the `prepared` note carries `browser` (null without the field: the tools,
+the Chrome found, whether Mermaid is there), and what the tools failed at is
+a `browser_error` note. A protocol 10 runner would ignore either field, so
+the number went up.
 
 ## In
 
@@ -231,7 +237,7 @@ breach too.
 
 Escalation, sub-agents and teams, MCP approvals (no arm starts an MCP
 server), the rest of the emulation of editor behaviour (mentions,
-`@problems`, the visible terminal: 040 §6.1; the browser, the Library tools
-and semantic search: the audit in 040 §6), and looking up the model's
+`@problems`, the visible terminal: 040 §6.1; the Library tools and semantic
+search: the audit in 040 §6), and looking up the model's
 family on the server to choose a prompt template. An arm that asks for one
 of the first is refused; the others are recorded differences.

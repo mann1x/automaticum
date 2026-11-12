@@ -132,6 +132,15 @@ type Agent struct {
 	// extension does (040 §6.1, D149). Left out, or off, the run has what
 	// every run before it had, and the arm keeps its identity.
 	LSP *LSP `toml:"lsp" json:"lsp,omitempty"`
+	// Browser gives the agent the extension's browser, render_image and
+	// transform_image on the lane's Chrome (040 §6.1.3, D150). Left out, or
+	// off, the arm keeps its identity.
+	Browser *Browser `toml:"browser" json:"browser,omitempty"`
+}
+
+// Browser is the extension's Chrome surface (D150).
+type Browser struct {
+	Enabled *bool `toml:"enabled" json:"enabled,omitempty"`
 }
 
 // LSP is the editor's language-server surface: ask_lsp, the extension's
@@ -748,6 +757,11 @@ func (a *Arm) Resolved() []byte {
 		} else if l.DiagnosticsAfterEdits != nil && *l.DiagnosticsAfterEdits {
 			c.Agent.LSP = &LSP{Enabled: l.Enabled}
 		}
+		a = &c
+	}
+	if br := a.Agent.Browser; br != nil && (br.Enabled == nil || !*br.Enabled) {
+		c := *a
+		c.Agent.Browser = nil
 		a = &c
 	}
 	b, err := json.Marshal(a)

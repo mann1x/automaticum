@@ -1,0 +1,9 @@
+{
+  "name": "automaticum-browser",
+  "private": true,
+  "description": "What the runner drives Chrome with for the browser, render_image and transform_image tools (040 §6.1.3, D150): puppeteer-core at the version the SDK's hosts use, and Mermaid at the version the extension ships for diagrams. Installed with npm ci under /opt/automaticum/browser, off the agent's PATH (D113), beside Chrome for Testing at the revision this puppeteer-core expects.",
+  "dependencies": {
+    "mermaid": "11.16.1",
+    "puppeteer-core": "23.11.1"
+  }
+}

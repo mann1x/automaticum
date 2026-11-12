@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.29, 2026-11-12.
+**Status:** draft 0.30, 2026-11-12.
 
 ## 1. Rules
 
@@ -268,7 +268,9 @@ scripted user (040 §6). The editor's language servers are `[agent.lsp]`
 (D149): `enabled` gives `ask_lsp`, the extension's `check_file` and the
 diagnostics after edits, `diagnostics_after_edits = false` keeps the tools
 and drops the third; left out or off, the arm keeps the identity it had
-before the field existed (040 §6.1.2).
+before the field existed (040 §6.1.2). The browser is `[agent.browser]`
+(D150): `enabled` gives `browser`, `render_image` and `transform_image` on
+the lane's Chrome, with the same identity rule (040 §6.1.3).
 
 **Harness:** SDK build, runner version, image, oracle version, task version.
 

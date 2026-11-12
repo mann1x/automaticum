@@ -899,8 +899,15 @@ func TestLSPNotes(t *testing.T) {
 	if !ev.LSP || ev.LSPEdits != 3 || ev.LSPReports != 2 || ev.LSPRegressed != 1 || ev.LSPErrors != 1 {
 		t.Errorf("lsp %v edits %d reports %d regressed %d errors %d", ev.LSP, ev.LSPEdits, ev.LSPReports, ev.LSPRegressed, ev.LSPErrors)
 	}
-	off, err := ReadEvents(strings.NewReader(`{"t":"2026-11-12T10:00:00Z","k":"runner","note":"prepared","lsp":null}` + "\n"))
-	if err != nil || off.LSP {
-		t.Errorf("a run without the servers: %v %v", err, off.LSP)
+	off, err := ReadEvents(strings.NewReader(`{"t":"2026-11-12T10:00:00Z","k":"runner","note":"prepared","lsp":null,"browser":null}` + "\n"))
+	if err != nil || off.LSP || off.Browser {
+		t.Errorf("a run without the servers: %v %v %v", err, off.LSP, off.Browser)
+	}
+	br, err := ReadEvents(strings.NewReader(strings.Join([]string{
+		`{"t":"2026-11-12T10:00:00Z","k":"runner","note":"prepared","lsp":null,"browser":{"tools":["browser"],"chrome":"/opt/automaticum/browser/chrome-linux64/chrome"}}`,
+		`{"t":"2026-11-12T10:00:01Z","k":"runner","note":"browser_error","message":"[browser] open failed","error":"no Chrome"}`,
+	}, "\n")))
+	if err != nil || !br.Browser || br.BrowserErrors != 1 || br.LSP {
+		t.Errorf("a run with the browser: %v %v %d", err, br.Browser, br.BrowserErrors)
 	}
 }

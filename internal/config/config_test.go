@@ -184,6 +184,32 @@ func TestLSPIdentity(t *testing.T) {
 	}
 }
 
+// The browser (D150): left out or off, an arm is the arm it was; on, another.
+func TestBrowserIdentity(t *testing.T) {
+	dir := arms(t, map[string]string{
+		"plain": good,
+		"off":   good + "[agent.browser]\nenabled = false\n",
+		"on":    good + "[agent.browser]\nenabled = true\n",
+	})
+	id := map[string]string{}
+	for _, n := range []string{"plain", "off", "on"} {
+		a, err := LoadArm(dir, n)
+		if err != nil {
+			t.Fatal(n, err)
+		}
+		id[n] = a.ID
+		if n != "on" && strings.Contains(string(a.Resolved()), "browser") {
+			t.Errorf("%s: %s", n, a.Resolved())
+		}
+		if n == "on" && !strings.Contains(string(a.Resolved()), `"browser":{"enabled":true}`) {
+			t.Errorf("on: %s", a.Resolved())
+		}
+	}
+	if id["plain"] != id["off"] || id["plain"] == id["on"] {
+		t.Errorf("identities: %v", id)
+	}
+}
+
 // The reasoning-loop limit is stated in every arm (D108). The SDK's own 3
 // leaves the arm's identity as it was; any other number is part of it.
 func TestReasoningLoopLimitIdentity(t *testing.T) {

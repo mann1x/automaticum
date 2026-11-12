@@ -344,6 +344,10 @@ func AnalyseWith(r *store.Run, ev *Events, reqs []Request, th detect.Values) *Re
 		m("lsp.edits_regressed", float64(ev.LSPRegressed))
 		m("lsp.errors", float64(ev.LSPErrors))
 	}
+	// The lane's Chrome (D150), on a run that had it.
+	if ev.Browser {
+		m("browser.errors", float64(ev.BrowserErrors))
+	}
 	m("user.forks", float64(len(ev.Forks)))
 	m("user.mode_switches", float64(ev.ModeSwitches))
 	m("mode_switches.by_agent", float64(ev.AgentModeSwitches))

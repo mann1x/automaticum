@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-12T18:45:56.148Z
-> Files: 520 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-12T20:01:06.873Z
+> Files: 523 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -664,14 +664,18 @@
 - `f1291.log` (~0 tok)
 - `f1292.log` (~0 tok)
 
-## images/lsp/
+## images/browser/
 
-- `package.json` — the language servers that run on Node (typescript-language-server, TypeScript 5.9.3, vscode-langservers-extracted, pyright, bash-language-server), installed by the base under /opt/automaticum/lsp (D149) (~150 tok)
-- `package-lock.json` — their lockfile, npm ci'd by images/base/Dockerfile (~large)
+- `package.json` — puppeteer-core 23.11.1 and Mermaid 11.16.1 for the lane's browser (D150) (~150 tok)
+- `package-lock.json` — their lockfile, npm ci'd by images/base/Dockerfile beside Chrome for Testing 131 (~large)
 
 ## images/base/
 
-- `Dockerfile` — Docker container definition (~803 tok)
+- `Dockerfile` — Docker container definition (~1280 tok)
+
+## images/lsp/
+
+- `package.json` — the language servers that run on Node (typescript-language-server, TypeScript 5.9.3, vscode-langservers-extracted, pyright, bash-language-server), installed by the base under /opt/automaticum/lsp (D149) (~150 tok)
 
 ## internal/detect/
 
@@ -679,11 +683,14 @@
 
 ## runner/
 
+- `browser.mjs` — The extension's DEFAULT_BROWSER_SETTINGS viewport. (~3129 tok)
 - `editor.mjs` — The extension's check_file and diagnostics after edits (editor/apply_patch), ported word for word from 4.100.276, read from lsp.mjs (D149) (~5200 tok)
+- `browser.mjs` — the extension's BrowserSession (local mode) and renderWithChrome, ported, on Chrome under /opt/automaticum/browser, for browser/render_image/transform_image (D150) (~3600 tok)
 - `lsp.mjs` — createLspHost: language servers per lane language under /opt/automaticum/lsp; ask_lsp's CodeIntelProvider; push/pull diagnostics store; server requests answered (D149) (~6700 tok)
 
 ## runner/test/
 
+- `browser.test.mjs` — the browser and render drivers on a fake puppeteer: launch options, console text, timeouts, close (~1500 tok)
 - `editor.test.mjs` — check_file, diagnostics after edits, rendering, settling, on a fake host (~2100 tok)
-- `lsp.test.mjs` — the host against test/fixtures/fake-lsp.mjs: questions, server requests, didChange, diagnostics, a broken server (~1300 tok)
 - `fixtures/fake-lsp.mjs` — a language server for the tests: asks workspace/configuration, publishes BAD/WARN diagnostics, echoes document events (~900 tok)
+- `lsp.test.mjs` — the host against test/fixtures/fake-lsp.mjs: questions, server requests, didChange, diagnostics, a broken server (~1300 tok)

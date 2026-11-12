@@ -12,12 +12,14 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeSync } from "node:fs";
+import { mkdir, writeFile as writeFileAsync } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BUNDLED_SKILLS_ON_BY_DEFAULT, buildConfig, compareResolved, derivedFromArm, unsupported } from "./session.mjs";
 import { ACT_MODE_CONTINUATION_PROMPT, createSwitchToActModeTool, withSwitchTool } from "./plan.mjs";
 import { guardTrip, limitBreach, reasoningLimitAnswer, stopsOn } from "./guards.mjs";
+import { chromePath, createBrowserDriver, createRenderDriver, mermaidPath } from "./browser.mjs";
 import { createCheckFileTool, createEditorDiagnosticsHooks } from "./editor.mjs";
 import { createLspHost } from "./lsp.mjs";
 import { privateTools } from "./tools.mjs";
@@ -232,6 +234,26 @@ async function main() {
 		}
 	}
 	const lspStarted = lsp ? lsp.prewarm() : [];
+
+	// 4b. The browser, for an arm with [agent.browser] (040 §6.1.3, D150):
+	// the SDK's browser, render_image and transform_image tools on the
+	// extension's drivers, ported, and the lane's Chrome. Nothing starts
+	// until the agent calls one.
+	let browserTools = [];
+	if (arm.agent.browser?.enabled === true) {
+		const onError = (message, error) => note("browser_error", { message, error: describe(error).message });
+		const writeImage = async (absolutePath, data) => {
+			await mkdir(dirname(absolutePath), { recursive: true });
+			await writeFileAsync(absolutePath, data);
+		};
+		const fileExists = async (absolutePath) => existsSync(absolutePath) && statSync(absolutePath).isFile();
+		const render = () => createRenderDriver({ renderRootId: sdk.RENDER_ROOT_ID });
+		browserTools = [
+			sdk.createBrowserTool({ cwd: job.workspace, createDriver: () => createBrowserDriver(), onError }),
+			sdk.createRenderImageTool({ cwd: job.workspace, createDriver: render, writeFile: writeImage, onError }),
+			sdk.createTransformImageTool({ cwd: job.workspace, createDriver: render, fileExists, writeFile: writeImage, onError }),
+		];
+	}
 	note("prepared", {
 		sdk: sdkFound,
 		node: process.version,
@@ -245,6 +267,7 @@ async function main() {
 		lsp: lsp
 			? { tools: lspTools.map((t) => t.name), diagnostics_after_edits: lspHooks !== undefined, started: lspStarted, servers: lsp.status() }
 			: null,
+		browser: browserTools.length > 0 ? { tools: browserTools.map((t) => t.name), chrome: chromePath() ?? null, mermaid: mermaidPath() !== undefined } : null,
 	});
 
 	// 5a. The hold (PROTOCOL.md): while the file "hold" stands next to the
@@ -335,6 +358,7 @@ async function main() {
 		// The language-server tools replace the SDK's check_file by name, as
 		// the extension's own does; the diagnostics after edits are hooks
 		// beside the session's (beforeTool and afterTool, which no other has).
+		if (browserTools.length > 0) built.config.extraTools = [...(built.config.extraTools ?? []), ...browserTools];
 		if (lsp) {
 			built.config.extraTools = [...(built.config.extraTools ?? []), ...lspTools];
 			if (lspHooks) built.config.hooks = sdk.mergeAgentHooks([built.config.hooks, lspHooks]);

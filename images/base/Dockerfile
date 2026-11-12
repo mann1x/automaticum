@@ -43,8 +43,29 @@ RUN cd /opt/automaticum/lsp \
  && bin/shellcheck --version | head -2 && test -f node_modules/typescript/lib/tsserver.js \
  && mkdir node_modules/node_modules && ln -s ../typescript node_modules/node_modules/typescript
 
+# The browser of an arm with [agent.browser] (040 §6.1.3, D150): Chrome for
+# Testing at the revision puppeteer-core 23.11.1 expects, puppeteer-core and
+# Mermaid from the lockfile in images/browser, all under the runner's prefix,
+# on no PATH (D113). The libraries are those of Chrome's own deb.deps, less
+# wget and xdg-utils (commands the agent would gain) and GTK (headless needs
+# none); they are libraries, not commands.
+COPY images/browser/package.json images/browser/package-lock.json /opt/automaticum/browser/
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      fonts-liberation libasound2 libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 libcairo2 libcups2 libcurl4 \
+      libdbus-1-3 libdrm2 libexpat1 libgbm1 libglib2.0-0 libnspr4 libnss3 libpango-1.0-0 libudev1 libvulkan1 \
+      libx11-6 libxcb1 libxcomposite1 libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2 \
+ && rm -rf /var/lib/apt/lists/* \
+ && cd /opt/automaticum/browser \
+ && npm ci --ignore-scripts --no-audit --no-fund && npm cache clean --force \
+ && curl -fsSL -o /tmp/chrome.zip https://storage.googleapis.com/chrome-for-testing-public/131.0.6778.204/linux64/chrome-linux64.zip \
+ && echo "fba7d5e87cdcf0dc974c9ac8a0a9dbcf5686c935455d5e6beed337c6ada88bc2  /tmp/chrome.zip" | sha256sum -c - \
+ && unzip -q /tmp/chrome.zip -d /opt/automaticum/browser && rm /tmp/chrome.zip \
+ && test -f node_modules/mermaid/dist/mermaid.min.js \
+ && /opt/automaticum/browser/chrome-linux64/chrome --version
+
 WORKDIR /opt/automaticum/runner
-COPY runner/package.json runner/runner.mjs runner/guards.mjs runner/plan.mjs runner/session.mjs runner/tools.mjs runner/user.mjs runner/wire.mjs runner/lsp.mjs runner/editor.mjs ./
+COPY runner/package.json runner/runner.mjs runner/guards.mjs runner/plan.mjs runner/session.mjs runner/tools.mjs runner/user.mjs runner/wire.mjs runner/lsp.mjs runner/editor.mjs runner/browser.mjs ./
 # Where the SDK bundle is mounted, and the runner's own prefix (D113): it
 # starts as /opt/automaticum/bin/node, here Node of the image itself.
 RUN mkdir node_modules \

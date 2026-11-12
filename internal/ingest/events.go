@@ -98,6 +98,10 @@ type Events struct {
 	// regressed, LSPErrors what the servers failed at.
 	LSP                                           bool
 	LSPEdits, LSPReports, LSPRegressed, LSPErrors int
+	// Browser says the run had the lane's Chrome (D150); BrowserErrors
+	// counts what the browser tools failed at.
+	Browser       bool
+	BrowserErrors int
 	// Forks are the session forks a restore of messages started (D86), in
 	// order; ModeSwitches how often the scripted user switched the mode,
 	// AgentModeSwitches how often the agent did (switch_to_act_mode).
@@ -265,6 +269,7 @@ type eventLine struct {
 	// has none (protocol 11, D149); an editor_diagnostics note's block and
 	// whether the edit was marked regressed.
 	LSP        json.RawMessage `json:"lsp"`
+	Browser    json.RawMessage `json:"browser"`
 	BlockChars int             `json:"block_chars"`
 	Regressed  bool            `json:"regressed"`
 }
@@ -465,6 +470,9 @@ func (ev *Events) line(line []byte, sc *scan) {
 			ev.UserFailed++
 		case "prepared":
 			ev.LSP = len(l.LSP) > 0 && string(l.LSP) != "null"
+			ev.Browser = len(l.Browser) > 0 && string(l.Browser) != "null"
+		case "browser_error":
+			ev.BrowserErrors++
 		case "editor_diagnostics":
 			ev.LSPEdits++
 			if l.BlockChars > 0 {

@@ -26,6 +26,8 @@
 
 ## Key Learnings
 
+- 2026-11-12: the SDK's CLI and extension drivers differ (browser: headless true vs "shell", 15 s vs 7 s, extra request-failure lines); for plugin parity port the extension's (BrowserSession, renderWithChrome), never the CLI's. Code the SDK inlines by Function.toString() breaks under minification (transform_image's planTransform, bug-096): test SDK page builders by running their built output.
+
 - 2026-11-12 (D149): VS Code parity of ask_lsp/check_file needs the extension's halves, not core's: core's createCheckFileTool is a syntax check with another description; the extension's (apps/vscode/src/sdk/check-file-tool.ts) reads LSP diagnostics. Core replaces its check_file/list_files by name when a host passes its own in extraTools. Core reads `regressed` on a tool result (loop tracker), so diagnostics after edits change guard behaviour.
 - 2026-11-12: language servers need every server request answered with an object (null crashes the CSS validator and the HTML page validation with it); the HTML server (vscode-langservers-extracted 4.10.0) needs js/ts.implicitProjectConfig and TypeScript libs at node_modules/node_modules/typescript; csharp-ls is pull-only; rust-analyzer's type errors come from cargo check on didSave and need a uid-1000-writable workspace.
 - Detector thresholds (D148): the package constant stays the registry default (single source); a function reads locals from `o.T`/`v Values` at its top (`x := o.T.Int(ThX)`) so its body is unchanged; a constant used as an array size becomes `make([]int, n+1)`; a count used as a divisor gets `Min: 1`. New detector code must read thresholds this way, never the constant directly.
@@ -94,6 +96,8 @@
 - 2026-10-13: never invent detector, guard or limit numbers. xollama's GPU host is `windows-2`. Job waiters need an exit-code file, a failure exit and a time bound.
 
 ## Decision Log
+
+- 2026-11-12 D150: the browser with Chrome in the lane, `[agent.browser]` (browser, render_image, transform_image on the extension's drivers; Chrome for Testing 131 at puppeteer-core 23.11.1's revision, under /opt/automaticum/browser). Owner: "add the browser too, with chrome in the lane". SDK fixes asked as X15 (owner: "mail ollama to fix the sdk bugs and release a new one, then integrate it").
 
 - 2026-11-12 D149: the editor's language servers emulated for every lane language as `[agent.lsp]` (enabled, diagnostics_after_edits); off/absent keeps arm identity; one tool removed with disabled_tools; protocol 11. Owner: "we need search_codebase and ask_lsp to work in automaticum", "complete support of lsp, not only .ts".
 - 2026-11-12 (D148): model_reloaded.min_load_seconds = 1 s is the owner's ("keep 1 second ... there's no safe default value which is better than 1 second"); origin owner, no harness origin remains.

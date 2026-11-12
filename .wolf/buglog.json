@@ -1661,6 +1661,27 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-12T20:10:00+01:00"
+    },
+    {
+      "id": "bug-096",
+      "timestamp": "2026-11-12T21:20:00+01:00",
+      "error_message": "transform_image answers \"`out/hello.png` could not be read as an image, or the crop lies outside it\" for a valid PNG",
+      "file": "(SDK) core/src/extensions/tools/transform-image.ts",
+      "root_cause": "buildTransformDocument inlines planTransform.toString() into the page and calls planTransform by name; in the minified @cerebriline/core 4.100.276 bundle the function is BK, so the page throws ReferenceError, draws nothing and the capture is 0x0. The extension's production build minifies too.",
+      "fix": "Not patched in automaticum (parity keeps the SDK's defect); asked of the SDK owner as X15 (mail 2280): emit `var planTransform = (...)` or build with keepNames, and test the built document. Found by rendering the SDK's own document with the lane's Chrome and reading the page error.",
+      "tags": [
+        "sdk",
+        "transform_image",
+        "minify",
+        "browser",
+        "D150",
+        "X15"
+      ],
+      "related_bugs": [
+        "bug-095"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-12T21:20:00+01:00"
     }
   ]
 }

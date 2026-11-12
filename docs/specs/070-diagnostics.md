@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.39, 2026-11-12.
+**Status:** draft 0.40, 2026-11-12.
 
 ## 1. The rule: no custom script
 
@@ -63,7 +63,9 @@ method is recorded.
   regressed (more errors and warnings after than before, which the SDK's
   loop tracker reads); `lsp.errors`, what the servers and the hooks failed
   at. Absent on a run without the servers. The calls of `ask_lsp` and
-  `check_file` are in `tool_calls.by_tool` as every tool's.
+  `check_file` are in `tool_calls.by_tool` as every tool's. On a run whose
+  arm has the browser (`[agent.browser]`, D150): `browser.errors`, what the
+  browser tools failed at; their calls are in `tool_calls.by_tool`.
 - **Volume:** requests, turns, tool calls by tool, tool failures by tool and by
   error class.
 - **Tokens:** prompt, cached, fresh, completion; completion split into
