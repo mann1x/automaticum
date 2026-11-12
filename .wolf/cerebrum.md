@@ -88,6 +88,7 @@
 
 ## Decision Log
 
+- 2026-11-12 (D146): a server already running is one automated step (owner: "it must read all the aliases, it's ridiculously complex to start a new arm ... including asking the idempotency key"). Probe takes id, aliases or /props model_alias; endpoint `forward_to` (daemon forwards a loopback-only server, no socat); run start preflights the endpoint before queueing (`--no-preflight`); `automaticum run server` writes/reuses endpoint + arm (server sampler by default, sampler.owner = "tag"), attaches an idle lane, proposes the key, reloads, starts.
 - 2026-11-12 (D145): manic_miner task version 5: the oracle's top-level `ok` is runs AND game_logic.ok; the old meaning is `runs`. v4 and v5 are comparable (owner); a run rescored by a later version's oracle is compared at that version (compare/report ab/basis show).
 
 - 2026-11-09 (D144): the running daemon takes a changed configuration without a restart (SIGHUP, `config reload`, the `watch_config` watcher); refused whole on any problem; lanes, endpoints, settings, token, listen live; data_root/archive_root/docker_socket/repo from the next start, named; removed lanes finish their run; queued runs without lane/endpoint wait; panics end one run, not the daemon.

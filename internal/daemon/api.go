@@ -133,6 +133,13 @@ type StartRequest struct {
 	// differs in that variable, a basis fact or an arm field (D120).
 	Cohort           string `json:"cohort,omitempty"`
 	DeclaredVariable string `json:"declared_variable,omitempty"`
+	// NoPreflight queues the runs without asking the endpoint first. By
+	// default each arm's endpoint is probed before anything is queued: a
+	// server that answers without the arm's model, or whose template,
+	// sampler or thinking a gate refuses, refuses the batch now rather
+	// than skipping every run of it (050 §4.1). A server that does not
+	// answer at all is queued for, with a warning.
+	NoPreflight bool `json:"no_preflight,omitempty"`
 	// Client is who started the batch: the Automaticum-Client header of
 	// the request, or the campaign's starter (010 §5).
 	Client string `json:"-"`
@@ -158,6 +165,9 @@ type StartResponse struct {
 	Images   map[string]string `json:"images,omitempty"`
 	DryRun   bool              `json:"dry_run,omitempty"`
 	Repeated bool              `json:"repeated,omitempty"` // the key had been used
+	// Warnings are what the preflight could not check: an endpoint that
+	// did not answer. The runs were queued all the same.
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 // RunView is a run as the API shows it.
@@ -754,6 +764,13 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 			resp.RunIDs, resp.Repeated = dedupe(ids), true
 			return resp, http.StatusOK, nil
 		}
+	}
+	if req.Cell == nil && !req.NoPreflight {
+		warnings, err := d.preflight(ctx, lane, arms, tk)
+		if err != nil {
+			return resp, http.StatusUnprocessableEntity, err
+		}
+		resp.Warnings = warnings
 	}
 	// The arm of each run, in the order they are queued.
 	var order []string
@@ -1846,4 +1863,57 @@ func (d *Daemon) handleInvalidate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	reply(w, http.StatusOK, view(rec, false))
+}
+
+// preflightGates are the gates that read the endpoint's answer: what they
+// refuse, the server refuses as it stands now.
+var preflightGates = []string{"model_tag", "template", "sampler", "thinking"}
+
+// preflight asks each arm's endpoint, as it is now, what its runs' gates
+// would ask when they start (050 §4.1). A server that answers without the
+// arm's model, or that a gate reading its answer refuses, refuses the
+// batch: queued, each of its runs would be skipped. A server that does not
+// answer at all may be started before the runs are, so it is a warning.
+func (d *Daemon) preflight(ctx context.Context, lane string, arms []*config.Arm, tk *task.Task) ([]string, error) {
+	hc := &http.Client{Timeout: 15 * time.Second}
+	var warnings, refused []string
+	first := ""
+	for _, a := range arms {
+		e := d.Local.Endpoint(a.Endpoint)
+		if e == nil {
+			continue
+		}
+		key, err := d.Local.APIKey(e)
+		if err != nil {
+			return nil, fmt.Errorf("endpoint %s: the credential cannot be read: %w", e.Name, err)
+		}
+		_, err = run.Probe(ctx, hc, e, key, a.Model.Model)
+		var none run.NoAnswer
+		switch {
+		case errors.As(err, &none):
+			warnings = append(warnings, fmt.Sprintf("arm %s: %s now; its gates are asked when each run starts", a.Name, err))
+			continue
+		case err != nil:
+			refused = append(refused, fmt.Sprintf("%s: gate model_tag: %s", a.Name, err))
+			if first == "" {
+				first = "model_tag"
+			}
+			continue
+		}
+		if d.Gates == nil {
+			continue
+		}
+		for _, g := range d.Gates(ctx, lane, a, tk, LaneImage(tk.Layers)) {
+			if g.Status == gate.Refuse && slices.Contains(preflightGates, g.Gate) {
+				refused = append(refused, fmt.Sprintf("%s: gate %s: %s", a.Name, g.Gate, g.Detail))
+				if first == "" {
+					first = g.Gate
+				}
+			}
+		}
+	}
+	if len(refused) > 0 {
+		return warnings, gateRefusal{gate: first, msg: "nothing was queued: " + strings.Join(refused, "; ") + " (the endpoint was asked before queueing; --no-preflight queues regardless)"}
+	}
+	return warnings, nil
 }

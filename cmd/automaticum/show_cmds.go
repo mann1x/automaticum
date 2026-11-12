@@ -537,19 +537,27 @@ func listModels(ctx context.Context, e *config.Endpoint, key string) ([]string, 
 		Models []struct {
 			Name string `json:"name"`
 		} `json:"models"`
-		Data []struct {
-			ID string `json:"id"`
-		} `json:"data"`
+		run.ModelList
 	}
 	if err := json.NewDecoder(io.LimitReader(resp.Body, 16<<20)).Decode(&body); err != nil {
 		return nil, fmt.Errorf("endpoint %s: %s is not readable: %v", e.Name, path, err)
 	}
 	var out []string
-	for _, m := range body.Models {
-		out = append(out, m.Name)
+	add := func(n string) {
+		if n != "" && !slices.Contains(out, n) {
+			out = append(out, n)
+		}
 	}
+	for _, m := range body.Models {
+		add(m.Name)
+	}
+	// Every name a llama-server answers to is listed, not only its id
+	// (the first alias in sorted order).
 	for _, m := range body.Data {
-		out = append(out, m.ID)
+		add(m.ID)
+		for _, a := range m.Aliases {
+			add(a)
+		}
 	}
 	sort.Strings(out)
 	return out, nil

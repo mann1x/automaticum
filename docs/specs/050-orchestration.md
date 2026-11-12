@@ -1,6 +1,6 @@
 # 050 — Orchestration: scheduling, gates, control
 
-**Status:** draft 0.25, 2026-11-12.
+**Status:** draft 0.26, 2026-11-12.
 
 ## 1. Scheduling
 
@@ -372,6 +372,21 @@ run (`?dry_run=1`) and an idempotency key (the `Idempotency-Key` header,
 answers kept 30 days, 090 §1). Daemon-level pause and resume are lane
 pause and resume with `--all`. Not built: a quarantine set by the daemon
 itself after repeated infrastructure failures (item 2 of the audit).
+
+### 4.1 Before queueing (preflight)
+
+**Decided by the owner (2026-11-12), D146.** `run start` (and every start
+that queues runs, a campaign's batches and `run server` included, a mode C
+cell excepted) asks each arm's endpoint, as it is now, before anything is
+queued: the probe of the gate `model_tag`, then the gates that read the
+server's answer (`model_tag`, `template`, `sampler`, `thinking`). A server
+that answers without the arm's model, or that one of those gates refuses,
+refuses the start with 422 "nothing was queued", naming the gate, dry run
+or not, instead of queueing runs that would each be `SKIPPED`. A server
+that does not answer at all is queued for: it may be started before the
+runs are; the answer carries a warning, and each run's gates are asked
+when it starts, as before. `--no-preflight` queues without asking. A
+repeated idempotency key is answered before the preflight.
 
 ## 5. Watchdogs
 

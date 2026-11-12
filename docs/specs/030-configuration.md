@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.26, 2026-11-12.
+**Status:** draft 0.27, 2026-11-12.
 
 ## 1. Rules
 
@@ -164,6 +164,66 @@ million fresh prompt, cached prompt and completion tokens cost. No price
 is assumed: an endpoint without the table charges nothing. Every run
 records the table as it was declared when the run started (its inference
 facts, `price`), and its analysis gives `cost.money` (070 §2).
+
+### 4.3 A server already running
+
+**Decided by the owner (2026-11-12), D146:** "it must read all the
+aliases, it's ridiculously complex to start a new arm, this whole process
+must be made much easier and automated, including asking the idempotency
+key". As built:
+
+- **Every name a server answers to.** The probe takes the arm's model when
+  `/v1/models` lists it as a model's `id` **or** among its `aliases`, or,
+  for a `llamacpp` endpoint, in `/props` `model_alias` (comma-separated
+  when the server has several). A llama-server started with several
+  aliases lists them all and gives the first in sorted order as the `id`,
+  so a path alias wins over the tag; matching the `id` alone skipped two
+  batches of ten runs on 2026-11-12. A refusal names every name the server
+  answers to. `automaticum endpoint models` lists them all.
+- **`forward_to`.** A server that listens only on loopback cannot be
+  reached from a lane's container. An endpoint may state
+  `forward_to = "127.0.0.1:<port>"`: the daemon then listens on
+  `base_url`'s address and port, the Docker bridge's gateway
+  (`172.17.0.1`), and forwards each connection to it, in place of a
+  forwarder run by hand. `forward_to` must be a loopback address with a
+  port; `base_url` must then name a non-loopback address of the host with
+  a port; one address forwards to one server. The forwards follow the
+  configuration (started and stopped by a reload, D144); one that cannot
+  listen is logged, named by the reload (`unforwarded`) and in
+  `config show`, and tried again every 30 s. A connection open when a
+  forward stops is left to finish.
+- **`automaticum run server`** runs tasks against a server already
+  running, in one step:
+  `automaticum run server --url http://127.0.0.1:8244 --task custom/manic_miner --extends <arm> -n 10 --wall-s 1800`.
+  It asks the server for `/v1/models` and `/props`; takes the one name it
+  answers to that is not a path as the tag (`--model` names another);
+  reuses an endpoint already there for the same address, or writes
+  `endpoints/server-<port>.toml` (kind `llamacpp` when `/props` answers,
+  else `openai-compatible`); for a loopback address, sets `base_url` on
+  the bridge's gateway and `forward_to` unless the server already answers
+  there; picks an idle lane (one that may already use the endpoint first;
+  `--lane` names one) and adds the endpoint to its `endpoints` list,
+  keeping every other line; and writes the arm
+  `arms/<extends>-<endpoint>-<tag>.toml`: `extends`, `endpoint`,
+  `[model] model`, with `[sampler] owner = "tag"` by default (no sampler
+  is sent, the server's defaults apply and each run records them from
+  `/props` in its endpoint identity; `--sampler arm` keeps the parent's).
+  The arm also says, and the command prints, what it changes of the
+  parent beyond that: `provider = "openai-compatible"` when the parent's
+  is Ollama's, no digest pin when the parent pins its own model's, and a
+  `context_window` cut to the server's slot when the parent's is larger.
+  An arm already there with the same values is reused; with other values
+  it is refused (`--name`). A tag without a catalogue entry is named
+  (D71). The command proposes an idempotency key, the arm, the tasks, the
+  count, the wall limit and the day, so the same command on the same day
+  finds its batch; on a terminal it asks for the key with that default,
+  `--idempotency-key` gives one, `--yes` takes the proposal. Then it
+  writes the files (endpoint, arm, lane, in that order, each step a
+  configuration that loads), asks the daemon to reload, puts everything
+  back if the reload is refused, checks that the server answers where the
+  containers reach it, and starts the batch, whose preflight (050 §4.1)
+  asks the server what each run's gates will ask. `--dry-run` prints the
+  plan and the files and writes nothing.
 
 ## 5. Arms
 

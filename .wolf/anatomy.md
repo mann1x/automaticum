@@ -1,15 +1,15 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-12T05:00:00.667Z
-> Files: 512 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-12T17:06:12.477Z
+> Files: 514 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
 - `.gitleaks.toml` (~581 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~5302 tok)
-- `CLAUDE.md` — automaticum (~6884 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~5835 tok)
+- `CLAUDE.md` — automaticum (~6924 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
 - `LICENSE` — Project license (~3029 tok)
@@ -20,7 +20,7 @@
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~147540 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~149485 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~211 tok)
 - `score-history.jsonl` (~2005 tok)
@@ -35,13 +35,13 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~97928 tok)
+- `fingerprint.json` — Declares usage (~97814 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` (~6857 tok)
+- `current-session.jsonl` (~36482 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~102926 tok)
+- `roi-stats.json` (~104159 tok)
 - `state.json` (~41 tok)
 
 ## .claude/
@@ -120,9 +120,9 @@
 - `cell_cmds.go` — exitCode: names (~3525 tok)
 - `check_cmds_test.go` — TestConfigCheck (~731 tok)
 - `check_cmds.go` — pin (71 fields) (~1834 tok)
-- `client_cmds.go` — client (102 fields); methods: Error (~11076 tok)
+- `client_cmds.go` — client (103 fields); methods: Error (~11208 tok)
 - `cohort_cmds.go` (~1633 tok)
-- `compare_cmds.go` — Declares list (~4058 tok)
+- `compare_cmds.go` — Declares list (~4140 tok)
 - `config_cmds_test.go` — TestParseInterspersed, TestCellTasks, TestNoticeMatch (~593 tok)
 - `config_cmds.go` — place (152 fields) (~4304 tok)
 - `control_cmds.go` (~2935 tok)
@@ -137,7 +137,9 @@
 - `report_cmds.go` — Declares and (~4844 tok)
 - `rescore_cmds.go` (~956 tok)
 - `sdk_cmds.go` — row (57 fields) (~1545 tok)
-- `show_cmds.go` — armRow (113 fields) (~5639 tok)
+- `server_cmds_test.go` — TestPickTag, TestContainerAddress, TestAttachEndpoint, TestPlanServer, TestRunServer (~3007 tok)
+- `server_cmds.go` — Struct: serverFacts (~6486 tok)
+- `show_cmds.go` — armRow (113 fields) (~5690 tok)
 - `store_cgo.go` — go:build cgo (~2147 tok)
 - `store_nocgo.go` — go:build !cgo (~128 tok)
 - `stub_cmds.go` (~489 tok)

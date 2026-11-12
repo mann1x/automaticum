@@ -215,6 +215,28 @@ func (c *Client) ImageInspect(ctx context.Context, ref string) (Image, error) {
 	return im, err
 }
 
+// Gateway is the host's address on a network, as its containers reach the
+// host: the default bridge's is usually 172.17.0.1. A lane's container is
+// on the default bridge (Spec.Network ""), so "bridge" is the one asked.
+func (c *Client) Gateway(ctx context.Context, network string) (string, error) {
+	var n struct {
+		IPAM struct {
+			Config []struct {
+				Gateway string
+			}
+		}
+	}
+	if err := c.json(ctx, "GET", "/networks/"+url.PathEscape(network), nil, nil, &n); err != nil {
+		return "", err
+	}
+	for _, cfg := range n.IPAM.Config {
+		if ip := net.ParseIP(cfg.Gateway); ip != nil && ip.To4() != nil {
+			return cfg.Gateway, nil
+		}
+	}
+	return "", fmt.Errorf("docker: network %s states no IPv4 gateway", network)
+}
+
 // progress drains a stream of JSON progress messages (pull, build) and
 // returns the first error message in it. Each line's text goes to w.
 func progress(r io.Reader, w io.Writer) error {

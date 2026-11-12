@@ -39,6 +39,7 @@ const usage = `usage: automaticum <noun> <verb> [flags] [arguments]
   endpoint ls                   the endpoints of this installation
   status                        lanes, queue, what is running
   run start --arm A --task T    queue runs [--task T2 ...] [--suite S ...] [-n 5] [--lane L] [--dry-run] [--wall-s S] [--idle-s S] [--capture-requests] [--heldout] [--priority N]
+  run server --url U --task T --extends A   run tasks against a server already running, in one step: endpoint, arm, lane, loopback forward, key, preflight [-n 10] [--wall-s S] [--model TAG] [--sampler tag|arm] [--dry-run]
   run ls                        queued, running and finished runs
   run show <run>                one run's record
   run tail <run>                what a run prints, as it arrives; a queued run is waited for until it starts
@@ -135,6 +136,7 @@ func main() {
 	}
 	cmds := map[string]func(context.Context, []string) error{
 		"run start":            runStart,
+		"run server":           runServer,
 		"run ls":               runLs,
 		"run show":             runShow,
 		"run tail":             runTail,

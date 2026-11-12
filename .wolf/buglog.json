@@ -1601,6 +1601,28 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-12T10:40:00+01:00"
+    },
+    {
+      "id": "bug-093",
+      "timestamp": "2026-11-12T18:10:00+01:00",
+      "error_message": "gate model_tag: endpoint ... does not list model gemma-4-26b-a4b-it-bm889-sft11-sfinal-bf16-eos106 (two batches of 10 SKIPPED on blackswan-2, 20261112-164245-c8cf20 and 20261112-164531-c9a920)",
+      "file": "internal/run/probe.go",
+      "root_cause": "The probe matched only data[].id of /v1/models. llama-server lists every name it answers to in data[].aliases and gives the first in sorted order as id, so a path alias wins over the tag. Also run start queued the runs without asking the endpoint, so the mismatch cost ten SKIPPED runs per attempt.",
+      "fix": "ModelList.Serves takes the id or any alias, and /props model_alias (comma-separated) for llamacpp; the refusal names every name the server answers to; endpoint models lists aliases. run start preflights the endpoint and the gates that read its answer before queueing (050 §4.1, --no-preflight). D146.",
+      "tags": [
+        "probe",
+        "llamacpp",
+        "aliases",
+        "gate",
+        "model_tag",
+        "preflight",
+        "D146"
+      ],
+      "related_bugs": [
+        "bug-028"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-12T18:10:00+01:00"
     }
   ]
 }

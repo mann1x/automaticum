@@ -33,6 +33,9 @@ type ConfigState struct {
 	// Restart are the settings whose value in the directory differs from
 	// the one in force, held until the next start (config.Change.Restart).
 	Restart []string `json:"restart,omitempty"`
+	// Forwards are the endpoints' forwards to a loopback-only server
+	// (forward_to), each listening or saying why not.
+	Forwards []ForwardState `json:"forwards,omitempty"`
 }
 
 // ReloadResult is one attempt to read the configuration again.
@@ -48,7 +51,10 @@ type ReloadResult struct {
 	// Waiting are queued runs whose lane or endpoint the configuration no
 	// longer has; they wait, and start once it has them again.
 	Waiting []string `json:"waiting,omitempty"`
-	DryRun  bool     `json:"dry_run,omitempty"`
+	// Unforwarded are the forwards (forward_to) the new configuration
+	// names that could not listen; they are tried again every half minute.
+	Unforwarded []string `json:"unforwarded,omitempty"`
+	DryRun      bool     `json:"dry_run,omitempty"`
 }
 
 // watchEvery is how often the watcher reads the configuration directory:
@@ -141,6 +147,7 @@ func (d *Daemon) Reload(ctx context.Context, source string, dryRun bool) ReloadR
 		d.cfgMu.Unlock()
 	}
 	d.consequences(ctx, d.Local, &res)
+	res.Unforwarded = d.syncForwards()
 	d.poke()
 	return res
 }
@@ -215,6 +222,7 @@ func (d *Daemon) configState() ConfigState {
 	if st.Loaded.IsZero() {
 		st.Loaded = d.started.UTC()
 	}
+	st.Forwards = d.forwardStates()
 	return st
 }
 

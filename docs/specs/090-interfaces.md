@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.34, 2026-11-09.
+**Status:** draft 0.35, 2026-11-12.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -25,7 +25,8 @@ automaticum task ls|show|verify|build
 automaticum task pin [--write] <suite/task | dir>   # build the artefacts, print or write the sha256s to pin (D140)
 automaticum oracle verify <task>
 automaticum suite import tbench2 -source D -commit C <task>...   # Terminal-Bench 2.0 tasks as tbench2, kept only if the oracle holds (066 §3)
-automaticum run start --arm A --task T [--task T2 ...] [--suite S ...] [-n 5] [--lane L] [--wall-s S] [--idle-s S] [--capture-requests]
+automaticum run start --arm A --task T [--task T2 ...] [--suite S ...] [-n 5] [--lane L] [--wall-s S] [--idle-s S] [--capture-requests] [--no-preflight]
+automaticum run server --url U --task T --extends A [-n 10] [--wall-s S] [--model TAG] [--sampler tag|arm] [--lane L] [--idempotency-key K] [--yes] [--dry-run]   # a server already running, in one step (030 §4.3, D146)
 automaticum run ls|show|tail|stop|abort|pause|resume|retry|invalidate|identify|held
 automaticum compare <batch> [<batch> ...] [--group AXIS] [--pool-versions] [--all]
 automaticum batch|campaign start|ls|show|pause|resume|abort
@@ -70,6 +71,15 @@ own, and the endpoint it names), the models and the tasks of both roots,
 and says each problem; it changes nothing and exits 1 on any problem, so a
 configuration edit is checked before a restart. Of these, `--dry-run` and
 `--idempotency-key` exist on `run start` so far.
+
+**Built on 2026-11-12 (D146):** `run start` asks each arm's endpoint
+before queueing and refuses a batch its gates would skip run by run
+(050 §4.1; `--no-preflight` queues regardless), and its answer carries
+`warnings` for an endpoint that did not answer. `run server` runs tasks
+against a server already running in one step: endpoint, arm, lane,
+loopback forward (`forward_to`), proposed idempotency key, preflight
+(030 §4.3). `config show` lists the forwards; a reload names those that
+could not listen (`unforwarded`).
 
 **Built on 2026-11-09 (D144):** the running daemon takes a changed
 configuration without a restart. `config reload` (`POST /v1/config/reload`,

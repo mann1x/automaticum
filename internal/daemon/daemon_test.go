@@ -1722,3 +1722,55 @@ func TestStartStaticGates(t *testing.T) {
 		t.Errorf("a start the static gates pass: %d", code)
 	}
 }
+
+// Before anything is queued the arm's endpoint is asked (050 §4.1): a
+// server that answers without the arm's model refuses the batch, dry run
+// or not, instead of skipping each of its runs; a tag listed only as an
+// alias is served; a gate that reads the answer refuses it as well; a
+// server that does not answer is queued for with a warning; and
+// --no-preflight queues regardless.
+func TestStartPreflight(t *testing.T) {
+	listed := `{"data":[{"id":"other"}]}`
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/models", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte(listed)) })
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	g := newRig(t, false)
+	g.d.Local.Endpoints["stub"] = &config.Endpoint{Name: "stub", Kind: "openai-compatible", BaseURL: srv.URL + "/v1"}
+	refuse := ""
+	g.d.Gates = func(context.Context, string, *config.Arm, *task.Task, string) []gate.Result {
+		if refuse != "" {
+			return []gate.Result{{Gate: refuse, Status: gate.Refuse, Detail: "no tools"}, {Gate: "free", Status: gate.Wait}}
+		}
+		return []gate.Result{{Gate: "template", Status: gate.Pass}, {Gate: "free", Status: gate.Wait}}
+	}
+	for _, dry := range []bool{true, false} {
+		var e struct{ Error, Gate string }
+		code := g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", Count: 10, DryRun: dry}, &e)
+		if code != 422 || e.Gate != "model_tag" || !strings.Contains(e.Error, "does not list model stub:latest; it answers to other") {
+			t.Errorf("dry %v, the model not served: %d %+v", dry, code, e)
+		}
+	}
+	if q, _ := g.state.Queue(context.Background()); len(q) != 0 {
+		t.Fatalf("queued: %v", q)
+	}
+	listed = `{"data":[{"id":"/m/stub.gguf","aliases":["/m/stub.gguf","stub:latest"]}]}`
+	var resp StartResponse
+	if code := g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", DryRun: true}, &resp); code != 200 || len(resp.Warnings) != 0 {
+		t.Errorf("the tag as an alias: %d %+v", code, resp)
+	}
+	refuse = "template"
+	var e struct{ Error, Gate string }
+	if code := g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", DryRun: true}, &e); code != 422 || e.Gate != "template" {
+		t.Errorf("a template gate's refusal: %d %+v", code, e)
+	}
+	if code := g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer", NoPreflight: true}, &resp); code != 202 || len(resp.RunIDs) != 1 {
+		t.Errorf("--no-preflight: %d %+v", code, resp)
+	}
+	refuse = ""
+	srv.Close()
+	resp = StartResponse{}
+	if code := g.call("POST", "/v1/runs", StartRequest{Arm: "stub", Task: "answer"}, &resp); code != 202 || len(resp.Warnings) != 1 || !strings.Contains(resp.Warnings[0], "does not answer") {
+		t.Errorf("a server that does not answer: %d %+v", code, resp)
+	}
+}

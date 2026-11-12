@@ -145,3 +145,38 @@ func TestReload(t *testing.T) {
 		t.Fatalf("a configured endpoint took a cell's name: %v", err)
 	}
 }
+
+// forward_to names a loopback address the daemon forwards base_url's
+// address and port to: a non-loopback forward_to, a base_url on loopback
+// or without a port, and one address forwarded to two servers are refused.
+func TestForwardTo(t *testing.T) {
+	ok := endpoint("8244") + "forward_to = \"127.0.0.1:8244\"\n"
+	for name, tc := range map[string]struct{ ep, other, want string }{
+		"ok":            {ep: ok},
+		"same twice":    {ep: ok, other: ok},
+		"not loopback":  {ep: endpoint("8244") + "forward_to = \"10.0.0.2:8244\"\n", want: "must be a loopback address and port"},
+		"no port":       {ep: endpoint("8244") + "forward_to = \"127.0.0.1\"\n", want: "must be a loopback address and port"},
+		"loopback base": {ep: strings.Replace(ok, "172.17.0.1", "127.0.0.1", 1), want: "not \"127.0.0.1\""},
+		"base no port":  {ep: strings.Replace(ok, "172.17.0.1:8244", "172.17.0.1", 1), want: "base_url states no port"},
+		"two servers":   {ep: ok, other: endpoint("8244") + "forward_to = \"127.0.0.1:9000\"\n", want: "forwards 172.17.0.1:8244 to 127.0.0.1:9000, and endpoint a forwards it to 127.0.0.1:8244"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			files := map[string]string{"automaticum.toml": reloadSettings, "token": "t", "endpoints/a.toml": tc.ep, "lanes/lane-1.toml": lane("a")}
+			if tc.other != "" {
+				files["endpoints/b.toml"] = tc.other
+				files["lanes/lane-1.toml"] = lane("a", "b")
+			}
+			reloadDir(t, dir, files)
+			l, err := LoadLocal(dir)
+			switch {
+			case tc.want == "" && err != nil:
+				t.Fatal(err)
+			case tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)):
+				t.Fatalf("want %q, got %v", tc.want, err)
+			case tc.want == "" && l.Endpoint("a").ForwardTo != "127.0.0.1:8244":
+				t.Errorf("forward_to %q", l.Endpoint("a").ForwardTo)
+			}
+		})
+	}
+}

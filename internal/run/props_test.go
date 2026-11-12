@@ -108,3 +108,39 @@ func TestProbeLlamaServer(t *testing.T) {
 		t.Error("a model the server does not list was accepted")
 	}
 }
+
+// A llama-server started with several aliases lists them all under the
+// model, and its id is the first in sorted order: a path alias wins over
+// the tag. The tag is served all the same, so the probe must take it
+// (2026-11-12: two batches of ten were skipped on this). A name only
+// /props gives is taken too; a name neither gives is refused, and the
+// refusal says what the server answers to.
+func TestProbeAliases(t *testing.T) {
+	const tag = "gemma-4-26b-a4b-it-bm889-sft11-sfinal-bf16-eos106"
+	models := `{"data":[{"id":"/m/sft11-final.gguf","aliases":["/m/sft11-final.gguf","` + tag + `"]}]}`
+	props := `{"model_alias":"/m/sft11-final.gguf,` + tag + `","build_info":"b1-x"}`
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/models", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte(models)) })
+	mux.HandleFunc("/props", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte(props)) })
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	for _, kind := range []string{"llamacpp", "openai-compatible"} {
+		e := &config.Endpoint{Name: "g", Kind: kind, BaseURL: srv.URL + "/v1"}
+		if _, err := Probe(context.Background(), http.DefaultClient, e, "", tag); err != nil {
+			t.Errorf("%s: the tag listed as an alias was refused: %v", kind, err)
+		}
+	}
+	e := &config.Endpoint{Name: "g", Kind: "llamacpp", BaseURL: srv.URL + "/v1"}
+	_, err := Probe(context.Background(), http.DefaultClient, e, "", "other")
+	if err == nil || !strings.Contains(err.Error(), "it answers to /m/sft11-final.gguf, "+tag) {
+		t.Errorf("a name the server does not answer to: %v", err)
+	}
+	// An older server lists only the id; /props still names the tag.
+	models = `{"data":[{"id":"/m/sft11-final.gguf"}]}`
+	if _, err := Probe(context.Background(), http.DefaultClient, e, "", tag); err != nil {
+		t.Errorf("the tag /props names was refused: %v", err)
+	}
+	if _, err := Probe(context.Background(), http.DefaultClient, &config.Endpoint{Name: "o", Kind: "openai-compatible", BaseURL: srv.URL + "/v1"}, "", tag); err == nil {
+		t.Error("an openai-compatible endpoint is not asked /props, yet the tag was taken")
+	}
+}

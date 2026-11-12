@@ -33,6 +33,21 @@ type Props struct {
 	Sampler            map[string]json.RawMessage `json:"-"`
 }
 
+// Aliases is every name /props gives the model: model_alias, which a
+// server started with several aliases gives comma-separated.
+func (p *Props) Aliases() []string {
+	if p == nil {
+		return nil
+	}
+	var out []string
+	for _, a := range strings.Split(p.ModelAlias, ",") {
+		if a = strings.TrimSpace(a); a != "" {
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
 // ReadProps asks an OpenAI-compatible endpoint for llama-server's /props,
 // which is at the server's root, not under /v1. It returns nil and no error
 // when the server has no /props (vLLM): then the caller's facts cannot be

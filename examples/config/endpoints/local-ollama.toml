@@ -2,6 +2,9 @@ kind = "ollama"
 # The address as a lane's container reaches it: the Docker bridge's gateway,
 # not localhost, and never an address that listens on every interface.
 base_url = "http://172.17.0.1:11434"
+# A server that listens only on 127.0.0.1: the daemon listens on base_url's
+# address and forwards to it (030 §4.3). `automaticum run server` writes it.
+# forward_to = "127.0.0.1:11434"
 host = "linux-gpu-1"
 capacity = 1
 

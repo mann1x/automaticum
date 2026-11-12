@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -275,6 +276,12 @@ type Endpoint struct {
 	// Price is what the endpoint's tokens cost, as the installation
 	// declares it (070 §2); nil for an endpoint that charges nothing.
 	Price *Price `toml:"price"`
+	// ForwardTo is the server's own address on the daemon's host, when it
+	// listens only on loopback (127.0.0.1:8244), where a lane's container
+	// cannot reach it. The daemon then listens on base_url's address and
+	// port, the Docker bridge's gateway, and forwards each connection to
+	// it (030 §4.3). Empty: base_url is the server's own address.
+	ForwardTo string `toml:"forward_to"`
 	// Cell marks the endpoint of a mode C cell: the caller serves the
 	// model there and automaticum never loads or unloads anything on it
 	// (065 §2).
@@ -399,6 +406,11 @@ func LoadLocal(dir string) (*Local, error) {
 		} else if h := u.Hostname(); h == "0.0.0.0" || h == "::" {
 			bad("endpoint %s: base_url names every interface; give the address the lane reaches", e.Name)
 		}
+		if e.ForwardTo != "" {
+			for _, p := range ForwardProblems(e) {
+				bad("endpoint %s: %s", e.Name, p)
+			}
+		}
 		if e.Host == "" {
 			bad("endpoint %s: host is not stated", e.Name)
 		}
@@ -454,6 +466,19 @@ func LoadLocal(dir string) (*Local, error) {
 	}
 	if len(l.Lanes) == 0 {
 		bad("no lanes: lanes/*.toml is empty")
+	}
+	// One address forwards to one server.
+	forwards := map[string]*Endpoint{}
+	for _, n := range slices.Sorted(maps.Keys(l.Endpoints)) {
+		e := l.Endpoints[n]
+		if e.ForwardTo == "" {
+			continue
+		}
+		listen, _ := e.ForwardListen()
+		if o := forwards[listen]; o != nil && o.ForwardTo != e.ForwardTo {
+			bad("endpoint %s: forwards %s to %s, and endpoint %s forwards it to %s", e.Name, listen, e.ForwardTo, o.Name, o.ForwardTo)
+		}
+		forwards[listen] = e
 	}
 	if len(problems) > 0 {
 		return nil, errors.New("config: " + dir + ":\n  - " + strings.Join(problems, "\n  - "))
@@ -653,6 +678,41 @@ func settingKeys(d Daemon) map[string]any {
 			continue
 		}
 		out[key] = v.Field(i).Interface()
+	}
+	return out
+}
+
+// ForwardListen is where the daemon listens for an endpoint with
+// forward_to: base_url's host and port.
+func (e *Endpoint) ForwardListen() (string, error) {
+	u, err := url.Parse(e.BaseURL)
+	if err != nil {
+		return "", err
+	}
+	port := u.Port()
+	if port == "" {
+		return "", errors.New("base_url states no port")
+	}
+	return net.JoinHostPort(u.Hostname(), port), nil
+}
+
+// ForwardProblems lists what is wrong with an endpoint's forward_to: it
+// must be a loopback address with a port, and base_url an address of
+// this host's own that is not loopback (the bridge's gateway), with a
+// port, so the daemon can listen there.
+func ForwardProblems(e *Endpoint) []string {
+	var out []string
+	host, port, err := net.SplitHostPort(e.ForwardTo)
+	if ip := net.ParseIP(host); err != nil || port == "" || (host != "localhost" && (ip == nil || !ip.IsLoopback())) {
+		out = append(out, fmt.Sprintf("forward_to %q must be a loopback address and port, such as 127.0.0.1:8244", e.ForwardTo))
+	}
+	listen, err := e.ForwardListen()
+	if err != nil {
+		return append(out, "forward_to needs a base_url with an address and a port: "+err.Error())
+	}
+	lh, _, _ := net.SplitHostPort(listen)
+	if ip := net.ParseIP(lh); ip == nil || ip.IsLoopback() || ip.IsUnspecified() {
+		out = append(out, fmt.Sprintf("forward_to needs base_url to name an address of this host that a container reaches (the Docker bridge's gateway), not %q", lh))
 	}
 	return out
 }

@@ -58,6 +58,9 @@ func printReload(note string, res daemon.ReloadResult) {
 	for _, w := range res.Waiting {
 		fmt.Printf("  waiting:                   %s\n", w)
 	}
+	for _, u := range res.Unforwarded {
+		fmt.Printf("  not forwarding:            %s (tried again every 30s)\n", u)
+	}
 }
 
 // configShow prints the configuration in force and its last reload.
@@ -85,6 +88,13 @@ func configShow(ctx context.Context, args []string) error {
 	fmt.Printf("directory   %s\nloaded      %s (%s ago), %d reloads since the start\nwatching    %s\nlanes       %s\nendpoints   %s\n",
 		st.Dir, human.Time(st.Loaded), human.Duration(time.Since(st.Loaded)), st.Reloads, watch,
 		strings.Join(st.Lanes, " "), strings.Join(st.Endpoints, " "))
+	for _, f := range st.Forwards {
+		state := "listening"
+		if f.Error != "" {
+			state = "NOT listening: " + f.Error
+		}
+		fmt.Printf("forward     %s -> %s for %s: %s\n", f.Listen, f.Target, strings.Join(f.Endpoints, ", "), state)
+	}
 	if len(st.Restart) > 0 {
 		fmt.Printf("restart     changed but held from the next start only: %s\n", strings.Join(st.Restart, ", "))
 	}

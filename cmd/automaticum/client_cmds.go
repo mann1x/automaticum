@@ -316,6 +316,7 @@ func runStart(ctx context.Context, args []string) error {
 	fs.BoolVar(&req.CaptureRequests, "capture-requests", false, "every run saves the model requests and responses as the SDK sent and read them (large; off by default)")
 	fs.IntVar(&req.Priority, "priority", 0, "the batch's priority: higher starts first; equal priorities keep the queue's order (D125)")
 	fs.BoolVar(&req.Heldout, "heldout", false, "the batch is held out: export conversations passes over its runs unless it is given --heldout (D115)")
+	fs.BoolVar(&req.NoPreflight, "no-preflight", false, "queue without asking the endpoint first; by default a server that answers without the arm's model, or that the template, sampler or thinking gate refuses, refuses the batch before anything is queued")
 	limits := addLimits(fs)
 	if rest := parse(fs, args); len(rest) > 0 || len(arms) == 0 || len(tasks)+len(suites) == 0 {
 		return errors.New("usage: automaticum run start --arm <arm> [--arm <arm> ...] --task <task> [--task <task> ...] [--suite <suite> ...] [-n 5] [--order interleaved|blocks] [--lane <lane>] [--wall-s S] [--idle-s S]")
@@ -332,6 +333,15 @@ func runStart(ctx context.Context, args []string) error {
 	}
 	if c.json {
 		return printJSON(resp)
+	}
+	printStart(resp, arms)
+	return nil
+}
+
+// printStart says what a start queued, or would.
+func printStart(resp daemon.StartResponse, arms []string) {
+	for _, w := range resp.Warnings {
+		fmt.Printf("warning: %s\n", w)
 	}
 	what := "queued"
 	switch {
@@ -360,7 +370,6 @@ func runStart(ctx context.Context, args []string) error {
 		}
 		fmt.Println(id)
 	}
-	return nil
 }
 
 func runLs(ctx context.Context, args []string) error {

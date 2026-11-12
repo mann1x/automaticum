@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -91,6 +92,51 @@ func ParametersKey(s string) string {
 	return strings.Join(lines, "\n")
 }
 
+// NoAnswer is a probe that got no answer at all: nothing listens, or the
+// address is not reached. It says nothing of what the server would serve
+// once it is up, unlike an answer that lacks the model.
+type NoAnswer struct{ msg string }
+
+func (n NoAnswer) Error() string { return n.msg }
+
+// ModelList is an OpenAI-compatible server's /v1/models. A llama-server
+// lists every name it answers to in a model's aliases; its id is only the
+// first of them in sorted order, so a path alias wins over the tag.
+type ModelList struct {
+	Data []struct {
+		ID      string   `json:"id"`
+		Aliases []string `json:"aliases"`
+	} `json:"data"`
+}
+
+// Serves says whether the server answers to the name, as a model's id or
+// as one of its aliases.
+func (m ModelList) Serves(name string) bool {
+	for _, d := range m.Data {
+		if d.ID == name || slices.Contains(d.Aliases, name) {
+			return true
+		}
+	}
+	return false
+}
+
+// Names lists every name the server answers to, for a message: "nothing"
+// when it lists no model.
+func (m ModelList) Names() string {
+	var out []string
+	for _, d := range m.Data {
+		for _, n := range append([]string{d.ID}, d.Aliases...) {
+			if n != "" && !slices.Contains(out, n) {
+				out = append(out, n)
+			}
+		}
+	}
+	if len(out) == 0 {
+		return "nothing"
+	}
+	return strings.Join(out, ", ")
+}
+
 // Probe asks an endpoint for its identity and the model's. An error means
 // the endpoint cannot serve the model as things stand: it does not answer,
 // or it does not have the model.
@@ -116,7 +162,7 @@ func Probe(ctx context.Context, hc *http.Client, e *config.Endpoint, apiKey, mod
 		resp, err := hc.Do(req)
 		if err != nil {
 			// The address is private; say what failed, not where.
-			return fmt.Errorf("endpoint %s does not answer %s", e.Name, path)
+			return NoAnswer{fmt.Sprintf("endpoint %s does not answer %s", e.Name, path)}
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
@@ -125,28 +171,24 @@ func Probe(ctx context.Context, hc *http.Client, e *config.Endpoint, apiKey, mod
 		return json.NewDecoder(io.LimitReader(resp.Body, 64<<20)).Decode(out)
 	}
 	if !Ollama(e) {
-		var models struct {
-			Data []struct {
-				ID string `json:"id"`
-			} `json:"data"`
-		}
+		var models ModelList
 		if err := call("GET", "/models", nil, &models); err != nil {
 			return id, err
 		}
 		id.NotProbed = []string{"server version", "model digest", "template", "parameters", "residency"}
-		listed := false
-		for _, m := range models.Data {
-			listed = listed || m.ID == model
-		}
-		if !listed {
-			return id, fmt.Errorf("endpoint %s does not list model %s", e.Name, model)
-		}
+		var props *Props
 		if e.Kind == "llamacpp" {
 			// llama-server says the rest at /props, beside /v1. A
 			// server that does not answer it stays not probed.
-			if p, err := ReadProps(ctx, hc, e, apiKey); err == nil && p != nil {
-				fillFromProps(&id, p)
+			if p, err := ReadProps(ctx, hc, e, apiKey); err == nil {
+				props = p
 			}
+		}
+		if !models.Serves(model) && (props == nil || !slices.Contains(props.Aliases(), model)) {
+			return id, fmt.Errorf("endpoint %s does not list model %s; it answers to %s", e.Name, model, models.Names())
+		}
+		if props != nil {
+			fillFromProps(&id, props)
 		}
 		return id, nil
 	}

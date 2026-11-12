@@ -111,6 +111,11 @@ type Daemon struct {
 	Oracle func(ctx context.Context, t *task.Task, o *task.Oracle, workspace string, collected map[string]string) (task.OracleResult, error)
 	Store  func(ctx context.Context, r io.Reader) (blob.Hash, int64, error)
 
+	// fwdMu guards forwards: the listening forwards to loopback-only
+	// servers, by address (forward.go).
+	fwdMu    sync.Mutex
+	forwards map[string]*forward
+
 	mu      sync.Mutex
 	flights map[string]*flight // by lane
 	// rescoring is the rescore oracle each lane runs, by lane (D121).
@@ -458,6 +463,7 @@ func (d *Daemon) Serve(ctx context.Context) {
 	go d.keep(canary, "the campaigns", d.campaignLoop)
 	go d.keep(canary, "the heartbeat", d.heartbeatLoop)
 	go d.keep(canary, "the archive", d.archiveLoop)
+	go d.keep(canary, "the forwards", d.forwardLoop)
 	for {
 		d.mu.Lock()
 		draining := d.draining
