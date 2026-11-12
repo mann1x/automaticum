@@ -432,7 +432,8 @@ func LaneDockerfile(s *Source, p *Pins) string {
 # from Terminal-Bench 2.0 commit %[2]s (066 §3): the task's own image
 # (%[3]s, pinned by digest) with the runner added (064 §3.2) under its own
 # prefix, /opt/automaticum, which is on no PATH (D113): Node and the runner,
-# and a static ripgrep that only the SDK's own search finds. /app, where the
+# a static ripgrep that only the SDK's own search finds, and the language
+# servers that run on Node, for an arm with [agent.lsp] (D149). /app, where the
 # task works, is made the workspace; nothing else of the image changes.
 # Built by `+"`automaticum image build %[4]s`"+`; rebuild the base first.
 FROM automaticum-lane:base AS lane
@@ -441,6 +442,7 @@ FROM %[5]s
 COPY --from=lane /usr/local/bin/node /opt/automaticum/bin/node
 COPY --from=lane /opt/automaticum/tools/rg /opt/automaticum/bin/rg
 COPY --from=lane /opt/automaticum/runner /opt/automaticum/runner
+COPY --from=lane /opt/automaticum/lsp /opt/automaticum/lsp
 RUN ["/opt/automaticum/bin/node", "--version"]
 RUN rm -rf /app && ln -s /workspace /app
 WORKDIR /workspace

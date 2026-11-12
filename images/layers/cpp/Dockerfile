@@ -7,9 +7,13 @@ FROM automaticum-lane:base AS lane
 FROM gcc@sha256:db19db55a3bd1f836212a76854c4f6c7c4ccb0c9a9426dbf542e3505bc8cdfec
 
 # The base's tools; make, binutils and the C library headers are in the image.
+# clangd is the language server of an arm with [agent.lsp] (D149), Debian's;
+# the runner starts it from its own prefix, on no PATH (D113). Debian puts a
+# clangd link in /usr/bin too.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       ca-certificates curl git libatomic1 less patch procps ripgrep unzip xz-utils \
+ && apt-get install -y --no-install-recommends clangd \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --gid 1000 node && useradd --uid 1000 --gid node --shell /bin/bash --create-home node
 COPY --from=lane /usr/local/bin/node /usr/local/bin/
@@ -18,5 +22,7 @@ COPY --from=lane /usr/local/include/node /usr/local/include/node
 COPY --from=lane /opt/automaticum /opt/automaticum
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
  && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
+ && ln -s "$(readlink -f /usr/bin/clangd)" /opt/automaticum/lsp/bin/clangd \
+ && /opt/automaticum/lsp/bin/clangd --version | head -1 \
  && gcc --version | head -1 && g++ --version | head -1 && make --version | head -1 && node --version
 WORKDIR /workspace

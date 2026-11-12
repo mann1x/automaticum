@@ -152,6 +152,38 @@ func TestStopOnIdentity(t *testing.T) {
 	}
 }
 
+// The language servers (D149): left out or off, an arm is the arm it was;
+// on, it is another, and the diagnostics after edits stated on (the
+// extension's way) are the same arm as left out, stated off another again.
+func TestLSPIdentity(t *testing.T) {
+	dir := arms(t, map[string]string{
+		"plain": good,
+		"off":   good + "[agent.lsp]\nenabled = false\ndiagnostics_after_edits = false\n",
+		"on":    good + "[agent.lsp]\nenabled = true\n",
+		"on2":   good + "[agent.lsp]\nenabled = true\ndiagnostics_after_edits = true\n",
+		"quiet": good + "[agent.lsp]\nenabled = true\ndiagnostics_after_edits = false\n",
+	})
+	id := map[string]string{}
+	for _, n := range []string{"plain", "off", "on", "on2", "quiet"} {
+		a, err := LoadArm(dir, n)
+		if err != nil {
+			t.Fatal(n, err)
+		}
+		id[n] = a.ID
+		if n == "plain" || n == "off" {
+			if strings.Contains(string(a.Resolved()), "lsp") {
+				t.Errorf("%s: the language servers off are in the resolved arm: %s", n, a.Resolved())
+			}
+		}
+		if n == "on" && !strings.Contains(string(a.Resolved()), `"lsp":{"enabled":true}`) {
+			t.Errorf("on: %s", a.Resolved())
+		}
+	}
+	if id["plain"] != id["off"] || id["on"] != id["on2"] || id["plain"] == id["on"] || id["on"] == id["quiet"] {
+		t.Errorf("identities: %v", id)
+	}
+}
+
 // The reasoning-loop limit is stated in every arm (D108). The SDK's own 3
 // leaves the arm's identity as it was; any other number is part of it.
 func TestReasoningLoopLimitIdentity(t *testing.T) {

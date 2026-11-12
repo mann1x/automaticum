@@ -128,6 +128,21 @@ type Agent struct {
 	// Escalation to an expert model. Must be stated; only false is
 	// supported so far.
 	Escalation *bool `toml:"escalation" json:"escalation"`
+	// LSP gives the agent the editor's language servers, as the VS Code
+	// extension does (040 §6.1, D149). Left out, or off, the run has what
+	// every run before it had, and the arm keeps its identity.
+	LSP *LSP `toml:"lsp" json:"lsp,omitempty"`
+}
+
+// LSP is the editor's language-server surface: ask_lsp, the extension's
+// check_file reading the servers' diagnostics, and the diagnostics an edit
+// introduced appended to its result (D149). The servers are the lane
+// image's, under the runner's prefix (images/lsp and the layers).
+type LSP struct {
+	Enabled *bool `toml:"enabled" json:"enabled,omitempty"`
+	// DiagnosticsAfterEdits is on unless stated off: the extension always
+	// reports them. Off, the tools stay and the edits report nothing.
+	DiagnosticsAfterEdits *bool `toml:"diagnostics_after_edits" json:"diagnostics_after_edits,omitempty"`
 }
 
 // TaskProgress is the focus chain.
@@ -722,6 +737,17 @@ func (a *Arm) Resolved() []byte {
 	if th := a.Thinking; th.ReasoningHistory == "auto" && th.ReasoningInline != nil && *th.ReasoningInline {
 		c := *a
 		c.Thinking.ReasoningHistory, c.Thinking.ReasoningInline = "", nil
+		a = &c
+	}
+	// The language servers off is what every arm had before them (D149);
+	// their diagnostics after edits on is what the extension does.
+	if l := a.Agent.LSP; l != nil {
+		c := *a
+		if l.Enabled == nil || !*l.Enabled {
+			c.Agent.LSP = nil
+		} else if l.DiagnosticsAfterEdits != nil && *l.DiagnosticsAfterEdits {
+			c.Agent.LSP = &LSP{Enabled: l.Enabled}
+		}
 		a = &c
 	}
 	b, err := json.Marshal(a)

@@ -1,6 +1,6 @@
 # 063 — Suite: our own multi-language agentic suite
 
-**Status:** draft 0.7, 2026-11-01. The tasks themselves are omnimergekit's to
+**Status:** draft 0.8, 2026-11-12. The tasks themselves are omnimergekit's to
 write. This file states what automaticum provides so that such a suite can
 exist.
 
@@ -33,8 +33,12 @@ the compiled task checkers need, comes from the base.
   Debian 13, and its compiler needs a newer C library than the base's
   Debian 12. It starts from that image and copies Node, the runner and the
   `node` user's id from the base, so the base is rebuilt first.
-- The layers carry no language server yet: the runner does not read
-  diagnostics (040 §6), so 030 §3's language server is added with that work.
+- Each layer carries its language's server, for an arm with `[agent.lsp]`
+  (D149, 040 §6.1.2): gopls in `go`, rust-analyzer in `rust`, clangd in
+  `cpp`, csharp-ls in `dotnet`; TypeScript, JavaScript, HTML, CSS, JSON,
+  Python and shell are served from the base. All of them sit under the
+  runner's prefix, off the agent's PATH, so a task's environment is what it
+  was.
 
 ## 3. Tests
 

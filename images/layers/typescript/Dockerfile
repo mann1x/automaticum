@@ -1,5 +1,8 @@
 # Language layer: TypeScript, and the language servers for TypeScript, HTML,
-# CSS and JSON. Built by `automaticum image build typescript` on the base.
+# CSS and JSON on the agent's PATH, as the layer always had them. The
+# runner's own servers, for an arm with [agent.lsp] (D149), are the base's,
+# under /opt/automaticum/lsp. Built by `automaticum image build typescript`
+# on the base.
 FROM automaticum-lane:base
 
 RUN npm install --global --ignore-scripts --no-audit --no-fund \

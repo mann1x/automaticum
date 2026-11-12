@@ -376,7 +376,7 @@
       "error_message": "demo/plan on the stub ended FAIL twice after a working plan->act switch: editor 'unavailable tool' in plan mode, then 'Read before editing: answer.txt has not been read in this session'",
       "file": "(untracked) work/stub/fix-plan.json",
       "root_cause": "the stub script ignored the arm's no-tool-call nudge (each text-only reply is answered once before a run ends), so its turns went out of step; and the read-before-edit guard forgets reads made in plan mode once the session is restarted in act mode",
-      "fix": "stub script answers the nudge in both halves and reads again in act mode; the guard behaviour recorded in 040 §6.2 and asked of Cerebriline",
+      "fix": "stub script answers the nudge in both halves and reads again in act mode; the guard behaviour recorded in 040 \u00a76.2 and asked of Cerebriline",
       "tags": [
         "stub",
         "scripted-user",
@@ -410,7 +410,7 @@
     {
       "id": "bug-025",
       "timestamp": "2026-10-16T00:10:00+02:00",
-      "error_message": "after a plan->act switch the editor was refused: 'Read before editing: … has not been read in this session'",
+      "error_message": "after a plan->act switch the editor was refused: 'Read before editing: \u2026 has not been read in this session'",
       "file": "runner/runner.mjs",
       "root_cause": "core makes a fresh read-receipt registry per session unless one is passed; the extension passes one registry for its controller's lifetime, the runner passed none",
       "fix": "ClineCore.create capabilities.readReceipts = sdk.createReadReceipts(), one per run; plan demo without a re-read now PASS",
@@ -433,7 +433,7 @@
       "timestamp": "2026-10-16T00:40:00+02:00",
       "error_message": "mode C cell with --endpoint-kind llamacpp: agent error 'Unknown or disabled provider \"llamacpp\".' before any chat request; verdict FAIL",
       "file": "internal/config/cell.go",
-      "root_cause": "Arm.ForCell set model.provider to the endpoint kind; the SDK has no provider llamacpp (kind llamacpp is an OpenAI-compatible llama-server, 030 §3); cell_test asserted the wrong provider",
+      "root_cause": "Arm.ForCell set model.provider to the endpoint kind; the SDK has no provider llamacpp (kind llamacpp is an OpenAI-compatible llama-server, 030 \u00a73); cell_test asserted the wrong provider",
       "fix": "ProviderFor(kind): llamacpp -> openai-compatible; test corrected; the broken stub run invalidated with the reason; rerun PASS with every sampler field on the wire",
       "tags": [
         "mode-c",
@@ -558,7 +558,7 @@
       "error_message": "task: tasks/train-game/space_invaders/task.toml: fixture seed: no files",
       "file": "internal/task/task.go",
       "root_cause": "validate refused any [[fixture]] without files, though Verify lays fixture files over the prepared seed, so an empty fixture is exactly the seed; all 17 training tasks from backup_models declare the seed fixture that way",
-      "fix": "A fixture with no files is allowed when expect = \"fail\" (the seed); refused for expect = \"pass\". TestSeedFixture; 060 §3",
+      "fix": "A fixture with no files is allowed when expect = \"fail\" (the seed); refused for expect = \"pass\". TestSeedFixture; 060 \u00a73",
       "tags": [
         "task-loader",
         "fixture",
@@ -697,7 +697,7 @@
       "error_message": "SKIPPED: the runner refused to start: the job speaks protocol 8, this runner 5 (stub run on tbench2 on linux-gpu-1)",
       "file": "images/layers/tb2-*/Dockerfile",
       "root_cause": "The local automaticum-lane:base was built before protocol 8; a layer copies the runner from the base, so the tb2 layers had runner protocol 5.",
-      "fix": "image build base before the tb2 layers (written in every layer's header and 066 §5).",
+      "fix": "image build base before the tb2 layers (written in every layer's header and 066 \u00a75).",
       "tags": [
         "lane-image",
         "protocol",
@@ -711,7 +711,7 @@
     {
       "id": "bug-042",
       "timestamp": "2026-10-25T10:12:00+01:00",
-      "error_message": "TestDeclared: run_as \"\" and \"root\" — the task-level run_as written by TaskTOML was read as labels.run_as",
+      "error_message": "TestDeclared: run_as \"\" and \"root\" \u2014 the task-level run_as written by TaskTOML was read as labels.run_as",
       "file": "internal/suite/tbench2/tbench2.go",
       "root_cause": "TaskTOML wrote the top-level run_as key after the [labels] table header, so TOML put it in that table",
       "fix": "write run_as right after prompt, before the first table",
@@ -843,9 +843,9 @@
     {
       "id": "bug-049",
       "timestamp": "2026-11-01T18:30:00Z",
-      "error_message": "Owner: `automaticum wait` is in spec 090 §1/§5 but not built; sessions wrote their own waiters (`run tail > /dev/null`) and re-armed them after every run; `run tail` of a queued run answered 410 'has finished'",
+      "error_message": "Owner: `automaticum wait` is in spec 090 \u00a71/\u00a75 but not built; sessions wrote their own waiters (`run tail > /dev/null`) and re-armed them after every run; `run tail` of a queued run answered 410 'has finished'",
       "file": "cmd/automaticum/wait_cmds.go, internal/wait/wait.go, internal/daemon/wait.go",
-      "root_cause": "090 §5 listed the wait primitives and the mailbox notifications as requirements with no milestone; nobody built them and the spec never said 'not built'. handleStream treats any run without a flight that the store knows as finished, and a queued run's lookup reached that branch.",
+      "root_cause": "090 \u00a75 listed the wait primitives and the mailbox notifications as requirements with no milestone; nobody built them and the spec never said 'not built'. handleStream treats any run without a flight that the store knows as finished, and a queued run's lookup reached that branch.",
       "fix": "Built internal/wait (conditions, snapshots), GET /v1/wait/{kind} held up to 55 s and woken by poke/bump, and `automaticum wait run|batch|cell|campaign|lane|idle` with --until/--next/--each/--any/--timeout, exit 0/4/5, a fallback that polls an older daemon, and retries while the daemon restarts. run tail waits for a queued run to start.",
       "tags": [
         "wait",
@@ -861,7 +861,7 @@
     {
       "id": "bug-050",
       "timestamp": "2026-11-01T18:30:00Z",
-      "error_message": "Notification only for gates, canary and campaign end; no mailbox, no batch end, no stopped batch (050 §6, 090 §5)",
+      "error_message": "Notification only for gates, canary and campaign end; no mailbox, no batch end, no stopped batch (050 \u00a76, 090 \u00a75)",
       "file": "internal/daemon/daemon.go, internal/daemon/control.go, internal/config/local.go",
       "root_cause": "Milestone 3 built the webhook and the log only (D62); the rest was carried forward with no milestone.",
       "fix": "[notify] command (JSON on stdin, AUTOMATICUM_NOTIFY_* env) and [notify] events; notifyEnd sends run end and batch finished (once per finished count), stopBatch sends batch stopped.",
@@ -877,10 +877,10 @@
     {
       "id": "bug-051",
       "timestamp": "2026-11-01T18:30:00Z",
-      "error_message": "Example systemd unit TimeoutStopSec=120 + SIGKILL kills a draining daemon after 2 minutes; the 30-minute run in flight is then ABORTED(daemon restart), against 050 §5 (first signal drains)",
+      "error_message": "Example systemd unit TimeoutStopSec=120 + SIGKILL kills a draining daemon after 2 minutes; the 30-minute run in flight is then ABORTED(daemon restart), against 050 \u00a75 (first signal drains)",
       "file": "examples/systemd/automaticumd.service",
       "root_cause": "The unit's stop timeout was set without the drain semantics in mind.",
-      "fix": "TimeoutStopSec=infinity, SendSIGKILL=no, with the drain-then-restart recipe in a comment; 050 §5 says so.",
+      "fix": "TimeoutStopSec=infinity, SendSIGKILL=no, with the drain-then-restart recipe in a comment; 050 \u00a75 says so.",
       "tags": [
         "systemd",
         "drain",
@@ -893,7 +893,7 @@
     {
       "id": "bug-052",
       "timestamp": "2026-11-01T18:30:00Z",
-      "error_message": "`cell run` exits 70 with no refusal.json when a static gate refuses the whole start (422), against 065 §2.1 (exit 20)",
+      "error_message": "`cell run` exits 70 with no refusal.json when a static gate refuses the whole start (422), against 065 \u00a72.1 (exit 20)",
       "file": "cmd/automaticum/cell_cmds.go, internal/daemon/api.go",
       "root_cause": "The 2026-10-25 static-gate refusal returned a plain error string; the CLI could not tell a gate refusal from an internal error.",
       "fix": "The 422 carries `gate` (gateRefusal, apiError.Gate); the client returns *apiErr; cell run writes refusal.json with code 20 and exits 20.",
@@ -1014,7 +1014,7 @@
       "timestamp": "2026-11-01T20:45:00+01:00",
       "error_message": "a run whose server failed mid-run (connection refused, 503, rate limit) after the SDK's retries went to the oracle and could be counted FAIL",
       "file": "internal/run/run.go",
-      "root_cause": "only D89's case (no request answered) was ABORTED; 050 §4 says infrastructure errors are never the model's failure",
+      "root_cause": "only D89's case (no request answered) was ABORTED; 050 \u00a74 says infrastructure errors are never the model's failure",
       "fix": "run.Fault ports the SDK's refusal/transport patterns (llms Kr: Mk, _k); Facts.Infra set from agent_error when agent_end is error; Decide: pass outranks it, otherwise ABORTED",
       "tags": [
         "verdict",
@@ -1554,7 +1554,7 @@
       "error_message": "manic_miner oracle printed {\"ok\":true,...,\"game_logic\":{\"ok\":false,\"passed\":22,\"total\":23}}; the agent read the first ok and declared itself done (verdict FAIL). Owner: 'there should be no parent ok: true flag if the game logic is failing'",
       "file": "tasks/custom/manic_miner/oracle/run_game.logic.js",
       "root_cause": "v4 kept top-level ok as 'page loads and physics run' for comparability with old records; game_logic was attached beside it and never folded in, so the oracle's own output contradicted its verdict",
-      "fix": "task version 5 (D145): ok = runs && game_logic.ok, old meaning printed last as runs; task pin --write (4088844b...), oracle verify 3x3; specs 060 §5.1, 050 §6/030 §1 (tasks read per run, artefacts never built by a run)",
+      "fix": "task version 5 (D145): ok = runs && game_logic.ok, old meaning printed last as runs; task pin --write (4088844b...), oracle verify 3x3; specs 060 \u00a75.1, 050 \u00a76/030 \u00a71 (tasks read per run, artefacts never built by a run)",
       "tags": [
         "manic_miner",
         "oracle",
@@ -1608,7 +1608,7 @@
       "error_message": "gate model_tag: endpoint ... does not list model gemma-4-26b-a4b-it-bm889-sft11-sfinal-bf16-eos106 (two batches of 10 SKIPPED on blackswan-2, 20261112-164245-c8cf20 and 20261112-164531-c9a920)",
       "file": "internal/run/probe.go",
       "root_cause": "The probe matched only data[].id of /v1/models. llama-server lists every name it answers to in data[].aliases and gives the first in sorted order as id, so a path alias wins over the tag. Also run start queued the runs without asking the endpoint, so the mismatch cost ten SKIPPED runs per attempt.",
-      "fix": "ModelList.Serves takes the id or any alias, and /props model_alias (comma-separated) for llamacpp; the refusal names every name the server answers to; endpoint models lists aliases. run start preflights the endpoint and the gates that read its answer before queueing (050 §4.1, --no-preflight). D146.",
+      "fix": "ModelList.Serves takes the id or any alias, and /props model_alias (comma-separated) for llamacpp; the refusal names every name the server answers to; endpoint models lists aliases. run start preflights the endpoint and the gates that read its answer before queueing (050 \u00a74.1, --no-preflight). D146.",
       "tags": [
         "probe",
         "llamacpp",
@@ -1641,6 +1641,26 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-12T18:40:00+01:00"
+    },
+    {
+      "id": "bug-095",
+      "timestamp": "2026-11-12T20:10:00+01:00",
+      "error_message": "automaticum runs had no ask_lsp and a different check_file than the VS Code plugin (owner: \"why there's no vscode in the docker image? we need search_codebase and ask_lsp to work in automaticum\"); in a first port the HTML and CSS servers reported nothing for a broken page and csharp-ls nothing at all",
+      "file": "runner/lsp.mjs",
+      "root_cause": "040 \u00a76.1 decided language-server emulation in 2026-10 but it was never built, and ask_lsp was missing from the parity table. In the port: answering workspace/configuration with null crashed the CSS validator (validProperties of null), which aborts the HTML server's whole page validation; the HTML server's script mode needs js/ts.implicitProjectConfig and reads TypeScript's libraries from node_modules/node_modules (vscode-langservers-extracted 4.10.0 bundle path); csharp-ls is pull-only and its first answer comes before the project loads. The SDK CLI's client also re-sends didOpen for a changed file, which a server ignores.",
+      "fix": "runner/lsp.mjs (servers for every lane language under /opt/automaticum/lsp; settings objects for every server request; VS Code's html and js/ts defaults; didChange with versions; pull on every touch, noPull after a refusal; ts source label) and runner/editor.mjs (the extension's check_file and diagnostics after edits, ported); base links node_modules/node_modules/typescript; arm field [agent.lsp]; protocol 11. D149.",
+      "tags": [
+        "lsp",
+        "ask_lsp",
+        "check_file",
+        "parity",
+        "vscode",
+        "protocol-11",
+        "D149"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-12T20:10:00+01:00"
     }
   ]
 }

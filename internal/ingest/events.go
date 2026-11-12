@@ -92,6 +92,12 @@ type Events struct {
 	// UserFailed is how many of the scripted user's actions the SDK
 	// refused: the run did not play the script it was meant to.
 	UserFailed int
+	// LSP says the run had the editor's language servers (D149);
+	// LSPEdits counts the edits the diagnostics after edits looked at,
+	// LSPReports those that got a block, LSPRegressed those marked
+	// regressed, LSPErrors what the servers failed at.
+	LSP                                           bool
+	LSPEdits, LSPReports, LSPRegressed, LSPErrors int
 	// Forks are the session forks a restore of messages started (D86), in
 	// order; ModeSwitches how often the scripted user switched the mode,
 	// AgentModeSwitches how often the agent did (switch_to_act_mode).
@@ -255,6 +261,12 @@ type eventLine struct {
 	// Who made a mode switch: "user" or "agent"; absent before 2026-10-16,
 	// when only the user could.
 	Source string `json:"source"`
+	// The runner's prepared note: its language servers, null when the arm
+	// has none (protocol 11, D149); an editor_diagnostics note's block and
+	// whether the edit was marked regressed.
+	LSP        json.RawMessage `json:"lsp"`
+	BlockChars int             `json:"block_chars"`
+	Regressed  bool            `json:"regressed"`
 }
 
 type agentEvent struct {
@@ -451,6 +463,18 @@ func (ev *Events) line(line []byte, sc *scan) {
 			ev.Questions++
 		case "user_action_failed":
 			ev.UserFailed++
+		case "prepared":
+			ev.LSP = len(l.LSP) > 0 && string(l.LSP) != "null"
+		case "editor_diagnostics":
+			ev.LSPEdits++
+			if l.BlockChars > 0 {
+				ev.LSPReports++
+			}
+			if l.Regressed {
+				ev.LSPRegressed++
+			}
+		case "lsp_error", "editor_diagnostics_failed":
+			ev.LSPErrors++
 		case "fork":
 			ev.Forks = append(ev.Forks, Fork{T: l.T, From: l.From, To: l.To, Checkpoint: l.Checkpoint, Workspace: l.Workspace, Restarted: l.Restarted})
 			ev.ForkCalls = append(ev.ForkCalls, len(ev.Calls))

@@ -54,7 +54,7 @@ const SessionFork = "session_fork"
 // analysis records it as the metric analysis.version: the basis (020 §5)
 // says from it which detectors a run was analysed with, whether or not
 // they found anything.
-const AnalysisVersion = 21
+const AnalysisVersion = 22
 
 // Versions are the versions of the detectors this analysis applies:
 // ingest's own and the detector library's.
@@ -337,6 +337,13 @@ func AnalyseWith(r *store.Run, ev *Events, reqs []Request, th detect.Values) *Re
 	m("user.actions", float64(ev.UserActions))
 	m("user.denials", float64(ev.UserDenials))
 	m("user.failed", float64(ev.UserFailed))
+	// The editor's language servers (D149), on a run that had them.
+	if ev.LSP {
+		m("lsp.edits_checked", float64(ev.LSPEdits))
+		m("lsp.edit_reports", float64(ev.LSPReports))
+		m("lsp.edits_regressed", float64(ev.LSPRegressed))
+		m("lsp.errors", float64(ev.LSPErrors))
+	}
 	m("user.forks", float64(len(ev.Forks)))
 	m("user.mode_switches", float64(ev.ModeSwitches))
 	m("mode_switches.by_agent", float64(ev.AgentModeSwitches))

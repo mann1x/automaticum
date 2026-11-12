@@ -1,6 +1,6 @@
 # 040 — The runner
 
-**Status:** draft 1.15, 2026-11-08. Facts about the SDK in this file were read
+**Status:** draft 1.16, 2026-11-12. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
 running it. The parity table in §6 was checked row by row by the Cerebriline
 session on 2026-10-13 against its main branch (release 4.100.249 plus requests
@@ -189,7 +189,8 @@ and how the runner provides it:
 | MCP tools | `extraTools` | arm field: which servers, started inside the container |
 | Browser tool | present only where a Chrome is found | arm field; the lane image provides the browser or the tool is absent |
 | `render_image`, `transform_image`, `generate_icon` | extension only, through the same browser driver; the CLI registers none | the runner supplies the driver, or they are absent and the wire tool list shows it |
-| `check_file` tool | registered by the extension | registered by the runner |
+| `check_file` tool | the extension registers its own, which reads the editor's diagnostics (`apps/vscode/src/sdk/check-file-tool.ts`); the SDK adds a syntax-only one of its own only to a host that names none | with `[agent.lsp]`: the extension's tool, ported, reading the lane's language servers (§6.1.2, D149). Without: the SDK's syntax check, a different description and answer under the same name, a recorded difference |
+| `ask_lsp` tool | extra tool on the extension's code-intelligence provider (VS Code's language servers); the CLI has one on its own LSP client | with `[agent.lsp]`: the SDK's own tool on the runner's language servers (§6.1.2, D149); without, absent |
 | Replaced executors | the extension supplies its own `editor`, `applyPatch`, `readFile` and `semanticSearch` executors, sharing one registry of read receipts | **the runner replaces none** and records that the SDK's own executors ran. If it ever replaces the reader it must share the registry, or edits are refused as "not read in this session" |
 | Task progress (focus chain) | `taskProgress` | arm field |
 | Sandbox | in the extension, delegated agents are sandboxed by default and the lead is not | arm field, same default |
@@ -271,11 +272,97 @@ is a recorded difference.
 - **The IDE name** is used twice: in the system prompt's IDE line and in a
   token that tool descriptions may carry. One arm field sets both.
 
-Two behaviours were missing from the table and are added as known
+**The extension's extra tools, tool by tool** (`createVscodeExtraTools`,
+`apps/vscode/src/sdk/vscode-runtime-builder.ts` at 4.100.276, audited
+2026-11-12 for D149). "Default" is what a fresh install of the extension
+offers; a tool the owner's own installation turns on is a difference from
+that installation, not from the default.
+
+| tool | in the extension | in the runner |
+|---|---|---|
+| MCP tools of the extension's MCP hub | one tool per server the user configured | absent: no arm starts an MCP server (row above) |
+| VS Code's own MCP servers (`createVscodeLmMcpTools`) | the servers VS Code runs, adopted; the owner's sessions carry `lsp__*` tools from one | absent: VS Code only. `ask_lsp`'s description tells a model reaching for an LSP MCP server that it is the same thing |
+| `check_file` | always | `[agent.lsp]`: emulated (§6.1.2); otherwise the SDK's syntax check |
+| `ask_lsp` | always | `[agent.lsp]`: emulated (§6.1.2); otherwise absent |
+| `list_files` | always, on VS Code's file search, which honours the user's excludes | the SDK's own, on the local file system, which the SDK adds to a host that names none: no editor excludes, a recorded difference |
+| `browser` | on unless the user turns it off (`cline.browserTool`); Chrome is started on the first call | absent: no Chrome in the lane images. The CLI has a driver (`apps/cli/src/runtime/browser-support.ts`); the emulation is a Chrome under the runner's prefix and that driver, as an arm field. Not built |
+| `render_image`, `transform_image` | always, on the same Chrome | absent until the browser is |
+| media tools (`generate_image`, `generate_icon`, audio, video) | off until an endpoint and a model are configured | absent, as by default |
+| `sdd` | only when a spec-driven skill is on | absent, as by default (no arm turns such a skill on) |
+| Library tools (`library_*`) | only when the Library panel has them on; search by meaning with an embedding endpoint | absent, as by default. The owner's sessions use them (about 400 calls): an emulation needs the Library's index and an embedding endpoint, as an arm field. Not built |
+| `web_scrape` | only when scraping is set up and allowed | absent, as by default |
+| memory tools | only when the Memory panel has them on | absent, as by default |
+| `jev` | only with the user's key (a paid service) | absent, as by default |
+| `run_commands` | the extension's own, on the VS Code terminal | the SDK's background executor (§6.1, terminal row) |
+
+Semantic search (`search_codebase`'s `mode: "semantic"`) is not an extra
+tool: the extension hands the SDK a `semanticSearch` executor
+(`createCodeSearch`) only for a folder the user opted into the Library's
+index, with an embedding model set. The runner hands none, so the mode is
+absent, as for a folder that is not opted in; an emulation needs the same
+embedding endpoint as the Library tools.
+
+Two behaviours were missing from the table and were added as known
 differences until emulated: `check_file` in the extension reads the editor's
-diagnostics for the file, so it needs the same language servers; and semantic
-search is supplied by the extension from VS Code's own code search, so
-without an emulation that mode of the search tool is absent or differs.
+diagnostics for the file, so it needs the same language servers (emulated
+since D149, §6.1.2); and semantic search is supplied by the extension from
+its code index, so without an emulation that mode of the search tool is
+absent (still so, see the audit in §6).
+
+#### 6.1.2 The language servers (as built, D149)
+
+**Decided by the owner (2026-11-12, D149):** `ask_lsp` and the editor's
+diagnostics are emulated, for every language the lane layers carry, as the
+arm field `[agent.lsp]`, so a run can be compared with the plugin, and with
+and without them.
+
+- **Arm field.** `[agent.lsp] enabled = true` gives the run `ask_lsp`, the
+  extension's `check_file` and the diagnostics after edits;
+  `diagnostics_after_edits = false` keeps the two tools and drops the third.
+  Left out or off, the run is what every run before it was and the arm keeps
+  its identity (030 §4). One tool alone is taken away with
+  `agent.disabled_tools` (`["ask_lsp"]`), the A/B the owner asked for.
+- **Servers.** Under the runner's prefix, `/opt/automaticum/lsp`, on no PATH
+  of the agent (D113). The base (`images/lsp`, a lockfile) carries those
+  that run on Node: typescript-language-server 6.0.2 on TypeScript 5.9.3 for
+  TypeScript and JavaScript (VS Code also uses its own TypeScript, not the
+  workspace's); the HTML, CSS and JSON servers of vscode-langservers-extracted
+  4.10.0, which are VS Code's own servers, the HTML one checking a page's
+  script and style as VS Code does; pyright 1.1.414 (Pylance is built on it);
+  bash-language-server 5.8.1 with shellcheck 0.10.0. The layers add the
+  servers of their toolchains: gopls 0.18.1 (`go`, built with the layer's
+  Go), rust-analyzer and the standard library's source (`rust`, the
+  toolchain's components), clangd (`cpp`, Debian's), csharp-ls 0.16.0
+  (`dotnet`, its last release on .NET 8). A Terminal-Bench layer copies the
+  Node servers. A language with no server answers nothing, as in an editor
+  without the language's extension; the runner's `prepared` note lists the
+  servers, which were installed and which started.
+- **Host.** `runner/lsp.mjs`, ported from the SDK CLI's LSP client and
+  code-intelligence provider (4.100.276), with the extension's way of
+  finding a symbol (its document symbols first). It differs from the CLI
+  where the CLI stops short: a changed file goes to its server as a change,
+  not as a second open (which a server ignores, then answers from the old
+  text); the server's own requests are answered with settings objects, as
+  an editor answers (left null, the CSS validator fails and the HTML server
+  then reports nothing for the page); the HTML server gets VS Code's defaults
+  for the settings it reads. The servers of the workspace's languages start
+  with the session, as an editor's do when it opens the folder.
+- **Diagnostics after edits** (`runner/editor.mjs`, ported from
+  `apps/vscode/src/sdk/editor-diagnostics.ts`): every rule of §6.1.1 is
+  copied, budgets included (250 ms polls, 2,000 ms). One addition: before
+  the edit the file is handed to its server and, the first time, given the
+  same budget to report, since in VS Code the file an agent edits is open
+  and what was wrong with it before is known. Each edit is a runner note,
+  `editor_diagnostics` (the extension's trace file), counted as the
+  `lsp.*` metrics (070 §2).
+- **`check_file`** is the extension's tool, its description word for word,
+  its budget (150 ms polls, 1,500 ms) and its delimiter scan. The
+  extension's lint command is a user setting, unset by default, and not
+  offered.
+- **Known differences.** No jquery typings for a page's script (the server
+  package does not ship them); a file changed by the agent's shell is seen
+  when it is next asked about or edited, not when it changes; no `list_files`
+  excludes and no semantic search (§6 audit).
 
 ### 6.2 The scripted user
 

@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.28, 2026-11-12.
+**Status:** draft 0.29, 2026-11-12.
 
 ## 1. Rules
 
@@ -101,7 +101,9 @@ it is left out of the arm's identity.
 - **One layer per language toolchain**, composable. A task declares the layers
   it needs; the daemon builds or pulls the composition and records the digest.
 - Each language layer also carries that language's **language server**, used
-  to give the agent diagnostics after edits (040 §6).
+  to give the agent diagnostics after edits (040 §6). As built (D149): the
+  servers that run on Node are the base's, the others their layer's, all
+  under the runner's prefix (040 §6.1.2).
 - Images are built by automaticum from definitions in this repository,
   reproducibly, and are pinned by digest in every run record.
 
@@ -262,7 +264,11 @@ detector, stalled-check, no-tool-call nudge, unreadable-call repair),
 escalation (expert model, limits, close-after), sub-agents (enabled, nodes,
 window share, swarm, teammates), sandbox mode, skills, media tools, Jev,
 library, memory, checkpoints, diagnostics after edits, approval policy and the
-scripted user (040 §6).
+scripted user (040 §6). The editor's language servers are `[agent.lsp]`
+(D149): `enabled` gives `ask_lsp`, the extension's `check_file` and the
+diagnostics after edits, `diagnostics_after_edits = false` keeps the tools
+and drops the third; left out or off, the arm keeps the identity it had
+before the field existed (040 §6.1.2).
 
 **Harness:** SDK build, runner version, image, oracle version, task version.
 

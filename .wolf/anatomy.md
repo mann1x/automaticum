@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-12T17:39:39.978Z
-> Files: 515 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-12T18:45:56.148Z
+> Files: 520 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -664,6 +664,26 @@
 - `f1291.log` (~0 tok)
 - `f1292.log` (~0 tok)
 
+## images/lsp/
+
+- `package.json` — the language servers that run on Node (typescript-language-server, TypeScript 5.9.3, vscode-langservers-extracted, pyright, bash-language-server), installed by the base under /opt/automaticum/lsp (D149) (~150 tok)
+- `package-lock.json` — their lockfile, npm ci'd by images/base/Dockerfile (~large)
+
+## images/base/
+
+- `Dockerfile` — Docker container definition (~803 tok)
+
 ## internal/detect/
 
 - `thresholds.go` — Struct: Threshold (~2088 tok)
+
+## runner/
+
+- `editor.mjs` — The extension's check_file and diagnostics after edits (editor/apply_patch), ported word for word from 4.100.276, read from lsp.mjs (D149) (~5200 tok)
+- `lsp.mjs` — createLspHost: language servers per lane language under /opt/automaticum/lsp; ask_lsp's CodeIntelProvider; push/pull diagnostics store; server requests answered (D149) (~6700 tok)
+
+## runner/test/
+
+- `editor.test.mjs` — check_file, diagnostics after edits, rendering, settling, on a fake host (~2100 tok)
+- `lsp.test.mjs` — the host against test/fixtures/fake-lsp.mjs: questions, server requests, didChange, diagnostics, a broken server (~1300 tok)
+- `fixtures/fake-lsp.mjs` — a language server for the tests: asks workspace/configuration, publishes BAD/WARN diagnostics, echoes document events (~900 tok)

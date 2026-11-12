@@ -1,0 +1,17 @@
+{
+  "name": "automaticum-lsp",
+  "private": true,
+  "description": "The language servers the runner starts for ask_lsp, check_file and the diagnostics after edits (040 \u00a76.1, D149), under the runner's own prefix /opt/automaticum/lsp, off the agent's PATH (D113). Installed with npm ci from the lockfile beside this file by images/base/Dockerfile.",
+  "dependencies": {
+    "bash-language-server": "5.8.1",
+    "pyright": "1.1.414",
+    "typescript": "5.9.3",
+    "typescript-language-server": "6.0.2",
+    "vscode-langservers-extracted": "4.10.0"
+  },
+  "overrides": {
+    "vscode-langservers-extracted": {
+      "typescript": "$typescript"
+    }
+  }
+}

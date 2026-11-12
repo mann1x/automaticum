@@ -23,6 +23,15 @@ escalation = false
 enabled = true              # extension
 interval = 2
 
+# The editor's language servers (D149, 040 §6.1.2): ask_lsp, the
+# extension's check_file on their diagnostics, and the diagnostics after
+# edits, as the extension always has them. Left out here, so every arm that
+# extends this template keeps its identity; an arm that is to be compared
+# with the plugin states it:
+# [agent.lsp]
+# enabled = true
+# diagnostics_after_edits = true   # the extension's way; false keeps only the tools
+
 [agent.sub_agents]
 spawn = false
 teams = false

@@ -13,4 +13,10 @@ RUN ln -s /usr/share/dotnet/dotnet /usr/local/bin/dotnet
 ENV DOTNET_ROOT=/usr/share/dotnet DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 \
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 DOTNET_GENERATE_ASPNET_CERTIFICATE=false \
     DOTNET_CLI_USE_MSBUILD_SERVER=0 MSBUILDDISABLENODEREUSE=1
-RUN dotnet --info | head -3
+# The language server of an arm with [agent.lsp] (D149): csharp-ls 0.16.0,
+# its last release on .NET 8 (0.17.0 on need .NET 9), installed while the
+# build may fetch, under the runner's prefix, on no PATH (D113).
+RUN dotnet tool install csharp-ls --version 0.16.0 --tool-path /opt/automaticum/lsp/csharp-ls \
+ && ln -s ../csharp-ls/csharp-ls /opt/automaticum/lsp/bin/csharp-ls \
+ && rm -rf /root/.nuget /root/.local/share/NuGet /tmp/NuGetScratch* \
+ && dotnet --info | head -3 && /opt/automaticum/lsp/bin/csharp-ls --version

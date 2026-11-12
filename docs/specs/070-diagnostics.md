@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.38, 2026-11-12.
+**Status:** draft 0.39, 2026-11-12.
 
 ## 1. The rule: no custom script
 
@@ -56,6 +56,14 @@ method is recorded.
   beside `time.model_ms`, their time in all; and `requests.endpoint_meta`,
   how many of them the endpoint described (`x-endpoint-meta`, 040 §7.1).
   Both come from a runner of protocol 10 on and are absent before it.
+  From analysis version 22 (2026-11-12, D149), on a run whose arm has the
+  editor's language servers (`[agent.lsp]`, protocol 11): `lsp.edits_checked`,
+  the edits the diagnostics after edits looked at; `lsp.edit_reports`, those
+  whose result got a diagnostics block; `lsp.edits_regressed`, those marked
+  regressed (more errors and warnings after than before, which the SDK's
+  loop tracker reads); `lsp.errors`, what the servers and the hooks failed
+  at. Absent on a run without the servers. The calls of `ask_lsp` and
+  `check_file` are in `tool_calls.by_tool` as every tool's.
 - **Volume:** requests, turns, tool calls by tool, tool failures by tool and by
   error class.
 - **Tokens:** prompt, cached, fresh, completion; completion split into

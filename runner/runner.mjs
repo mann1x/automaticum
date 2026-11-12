@@ -18,11 +18,13 @@ import { fileURLToPath } from "node:url";
 import { BUNDLED_SKILLS_ON_BY_DEFAULT, buildConfig, compareResolved, derivedFromArm, unsupported } from "./session.mjs";
 import { ACT_MODE_CONTINUATION_PROMPT, createSwitchToActModeTool, withSwitchTool } from "./plan.mjs";
 import { guardTrip, limitBreach, reasoningLimitAnswer, stopsOn } from "./guards.mjs";
+import { createCheckFileTool, createEditorDiagnosticsHooks } from "./editor.mjs";
+import { createLspHost } from "./lsp.mjs";
 import { privateTools } from "./tools.mjs";
 import { createUser } from "./user.mjs";
 import { createWire, describe } from "./wire.mjs";
 
-const PROTOCOL = 10;
+const PROTOCOL = 11;
 const SDK_PACKAGE = "@cerebriline/sdk";
 const EXIT = { completed: 0, error: 1, refused: 3, invalid: 4, wall_limit: 5, guard_stop: 6 };
 
@@ -202,6 +204,34 @@ async function main() {
 	const sha = (text) => createHash("sha256").update(text).digest("hex");
 	const hooks = sdk.createPromptTemplateHooks({ rendered: template.rendered, ideName: arm.agent.host_ide, log: (m) => note("prompt_template", { message: m }) });
 	const firstPrompt = promptFor(arm.agent.mode);
+
+	// 4a. The editor's language servers, for an arm with [agent.lsp]
+	// (040 §6.1, D149): ask_lsp as the extension builds it, the extension's
+	// check_file reading their diagnostics, and the diagnostics after
+	// edits. The servers of the workspace's languages start now, as an
+	// editor's do when it opens the folder; any other on its first question.
+	const lspArm = arm.agent.lsp?.enabled === true ? arm.agent.lsp : null;
+	let lsp = null;
+	let lspTools = [];
+	let lspHooks;
+	if (lspArm) {
+		let lspErrors = 0;
+		lsp = createLspHost({
+			cwd: job.workspace,
+			onError: (message, error) => {
+				if (++lspErrors <= 20) note("lsp_error", { message, error: describe(error).message });
+			},
+		});
+		const onError = (message, error) => note("lsp_error", { message, error: describe(error).message });
+		lspTools = [
+			sdk.createAskLspTool({ cwd: job.workspace, provider: lsp.provider, onError }),
+			createCheckFileTool({ createTool: sdk.createTool, describeDelimiterBalance: sdk.describeDelimiterBalance, cwd: job.workspace, lsp }),
+		];
+		if (lspArm.diagnostics_after_edits !== false) {
+			lspHooks = createEditorDiagnosticsHooks({ cwd: job.workspace, lsp, describeDelimiterBalance: sdk.describeDelimiterBalance, note });
+		}
+	}
+	const lspStarted = lsp ? lsp.prewarm() : [];
 	note("prepared", {
 		sdk: sdkFound,
 		node: process.version,
@@ -212,6 +242,9 @@ async function main() {
 		model_family_looked_up: false,
 		system_prompt_sha256: sha(firstPrompt),
 		system_prompt_bytes: Buffer.byteLength(firstPrompt),
+		lsp: lsp
+			? { tools: lspTools.map((t) => t.name), diagnostics_after_edits: lspHooks !== undefined, started: lspStarted, servers: lsp.status() }
+			: null,
 	});
 
 	// 5a. The hold (PROTOCOL.md): while the file "hold" stands next to the
@@ -299,6 +332,13 @@ async function main() {
 				return session.switchQueued ? { ...control, stop: true } : control;
 			},
 		};
+		// The language-server tools replace the SDK's check_file by name, as
+		// the extension's own does; the diagnostics after edits are hooks
+		// beside the session's (beforeTool and afterTool, which no other has).
+		if (lsp) {
+			built.config.extraTools = [...(built.config.extraTools ?? []), ...lspTools];
+			if (lspHooks) built.config.hooks = sdk.mergeAgentHooks([built.config.hooks, lspHooks]);
+		}
 		// The extension's switch tool, in plan mode only.
 		built.config = withSwitchTool(built.config, mode, switchTool);
 		// With a script, the tools of the extension's approval categories

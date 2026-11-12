@@ -25,8 +25,26 @@ RUN case "$(dpkg --print-architecture)" in \
  && tar -xzf /tmp/rg.tgz -C /opt/automaticum/tools --strip-components=1 "$rg/rg" \
  && rm /tmp/rg.tgz && /opt/automaticum/tools/rg --version
 
+# The language servers of an arm with [agent.lsp] (040 §6.1, D149): those
+# that run on Node, from the lockfile in images/lsp, and a static
+# shellcheck for the shell server, all under the runner's prefix, which is
+# on no PATH (D113). The runner starts them with its own Node; the layers
+# add the servers of their toolchains (gopls, rust-analyzer, clangd,
+# csharp-ls) to lsp/bin. The HTML server of vscode-langservers-extracted
+# 4.10.0 reads TypeScript's libraries from node_modules/node_modules (a
+# path its bundle gets wrong); without them a page's script has no types.
+COPY images/lsp/package.json images/lsp/package-lock.json /opt/automaticum/lsp/
+RUN cd /opt/automaticum/lsp \
+ && npm ci --ignore-scripts --no-audit --no-fund && npm cache clean --force \
+ && mkdir -p bin \
+ && curl -fsSL -o /tmp/sc.txz https://github.com/koalaman/shellcheck/releases/download/v0.10.0/shellcheck-v0.10.0.linux.x86_64.tar.xz \
+ && echo "6c881ab0698e4e6ea235245f22832860544f17ba386442fe7e9d629f8cbedf87  /tmp/sc.txz" | sha256sum -c - \
+ && tar -xJf /tmp/sc.txz -C bin --strip-components=1 shellcheck-v0.10.0/shellcheck && rm /tmp/sc.txz \
+ && bin/shellcheck --version | head -2 && test -f node_modules/typescript/lib/tsserver.js \
+ && mkdir node_modules/node_modules && ln -s ../typescript node_modules/node_modules/typescript
+
 WORKDIR /opt/automaticum/runner
-COPY runner/package.json runner/runner.mjs runner/guards.mjs runner/plan.mjs runner/session.mjs runner/tools.mjs runner/user.mjs runner/wire.mjs ./
+COPY runner/package.json runner/runner.mjs runner/guards.mjs runner/plan.mjs runner/session.mjs runner/tools.mjs runner/user.mjs runner/wire.mjs runner/lsp.mjs runner/editor.mjs ./
 # Where the SDK bundle is mounted, and the runner's own prefix (D113): it
 # starts as /opt/automaticum/bin/node, here Node of the image itself.
 RUN mkdir node_modules \

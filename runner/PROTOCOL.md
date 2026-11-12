@@ -1,4 +1,4 @@
-# The runner: protocol 10
+# The runner: protocol 11
 
 The runner is a Node program that runs **one** agent session for one run,
 inside the lane's container, and exits. The harness (`internal/run`) writes
@@ -75,6 +75,23 @@ comments, or a proxy holding the answer while it retries (D138). The wire
 capture adds each request's first body byte (`t_first_byte`,
 `ms_first_byte`) and what the endpoint said of it (`endpoint_meta`, D139).
 A protocol 9 runner would let such a run go idle, so the number went up.
+
+**Protocol 11 (2026-11-12):** the editor's language servers (040 §6.1.2,
+D149). An arm with `[agent.lsp] enabled = true` gets `ask_lsp` (the SDK's
+own tool, on the runner's language servers, `lsp.mjs`), the extension's
+`check_file` reading their diagnostics (it replaces the SDK's syntax check
+by name), and, unless `diagnostics_after_edits = false`, the diagnostics an
+`editor` or `apply_patch` call introduced appended to its result
+(`editor.mjs`). The servers are the image's, under
+`/opt/automaticum/lsp`; those of the workspace's languages start with the
+session. The `prepared` note carries `lsp` (null without the field): the
+tools, whether the diagnostics after edits are on, the servers started and
+every server with its languages and whether it is installed. Each edit the
+diagnostics after edits looked at is an `editor_diagnostics` note (`tool`,
+`targets`, `before`, `after`, `block_chars`, `balance_chars`, `regressed`);
+what a server failed at is an `lsp_error` note (at most 20 from the host),
+and a failure of the hooks themselves `editor_diagnostics_failed`. A
+protocol 10 runner would ignore the field, so the number went up.
 
 ## In
 
@@ -210,10 +227,11 @@ configuration; 4.100.266 does). From 4.100.266 the notice also says the
 limit that applied (`maxConsecutiveTrips`): one other than the arm's is a
 breach too.
 
-## What protocol 10 does not do
+## What protocol 11 does not do
 
 Escalation, sub-agents and teams, MCP approvals (no arm starts an MCP
-server), the emulation of editor behaviour (diagnostics after edits,
-mentions, the visible terminal: 040 §6.1), and looking up the model's
+server), the rest of the emulation of editor behaviour (mentions,
+`@problems`, the visible terminal: 040 §6.1; the browser, the Library tools
+and semantic search: the audit in 040 §6), and looking up the model's
 family on the server to choose a prompt template. An arm that asks for one
 of the first is refused; the others are recorded differences.

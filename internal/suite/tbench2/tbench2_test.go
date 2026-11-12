@@ -204,7 +204,7 @@ func TestTaskTOML(t *testing.T) {
 	df := LaneDockerfile(s, &pins)
 	for _, want := range []string{"FROM automaticum-lane:base AS lane\n", "FROM " + pins.Image + "\n", "ln -s /workspace /app",
 		"COPY --from=lane /usr/local/bin/node /opt/automaticum/bin/node\n", "COPY --from=lane /opt/automaticum/tools/rg /opt/automaticum/bin/rg\n",
-		"COPY --from=lane /opt/automaticum/runner /opt/automaticum/runner\n", "WORKDIR /workspace\n"} {
+		"COPY --from=lane /opt/automaticum/runner /opt/automaticum/runner\n", "COPY --from=lane /opt/automaticum/lsp /opt/automaticum/lsp\n", "WORKDIR /workspace\n"} {
 		if !strings.Contains(df, want) {
 			t.Errorf("the lane layer lacks %q", want)
 		}

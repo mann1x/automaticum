@@ -881,3 +881,26 @@ func TestLoopBlocks(t *testing.T) {
 		t.Errorf("no reasoning: %v", got)
 	}
 }
+
+// The runner's language-server notes (protocol 11, D149): counted only on
+// a run whose prepared note says it had the servers.
+func TestLSPNotes(t *testing.T) {
+	lines := []string{
+		`{"t":"2026-11-12T10:00:00Z","k":"runner","note":"prepared","lsp":{"tools":["ask_lsp","check_file"],"diagnostics_after_edits":true}}`,
+		`{"t":"2026-11-12T10:00:01Z","k":"runner","note":"editor_diagnostics","tool":"editor","before":1,"after":1,"block_chars":0,"regressed":false}`,
+		`{"t":"2026-11-12T10:00:02Z","k":"runner","note":"editor_diagnostics","tool":"editor","before":1,"after":3,"block_chars":120,"regressed":true}`,
+		`{"t":"2026-11-12T10:00:03Z","k":"runner","note":"editor_diagnostics","tool":"apply_patch","before":3,"after":2,"block_chars":80,"regressed":false}`,
+		`{"t":"2026-11-12T10:00:04Z","k":"runner","note":"lsp_error","message":"[ask_lsp] textDocument/hover failed","error":"timed out"}`,
+	}
+	ev, err := ReadEvents(strings.NewReader(strings.Join(lines, "\n")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ev.LSP || ev.LSPEdits != 3 || ev.LSPReports != 2 || ev.LSPRegressed != 1 || ev.LSPErrors != 1 {
+		t.Errorf("lsp %v edits %d reports %d regressed %d errors %d", ev.LSP, ev.LSPEdits, ev.LSPReports, ev.LSPRegressed, ev.LSPErrors)
+	}
+	off, err := ReadEvents(strings.NewReader(`{"t":"2026-11-12T10:00:00Z","k":"runner","note":"prepared","lsp":null}` + "\n"))
+	if err != nil || off.LSP {
+		t.Errorf("a run without the servers: %v %v", err, off.LSP)
+	}
+}
