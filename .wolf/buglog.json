@@ -1547,6 +1547,23 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-11-09T22:47:55.539444+00:00"
+    },
+    {
+      "id": "bug-090",
+      "timestamp": "2026-11-12T10:05:00+01:00",
+      "error_message": "manic_miner oracle printed {\"ok\":true,...,\"game_logic\":{\"ok\":false,\"passed\":22,\"total\":23}}; the agent read the first ok and declared itself done (verdict FAIL). Owner: 'there should be no parent ok: true flag if the game logic is failing'",
+      "file": "tasks/custom/manic_miner/oracle/run_game.logic.js",
+      "root_cause": "v4 kept top-level ok as 'page loads and physics run' for comparability with old records; game_logic was attached beside it and never folded in, so the oracle's own output contradicted its verdict",
+      "fix": "task version 5 (D145): ok = runs && game_logic.ok, old meaning printed last as runs; task pin --write (4088844b...), oracle verify 3x3; specs 060 §5.1, 050 §6/030 §1 (tasks read per run, artefacts never built by a run)",
+      "tags": [
+        "manic_miner",
+        "oracle",
+        "task-version",
+        "agent-reads-output"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-12T10:05:00+01:00"
     }
   ]
 }

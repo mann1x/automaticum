@@ -1,6 +1,6 @@
 # 050 — Orchestration: scheduling, gates, control
 
-**Status:** draft 0.24, 2026-11-09.
+**Status:** draft 0.25, 2026-11-12.
 
 ## 1. Scheduling
 
@@ -419,6 +419,15 @@ itself after repeated infrastructure failures (item 2 of the audit).
     `watch_config`, the token and `listen` in force at once. A new `listen`
     is bound before the old address is let go; one that cannot be bound
     refuses the reload. Arms and models were already read at each use.
+  - Tasks are read at each run's start too, from the checkout's `tasks/` and
+    the `private_tasks` root: a changed `task.toml`, seed or oracle source
+    takes effect from the next run with no reload, and a run in flight keeps
+    the task it started with. A run never builds an artefact: one whose
+    pinned hash is not built, or whose oracle was not proven for the task as
+    it is now (the task's hash), is SKIPPED by the gate (§2) naming
+    `automaticum task build` or `automaticum oracle verify`. After a task is
+    changed and pinned again (`task pin --write`), run `oracle verify` on
+    each installation before the next run; it builds the artefacts as well.
   - `data_root`, `archive_root`, `docker_socket` and `repo` are held open
     by the running daemon: a change to them keeps the old value until the
     next start and is named (`restart` in `config show` and `status`).

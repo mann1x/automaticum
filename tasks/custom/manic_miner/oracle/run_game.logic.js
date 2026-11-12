@@ -10,7 +10,10 @@
 //   node smoke.js <file.html> [frames]
 //
 // Prints one JSON object:
-//   { ok, error, frames_run, started, state, player_frames, reached_playing }
+//   { ok, error, frames_run, started, state, player_frames, reached_playing, game_logic, runs }
+//
+// v5 (2026-11-12): `ok` is the whole verdict -- the page runs AND game_logic.ok. `runs` is what
+// `ok` meant up to v4 (the page loads and the physics run).
 //
 // FRAMES DEFAULT IS 400, AND THAT IS THE WHOLE POINT.
 //
@@ -667,20 +670,28 @@ function gameLogic(blocks) {
 	};
 }
 
-// `ok` keeps its old meaning -- the page loads and the physics run -- so
-// every verdict recorded before game_logic existed still reads the same.
-// game_logic is judged only once that holds; a page that does not run has
+// game_logic is judged only once the page runs; a page that does not run has
 // no rules to check.
+//
+// v5 (2026-11-12): `ok` is the whole verdict -- the page runs AND the game keeps
+// its own rules (game_logic.ok). Up to v4 `ok` meant only "loads and the physics
+// run", so a rewrite that broke the rules printed {"ok":true, ..., "game_logic":
+// {"ok":false, ...}} and an agent read the first `ok` and declared itself done
+// (bm-889 sft11 s800 run 007: game_logic 22/23, verdict FAIL). The v4 meaning
+// is kept as `runs`, so a run's log still shows how far the page got.
 try {
 	const html = fs.readFileSync(file, "utf8");
 	const blocks = scriptBlocks(html);
 	const verdict = run(html, blocks);
 	verdict.game_logic = verdict.reached_playing ? gameLogic(blocks) : null;
-	console.log(JSON.stringify(verdict));
+	const runs = verdict.ok === true;
+	const ok = runs && verdict.game_logic !== null && verdict.game_logic.ok === true;
+	console.log(JSON.stringify({ ...verdict, ok, runs }));
 } catch (error) {
 	console.log(
 		JSON.stringify({
 			ok: false,
+			runs: false,
 			error: `harness: ${error.message}`,
 			frames_run: 0,
 			started: false,

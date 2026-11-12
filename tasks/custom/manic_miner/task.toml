@@ -4,10 +4,16 @@
 # 3 are that harness's; version 4 is the first in automaticum: same seed file
 # and oracle logic as version 3, in a container lane, with a rebuilt oracle
 # binary. Version 4 is a comparability boundary (docs/specs/060 section 5.1).
+#
+# Version 5 (2026-11-12): the oracle's top-level `ok` is the whole verdict --
+# the page runs and game_logic.ok -- instead of only "the page runs"; the old
+# meaning is printed as `runs`. The PASS pattern is unchanged, but the agent
+# now reads `"ok":false` while game_logic fails, so v4 and v5 runs are not
+# comparable (docs/specs/060 section 5.1).
 
 id = "manic_miner"
 suite = "custom"
-version = 4
+version = 5
 layers = ["typescript"]
 default_answer = "Use your own judgement and continue."
 
@@ -36,7 +42,7 @@ image = "node@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86
 inputs = ["oracle/build.mjs", "oracle/run_game.logic.js"]
 command = ["node", "/task/oracle/build.mjs", "/task/oracle/run_game.logic.js", "/out/run_game"]
 output = "run_game"
-sha256 = "13cdd05ae54974f640f934e3a8c8e9500c4c87f4023bfab1000ec9c5c30c1659"
+sha256 = "4088844b64c5662815e79cf68e55c1e913350c1fe9d3fcb7d70e61aa0cfd1378"
 
 # The agent's copy of the oracle: it may run it, and cannot read its source.
 [[workspace.install]]

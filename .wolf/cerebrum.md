@@ -59,6 +59,10 @@
 
 ## Do-Not-Repeat
 
+- 2026-11-12: OpenWolf's session consolidation can replace real .wolf/memory.md rows with `> Consolidated session (0 actions)` lines. Before committing, diff memory.md against HEAD; rebuild from HEAD plus the new rows if rows vanished.
+
+- 2026-11-12: an oracle the agent runs must never print a top-level success beside a failing part: the agent reads the first `ok`. Fold every check into the headline field and keep any older meaning under its own name (bug-090).
+
 - 2026-11-09: a filter or list must cover runs in every state, queued and running included, or say loudly what it leaves out. A run not finished still has an arm (the one it started with, or would start with now). Every noun the harness runs needs a way to see what is active (`arm ls --active`, `run ls --state`): ask "can a person and an assistant see what is running right now, by this noun?" before calling a command done (bug-088).
 
 - 2026-11-09: never capture a config object's maps for direct reads in a long-running process. Read through locked accessors and swap whole after validating (config.Local.Reload/Apply); a run in flight keeps the value it took. Take signal handlers at the first moment of start-up (a default SIGHUP kills the process), ignore SIGPIPE, and let the CLI reach the daemon from automaticum.toml alone (config.LoadClient), never a full LoadLocal.
@@ -81,6 +85,8 @@
 - 2026-10-13: never invent detector, guard or limit numbers. xollama's GPU host is `windows-2`. Job waiters need an exit-code file, a failure exit and a time bound.
 
 ## Decision Log
+
+- 2026-11-12 (D145): manic_miner task version 5: the oracle's top-level `ok` is runs AND game_logic.ok; the old meaning is `runs`; a comparability boundary.
 
 - 2026-11-09 (D144): the running daemon takes a changed configuration without a restart (SIGHUP, `config reload`, the `watch_config` watcher); refused whole on any problem; lanes, endpoints, settings, token, listen live; data_root/archive_root/docker_socket/repo from the next start, named; removed lanes finish their run; queued runs without lane/endpoint wait; panics end one run, not the daemon.
 

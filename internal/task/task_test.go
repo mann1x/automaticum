@@ -35,7 +35,7 @@ func TestLoadAll(t *testing.T) {
 	if mm == nil || byName["demo/answer"] == nil {
 		t.Fatalf("tasks found: %v", byName)
 	}
-	if mm.Version != 4 || mm.Limits.WallS != 7200 || len(mm.Artefacts) != 1 || len(mm.Fixtures) != 3 {
+	if mm.Version != 5 || mm.Limits.WallS != 7200 || len(mm.Artefacts) != 1 || len(mm.Fixtures) != 3 {
 		t.Errorf("manic_miner: %+v", mm)
 	}
 	if strings.HasPrefix(mm.Prompt, "\n") || !strings.HasPrefix(mm.Prompt, "check manic_miner.html") || strings.HasSuffix(mm.Prompt, "\n") {

@@ -1,6 +1,6 @@
 # 060 — Tasks, oracles and the suite interface
 
-**Status:** draft 0.15, 2026-11-04.
+**Status:** draft 0.16, 2026-11-12.
 
 ## 1. Scope
 
@@ -138,6 +138,15 @@ working reference and the fixtures are in this repository under
   logic are those of version 3 (100 §3), but the lane is a container, the SDK
   build is another, and the oracle binary is rebuilt. Version 4 is a
   comparability boundary.
+- **Decided by the owner (2026-11-12, D145): task version 5.** The oracle's
+  top-level `ok` is the whole verdict: the page runs **and** `game_logic.ok`.
+  Up to version 4 `ok` meant only that the page loads and the physics run,
+  so a rewrite that broke the game's rules printed `"ok":true` beside
+  `"game_logic":{"ok":false,...}`, and an agent read the first `ok` and
+  declared itself done (a client's run: game_logic 22 of 23, verdict FAIL).
+  The old meaning is printed last, as `runs`. The PASS pattern and the
+  fixtures are unchanged, but what the agent reads changed, so version 5 is
+  a comparability boundary.
 - The agent still gets the oracle as `./run_game`, a single executable whose
   source it cannot read in the workspace, because the prompt tells it to run
   that. The binary is built reproducibly from the source in the repository

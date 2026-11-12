@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.25, 2026-11-09.
+**Status:** draft 0.26, 2026-11-12.
 
 ## 1. Rules
 
@@ -49,7 +49,8 @@ suites/*.toml             tracked (milestone 5): source, pinned version, scorer
 directory again whenever it changes (`watch_config`, on unless `false`),
 on SIGHUP and on `automaticum config reload`, with the checks of the start;
 a directory that does not load leaves the configuration in force whole.
-What it reloads and what waits for a restart is in 050 §6.
+What it reloads and what waits for a restart is in 050 §6. Arms, models and
+tasks need no reload: each run reads them when it starts (050 §6).
 
 ## 2. Lanes
 

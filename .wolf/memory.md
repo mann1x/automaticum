@@ -4,25 +4,18 @@
 > Old sessions are consolidated by the daemon weekly.
 
 ## Session: 2026-11-02 04:00
-> Consolidated session (9 actions)
 
 ## Session: 2026-11-02 08:54
-> Consolidated session (1 actions)
 
 ## Session: 2026-11-02 09:20
-> Consolidated session (2 actions)
 
 ## Session: 2026-11-02 10:25
-> Consolidated session (1 actions)
 
 ## Session: 2026-11-02 11:53
-> Consolidated session (1 actions)
 
 ## Session: 2026-11-02 12:11
-> Consolidated session (1 actions)
 
 ## Session: 2026-11-02 13:30
-> Consolidated session (5 actions)
 
 ## Session: 2026-11-03 01:15
 
@@ -218,3 +211,5 @@
 | 21:27 | 1719590 staged on blackswan-2 as bin/*.new (sha256 match), config check ok (47 arms, 24 models, 56 tasks); swap waits for a window from backup_models (#2232): 2 running, 7 queued on gatefix-g0/g1 | - | staged | ~600 |
 | 23:36 | blackswan-2 swapped to 1719590 (backup_models window #2239; gpu0/gpu1 claimed and released): bin/*.prev and unit .pre-1719590 kept, repo 1719590, NRestarts=0, all lanes idle; arm ls -active/-running, run ls -arm -state finished, SIGHUP reload verified on the host | - | deployed | ~1500 |
 | 23:52 | bug-089 (owner): run ls -arm-name / ?arm= / --where arm=; store schema 4 adds runs.arm_name (store.ArmName, backfilled on open); fake runner records the resolved arm; rehearsed on a copy of blackswan-2's state.duckdb: 935/935 named, shared id gate-g1|probe surfaced; deploy skill: back up state.duckdb on a schema bump | internal/store/duck/duck.go, store.go, internal/daemon/api.go, cmd/automaticum/client_cmds.go | make test + test-store green | ~12000 |
+| 04:22 | blackswan-2 swapped to f6221de (schema 4, state.duckdb.pre-f6221de kept); -arm-name 5/4 vs -arm 9 on the shared id; reload ok; DONE mailed | blackswan-2 | ok | ~3k |
+| 10:05 | D145 manic_miner v5 (backup_models #2262, owner): ok = runs && game_logic.ok, old meaning as runs; pinned 4088844b, oracle verify 3x3, fixture output checked; 060 §5.1, 050 §6 + 030 §1 (tasks read per run start; a run never builds artefacts: re-pin -> oracle verify per installation); bug-090 | tasks/custom/manic_miner, docs/specs | make test green | ~8k |
