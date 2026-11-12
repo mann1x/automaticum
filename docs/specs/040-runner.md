@@ -1,6 +1,6 @@
 # 040 — The runner
 
-**Status:** draft 1.17, 2026-11-12. Facts about the SDK in this file were read
+**Status:** draft 1.18, 2026-11-12. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
 running it. The parity table in §6 was checked row by row by the Cerebriline
 session on 2026-10-13 against its main branch (release 4.100.249 plus requests
@@ -289,7 +289,7 @@ that installation, not from the default.
 | `render_image`, `transform_image` | always, on the same Chrome | `[agent.browser]`: emulated (§6.1.3) |
 | media tools (`generate_image`, `generate_icon`, audio, video) | off until an endpoint and a model are configured | absent, as by default |
 | `sdd` | only when a spec-driven skill is on | absent, as by default (no arm turns such a skill on) |
-| Library tools (`library_*`) | only when the Library panel has them on; search by meaning with an embedding endpoint | absent, as by default. The owner's sessions use them (about 400 calls): an emulation needs the Library's index and an embedding endpoint, as an arm field. Not built |
+| Library tools (`library_*`) | only when the Library panel has them on; search by meaning with an embedding endpoint | absent, as by default. The owner's sessions use them (about 400 calls), but they are not wanted now (**decided by the owner, 2026-11-12, D151**); an emulation would need the Library's index and an embedding endpoint, as an arm field |
 | `web_scrape` | only when scraping is set up and allowed | absent, as by default |
 | memory tools | only when the Memory panel has them on | absent, as by default |
 | `jev` | only with the user's key (a paid service) | absent, as by default |
@@ -299,8 +299,9 @@ Semantic search (`search_codebase`'s `mode: "semantic"`) is not an extra
 tool: the extension hands the SDK a `semanticSearch` executor
 (`createCodeSearch`) only for a folder the user opted into the Library's
 index, with an embedding model set. The runner hands none, so the mode is
-absent, as for a folder that is not opted in; an emulation needs the same
-embedding endpoint as the Library tools.
+absent, as for a folder that is not opted in. **Decided by the owner
+(2026-11-12, D151):** not wanted now, like the Library tools; an emulation
+would need the same embedding endpoint.
 
 Two behaviours were missing from the table and were added as known
 differences until emulated: `check_file` in the extension reads the editor's

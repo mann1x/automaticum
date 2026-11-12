@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-11-12 (revision 55).
+**Status:** current as of 2026-11-12 (revision 56).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -160,6 +160,7 @@ All dated 2026-10-12.
 | D148 | Every detector and measure threshold has a default from the SDK, where the SDK has the rule, else from the owner, and is customizable (030 §1, 070 §3.3; 2026-11-12, the owner: "the thresholds comes from the SDK but as defaults. automaticum must be flexible so it needs to have the thresholds customizable. tell automaticum to add both"). A registry names each threshold with its default, origin and source; `automaticum.toml` `[thresholds]` overrides them per installation and `detect --threshold` per read; every read records the effective values and where each came from. Both loop measures are added: loop blocks (a reasoning block whose most repeated unit is written `reasoning_block.max_repeat` times or more, 20 by default, the owner's: the SDK has no such rule) and the share of thinking in them, per run and in `detect`'s `loops` totals with loops per model hour. The existing detectors' numbers were moved into the registry the same day with their SDK or owner sources (53 thresholds in all); `model_reloaded.min_load_seconds` stays 1 s by the owner's word ("keep 1 second, unless it's set manually with a proper value in edge cases, there's no safe default value which is better than 1 second"). | 030 §1, 070 §3.3 |
 | D149 | The editor's language servers are emulated for every language the lane layers carry, as the arm field `[agent.lsp]`: `ask_lsp` (the SDK's tool), the extension's `check_file` on the servers' diagnostics, and the diagnostics after edits; left out or off, an arm keeps its identity, and one tool alone is removed with `disabled_tools` (protocol 11; 2026-11-12, the owner: "we need search_codebase and ask_lsp to work in automaticum", "complete support of lsp, not only .ts", relayed with the A/B request). | 040 §6.1.2, 030 §5, 063 §2, 070 §2 |
 | D150 | The browser is emulated with a Chrome in the lane, as the arm field `[agent.browser]`: the SDK's `browser`, `render_image` and `transform_image` on the extension's drivers (BrowserSession's local mode, renderWithChrome), Chrome for Testing at puppeteer-core's revision under the runner's prefix; left out or off, an arm keeps its identity (protocol 11; 2026-11-12, the owner: "add the browser too, with chrome in the lane"). | 040 §6.1.3, 030 §5, 070 §2 |
+| D151 | The extension's Library tools and `search_codebase`'s semantic mode are not emulated for now, an exception to the parity of D13; a run has neither, as a plugin folder not opted into the Library's index (2026-11-12, the owner: "we don't need the library tools and the semantic search now"). | 040 §6 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked

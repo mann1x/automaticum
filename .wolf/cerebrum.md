@@ -97,6 +97,8 @@
 
 ## Decision Log
 
+- 2026-11-12 D151: Library tools and semantic search are not emulated for now (owner: "we don't need the library tools and the semantic search now"). Do not propose them as next work until the owner asks.
+
 - 2026-11-12 D150: the browser with Chrome in the lane, `[agent.browser]` (browser, render_image, transform_image on the extension's drivers; Chrome for Testing 131 at puppeteer-core 23.11.1's revision, under /opt/automaticum/browser). Owner: "add the browser too, with chrome in the lane". SDK fixes asked as X15 (owner: "mail ollama to fix the sdk bugs and release a new one, then integrate it").
 
 - 2026-11-12 D149: the editor's language servers emulated for every lane language as `[agent.lsp]` (enabled, diagnostics_after_edits); off/absent keeps arm identity; one tool removed with disabled_tools; protocol 11. Owner: "we need search_codebase and ask_lsp to work in automaticum", "complete support of lsp, not only .ts".
