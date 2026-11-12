@@ -7,9 +7,10 @@
 #
 # Version 5 (2026-11-12): the oracle's top-level `ok` is the whole verdict --
 # the page runs and game_logic.ok -- instead of only "the page runs"; the old
-# meaning is printed as `runs`. The PASS pattern is unchanged, but the agent
-# now reads `"ok":false` while game_logic fails, so v4 and v5 runs are not
-# comparable (docs/specs/060 section 5.1).
+# meaning is printed as `runs`. The PASS pattern is unchanged and already
+# required game_logic.ok, so v4 and v5 verdicts are comparable: the agent now
+# reads `"ok":false` while game_logic fails, a change of what it is told, not
+# of the measurement (docs/specs/060 section 5.1).
 
 id = "manic_miner"
 suite = "custom"

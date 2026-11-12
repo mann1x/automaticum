@@ -1,6 +1,6 @@
 # 060 — Tasks, oracles and the suite interface
 
-**Status:** draft 0.16, 2026-11-12.
+**Status:** draft 0.17, 2026-11-12.
 
 ## 1. Scope
 
@@ -145,8 +145,15 @@ working reference and the fixtures are in this repository under
   `"game_logic":{"ok":false,...}`, and an agent read the first `ok` and
   declared itself done (a client's run: game_logic 22 of 23, verdict FAIL).
   The old meaning is printed last, as `runs`. The PASS pattern and the
-  fixtures are unchanged, but what the agent reads changed, so version 5 is
-  a comparability boundary.
+  fixtures are unchanged, and the pattern already required `game_logic.ok`,
+  so a version 4 run's workspace scores the same under the version 5 oracle
+  (a client checked 20 runs: every verdict the same). **Decided by the owner
+  (2026-11-12):** versions 4 and 5 are comparable ("the v4 runs can be
+  validated with the same v5 oracle and are perfectly comparable then").
+  Version 5 changes what the agent reads, a fact of the treatment recorded
+  in each run's `task_version`, not the measurement. A version 4 run
+  rescored with the version 5 oracle (065 §4) is compared at version 5
+  (020 §4).
 - The agent still gets the oracle as `./run_game`, a single executable whose
   source it cannot read in the workspace, because the prompt tells it to run
   that. The binary is built reproducibly from the source in the repository

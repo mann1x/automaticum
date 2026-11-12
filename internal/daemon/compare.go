@@ -45,6 +45,10 @@ type CompareView struct {
 	// in the view are at more than one version.
 	PooledVersions bool             `json:"pooled_versions,omitempty"`
 	MixedVersions  map[string][]int `json:"mixed_task_versions,omitempty"`
+	// Rescored are the runs counted with their latest rescore's verdict,
+	// at the task version whose oracle gave it (020 §4, D121), each with
+	// what changed.
+	Rescored map[string]string `json:"rescored,omitempty"`
 }
 
 // CompareGroup is the runs of one arm on one task.
@@ -477,7 +481,8 @@ func (d *Daemon) handleCompare(w http.ResponseWriter, r *http.Request) {
 //
 // Runs of a task at another version than the latest in the view are left
 // out, each with the reason, unless pool is set (020 §4): a task version is
-// a comparability boundary.
+// a comparability boundary. A run rescored by a task version's oracle
+// counts with that verdict, at that version.
 func (d *Daemon) compareView(ctx context.Context, batches []string, leave map[string]bool, split string, pool bool) (CompareView, int, error) {
 	if len(batches) == 0 {
 		return CompareView{}, http.StatusBadRequest, errors.New("name at least one batch")
@@ -512,8 +517,27 @@ func (d *Daemon) compareView(ctx context.Context, batches []string, leave map[st
 			v.EngineNote = EngineNote
 		}
 		d.mu.Unlock()
-		for _, run := range runs {
-			if task := run.Suite + "/" + run.TaskID; run.Verdict != store.Skipped && run.TaskVersion > latest[task] {
+		for i := range runs {
+			run := &runs[i]
+			if run.Verdict == store.Skipped {
+				continue
+			}
+			rs, err := d.latestRescore(ctx, run.ID)
+			if err != nil {
+				return v, http.StatusInternalServerError, err
+			}
+			if rs != nil && rs.Verdict != "" {
+				if v.Rescored == nil {
+					v.Rescored = map[string]string{}
+				}
+				at := run.TaskVersion
+				if rs.TaskVersion > 0 {
+					at = rs.TaskVersion
+				}
+				v.Rescored[run.ID] = fmt.Sprintf("%s at task version %d, rescored %s to %s at version %d", run.Verdict, run.TaskVersion, rs.At.Format("2006-01-02"), rs.Verdict, at)
+				run.Verdict, run.VerdictReason, run.TaskVersion = rs.Verdict, rs.Reason+" (rescored)", at
+			}
+			if task := run.Suite + "/" + run.TaskID; run.TaskVersion > latest[task] {
 				latest[task] = run.TaskVersion
 			}
 		}

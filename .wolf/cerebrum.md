@@ -59,6 +59,8 @@
 
 ## Do-Not-Repeat
 
+- 2026-11-12 (owner: "why v4 and v5 should not be comparable? don't be silly"): a task version bump is not automatically a comparability boundary. Ask what the measurement is: if the verdict is unchanged, or a stored workspace can be scored by the new oracle (rescore), the versions are comparable. Never copy a client's "boundary" wording without checking it against the verdict pattern.
+
 - 2026-11-12: OpenWolf's session consolidation can replace real .wolf/memory.md rows with `> Consolidated session (0 actions)` lines. Before committing, diff memory.md against HEAD; rebuild from HEAD plus the new rows if rows vanished.
 
 - 2026-11-12: an oracle the agent runs must never print a top-level success beside a failing part: the agent reads the first `ok`. Fold every check into the headline field and keep any older meaning under its own name (bug-090).
@@ -86,7 +88,7 @@
 
 ## Decision Log
 
-- 2026-11-12 (D145): manic_miner task version 5: the oracle's top-level `ok` is runs AND game_logic.ok; the old meaning is `runs`; a comparability boundary.
+- 2026-11-12 (D145): manic_miner task version 5: the oracle's top-level `ok` is runs AND game_logic.ok; the old meaning is `runs`. v4 and v5 are comparable (owner); a run rescored by a later version's oracle is compared at that version (compare/report ab/basis show).
 
 - 2026-11-09 (D144): the running daemon takes a changed configuration without a restart (SIGHUP, `config reload`, the `watch_config` watcher); refused whole on any problem; lanes, endpoints, settings, token, listen live; data_root/archive_root/docker_socket/repo from the next start, named; removed lanes finish their run; queued runs without lane/endpoint wait; panics end one run, not the daemon.
 

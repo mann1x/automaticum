@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -65,6 +66,10 @@ type RescoreRecord struct {
 	// RunTaskHash the one the run ran on.
 	TaskHash    string `json:"task_hash"`
 	RunTaskHash string `json:"run_task_hash"`
+	// TaskVersion is the version of the task the oracle came from: a run
+	// rescored with a later version's oracle is compared at that version
+	// (020 §4). Records made before it was written have none.
+	TaskVersion int `json:"task_version,omitempty"`
 }
 
 // RescoreStatus is where a cell's rescore is.
@@ -338,6 +343,7 @@ func (d *Daemon) rescoreOne(ctx context.Context, runID string) error {
 	os.RemoveAll(dir)
 	defer os.RemoveAll(dir)
 	ws := filepath.Join(dir, "workspace")
+	before := ""
 	collected := map[string]string{}
 	found := false
 	for i, ref := range refs {
@@ -345,6 +351,9 @@ func (d *Daemon) rescoreOne(ctx context.Context, runID string) error {
 		switch ref.Kind {
 		case "workspace_after":
 			into, found = ws, true
+		case "workspace_before":
+			before = filepath.Join(dir, "before")
+			into = before
 		case "collected":
 			into = filepath.Join(dir, fmt.Sprintf("collected-%d", i))
 			collected[ref.Name] = into
@@ -367,6 +376,9 @@ func (d *Daemon) rescoreOne(ctx context.Context, runID string) error {
 	if oerr != nil && ctx.Err() != nil {
 		return oerr
 	}
+	if before != "" {
+		or.Tampered = changedInstalls(tk, before, ws, or.Tampered)
+	}
 	var prov struct {
 		Task struct {
 			Hash string `json:"hash"`
@@ -375,7 +387,7 @@ func (d *Daemon) rescoreOne(ctx context.Context, runID string) error {
 	json.Unmarshal(rec.Provenance, &prov)
 	at := time.Now().UTC()
 	out := RescoreRecord{Run: runID, At: at, Oracle: o.Name, Was: rec.Verdict, Passed: or.Passed, ExitCode: or.ExitCode,
-		TimedOut: or.TimedOut, Err: or.Err, Tampered: or.Tampered, TaskHash: tk.Hash, RunTaskHash: prov.Task.Hash}
+		TimedOut: or.TimedOut, Err: or.Err, Tampered: or.Tampered, TaskHash: tk.Hash, RunTaskHash: prov.Task.Hash, TaskVersion: tk.Version}
 	var failed error
 	switch {
 	case oerr != nil:
@@ -423,4 +435,30 @@ func (d *Daemon) untarBlob(ctx context.Context, ref store.BlobRef, dir string) e
 	}
 	defer rd.Close()
 	return run.Untar(rd, dir)
+}
+
+// changedInstalls is which installed artefacts the agent changed: its copy
+// in the workspace after the run against the copy the run was given, not
+// against the task's pin now, which a later task version changes (a run
+// of version 4 has version 4's oracle in its workspace). An install the
+// stored workspace before does not hold is judged as the oracle judged it,
+// against the pin (byPin).
+func changedInstalls(tk *task.Task, before, after string, byPin []string) []string {
+	var out []string
+	for _, in := range tk.Workspace.Install {
+		if in.Seed {
+			continue
+		}
+		given, err := task.HashFile(filepath.Join(before, in.Path))
+		if err != nil {
+			if slices.Contains(byPin, in.Path) {
+				out = append(out, in.Path)
+			}
+			continue
+		}
+		if left, err := task.HashFile(filepath.Join(after, in.Path)); err != nil || left != given {
+			out = append(out, in.Path)
+		}
+	}
+	return out
 }

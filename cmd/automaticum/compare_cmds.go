@@ -76,6 +76,13 @@ func compareAs(ctx context.Context, args []string, name, split string) error {
 			fmt.Printf("note: task %s: runs at versions %v; only the latest counts (--pool-versions counts all)\n\n", task, v.MixedVersions[task])
 		}
 	}
+	if n := len(v.Rescored); n > 0 {
+		fmt.Printf("note: %d runs counted with their rescored verdict (rescore), at the task version whose oracle gave it:\n", n)
+		for _, id := range slices.Sorted(maps.Keys(v.Rescored)) {
+			fmt.Printf("  %s  %s\n", id, v.Rescored[id])
+		}
+		fmt.Println()
+	}
 	letter := func(i int) string { return string(rune('A' + i)) }
 	for i, g := range v.Groups {
 		fmt.Printf("%s  arm %s (%s), task %s\n   model %s, SDK %s\n", letter(i), g.Arm, shortIDs(g.ArmID), g.Task, g.Model, g.SDK)

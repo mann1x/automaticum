@@ -1,6 +1,6 @@
 # 020 — The run record, verdicts and the basis
 
-**Status:** draft 0.19, 2026-11-03.
+**Status:** draft 0.20, 2026-11-12.
 
 Nothing in this file is optional. Each item is here because its absence
 invalidated or blinded a real campaign. A value is recorded **as probed or as
@@ -164,6 +164,13 @@ Rules:
 - Reports refuse to pool across a boundary unless told to, and say which runs
   were excluded and why. For the task version this is built (070 §6:
   `--pool-versions`); a scorer change has no boundary of its own yet.
+- **Decided by the owner (2026-11-12, D145):** a run rescored from its stored
+  workspace by a later task version's oracle (065 §4) is comparable with
+  that version's runs. **Built 2026-11-12:** `compare`, `report ab` and
+  `basis show` count such a run with its latest rescore's verdict, at the
+  version whose oracle gave it, and list it with its verdict before and
+  after; a run of the older version not rescored is still left out unless
+  versions are pooled.
 
 ## 5. The basis
 

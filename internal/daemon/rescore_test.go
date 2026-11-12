@@ -6,9 +6,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -193,8 +195,87 @@ func TestRescore(t *testing.T) {
 			t.Errorf("row: %+v", row)
 		}
 	}
+	// compare counts the same answers, at the version that gave them.
+	var cmp CompareView
+	g.call("GET", "/v1/compare?batch="+cell.Batch, nil, &cmp)
+	if len(cmp.Rescored) != 2 || !strings.Contains(cmp.Rescored[ids[1]], "rescored") || len(cmp.Groups) != 1 ||
+		cmp.Groups[0].Verdicts["PASS"] != 3 || cmp.Groups[0].Verdicts["FAIL"] != 1 {
+		t.Errorf("compare after the rescore: %+v %+v", cmp.Rescored, cmp.Groups)
+	}
+	if r := got[ids[1]]; r.TaskVersion == 0 {
+		t.Errorf("the record has no task version: %+v", r)
+	}
 	// A finished rescore may be followed by another.
 	if code := g.call("POST", "/v1/batches/"+cell.Batch+"/rescore", nil, nil); code != 202 {
 		t.Errorf("a second rescore after the first: %d", code)
+	}
+}
+
+// TestChangedInstalls: a rescore judges the agent's copy of an installed
+// artefact against the copy its run was given, so a run of an older task
+// version, whose workspace holds that version's oracle, is not taken for
+// one that changed it (bug-091); a copy the agent changed or removed still
+// is, and an install the stored workspace before lacks is judged by the pin.
+func TestChangedInstalls(t *testing.T) {
+	tk := &task.Task{Workspace: task.Workspace{Install: []task.Install{
+		{Artefact: "a", Path: "run_game"}, {Artefact: "b", Path: "tool"}, {Artefact: "c", Path: "gone"},
+		{Artefact: "d", Path: "new"}, {Artefact: "e", Path: "big", Seed: true},
+	}}}
+	before, after := t.TempDir(), t.TempDir()
+	put := func(dir, name, body string) {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o555); err != nil {
+			t.Fatal(err)
+		}
+	}
+	put(before, "run_game", "v4 oracle")
+	put(after, "run_game", "v4 oracle")
+	put(before, "tool", "given")
+	put(after, "tool", "edited by the agent")
+	put(before, "gone", "given")
+	put(after, "new", "built after the run")
+	put(before, "big", "x")
+	put(after, "big", "y")
+	got := changedInstalls(tk, before, after, []string{"run_game", "tool", "gone", "new"})
+	if want := []string{"tool", "gone", "new"}; !slices.Equal(got, want) {
+		t.Fatalf("changed: %v, want %v", got, want)
+	}
+	if got := changedInstalls(tk, before, after, []string{"tool"}); !slices.Equal(got, []string{"tool", "gone"}) {
+		t.Fatalf("an install missing before, not refused by the pin: %v", got)
+	}
+}
+
+// TestCompareRescoredVersion: a run of an older task version rescored with
+// a later version's oracle is compared at that version with its new
+// verdict; one not rescored is still left out unless versions are pooled
+// (020 §4).
+func TestCompareRescoredVersion(t *testing.T) {
+	g := newRig(t, false)
+	blobs := &syncBlobs{m: map[blob.Hash]string{}}
+	g.d.Blobs, g.d.Store = blobs, blobs.Put
+	ctx := context.Background()
+	add := func(id string, version int, verdict store.Verdict) {
+		g.state.UpsertRun(ctx, &store.Run{ID: id, Batch: "bv", Suite: "custom", TaskID: "manic_miner", TaskVersion: version, ArmID: "id-a",
+			Verdict: verdict, Arm: json.RawMessage(`{"name":"a"}`)})
+	}
+	add("v4-rescored", 4, store.Fail)
+	add("v4-plain", 4, store.Pass)
+	add("v5", 5, store.Pass)
+	b, _ := json.Marshal(RescoreRecord{Run: "v4-rescored", At: time.Now().UTC(), Verdict: store.Pass, Reason: "oracle ran and said yes", Was: store.Fail, TaskVersion: 5})
+	h, n, _ := blobs.Put(ctx, bytes.NewReader(b))
+	g.state.AddBlobRefs(ctx, []store.BlobRef{{RunID: "v4-rescored", Kind: "rescore", Name: time.Now().UTC().Format(rescoreName), Hash: h, Size: n}})
+
+	var v CompareView
+	if code := g.call("GET", "/v1/compare?batch=bv", nil, &v); code != 200 || len(v.Groups) != 1 {
+		t.Fatalf("compare: %d %+v", code, v)
+	}
+	gr := v.Groups[0]
+	if !slices.Equal(gr.Runs, []string{"v4-rescored", "v5"}) && !slices.Equal(gr.Runs, []string{"v5", "v4-rescored"}) {
+		t.Errorf("counted: %v (left out %v)", gr.Runs, gr.Excluded)
+	}
+	if gr.Verdicts["PASS"] != 2 || gr.Excluded["v4-plain"] == "" || gr.Excluded["v4-rescored"] != "" {
+		t.Errorf("verdicts %v, left out %v", gr.Verdicts, gr.Excluded)
+	}
+	if why := v.Rescored["v4-rescored"]; why != "FAIL at task version 4, rescored "+time.Now().UTC().Format("2006-01-02")+" to PASS at version 5" {
+		t.Errorf("rescored: %q", why)
 	}
 }

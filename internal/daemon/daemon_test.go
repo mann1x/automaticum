@@ -223,7 +223,7 @@ func (f *fakeRunner) Execute(ctx context.Context, req run.Request) (*store.Run, 
 	if fault != "" {
 		panic(fault)
 	}
-	r := &store.Run{ID: req.ID, Batch: req.Batch, Campaign: req.Campaign, Cohort: req.Cohort, Suite: req.Task.Suite, TaskID: req.Task.ID, Lane: req.Lane, ArmID: req.Arm.ID,
+	r := &store.Run{ID: req.ID, Batch: req.Batch, Campaign: req.Campaign, Cohort: req.Cohort, Suite: req.Task.Suite, TaskID: req.Task.ID, TaskVersion: req.Task.Version, Lane: req.Lane, ArmID: req.Arm.ID,
 		StartedAt: time.Now().UTC(), Harness: req.Arm.Harness.SDKRelease, Verdict: store.Pass, VerdictReason: "oracle passed", Arm: req.Arm.Resolved()}
 	if req.OnStart != nil {
 		req.OnStart(r, "container-"+req.ID)

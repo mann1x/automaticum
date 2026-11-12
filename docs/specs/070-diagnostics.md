@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.35, 2026-11-08.
+**Status:** draft 0.36, 2026-11-12.
 
 ## 1. The rule: no custom script
 
@@ -982,8 +982,10 @@ run of each arm in turn (`--order blocks` for all of one, then the next).
   only the runs at the latest task version in the view, leave the others
   out by name ("task version N, not the latest here (M)"), and say which
   tasks were mixed; `--pool-versions` (`?pool_versions=1`) counts them all
-  and says so. A cell keeps every run and warns instead. Groups never pool
-  across tasks; a basis difference is shown, not refused.
+  and says so. A run rescored by a later version's oracle counts at that
+  version with its rescored verdict, listed as rescored (020 §4, D145). A
+  cell keeps every run and warns instead. Groups never pool across tasks; a
+  basis difference is shown, not refused.
 - **Lane skew:** the same arm on two hosts, to separate the model from the
   machine.
 

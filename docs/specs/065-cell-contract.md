@@ -1,6 +1,6 @@
 # 065 — The cell contract and exports
 
-**Status:** draft 0.15, 2026-11-02.
+**Status:** draft 0.16, 2026-11-12.
 
 ## 1. Purpose
 
@@ -271,7 +271,14 @@ verdict stay as they were. An oracle that gives no answer leaves the verdict
 standing and says why. The cell's view (`cell show`, `export cell`) takes
 each run's latest rescore, keeps its own verdict beside it in `runs.jsonl`
 (`rescored`), and says it was rescored in the result's `rescored` and a
-warning; `compare` and `report` keep the runs' own verdicts. With `--out` the
+warning. `compare` and `report` count a run with its latest rescore's
+verdict too, at the task version whose oracle gave it, and say so (020 §4;
+2026-11-12, D145; until then they kept the runs' own verdicts). The oracle's
+installed copy in the workspace (`run_game` of `manic_miner`) is checked
+against the copy the run was given, from its stored `workspace_before`, not
+against the task's pin now: a run of an earlier version holds that
+version's copy, which is not a change the agent made (bug-091). A run with
+no stored `workspace_before` is checked against the pin. With `--out` the
 command writes the cell's files again and keeps the old result file as
 `automaticum_result.<time>.json`. The rescore is kept in `control.json`, so
 a restarted daemon goes on with it.
