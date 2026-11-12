@@ -1371,8 +1371,9 @@ func (d *Daemon) handleDetect(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	v := DetectView{Run: id, Version: detect.Version, Blocks: len(ev.Blocks), Calls: len(ev.Calls),
-		Hits: []BlockHit{}, Repeated: detect.RepeatedCalls(ev.Calls, 0)}
+		Hits: []BlockHit{}, Repeated: detect.RepeatedCalls(ev.Calls, d.thresholds().Int(detect.ThCallsSoft))}
 	opt := ingest.DetectOptions(rec)
+	opt.T = d.thresholds()
 	given := ev.Given.String()
 	for _, b := range ev.Blocks {
 		bo := opt

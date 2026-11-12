@@ -863,6 +863,18 @@ func TestLoopBlocks(t *testing.T) {
 	if got["thinking.loop_blocks"] != 0 || got["thinking.loop_block_threshold"] != 30 || got["thinking.max_repeat"] != 25 {
 		t.Errorf("at 30: %v", got)
 	}
+	run := &store.Run{ID: "r"}
+	res := AnalyseWith(run, &Events{Blocks: blocks, Notices: map[string]int{}, GuardTrips: map[string]int{}, GuardCauses: map[string]int{}}, nil, detect.Values{detect.BlockMaxRepeat: 30})
+	named := map[string]float64{}
+	for _, mt := range res.Metrics {
+		named[mt.Name] = mt.Value
+	}
+	if named["threshold."+detect.BlockMaxRepeat] != 30 || named["thinking.loop_block_threshold"] != 30 {
+		t.Errorf("an override is not in the run's metrics: %v", named)
+	}
+	if _, ok := named["threshold."+detect.BlockKeyChars]; ok {
+		t.Error("a threshold at its default is named")
+	}
 	got = map[string]float64{}
 	loopBlocks(m, blocks[2:], nil)
 	if len(got) != 0 {

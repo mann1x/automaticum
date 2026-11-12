@@ -27,12 +27,12 @@ func TestCallGuard(t *testing.T) {
 	}
 	// Warned from the first earlier failure, escalated once it has
 	// failed six times.
-	if got, want := kinds(CallGuard(calls, nil, "")), "1:failed/soft 2:failed/soft 3:failed/soft 4:failed/soft 5:failed/soft 6:failed/hard 7:failed/hard "; got != want {
+	if got, want := kinds(CallGuard(calls, nil, "", nil)), "1:failed/soft 2:failed/soft 3:failed/soft 4:failed/soft 5:failed/soft 6:failed/hard 7:failed/hard "; got != want {
 		t.Errorf("failed:\n got %s\nwant %s", got, want)
 	}
 	// A parallel sibling in the same turn is neither looked at nor counted.
 	sib := []Call{fail(1), fail(1), fail(2)}
-	if got, want := kinds(CallGuard(sib, nil, "")), "2:failed/soft "; got != want {
+	if got, want := kinds(CallGuard(sib, nil, "", nil)), "2:failed/soft "; got != want {
 		t.Errorf("siblings: got %s want %s", got, want)
 	}
 	// Refused in advance: warned on the 1st to 3rd repeat, escalated on
@@ -41,7 +41,7 @@ func TestCallGuard(t *testing.T) {
 	for i := 1; i <= 5; i++ {
 		ref = append(ref, Call{Turn: i, Tool: "editor", Input: `{"path":"a"}`, Result: "No change: x", Failed: true, Refused: true})
 	}
-	if got, want := kinds(CallGuard(ref, nil, "")), "1:refused/soft 2:refused/soft 3:refused/soft 4:refused/hard "; got != want {
+	if got, want := kinds(CallGuard(ref, nil, "", nil)), "1:refused/soft 2:refused/soft 3:refused/soft 4:refused/hard "; got != want {
 		t.Errorf("refused: got %s want %s", got, want)
 	}
 	// The same result: warned from the third call, escalated from the
@@ -52,25 +52,25 @@ func TestCallGuard(t *testing.T) {
 		same = append(same, Call{Turn: i, Tool: "editor", Input: `{"path":"b"}`, Result: fmt.Sprintf("ok #%d", i)})
 		reads = append(reads, Call{Turn: i, Tool: "read_files", Input: `{"path":"b"}`, Result: "text"})
 	}
-	if got, want := kinds(CallGuard(same, nil, "")), "2:same_result/soft 3:same_result/soft 4:same_result/soft 5:same_result/hard 6:same_result/hard "; got != want {
+	if got, want := kinds(CallGuard(same, nil, "", nil)), "2:same_result/soft 3:same_result/soft 4:same_result/soft 5:same_result/hard 6:same_result/hard "; got != want {
 		t.Errorf("same result, writing: got %s want %s", got, want)
 	}
-	if got, want := kinds(CallGuard(reads, nil, "")), "2:same_result/soft 3:same_result/soft 4:same_result/soft 5:same_result/soft 6:same_result/soft "; got != want {
+	if got, want := kinds(CallGuard(reads, nil, "", nil)), "2:same_result/soft 3:same_result/soft 4:same_result/soft 5:same_result/soft 6:same_result/soft "; got != want {
 		t.Errorf("same result, reading: got %s want %s", got, want)
 	}
 	// A successful edit of the same file clears the failures of another
 	// call naming it, not its run of equal results; a fork starts every
 	// count again.
 	clears := []Call{fail(1), fail(2), {Turn: 3, Tool: "editor", Input: `{"path":"a","x":1}`, Result: "ok", Paths: []string{"a"}}, fail(4)}
-	if got, want := kinds(CallGuard(clears, nil, "")), "1:failed/soft 3:same_result/soft "; got != want {
+	if got, want := kinds(CallGuard(clears, nil, "", nil)), "1:failed/soft 3:same_result/soft "; got != want {
 		t.Errorf("cleared by an edit: got %s want %s", got, want)
 	}
-	if got, want := kinds(CallGuard([]Call{fail(1), fail(2), fail(3)}, []int{2}, "")), "1:failed/soft "; got != want {
+	if got, want := kinds(CallGuard([]Call{fail(1), fail(2), fail(3)}, []int{2}, "", nil)), "1:failed/soft "; got != want {
 		t.Errorf("fork: got %s want %s", got, want)
 	}
 	// run_commands and the status tools are never looked at.
 	rc := []Call{{Turn: 1, Tool: "run_commands", Input: "x", Failed: true}, {Turn: 2, Tool: "run_commands", Input: "x", Failed: true}}
-	if got := CallGuard(rc, nil, ""); len(got) != 0 {
+	if got := CallGuard(rc, nil, "", nil); len(got) != 0 {
 		t.Errorf("run_commands: %v", got)
 	}
 }
@@ -91,17 +91,17 @@ func TestCallGuard275(t *testing.T) {
 	calls := []Call{fail(1), fail(2), shell(3, "/workspace/game.js"), fail(4), fail(5)}
 	// On 4.100.274 the shell's write is not seen: the third failure is
 	// warned on as the third.
-	if got, want := kinds(CallGuard(calls, nil, CallGuard269)), "1:failed/soft 3:failed/soft 4:failed/soft "; got != want {
+	if got, want := kinds(CallGuard(calls, nil, CallGuard269, nil)), "1:failed/soft 3:failed/soft 4:failed/soft "; got != want {
 		t.Errorf("4.100.274:\n got %s\nwant %s", got, want)
 	}
 	// On 4.100.275 the call after the write is judged afresh: only its
 	// run of equal results ("err" three times) is warned on.
-	if got, want := kinds(CallGuard(calls, nil, CallGuard275)), "1:failed/soft 3:same_result/soft 4:failed/soft "; got != want {
+	if got, want := kinds(CallGuard(calls, nil, CallGuard275, nil)), "1:failed/soft 3:same_result/soft 4:failed/soft "; got != want {
 		t.Errorf("4.100.275:\n got %s\nwant %s", got, want)
 	}
 	// A note about another file changes nothing.
 	other := []Call{fail(1), fail(2), shell(3, "/workspace/index.html"), fail(4), fail(5)}
-	if got, want := kinds(CallGuard(other, nil, CallGuard275)), "1:failed/soft 3:failed/soft 4:failed/soft "; got != want {
+	if got, want := kinds(CallGuard(other, nil, CallGuard275, nil)), "1:failed/soft 3:failed/soft 4:failed/soft "; got != want {
 		t.Errorf("another file:\n got %s\nwant %s", got, want)
 	}
 	// A refusal is forgotten the same way, and so it is after a writing
@@ -111,7 +111,7 @@ func TestCallGuard275(t *testing.T) {
 	}
 	sed := Call{Turn: 3, Tool: "sed", Input: `{"path":"/workspace/game.js"}`, Result: "written", Paths: []string{"/workspace/game.js"}}
 	refusals := []Call{ref(1), ref(2), sed, ref(4), ref(5)}
-	if got, want := kinds(CallGuard(refusals, nil, CallGuard275)), "1:refused/soft 3:same_result/soft 4:refused/soft "; got != want {
+	if got, want := kinds(CallGuard(refusals, nil, CallGuard275, nil)), "1:refused/soft 3:same_result/soft 4:refused/soft "; got != want {
 		t.Errorf("refusal after a write:\n got %s\nwant %s", got, want)
 	}
 	// With no write between them the count runs on as before.
@@ -119,7 +119,7 @@ func TestCallGuard275(t *testing.T) {
 	for i := 1; i <= 8; i++ {
 		plain = append(plain, fail(i))
 	}
-	if got, want := kinds(CallGuard(plain, nil, CallGuard275)), kinds(CallGuard(plain, nil, CallGuard269)); got != want {
+	if got, want := kinds(CallGuard(plain, nil, CallGuard275, nil)), kinds(CallGuard(plain, nil, CallGuard269, nil)); got != want {
 		t.Errorf("no write:\n got %s\nwant %s", got, want)
 	}
 }

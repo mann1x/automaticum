@@ -17,7 +17,10 @@ type Span struct {
 
 // Spans says where a hit's repeats are in the block it was found in. A
 // runaway has none: length is not a repeat.
-func Spans(text string, h Hit) []Span {
+func Spans(text string, h Hit) []Span { return SpansWith(text, h, nil) }
+
+// SpansWith is Spans with the thresholds the hit was found with (D148).
+func SpansWith(text string, h Hit, v Values) []Span {
 	r := []rune(text)
 	switch h.Detector {
 	case ShortUnitRepeat:
@@ -26,10 +29,10 @@ func Spans(text string, h Hit) []Span {
 	case CharRun:
 		return clip(len(r), Span{h.Offset + 1, h.Offset + h.Count})
 	case SentenceRepeat:
-		best, _, _ := repeatedSentence(text)
+		best, _, _ := repeatedSentence(text, v)
 		return later(text, best)
 	case ReasoningRepetition:
-		sample, _, _ := repeatedParagraph(text)
+		sample, _, _ := repeatedParagraph(text, v)
 		return later(text, sample)
 	case ReasoningLoop:
 		switch h.Kind {
@@ -41,7 +44,7 @@ func Spans(text string, h Hit) []Span {
 				return clip(len(r), Span{s, h.Offset})
 			}
 		case LowUniqueness:
-			if s, ok := WindowRepeatStart(r[:min(h.Offset, len(r))]); ok {
+			if s, ok := WindowRepeatStartWith(r[:min(h.Offset, len(r))], v); ok {
 				return clip(len(r), Span{s, h.Offset})
 			}
 		}
@@ -101,7 +104,11 @@ func CycleStart(r []rune, period, cycles int) (int, bool) {
 // WindowRepeatStart is where, in the last window of lines the loop guard
 // looks at, the first line that repeats an earlier one of the window
 // begins (its "low-uniqueness").
-func WindowRepeatStart(r []rune) (int, bool) {
+func WindowRepeatStart(r []rune) (int, bool) { return WindowRepeatStartWith(r, nil) }
+
+// WindowRepeatStartWith is WindowRepeatStart with the thresholds given.
+func WindowRepeatStartWith(r []rune, v Values) (int, bool) {
+	loopWindow := v.Int(ThLoopWindow)
 	lines := guardLines(r)
 	if len(lines) < loopWindow {
 		return 0, false

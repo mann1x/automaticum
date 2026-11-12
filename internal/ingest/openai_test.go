@@ -48,7 +48,7 @@ func TestOpenAIWire(t *testing.T) {
 	if q.DoneReason != "tool_calls" || q.PromptTokens != 900 || q.CachedTokens != 800 || q.EvalTokens != 120 || q.EvalNS != 2e9 || q.Visible != "hello<|im_end|>" || q.Reasoning != "think" || q.Empty {
 		t.Errorf("answer: %+v", q)
 	}
-	if hits := CapHits(reqs); len(hits) != 1 || hits[0].Seq != 2 || hits[0].By != "length" || hits[0].Limit != 4096 {
+	if hits := CapHits(reqs, nil); len(hits) != 1 || hits[0].Seq != 2 || hits[0].By != "length" || hits[0].Limit != 4096 {
 		t.Errorf("cap: %+v", hits)
 	}
 	if reqs[2].Chat || reqs[2].Agent {

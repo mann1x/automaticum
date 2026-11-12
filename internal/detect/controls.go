@@ -167,7 +167,7 @@ func SelfTest() (results []ControlResult, ok bool) {
 		{"the same read giving the same result", reread, []string{RepeatedCallResult}},
 		{"reads of different files", healthy, nil}} {
 		got := map[string]bool{}
-		for _, f := range CallGuard(c.calls, nil, "") {
+		for _, f := range CallGuard(c.calls, nil, "", nil) {
 			if f.Rule == "same_result" {
 				got[RepeatedCallResult] = true
 			} else {
@@ -219,7 +219,7 @@ func SelfTest() (results []ControlResult, ok bool) {
 		{"an edit that defines two names twice", "function a() {}\nfunction a() {}\nfunction b() {}\nfunction b() {}\n", []string{DuplicateDefinitions}}} {
 		g := []string{}
 		in, _ := json.Marshal(map[string]string{"file_path": "a", "new_text": c.text})
-		if len(DuplicateDefinitionCalls([]Call{{Turn: 1, Tool: "editor", Input: string(in)}})) > 0 {
+		if len(DuplicateDefinitionCalls([]Call{{Turn: 1, Tool: "editor", Input: string(in)}}, nil)) > 0 {
 			g = append(g, DuplicateDefinitions)
 		}
 		res := ControlResult{Control: c.name, Domain: "tool calls", Want: c.want, Got: g, OK: strings.Join(g, ",") == strings.Join(c.want, ",")}
@@ -251,9 +251,9 @@ func SelfTest() (results []ControlResult, ok bool) {
 		case "text":
 			f = GuardText(c.text, "", Options{Rules: Rules258})
 		case "reasoning":
-			f = GuardReasoning(c.text)
+			f = GuardReasoning(c.text, nil)
 		default:
-			f = GuardArgument(c.text, "")
+			f = GuardArgument(c.text, "", nil)
 		}
 		g := []string{}
 		if f != nil {

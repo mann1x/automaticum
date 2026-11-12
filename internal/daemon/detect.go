@@ -552,10 +552,12 @@ func (d *Daemon) detectOne(ctx context.Context, t detectTarget, dq detectQuery, 
 		row.Swallowed = ingest.SwallowFirings(m.Events, m.Requests)
 	}
 	if dq.firings && slices.Contains(detectors, detect.DuplicateDefinitions) {
-		row.Definitions, _ = ingest.DefinitionFirings(m.Events, m.Requests)
+		row.Definitions, _ = ingest.DefinitionFirings(m.Events, m.Requests, dq.thresholds)
 	}
 	if dq.firings && slices.Contains(detectors, detect.RepetitionGuard) {
-		row.Guard = ingest.GuardFires(m.Events, m.Requests, ingest.DetectOptions(m.Run))
+		opt := ingest.DetectOptions(m.Run)
+		opt.T = dq.thresholds
+		row.Guard = ingest.GuardFires(m.Events, m.Requests, opt)
 	}
 	if dq.group != "" {
 		var labels map[string]string

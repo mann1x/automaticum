@@ -43,7 +43,7 @@ func TestDuplicateDefinitions(t *testing.T) {
 	whole, _ := json.Marshal(map[string]string{"file_path": "a.js", "new_text": strings.ReplaceAll(stubs, `\n`, "\n")})
 	ev2, _ := ReadEvents(strings.NewReader(agentLine("01", `{"type":"iteration_start","iteration":1}`) + "\n" +
 		agentLine("02", `{"type":"content_end","contentType":"tool","toolName":"editor","toolCallId":"a","input":`+string(whole)+`,"output":[{"success":true}]}`)))
-	if fs, source := DefinitionFirings(ev2, nil); len(fs) != 1 || source != "events" || fs[0].Turn != 1 {
+	if fs, source := DefinitionFirings(ev2, nil, nil); len(fs) != 1 || source != "events" || fs[0].Turn != 1 {
 		t.Errorf("from events: %s %+v", source, fs)
 	}
 }

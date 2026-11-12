@@ -1,14 +1,11 @@
 package ingest
 
+import "github.com/mann1x/automaticum/internal/detect"
+
 // CapHit is the finding that a request of the agent's loop was ended by its
 // output limit (070 §5): in an agent loop the mid-loop cap is the failure,
 // so every turn counts, not only the last.
 const CapHit = "cap_hit"
-
-// CapTolerance is how many tokens short of a declared limit a completion
-// still counts as capped: a server may stop a few tokens early. The number
-// is omnimergekit's (070 §5).
-const CapTolerance = 16
 
 // Capped is one request ended by its limit.
 type Capped struct {
@@ -25,7 +22,10 @@ type Capped struct {
 // output limit: those the server says it ended by length, and those whose
 // completion reached the limit the request declared (num_predict) less the
 // tolerance, for a server that does not say so.
-func CapHits(agent []Request) []Capped {
+func CapHits(agent []Request, v detect.Values) []Capped {
+	// How many tokens short of a declared limit a completion still counts
+	// as capped (capped.tolerance_tokens: omnimergekit's 16, 070 §5).
+	CapTolerance := v.Int(detect.ThCapTolerance)
 	var out []Capped
 	for _, q := range agent {
 		if !q.Agent || q.Failed {

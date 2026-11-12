@@ -24,7 +24,7 @@ func TestStruggleFailures(t *testing.T) {
 	// is stuck: one short of six failures it nudges, at six it suggests.
 	ev := struggleTurns(1, 19, "reading the file to see what it does", false)
 	ev = append(ev, struggleTurns(20, 30, "I'm stuck, this keeps failing", true)...)
-	got := Struggle(ev)
+	got := Struggle(ev, nil)
 	if len(got) < 2 {
 		t.Fatalf("firings %+v", got)
 	}
@@ -57,7 +57,7 @@ func TestStruggleFailures(t *testing.T) {
 
 func TestStruggleBeforeMinIteration(t *testing.T) {
 	// Failures and distress before turn 20 say nothing.
-	if got := Struggle(struggleTurns(1, 19, "I'm stuck, I'm confused", true, true)); len(got) != 0 {
+	if got := Struggle(struggleTurns(1, 19, "I'm stuck, I'm confused", true, true), nil); len(got) != 0 {
 		t.Errorf("firings %+v", got)
 	}
 }
@@ -77,7 +77,7 @@ func TestStruggleTransactions(t *testing.T) {
 	ev = append(ev, StruggleEvent{Kind: "transaction", Turn: 31, Transaction: 4})
 	ev = append(ev, struggleTurns(31, 32, "I'm stuck, keeps failing", true)...)
 	n := 0
-	for _, f := range Struggle(ev) {
+	for _, f := range Struggle(ev, nil) {
 		if f.Kind == StruggleSuggest {
 			n++
 		}
@@ -86,7 +86,7 @@ func TestStruggleTransactions(t *testing.T) {
 		t.Errorf("%d suggestions, want %d", n, StruggleMaxPerTask)
 	}
 	// Two attempts thrown away nudge, before turn 20 too.
-	got := Struggle([]StruggleEvent{{Kind: "turn", Turn: 3}, {Kind: "discarded", Turn: 3}, {Kind: "empty", Turn: 3}, {Kind: "turn_end", Turn: 3}})
+	got := Struggle([]StruggleEvent{{Kind: "turn", Turn: 3}, {Kind: "discarded", Turn: 3}, {Kind: "empty", Turn: 3}, {Kind: "turn_end", Turn: 3}}, nil)
 	if len(got) != 1 || got[0].Reason != "transactions" || got[0].ThrownAway != 2 {
 		t.Errorf("thrown away %+v", got)
 	}
@@ -100,7 +100,7 @@ func TestStruggleEditStreak(t *testing.T) {
 	for t := 1; t <= 3; t++ {
 		ev = append(ev, edit(t, true)...)
 	}
-	got := Struggle(ev)
+	got := Struggle(ev, nil)
 	if len(got) != 1 || got[0].Reason != "edit-streak" || got[0].EditStreak != 3 || got[0].Turn != 3 {
 		t.Fatalf("streak %+v", got)
 	}
@@ -112,7 +112,7 @@ func TestStruggleEditStreak(t *testing.T) {
 	ev = append(ev, edit(6, true)...)
 	ev = append(ev, StruggleEvent{Kind: "tool", Turn: 6, Tool: "write_to_file", Failed: true})
 	ev = append(ev, edit(7, true)...)
-	if got := Struggle(ev); len(got) != 1 {
+	if got := Struggle(ev, nil); len(got) != 1 {
 		t.Errorf("after reset %+v", got)
 	}
 }
@@ -128,7 +128,7 @@ func TestStruggleTextAfterReasoning(t *testing.T) {
 		return out
 	}
 	ev := append(struggleTurns(1, 19, "fine", false), text(20, 26)...)
-	for _, f := range Struggle(ev) {
+	for _, f := range Struggle(ev, nil) {
 		if f.Kind == StruggleSuggest {
 			t.Errorf("text read after reasoning: %+v", f)
 		}
@@ -138,7 +138,7 @@ func TestStruggleTextAfterReasoning(t *testing.T) {
 		quiet = append(quiet, StruggleEvent{Kind: "turn", Turn: t}, StruggleEvent{Kind: "text", Turn: t, Text: "fine"}, StruggleEvent{Kind: "turn_end", Turn: t})
 	}
 	found := false
-	for _, f := range Struggle(append(quiet, text(20, 26)...)) {
+	for _, f := range Struggle(append(quiet, text(20, 26)...), nil) {
 		found = found || f.Kind == StruggleSuggest
 	}
 	if !found {
@@ -153,7 +153,7 @@ func TestStruggleHedging(t *testing.T) {
 	ev = append(ev, struggleTurns(11, 19, "reading", false)...)
 	ev = append(ev, struggleTurns(20, 26, "hmm wait wait this does not look right at all", true)...)
 	var s *StruggleFiring
-	got := Struggle(ev)
+	got := Struggle(ev, nil)
 	for i := range got {
 		if got[i].Kind == StruggleSuggest {
 			s = &got[i]

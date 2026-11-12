@@ -162,7 +162,8 @@ func StringArgs(input string) (map[string]string, bool) {
 }
 
 // DuplicateDefinitionCalls reads every call's string arguments.
-func DuplicateDefinitionCalls(calls []Call) []DefinitionFiring {
+func DuplicateDefinitionCalls(calls []Call, v Values) []DefinitionFiring {
+	DuplicateDefinitionsMax := v.Int(ThDuplicateMax)
 	var out []DefinitionFiring
 	for i, c := range calls {
 		args, cut := StringArgs(c.Input)

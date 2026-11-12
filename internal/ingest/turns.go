@@ -208,7 +208,8 @@ func turnFindings(runID string, ev *Events, m func(string, float64), res *Result
 // when it is known: a compaction since the request before, or a reload of
 // the model. A server that never says what it served from cache says
 // nothing here (070 §2).
-func rereads(m func(string, float64), agent []Request, compactions []time.Time) {
+func rereads(m func(string, float64), agent []Request, compactions []time.Time, th detect.Values) {
+	reloadSeconds := th.Get(detect.ThReloadSeconds)
 	reports := false
 	for _, q := range agent {
 		reports = reports || q.CachedTokens > 0

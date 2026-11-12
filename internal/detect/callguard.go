@@ -113,7 +113,8 @@ type callState struct {
 // CallGuard replays the guard over a run's calls with a rule set
 // (CallGuardFor the run's release; empty is CallGuard269). forks are the
 // indexes of the calls that came first after each fork of the session.
-func CallGuard(calls []Call, forks []int, rules string) []GuardFiring {
+func CallGuard(calls []Call, forks []int, rules string, v Values) []GuardFiring {
+	RefusedHard, FailedHard, SameResultSoft, SameResultHard := v.Int(ThRefusedHard), v.Int(ThFailedHard), v.Int(ThSameResultSoft), v.Int(ThSameResultHard)
 	var out []GuardFiring
 	state := map[string]*callState{}
 	stamps := rules == CallGuard275

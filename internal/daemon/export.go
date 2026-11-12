@@ -139,6 +139,7 @@ func (d *Daemon) handleExport(w http.ResponseWriter, r *http.Request) {
 	// read from the capture, so the guard of 4.100.258 on is read without
 	// its excuse for repetition quoted from the tools.
 	opt := ingest.DetectOptions(rec)
+	opt.T = d.thresholds()
 	opt.Given = ""
 	spans, cuts := export.Spans(resps, cuts, opt)
 	if cuts == nil {

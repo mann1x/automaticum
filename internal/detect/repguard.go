@@ -56,16 +56,17 @@ type GuardFire struct {
 
 // paragraphAt is the shortest prefix, on a grid, on which the paragraph
 // rule holds; nil if it never does on the whole text.
-func paragraphAt(text string) *GuardFire {
+func paragraphAt(text string, v Values) *GuardFire {
+	repetitionMinChars := v.Int(ThRepMinChars)
 	r := []rune(text)
-	if reasoningRepetition(r, text, Options{}) == nil {
+	if reasoningRepetition(r, text, Options{T: v}) == nil {
 		return nil
 	}
 	step := max(2000, len(r)/300)
 	for p := min(step, len(r)); ; p = min(p+step, len(r)) {
 		if p >= repetitionMinChars || p == len(r) {
 			s := string(r[:p])
-			if h := reasoningRepetition([]rune(s), s, Options{}); h != nil {
+			if h := reasoningRepetition([]rune(s), s, Options{T: v}); h != nil {
 				return &GuardFire{Rule: RuleParagraph, Offset: p, Chars: len(r), Count: h.Count, Share: h.Share, Unit: h.Unit}
 			}
 		}
@@ -75,8 +76,8 @@ func paragraphAt(text string) *GuardFire {
 	}
 }
 
-func restatedAt(text, given string) *GuardFire {
-	x := RestatedText(text, given)
+func restatedAt(text, given string, v Values) *GuardFire {
+	x := RestatedTextWith(text, given, v)
 	if x == nil {
 		return nil
 	}
@@ -108,21 +109,22 @@ func first(fs ...*GuardFire) *GuardFire {
 // model was given before it, o the block's detector options (the run's
 // reasoning-loop rules).
 func GuardText(text, given string, o Options) *GuardFire {
-	return first(paragraphAt(text), restatedAt(text, given), loopAt(text, o))
+	return first(paragraphAt(text, o.T), restatedAt(text, given, o.T), loopAt(text, o))
 }
 
 // GuardReasoning is the guard on a block of reasoning.
-func GuardReasoning(text string) *GuardFire { return paragraphAt(text) }
+func GuardReasoning(text string, v Values) *GuardFire { return paragraphAt(text, v) }
 
 // GuardArgument is the guard on one string argument of a call.
-func GuardArgument(text, given string) *GuardFire {
-	return first(definitionsAt(text), restatedAt(text, given))
+func GuardArgument(text, given string, v Values) *GuardFire {
+	return first(definitionsAt(text, v), restatedAt(text, given, v))
 }
 
 // definitionsAt is where a string first held more than
 // DuplicateDefinitionsMax definitions of names already defined in their
 // scope.
-func definitionsAt(text string) *GuardFire {
+func definitionsAt(text string, v Values) *GuardFire {
+	DuplicateDefinitionsMax := v.Int(ThDuplicateMax)
 	if total, names := definitionCount(Definitions(text)); total-names <= DuplicateDefinitionsMax {
 		return nil
 	}

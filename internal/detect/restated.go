@@ -36,7 +36,11 @@ type Restated struct {
 // while they stream, and says where it would first have tripped; nil if
 // never. given is what the model was given, the source a restated line is
 // excused by.
-func RestatedText(text, given string) *Restated {
+func RestatedText(text, given string) *Restated { return RestatedTextWith(text, given, nil) }
+
+// RestatedTextWith is RestatedText with the thresholds given (D148).
+func RestatedTextWith(text, given string, v Values) *Restated {
+	restatedMinLineChars, restatedMinLines, restatedFraction, restatedRecheckLines := v.Int(ThRestatedLineChars), v.Int(ThRestatedMinLines), v.Get(ThRestatedShare), v.Int(ThRestatedRecheck)
 	counts := map[string]int{}
 	var source map[string]int
 	lines, excess, next, offset := 0, 0, restatedMinLines, 0

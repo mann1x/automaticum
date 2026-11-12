@@ -47,7 +47,7 @@ func GuardFires(ev *Events, reqs []Request, opt detect.Options) []GuardFire {
 			}
 			f = detect.GuardText(b.Text, g, blockOptions(opt, given, b))
 		} else {
-			f = detect.GuardReasoning(b.Text)
+			f = detect.GuardReasoning(b.Text, opt.T)
 		}
 		if f == nil {
 			continue
@@ -95,7 +95,7 @@ func GuardFires(ev *Events, reqs []Request, opt detect.Options) []GuardFire {
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
-			f := detect.GuardArgument(args[k], given)
+			f := detect.GuardArgument(args[k], given, opt.T)
 			if f == nil {
 				continue
 			}

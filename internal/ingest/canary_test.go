@@ -30,11 +30,11 @@ func TestCanary(t *testing.T) {
 	if len(fin) != 4 || fin[0].Visible != "answer 1" {
 		t.Fatalf("finished: %+v", fin)
 	}
-	if v := Canary(fin, []string{"<|im_end|>"}); v != nil {
+	if v := Canary(fin, []string{"<|im_end|>"}, nil); v != nil {
 		t.Fatalf("judged on four requests: %+v", v)
 	}
 	sound := append(fin, CanaryRequest{Run: "r2", Request: Request{Seq: 1, Agent: true, Visible: "fine", DoneReason: "stop"}})
-	v := Canary(sound, []string{"<|im_end|>"})
+	v := Canary(sound, []string{"<|im_end|>"}, nil)
 	if v == nil || len(v.Problems) != 0 || len(v.Requests) != 5 || v.Requests[4] != "r2#1" {
 		t.Fatalf("sound: %+v", v)
 	}
@@ -46,12 +46,12 @@ func TestCanary(t *testing.T) {
 		CanaryRequest{Run: "r1", Request: Request{Seq: 4, Agent: true, Visible: "cut", DoneReason: "length"}},
 		CanaryRequest{Run: "r1", Request: Request{Seq: 5, Agent: true, Visible: "done<|im_end|>more", DoneReason: "stop"}},
 		CanaryRequest{Run: "r1", Request: Request{Seq: 6, Agent: true, Empty: true}})
-	v = Canary(bad, []string{"<|im_end|>"})
+	v = Canary(bad, []string{"<|im_end|>"}, nil)
 	want := []string{"r1#3: empty answer", "r1#4: ended by length", "r1#5: control token <|im_end|> in the visible text"}
 	if v == nil || strings.Join(v.Problems, "|") != strings.Join(want, "|") {
 		t.Errorf("problems: %+v", v)
 	}
-	if v := Canary(sound, nil); len(v.Unchecked) != 2 {
+	if v := Canary(sound, nil, nil); len(v.Unchecked) != 2 {
 		t.Errorf("control tokens not read but not said: %v", v.Unchecked)
 	}
 }

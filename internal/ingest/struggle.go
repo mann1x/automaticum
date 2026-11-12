@@ -34,7 +34,7 @@ var sdkSignals = map[string][]string{
 // struggleSignals evaluates every trigger on the run: struggle.<trigger>
 // (1) and struggle.<trigger>.turn where it held, struggle.signals (how
 // many held) always, and the finding when any did.
-func struggleSignals(runID string, ev *Events, m func(string, float64), res *Result) {
+func struggleSignals(runID string, ev *Events, m func(string, float64), res *Result, th detect.Values) {
 	type held struct {
 		Trigger string `json:"trigger"`
 		Turn    int    `json:"turn"`
@@ -62,7 +62,7 @@ func struggleSignals(runID string, ev *Events, m func(string, float64), res *Res
 		}
 		at[h.Trigger] = h
 	}
-	firings := detect.Struggle(ev.Struggle)
+	firings := detect.Struggle(ev.Struggle, th)
 	byReason := map[string]int{}
 	for _, f := range firings {
 		trigger := "replay_" + f.Kind

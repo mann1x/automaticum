@@ -58,18 +58,20 @@ var (
 
 // bearsProse: whether a paragraph carries a sentence rather than being a
 // bare quote of code.
-func bearsProse(p string) bool {
+func bearsProse(p string, v Values) bool {
+	repetitionStopwords := v.Int(ThRepStopwords)
 	if strings.HasPrefix(p, "```") {
 		p = fenced.ReplaceAllString(p, "")
 	}
 	return len(stopwords.FindAllStringIndex(strings.ToLower(p), -1)) >= repetitionStopwords
 }
 
-func reasoningRepetition(r []rune, text string, _ Options) *Hit {
+func reasoningRepetition(r []rune, text string, o Options) *Hit {
+	repetitionMinChars, repetitionMaxRepeat, repetitionDuplicateFrac := o.T.Int(ThRepMinChars), o.T.Int(ThRepMaxRepeat), o.T.Get(ThRepDuplicateShare)
 	if len(r) < repetitionMinChars {
 		return nil
 	}
-	sample, most, share := repeatedParagraph(text)
+	sample, most, share := repeatedParagraph(text, o.T)
 	if most < repetitionMaxRepeat || share < repetitionDuplicateFrac {
 		return nil
 	}
@@ -78,11 +80,12 @@ func reasoningRepetition(r []rune, text string, _ Options) *Hit {
 
 // repeatedParagraph is the paragraph a block repeats most, how often, and
 // the share of the counted paragraphs that repeat an earlier one.
-func repeatedParagraph(text string) (sample string, most int, share float64) {
+func repeatedParagraph(text string, v Values) (sample string, most int, share float64) {
+	repetitionParagraph := v.Int(ThRepParagraph)
 	counts, order, total := map[string]int{}, []string{}, 0
 	for _, p := range paragraphs.Split(text, -1) {
 		p = strings.TrimSpace(p)
-		if utf8.RuneCountInString(p) < repetitionParagraph || !bearsProse(p) {
+		if utf8.RuneCountInString(p) < repetitionParagraph || !bearsProse(p, v) {
 			continue
 		}
 		if counts[p] == 0 {
@@ -105,6 +108,7 @@ func repeatedParagraph(text string) (sample string, most int, share float64) {
 }
 
 func reasoningLoop(r []rune, _ string, o Options) *Hit {
+	loopMinChars, loopWindow, loopMaxUnique, loopMaxPeriod, loopMinCycles := o.T.Int(ThLoopMinChars), o.T.Int(ThLoopWindow), o.T.Int(ThLoopMaxUnique), o.T.Int(ThLoopMaxPeriod), o.T.Int(ThLoopMinCycles)
 	if o.Rules == Rules258 {
 		return reasoningLoop258(r, o)
 	}
@@ -119,7 +123,7 @@ func reasoningLoop(r []rune, _ string, o Options) *Hit {
 		}
 		seg := r[start:end]
 		// Inside the line, before its end is seen: one phrase repeating.
-		if h := phraseCycle(seg, start); h != nil {
+		if h := phraseCycle(seg, start, o.T); h != nil {
 			return h
 		}
 		if end == len(r) {
@@ -171,11 +175,12 @@ func reasoningLoop(r []rune, _ string, o Options) *Hit {
 // phraseCycle looks for a unit of 4 to 120 characters that ends at some
 // place of an unbroken line and stands there 13 or more times one after
 // the other, once the line is 2,000 characters long and the block 4,000.
-func phraseCycle(seg []rune, at int) *Hit {
+func phraseCycle(seg []rune, at int, v Values) *Hit {
+	loopMinChars, loopMinLineChars, loopPhraseMaxPeriod, loopPhraseMinCycles := v.Int(ThLoopMinChars), v.Int(ThLoopLineChars), v.Int(ThLoopPhrasePeriod), v.Int(ThLoopPhraseCycles)
 	if len(seg) < loopMinLineChars {
 		return nil
 	}
-	var same [loopPhraseMaxPeriod + 1]int // per period: characters equal to the one a period before, in a row
+	same := make([]int, loopPhraseMaxPeriod+1) // per period: characters equal to the one a period before, in a row
 	for e := 0; e < len(seg); e++ {
 		for p := 4; p <= loopPhraseMaxPeriod && p <= e; p++ {
 			if seg[e] == seg[e-p] {

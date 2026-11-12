@@ -94,20 +94,24 @@ type struggleTurn struct {
 }
 
 type struggle struct {
-	history                    []*struggleTurn
-	baseline                   *float64
-	firedInTask                int
-	firedInTransaction         bool
-	transaction                int
-	lastFiredKey, lastNudgeKey string
-	editStreak                 int
-	discarded, empty           int
-	changed                    map[string]bool
+	// The thresholds read with (D148).
+	window, failedCalls, distressHits, minIteration, maxPerTask, editStreakAt, failedTxns int
+	history                                                                               []*struggleTurn
+	baseline                                                                              *float64
+	firedInTask                                                                           int
+	firedInTransaction                                                                    bool
+	transaction                                                                           int
+	lastFiredKey, lastNudgeKey                                                            string
+	editStreak                                                                            int
+	discarded, empty                                                                      int
+	changed                                                                               map[string]bool
 }
 
 // Struggle replays the detector over a run's events.
-func Struggle(events []StruggleEvent) []StruggleFiring {
-	s := &struggle{changed: map[string]bool{}}
+func Struggle(events []StruggleEvent, v Values) []StruggleFiring {
+	s := &struggle{changed: map[string]bool{},
+		window: v.Int(ThStruggleWindow), failedCalls: v.Int(ThStruggleFailed), distressHits: v.Int(ThStruggleDistress), minIteration: v.Int(ThStruggleMinTurn),
+		maxPerTask: v.Int(ThStruggleMaxPerTask), editStreakAt: v.Int(ThStruggleEdits), failedTxns: v.Int(ThStruggleTxns)}
 	var out []StruggleFiring
 	turn, reasoned := 0, false
 	see := func(f *StruggleFiring) {
@@ -170,7 +174,7 @@ func (s *struggle) record(turn int) *struggleTurn {
 	}
 	r := &struggleTurn{turn: turn}
 	s.history = append(s.history, r)
-	for len(s.history) > StruggleWindow*2 {
+	for len(s.history) > s.window*2 {
 		s.history = s.history[1:]
 	}
 	return r
@@ -191,12 +195,12 @@ func (s *struggle) noteTurn(turn int, text string) {
 	}
 	r.words += len(strings.Fields(text))
 	// The baseline is the opening turns' hedging rate.
-	if turn > StruggleWindow {
+	if turn > s.window {
 		return
 	}
 	h, w := 0, 0
 	for _, t := range s.history {
-		if t.turn <= StruggleWindow {
+		if t.turn <= s.window {
 			h, w = h+t.hedging, w+t.words
 		}
 	}
@@ -215,7 +219,7 @@ func (s *struggle) signals(turn int) StruggleFiring {
 	f := StruggleFiring{Turn: turn}
 	h, w := 0, 0
 	for _, t := range s.history {
-		if t.turn > turn-StruggleWindow {
+		if t.turn > turn-s.window {
 			f.FailedCalls += t.failed
 			f.Distress += t.distress
 			h, w = h+t.hedging, w+t.words
@@ -232,24 +236,24 @@ func (s *struggle) inspect(turn int) *StruggleFiring {
 	if s.firedInTransaction {
 		return nil
 	}
-	if n := s.editStreak; n >= StruggleEditStreak && n%StruggleEditStreak == 0 {
+	if n := s.editStreak; n >= s.editStreakAt && n%s.editStreakAt == 0 {
 		if f := s.nudge("edit-streak", "e"+strconv.Itoa(n), StruggleFiring{Turn: turn, EditStreak: n}); f != nil {
 			return f
 		}
 	}
-	if n := s.discarded + s.empty; n >= StruggleFailedTransactions && n%StruggleFailedTransactions == 0 {
+	if n := s.discarded + s.empty; n >= s.failedTxns && n%s.failedTxns == 0 {
 		if f := s.nudge("transactions", "t"+strconv.Itoa(n), StruggleFiring{Turn: turn, ThrownAway: n}); f != nil {
 			return f
 		}
 	}
-	if turn < StruggleMinIteration {
+	if turn < s.minIteration {
 		return nil
 	}
 	sig := s.signals(turn)
-	if sig.FailedCalls < StruggleFailedCalls || s.firedInTask >= StruggleMaxPerTask {
+	if sig.FailedCalls < s.failedCalls || s.firedInTask >= s.maxPerTask {
 		return s.nudgeAt(sig)
 	}
-	distress := sig.Distress >= StruggleDistressHits
+	distress := sig.Distress >= s.distressHits
 	hedging := sig.HedgingRatio != nil && *sig.HedgingRatio >= 1
 	if !distress && !hedging {
 		return s.nudgeAt(sig)
@@ -277,7 +281,7 @@ func (s *struggle) inspect(turn int) *StruggleFiring {
 }
 
 func (s *struggle) nudgeAt(sig StruggleFiring) *StruggleFiring {
-	if StruggleFailedCalls <= 1 || sig.FailedCalls < StruggleFailedCalls-1 {
+	if s.failedCalls <= 1 || sig.FailedCalls < s.failedCalls-1 {
 		return nil
 	}
 	return s.nudge("failures", "f"+strconv.Itoa(sig.FailedCalls), sig)

@@ -565,7 +565,26 @@ nothing.
   `thinking.loop_block_share`, and `thinking.loop_block_threshold`, the
   threshold they were counted at, so stored runs read at different values
   are never summed unseen.
-- **Thresholds (D148).** `--threshold name=number` (any number) reads with
+- **Thresholds (D148).** Every number a detector or measure decides with
+  is registered (`detect.Thresholds`), 53 today: the text detectors'
+  (`short_unit_repeat.*`, `char_run.length`, `sentence_repeat.*`, from the
+  requirements' reference pattern: origin `owner`), the SDK's guards read
+  after the run (`repeated_tool_call.*`, `reasoning_repetition.*`,
+  `reasoning_loop.*` with the 4.100.258 block cycle, `restated_lines.*`,
+  `call_guard.*`, `struggle.*`: origin `sdk`, each with the release and
+  class its numbers are read from), `duplicate_definitions.max` (D134),
+  `capped.tolerance_tokens` (omnimergekit's, 070 §5), `canary.requests`
+  (D84), the loop-block four, and `model_reloaded.min_load_seconds`, whose
+  origin is `harness`: set in automaticum with no owner decision on
+  record, the owner's to confirm. Sizes of what a finding quotes are not
+  thresholds and are not registered. An override reaches the analysis at
+  ingest, `detect`, `reanalyse`, the guard watch of `stop_on`
+  (`repetition_guard`), the export's loop spans and the first-generations
+  canary. A count the detector divides by, and the canary's request
+  count, must be 1 or more. Each run's metrics name every threshold not at
+  its default as `threshold.<name>`, so a run analysed at other values
+  says so itself.
+  `--threshold name=number` (any number) reads with
   those values over the installation's `[thresholds]` (030 §1) and the
   defaults; `--thresholds` lists every threshold with its default, where
   the default comes from and what it decides. The header's `thresholds`

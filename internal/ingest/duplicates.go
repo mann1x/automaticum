@@ -12,7 +12,7 @@ import (
 // repeated definitions: from the wire's calls when the requests were
 // captured, as the server streamed them (a call the output limit cut has
 // only "{}" in the event stream), else from the event stream's.
-func DefinitionFirings(ev *Events, reqs []Request) ([]detect.DefinitionFiring, string) {
+func DefinitionFirings(ev *Events, reqs []Request, th detect.Values) ([]detect.DefinitionFiring, string) {
 	if !detect.Available(detect.DuplicateDefinitions) {
 		return nil, ""
 	}
@@ -28,9 +28,9 @@ func DefinitionFirings(ev *Events, reqs []Request) ([]detect.DefinitionFiring, s
 		}
 	}
 	if len(calls) == 0 {
-		return detect.DuplicateDefinitionCalls(ev.Calls), "events"
+		return detect.DuplicateDefinitionCalls(ev.Calls, th), "events"
 	}
-	fs := detect.DuplicateDefinitionCalls(calls)
+	fs := detect.DuplicateDefinitionCalls(calls, th)
 	for i := range fs {
 		fs[i].Request = seqs[fs[i].Index]
 	}
@@ -40,11 +40,11 @@ func DefinitionFirings(ev *Events, reqs []Request) ([]detect.DefinitionFiring, s
 // duplicateDefinitions writes tool_calls.duplicate_definitions and its
 // .by_tool.<tool> on every run with calls, and the finding when there was
 // one.
-func duplicateDefinitions(runID string, ev *Events, reqs []Request, m func(string, float64), res *Result) {
+func duplicateDefinitions(runID string, ev *Events, reqs []Request, m func(string, float64), res *Result, th detect.Values) {
 	if len(ev.Calls) == 0 && len(reqs) == 0 {
 		return
 	}
-	fs, source := DefinitionFirings(ev, reqs)
+	fs, source := DefinitionFirings(ev, reqs, th)
 	if source == "" {
 		return
 	}
@@ -71,7 +71,7 @@ func duplicateDefinitions(runID string, ev *Events, reqs []Request, m func(strin
 		Max      int                       `json:"max"`
 		ByTool   map[string]int            `json:"by_tool"`
 		Examples []detect.DefinitionFiring `json:"examples"`
-	}{source, detect.DuplicateDefinitionsMax, by, examples})
+	}{source, th.Int(detect.ThDuplicateMax), by, examples})
 	res.Findings = append(res.Findings, store.Finding{RunID: runID, Detector: detect.DuplicateDefinitions, DetectorVersion: detect.Version,
 		Severity: "warning", Turn: fs[0].Turn, Count: len(fs), Evidence: raw})
 }

@@ -24,6 +24,7 @@
 - 2026-11-09, the owner ("add -arm-name too, of course, I mean, it's not obvious it's needed?"): when a selector has a known blind spot, close it in the same change, without asking. If an identity-by-content filter (arm id) can match another arm, a by-name filter is part of the job. Don't end a report by offering obvious completions; do them.
 
 ## Key Learnings
+- Detector thresholds (D148): the package constant stays the registry default (single source); a function reads locals from `o.T`/`v Values` at its top (`x := o.T.Int(ThX)`) so its body is unchanged; a constant used as an array size becomes `make([]int, n+1)`; a count used as a divisor gets `Min: 1`. New detector code must read thresholds this way, never the constant directly.
 - A threshold ported from a client script is checked against that script's own code: score the cases with the script verbatim (Python) into testdata and compare (internal/detect/testdata/block_repeats.json).
 
 - Go harness for coding agents on @cerebriline/sdk. The truth is docs/specs plus decisions.md. archive/ is input only and the old harness is READ-ONLY. During a batch: no lane image or bin/ rebuild and no daemon restart.

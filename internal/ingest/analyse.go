@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -73,10 +75,6 @@ func VersionsText() string {
 	}
 	return strings.Join(names, ", ")
 }
-
-// reloadSeconds is the load time from which a request counts as a reload. A
-// model in memory answers "load" in milliseconds; a load takes seconds.
-const reloadSeconds = 1.0
 
 // Detectors are the detectors whose findings ingest writes, sorted.
 func Detectors() []string {
@@ -175,7 +173,7 @@ func Derive(m *Material) *Result {
 	var res *Result
 	if r.Imported {
 		res = &Result{Blocks: m.Events.Blocks}
-		res.Findings, _ = detectorFindings(r.ID, m.Events, detect.Options{})
+		res.Findings, _ = detectorFindings(r.ID, m.Events, detect.Options{T: m.Thresholds})
 	} else {
 		res = AnalyseWith(r, m.Events, m.Requests, m.Thresholds)
 		heldStream(r, m.Slots, func(name string, v float64) {
@@ -452,7 +450,7 @@ func AnalyseWith(r *store.Run, ev *Events, reqs []Request, th detect.Values) *Re
 		}
 		distribution(m, "rate.generation_tok_s.per_request", genRates)
 		distribution(m, "rate.prompt_tok_s.per_request", promptRates)
-		rereads(m, agent, ev.CompactionTimes)
+		rereads(m, agent, ev.CompactionTimes, th)
 		// Reasoning sent back in the history (070 §2).
 		carried, carriedChars := 0, []float64{}
 		for _, q := range agent {
@@ -491,13 +489,13 @@ func AnalyseWith(r *store.Run, ev *Events, reqs []Request, th detect.Values) *Re
 			}
 		}
 		// The cap audit, every turn (070 §5).
-		hits := CapHits(agent)
+		hits := CapHits(agent, th)
 		m("cap.hits", float64(len(hits)))
 		if v, ok := agent[0].Options["num_predict"].(float64); ok && v > 0 {
 			m("cap.declared_tokens", v)
 		}
 		if len(hits) > 0 {
-			raw, _ := json.Marshal(map[string]any{"capped": hits, "tolerance": CapTolerance})
+			raw, _ := json.Marshal(map[string]any{"capped": hits, "tolerance": th.Int(detect.ThCapTolerance)})
 			res.Findings = append(res.Findings, store.Finding{RunID: r.ID, Detector: CapHit, DetectorVersion: Versions[CapHit],
 				Severity: "warning", Turn: hits[0].Seq, Count: len(hits), Evidence: raw})
 		}
@@ -542,6 +540,11 @@ func AnalyseWith(r *store.Run, ev *Events, reqs []Request, th detect.Values) *Re
 	}
 	m("thinking.blocks", float64(len(reasoning)))
 	loopBlocks(m, ev.Blocks, th)
+	// Every threshold not at its default, as read (D148): a run analysed at
+	// other values says so in its own metrics.
+	for _, name := range slices.Sorted(maps.Keys(th)) {
+		m("threshold."+name, th[name])
+	}
 	// Blocks cut off before their end, read from their deltas (bug-076).
 	m("blocks.unfinished", float64(unfinished))
 	// Answers only the wire had, read from it (bug-077).
@@ -706,9 +709,9 @@ func AnalyseWith(r *store.Run, ev *Events, reqs []Request, th detect.Values) *Re
 		chats++
 		if sec := float64(q.LoadNS) / 1e9; chats == 1 {
 			m("endpoint.first_load_s", sec)
-		} else if sec >= reloadSeconds && afterRelease[q.Seq] {
+		} else if sec >= th.Get(detect.ThReloadSeconds) && afterRelease[q.Seq] {
 			afterPause = append(afterPause, load{q.Seq, sec})
-		} else if sec >= reloadSeconds {
+		} else if sec >= th.Get(detect.ThReloadSeconds) {
 			loads = append(loads, load{q.Seq, sec})
 		}
 	}
@@ -719,7 +722,7 @@ func AnalyseWith(r *store.Run, ev *Events, reqs []Request, th detect.Values) *Re
 		}
 	}
 	if len(loads)+len(afterPause) > 0 {
-		ev := map[string]any{"reloads": loads, "threshold_s": reloadSeconds}
+		ev := map[string]any{"reloads": loads, "threshold_s": th.Get(detect.ThReloadSeconds)}
 		if len(afterPause) > 0 {
 			ev["after_pause"] = afterPause
 		}
@@ -746,15 +749,16 @@ func AnalyseWith(r *store.Run, ev *Events, reqs []Request, th detect.Values) *Re
 	// build, and from 4.100.258 on with what the model was given: the
 	// task's prompt and the tool results before each block.
 	opt := DetectOptions(r)
+	opt.T = th
 	found, counts, fired := detectorRun(r.ID, ev, opt)
 	res.Findings = append(res.Findings, found...)
 	res.Metrics = append(res.Metrics, counts...)
 	guardReplay(r.ID, ev, fired, m, res)
-	struggleSignals(r.ID, ev, m, res)
+	struggleSignals(r.ID, ev, m, res, th)
 	transactions(ev, m)
 	integrity(r, m, res)
 	swallowed(r.ID, ev, reqs, m, res)
-	duplicateDefinitions(r.ID, ev, reqs, m, res)
+	duplicateDefinitions(r.ID, ev, reqs, m, res, th)
 	repetitionGuard(r.ID, ev, reqs, opt, m, res)
 	return res
 }

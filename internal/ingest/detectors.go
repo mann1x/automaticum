@@ -168,7 +168,7 @@ func detectorRun(runID string, ev *Events, opt detect.Options) ([]store.Finding,
 		m("detector."+d+".available", 0)
 	} else {
 		m("detector."+d+".available", 1)
-		seqs := detect.RepeatedCalls(ev.Calls, 0)
+		seqs := detect.RepeatedCalls(ev.Calls, opt.T.Int(detect.ThCallsSoft))
 		m("detector."+d, float64(len(seqs)))
 		for _, s := range seqs {
 			// The SDK warns from the second call of the sequence; a
@@ -180,7 +180,7 @@ func detectorRun(runID string, ev *Events, opt detect.Options) ([]store.Finding,
 			}
 			raw, _ := json.Marshal(s)
 			sev := "info" // where the SDK would warn the model
-			if s.Count >= detect.RepeatedCallsHard {
+			if s.Count >= opt.T.Int(detect.ThCallsHard) {
 				sev = "warning" // where it would escalate
 			}
 			findings = append(findings, store.Finding{RunID: runID, Detector: d, DetectorVersion: detect.Version,
@@ -189,7 +189,7 @@ func detectorRun(runID string, ev *Events, opt detect.Options) ([]store.Finding,
 	}
 	// The SDK's call guard replayed (070 §3.2), and the two views of it
 	// that 070 §3 names (D129).
-	firings := detect.CallGuard(ev.Calls, ev.ForkCalls, opt.CallRules)
+	firings := detect.CallGuard(ev.Calls, ev.ForkCalls, opt.CallRules, opt.T)
 	views := map[string][]detect.GuardFiring{}
 	for _, f := range firings {
 		turns.add("loop_detection", f.Turn)

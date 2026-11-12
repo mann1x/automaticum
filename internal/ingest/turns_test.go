@@ -142,12 +142,12 @@ func TestRereadsAndCarried(t *testing.T) {
 	m := map[string]float64{}
 	put := func(n string, v float64) { m[n] = v }
 	agent := []Request{{PromptTokens: 100, CachedTokens: 0}, {PromptTokens: 200, CachedTokens: 100}, {PromptTokens: 50, CachedTokens: 0}, {PromptTokens: 60, CachedTokens: 0, LoadNS: 2e9}}
-	rereads(put, agent, nil)
+	rereads(put, agent, nil, nil)
 	if m["context.rereads"] != 2 || m["context.rereads.reload"] != 1 || m["context.rereads.unknown"] != 1 {
 		t.Errorf("%v", m)
 	}
 	m = map[string]float64{}
-	rereads(put, []Request{{PromptTokens: 1}, {PromptTokens: 2}}, nil)
+	rereads(put, []Request{{PromptTokens: 1}, {PromptTokens: 2}}, nil, nil)
 	if len(m) != 0 {
 		t.Errorf("a server that reports no cache says nothing: %v", m)
 	}

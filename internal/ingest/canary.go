@@ -2,12 +2,12 @@ package ingest
 
 import (
 	"fmt"
+	"github.com/mann1x/automaticum/internal/detect"
 	"strings"
 )
 
 // CanaryRequests is how many finished requests of a batch the
 // first-generations canary judges (050 §3.3). Decided by the owner, D84.
-const CanaryRequests = 5
 
 // CanaryVerdict is what the canary says of the first finished requests of
 // a batch.
@@ -46,7 +46,8 @@ func Finished(run string, reqs []Request) []CanaryRequest {
 // tokenizer marks them; nil means they could not be read, and that check is
 // unchecked rather than passed. A length band is checked only where a task
 // declares one; no task does yet (D84).
-func Canary(reqs []CanaryRequest, controls []string) *CanaryVerdict {
+func Canary(reqs []CanaryRequest, controls []string, th detect.Values) *CanaryVerdict {
+	CanaryRequests := th.Int(detect.ThCanaryRequests)
 	if len(reqs) < CanaryRequests {
 		return nil
 	}

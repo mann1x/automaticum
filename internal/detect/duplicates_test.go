@@ -35,7 +35,7 @@ func TestDuplicateDefinitionCalls(t *testing.T) {
 	// At the measured most, nothing; one more, a firing. A call cut off
 	// mid-string is read as far as it went.
 	got := DuplicateDefinitionCalls([]Call{{Turn: 1, Tool: "editor", Input: at(DuplicateDefinitionsMax)}, {Turn: 2, Tool: "editor", Input: at(DuplicateDefinitionsMax + 1)},
-		{Turn: 3, Tool: "editor", Input: `{"new_text":"` + strings.Repeat(`function g() {}\n`, 9)}})
+		{Turn: 3, Tool: "editor", Input: `{"new_text":"` + strings.Repeat(`function g() {}\n`, 9)}}, nil)
 	if len(got) != 2 || got[0].Turn != 2 || got[0].Repeated != DuplicateDefinitionsMax+1 || got[0].Cut || got[1].Turn != 3 || !got[1].Cut || got[1].Top[0].Name != "g" {
 		t.Fatalf("%+v", got)
 	}
@@ -59,7 +59,7 @@ func TestDuplicateDefinitionsCanary(t *testing.T) {
 	if err := json.NewDecoder(z).Decode(&c); err != nil {
 		t.Fatal(err)
 	}
-	got := DuplicateDefinitionCalls([]Call{{Turn: 5, Tool: c.Tool, Input: c.Arguments}})
+	got := DuplicateDefinitionCalls([]Call{{Turn: 5, Tool: c.Tool, Input: c.Arguments}}, nil)
 	// 1,049 names and 492 repeated before definitions were keyed by class:
 	// three were methods of one name in several classes (constructor in
 	// Cloud, Level and SoundManager).

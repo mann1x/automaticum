@@ -94,7 +94,7 @@ func (d *Daemon) canaryTick(ctx context.Context, watches map[string]*canaryWatch
 		reqs, _ := ingest.ReadWire(file)
 		file.Close()
 		w.cur = ingest.Finished(f.runID, reqs)
-		v := ingest.Canary(append(append([]ingest.CanaryRequest(nil), w.done...), w.cur...), w.controls)
+		v := ingest.Canary(append(append([]ingest.CanaryRequest(nil), w.done...), w.cur...), w.controls, d.thresholds())
 		if v == nil {
 			continue
 		}

@@ -67,6 +67,8 @@ type Options struct {
 	// CallRules is the call guard's rule set (CallGuardFor the run's SDK
 	// release); empty is CallGuard269.
 	CallRules string
+	// T overrides the thresholds' defaults (D148); nil is every default.
+	T Values
 }
 
 // The two ways of matching; every finding says which one made it.
@@ -123,6 +125,7 @@ func Block(text string, o Options) []Hit {
 // has two letters, and the repeat is passed over whole. A longer unit made
 // of the same repeat is not looked for inside it.
 func shortUnit(r []rune, _ string, o Options) *Hit {
+	unitMin, unitMax, unitRepeats, unitLetters := o.T.Int(ThUnitMinChars), o.T.Int(ThUnitMaxChars), o.T.Int(ThUnitRepeats), o.T.Int(ThUnitLetters)
 	for i := 0; i+unitMin*unitRepeats <= len(r); {
 		next := i + 1
 		for n := unitMin; n <= unitMax && i+n*unitRepeats <= len(r); n++ {
@@ -150,6 +153,7 @@ func shortUnit(r []rune, _ string, o Options) *Hit {
 // charRun: one character 41 or more times in a row, only when it is a
 // letter. A run of "=" or "-" is a separator.
 func charRun(r []rune, _ string, o Options) *Hit {
+	runLength := o.T.Int(ThRunLength)
 	for i := 0; i < len(r); {
 		j := i + 1
 		for j < len(r) && r[j] == r[i] {
@@ -168,8 +172,9 @@ func charRun(r []rune, _ string, o Options) *Hit {
 
 // sentence: the same sentence, exactly, several times within one block
 // (070 §3.1).
-func sentence(_ []rune, text string, _ Options) *Hit {
-	best, n, share := repeatedSentence(text)
+func sentence(_ []rune, text string, o Options) *Hit {
+	sentenceCount, sentenceShare, sentenceAlways := o.T.Int(ThSentenceCount), o.T.Get(ThSentenceShare), o.T.Int(ThSentenceAlways)
+	best, n, share := repeatedSentence(text, o.T)
 	if n >= sentenceCount && (share >= sentenceShare || n >= sentenceAlways) {
 		off := strings.Index(text, best)
 		return &Hit{Detector: SentenceRepeat, Count: n, Share: share, Unit: cut(best), Offset: len([]rune(text[:max(off, 0)]))}
@@ -179,8 +184,9 @@ func sentence(_ []rune, text string, _ Options) *Hit {
 
 // repeatedSentence is the sentence a block repeats most, how often, and
 // its share of the qualifying sentences; n is 0 when there are too few.
-func repeatedSentence(text string) (best string, n int, share float64) {
-	units := Sentences(text)
+func repeatedSentence(text string, v Values) (best string, n int, share float64) {
+	sentenceCount := v.Int(ThSentenceCount)
+	units := SentencesWith(text, v)
 	if len(units) < sentenceCount {
 		return "", 0, 0
 	}
@@ -199,7 +205,11 @@ func repeatedSentence(text string) (best string, n int, share float64) {
 // Sentences splits a block into the units the sentence detector compares:
 // split on whitespace after ".", "!" or "?" and on newlines, stripped, kept
 // when 60 or more characters long with 3 or more letters.
-func Sentences(text string) []string {
+func Sentences(text string) []string { return SentencesWith(text, nil) }
+
+// SentencesWith is Sentences with the thresholds given (D148).
+func SentencesWith(text string, v Values) []string {
+	sentenceChars, sentenceLetters := v.Int(ThSentenceChars), v.Int(ThSentenceLetters)
 	var out []string
 	keep := func(s string) {
 		s = strings.TrimSpace(s)

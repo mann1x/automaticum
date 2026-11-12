@@ -197,6 +197,10 @@ func (g *given) stretch(set map[string]bool) int {
 // reasoningLoop: after every line, and inside a line after every character.
 // o.Given is what the model was given before the block.
 func reasoningLoop258(r []rune, o Options) *Hit {
+	loopMinChars, loopWindow, loopMaxUnique, loopMaxPeriod, loopMinCycles := o.T.Int(ThLoopMinChars), o.T.Int(ThLoopWindow), o.T.Int(ThLoopMaxUnique), o.T.Int(ThLoopMaxPeriod), o.T.Int(ThLoopMinCycles)
+	loopCycleWindow, loopBlockMinPeriod, loopBlockMaxPeriod := o.T.Int(ThLoopCycleWindow), o.T.Int(ThLoopBlockMinPeriod), o.T.Int(ThLoopBlockMaxPeriod)
+	loopBlockMinCycles, loopBlockMinChars := o.T.Int(ThLoopBlockCycles), o.T.Int(ThLoopBlockChars)
+	th := o.T
 	if len(r) < loopMinChars {
 		return nil
 	}
@@ -209,7 +213,7 @@ func reasoningLoop258(r []rune, o Options) *Hit {
 			end++
 		}
 		seg := r[start:end]
-		if h := phraseCycleGiven(seg, start, src); h != nil {
+		if h := phraseCycleGiven(seg, start, src, th); h != nil {
 			return h
 		}
 		if end == len(r) {
@@ -327,11 +331,12 @@ func runeLen(lines []string) int {
 // phraseCycleGiven is phraseCycle with the given text: a phrase that
 // stands in it as many times in a row is passed over, and the next period
 // looked at.
-func phraseCycleGiven(seg []rune, at int, src *given) *Hit {
+func phraseCycleGiven(seg []rune, at int, src *given, v Values) *Hit {
+	loopMinChars, loopMinLineChars, loopPhraseMaxPeriod, loopPhraseMinCycles := v.Int(ThLoopMinChars), v.Int(ThLoopLineChars), v.Int(ThLoopPhrasePeriod), v.Int(ThLoopPhraseCycles)
 	if len(seg) < loopMinLineChars {
 		return nil
 	}
-	var same [loopPhraseMaxPeriod + 1]int
+	same := make([]int, loopPhraseMaxPeriod+1)
 	for e := 0; e < len(seg); e++ {
 		for p := 4; p <= loopPhraseMaxPeriod && p <= e; p++ {
 			if seg[e] == seg[e-p] {
