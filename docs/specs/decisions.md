@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-**Status:** current as of 2026-11-12 (revision 57).
+**Status:** current as of 2026-11-14 (revision 58).
 
 Only the owner decides. An **Open** item becomes a decision when the owner says
 so; until then the specs carry it as Open.
@@ -162,6 +162,7 @@ All dated 2026-10-12.
 | D150 | The browser is emulated with a Chrome in the lane, as the arm field `[agent.browser]`: the SDK's `browser`, `render_image` and `transform_image` on the extension's drivers (BrowserSession's local mode, renderWithChrome), Chrome for Testing at puppeteer-core's revision under the runner's prefix; left out or off, an arm keeps its identity (protocol 11; 2026-11-12, the owner: "add the browser too, with chrome in the lane"). | 040 §6.1.3, 030 §5, 070 §2 |
 | D151 | The extension's Library tools and `search_codebase`'s semantic mode are not emulated for now, an exception to the parity of D13; a run has neither, as a plugin folder not opted into the Library's index (2026-11-12, the owner: "we don't need the library tools and the semantic search now"). | 040 §6 |
 | D152 | The arm template's default SDK release is 4.100.277 (`examples/config/arms/base.toml`, 2026-11-12, the owner: "mail ollama to fix the sdk bugs and release a new one, then integrate it", read as D142's and D143's "integrate": harness default and host). 4.100.277 releases X15: the runner takes the SDK's language-server host, `check_file`, diagnostics after edits and Chrome drivers on a build that exports them (`runner/host.mjs`) and its own ports on an older one, the `prepared` note saying whose (`source`); `transform_image` works; its dependencies carry no open Dependabot alert. An arm that states its own `sdk_release` keeps it. | 040 §3, §6.1.2, §6.1.3 |
+| D153 | The arm template's default SDK release is 4.100.282 (`examples/config/arms/base.toml`, 2026-11-14, the owner's "chk mail" on the SDK owner's "please integrate it as you did .277", read as D142's, D143's and D152's "integrate": harness default and host). 4.100.282 changes run behaviour: the loop guard gives a verdict only when its call fails or a write lands on the same text again (`CallGuard282`, library 10), an old_text edit whose text the file holds needs no read, and a call whose string argument swallowed the arguments after it is refused before it runs. An arm that states its own `sdk_release` keeps it. | 040 §3, 070 §3.2 |
 | D36 | Archived logs stay searchable, on the model of the episodic memory in the owner's claude-hooks project: only raw blobs move, the index never does, and every reader opens archived blobs transparently. | 080 §5.1 |
 
 **Note on D15.** The owner said "add C# as primary language", and later, asked

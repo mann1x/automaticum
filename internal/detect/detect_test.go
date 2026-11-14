@@ -189,7 +189,7 @@ func TestRepeatedCalls(t *testing.T) {
 	calls := []Call{c(1, "a", "1"), c(2, "a", "1"), c(3, "b", "1"), c(4, "b", "1"), c(5, "b", "1"), c(6, "b", "1"), c(7, "b", "2"), c(8, "b", "1")}
 	// From the second identical call in a row, as the SDK warns.
 	got := RepeatedCalls(calls, 0)
-	if len(got) != 2 || got[0].Count != 2 || got[1] != (RepeatedCall{Tool: "b", Input: "1", Count: 4, Turn: 3, Index: 2}) {
+	if len(got) != 2 || got[0].Count != 2 || got[1] != (RepeatedCall{Tool: "b", Input: "1", Count: 4, Given: 4, Turn: 3, Index: 2, End: 5}) {
 		t.Errorf("%+v", got)
 	}
 	if got := RepeatedCalls(calls, RepeatedCallsHard); len(got) != 0 {
@@ -197,6 +197,19 @@ func TestRepeatedCalls(t *testing.T) {
 	}
 	if got := RepeatedCalls(nil, 0); got != nil {
 		t.Errorf("no calls: %+v", got)
+	}
+	// 4.100.282: a call of the sequence that works restarts the count, and
+	// only a failing call is told.
+	ok := func(turn int, failed bool) Call { return Call{Turn: turn, Tool: "a", Input: "1", Failed: failed} }
+	if got := RepeatedCallsFor([]Call{ok(1, false), ok(2, false), ok(3, false), ok(4, false)}, 0, CallGuard282); len(got) != 0 {
+		t.Errorf("repeats that work start no streak: %+v", got)
+	}
+	got = RepeatedCallsFor([]Call{ok(1, false), ok(2, true), ok(3, true), ok(4, false), ok(5, true)}, 0, CallGuard282)
+	if len(got) != 1 || got[0] != (RepeatedCall{Tool: "a", Input: "1", Count: 3, Given: 2, Turn: 2, Index: 1, End: 3}) {
+		t.Errorf("restarted: %+v", got)
+	}
+	if got := RepeatedCallsFor([]Call{ok(1, false), ok(2, true), ok(3, true), ok(4, false), ok(5, true)}, 0, CallGuard275); len(got) != 1 || got[0].Count != 5 || got[0].Given != 5 {
+		t.Errorf("before 4.100.282: %+v", got)
 	}
 }
 

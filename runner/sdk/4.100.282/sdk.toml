@@ -1,0 +1,19 @@
+# SDK release 4.100.282, from the registry (Cerebriline ffe76dafba): as
+# 4.100.277, with the loop guard, the editor's read check and the tools'
+# argument check changed in core, so an arm moved to it changes identity.
+# The loop guard's verdict waits for its call's result: a repeat that works
+# gets no warning, records no mistake, stops nothing and restarts the run of
+# identical calls; the exception is a file-writing call that lands on the
+# same text with the same answer for the 3rd time (warned on landings 3-5,
+# last warning on the 6th, stopped on the 7th; restore_file and sed/awk
+# without in_place excluded); a loop notice goes out only with its warning
+# (CallGuard282). An old_text edit whose text the file holds needs no read; a
+# `revision: "original"` read identical to disk and reads of bytes a
+# restore_file brought back count. A call whose string argument swallowed the
+# arguments written after it ("This call was not run. ...") is refused before
+# it runs. An edit giving a JavaScript class a second method of a name it had
+# gets a note. @cerebriline/agents is unchanged, so Rules258 holds. The
+# lockfile has 372 packages, as in 4.100.277.
+version = "4.100.282"
+source = "registry"
+bundle_sha256 = "66cd4def514ef1ef13e8c993af754d6350d0eedbae05584f85414999c8584243"

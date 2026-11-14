@@ -154,3 +154,14 @@ cp -p $B/data/state.duckdb $B/data/state.duckdb.pre-<sha>
 ```
 
 Rollback then means stopping the daemon, restoring both files and the `.prev` binaries, and starting it again. Runs recorded after the swap are lost in a rollback, so say that in the DONE mail. Before the window, rehearse the migration on a copy of the host's database with the new build.
+
+## Smoke runs and cleanup after the swap (learned 2026-11-12)
+
+- Before any change, mail START with the steps. Ask the client to queue nothing until DONE. Hold until their explicit "go" mail names the runs that must finish first.
+- Keep every backup in `<install>/work/` (`base.toml.pre-<sha>`, the unit as `/etc/systemd/system/automaticumd.service.pre-<sha>`, binaries as `bin/*.prev`). Never put a backup under `<install>/config/`: the daemon watches that directory and reloads it live.
+- A protocol bump (`internal/run/protocol.go`) needs every lane image rebuilt: `automaticum image build -repo <repo>` with nohup, its log in `work/`, its pid in a file. Poll it from a background command; do not end that command with a bare `grep -c` (it exits 1 on 0 hits). Then check `automaticum image ls` and `grep 'PROTOCOL = ' /opt/automaticum/runner/runner.mjs` inside the base, then run `docker image prune -f` to get the old layers' disk back.
+- A new SDK release on the host: `automaticum sdk add -repo <repo> <ver>`, then `automaticum sdk verify -repo <repo> <ver>`, which must say "reproduced".
+- When the repo checkout moves, run `automaticum oracle verify --repo <repo> <suite>/<task>` for every task you will smoke on. Without it, `run start` refuses with "was not proven against its fixtures".
+- Write each smoke as one `ssh <host> bash -s <<'EOF' ... EOF` block. Start the stub with `nohup automaticum stub serve -listen 172.17.0.1:7412 -script work/stub/<script>.json &`. Parse the run id with `grep -oE '^[0-9]{8}-[0-9]{6}-[0-9a-f]{6}$'`. Then `timeout 300 automaticum wait run $ID`, then `run show $ID`, and only then kill the stub. A stub stopped early gives SKIPPED `gate model_tag: endpoint stub does not answer /api/version`.
+- Smoke set: the default stub arm on `demo/answer` (script `fix-answer.json`), and for LSP a temporary arm `extends = "stub-sdk-<ver>"` with `[agent.lsp] enabled = true` on `custom/manic_miner` (script `fix-manic.json`). Check `lsp.source` and `lsp.started` in the `prepared` note (`automaticum logs <id> | grep '"note":"prepared"'`) and the `lsp.*` metrics in `run show`. Remove the temporary arm afterwards.
+- Release the build claim. Mail DONE with the versions, image ids, smoke run ids and verdicts (including any SKIPPED run of your own and why), and the rollback files.

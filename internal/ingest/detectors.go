@@ -168,20 +168,25 @@ func detectorRun(runID string, ev *Events, opt detect.Options) ([]store.Finding,
 		m("detector."+d+".available", 0)
 	} else {
 		m("detector."+d+".available", 1)
-		seqs := detect.RepeatedCalls(ev.Calls, opt.T.Int(detect.ThCallsSoft))
+		seqs := detect.RepeatedCallsFor(ev.Calls, opt.T.Int(detect.ThCallsSoft), opt.CallRules)
 		m("detector."+d, float64(len(seqs)))
 		for _, s := range seqs {
 			// The SDK warns from the second call of the sequence; a
-			// sibling in the turn of the call before is not one.
-			for k := s.Index + 1; k < len(ev.Calls) && ev.Calls[k].Tool == s.Tool && ev.Calls[k].Input == ev.Calls[s.Index].Input; k++ {
-				if ev.Calls[k].Turn == 0 || ev.Calls[k].Turn != ev.Calls[k-1].Turn {
-					turns.add("loop_detection", ev.Calls[k].Turn)
+			// sibling in the turn of the call before is not one. From
+			// 4.100.282 only a call that fails is warned.
+			for k := s.Index + 1; k <= s.End && k < len(ev.Calls); k++ {
+				if ev.Calls[k].Turn != 0 && ev.Calls[k].Turn == ev.Calls[k-1].Turn {
+					continue
 				}
+				if opt.CallRules == detect.CallGuard282 && !ev.Calls[k].Failed {
+					continue
+				}
+				turns.add("loop_detection", ev.Calls[k].Turn)
 			}
 			raw, _ := json.Marshal(s)
 			sev := "info" // where the SDK would warn the model
-			if s.Count >= opt.T.Int(detect.ThCallsHard) {
-				sev = "warning" // where it would escalate
+			if s.Given >= opt.T.Int(detect.ThCallsHard) {
+				sev = "warning" // where it escalated
 			}
 			findings = append(findings, store.Finding{RunID: runID, Detector: d, DetectorVersion: detect.Version,
 				Severity: sev, Turn: s.Turn, Count: s.Count, Evidence: raw})
@@ -192,7 +197,9 @@ func detectorRun(runID string, ev *Events, opt detect.Options) ([]store.Finding,
 	firings := detect.CallGuard(ev.Calls, ev.ForkCalls, opt.CallRules, opt.T)
 	views := map[string][]detect.GuardFiring{}
 	for _, f := range firings {
-		turns.add("loop_detection", f.Turn)
+		if f.Given {
+			turns.add("loop_detection", f.Turn)
+		}
 		if f.Rule == "same_result" {
 			views[detect.RepeatedCallResult] = append(views[detect.RepeatedCallResult], f)
 		} else {
@@ -218,21 +225,32 @@ func detectorRun(runID string, ev *Events, opt detect.Options) ([]store.Finding,
 		m("detector."+d+".available", 1)
 		fs := views[d]
 		m("detector."+d, float64(len(fs)))
+		given, hard := 0, 0
+		for _, f := range fs {
+			if f.Given {
+				given++
+			}
+		}
+		// The verdicts the model was told of: all of them before 4.100.282,
+		// from it those on a call that failed or landed again (CallGuard282).
+		m("detector."+d+".given", float64(given))
 		if len(fs) == 0 {
 			continue
 		}
-		sev, hard := "info", 0 // where the SDK would warn the model
+		sev := "info" // where the SDK would warn the model
 		for _, f := range fs {
 			if f.Kind == "hard" {
 				hard++
-				sev = "warning" // where it would escalate
+				if f.Given {
+					sev = "warning" // where it escalated
+				}
 			}
 		}
 		keep := fs
 		if len(keep) > maxTurns {
 			keep = keep[:maxTurns]
 		}
-		raw, _ := json.Marshal(map[string]any{"firings": keep, "hard": hard})
+		raw, _ := json.Marshal(map[string]any{"firings": keep, "hard": hard, "given": given})
 		findings = append(findings, store.Finding{RunID: runID, Detector: d, DetectorVersion: detect.Version,
 			Severity: sev, Turn: fs[0].Turn, Count: len(fs), Evidence: raw})
 	}

@@ -124,9 +124,89 @@ func TestCallGuard275(t *testing.T) {
 	}
 }
 
+// told is the firings the model was told of, as "index:rule/kind".
+func told(fs []GuardFiring) string {
+	out := ""
+	for _, f := range fs {
+		if f.Given {
+			out += fmt.Sprintf("%d:%s/%s ", f.Index, f.Rule, f.Kind)
+		}
+	}
+	return out
+}
+
+// TestCallGuard282 pins what @cerebriline/core 4.100.282 changes: a verdict
+// is given only if its call fails, or, for a call that writes its file,
+// lands on the cycle's answer again. The verdicts are formed as before.
+func TestCallGuard282(t *testing.T) {
+	// A read answered the same way seven times: warned from the third
+	// before, never told now; the same firings are formed.
+	var reads []Call
+	for i := 1; i <= 7; i++ {
+		reads = append(reads, Call{Turn: i, Tool: "read_files", Input: `{"path":"b"}`, Result: "text"})
+	}
+	if got, want := kinds(CallGuard(reads, nil, CallGuard282, nil)), kinds(CallGuard(reads, nil, CallGuard275, nil)); got != want {
+		t.Errorf("formed:\n got %s\nwant %s", got, want)
+	}
+	if got := told(CallGuard(reads, nil, CallGuard282, nil)); got != "" {
+		t.Errorf("a read that works is never told: %s", got)
+	}
+	if got, want := told(CallGuard(reads, nil, CallGuard275, nil)), kinds(CallGuard(reads, nil, CallGuard275, nil)); got != want {
+		t.Errorf("before 4.100.282 every firing is given:\n got %s\nwant %s", got, want)
+	}
+	// The landed cycle: an edit giving the same answer again and again is
+	// told from its third landing, and escalated from its sixth.
+	var same []Call
+	for i := 1; i <= 7; i++ {
+		same = append(same, Call{Turn: i, Tool: "editor", Input: `{"path":"b"}`, Result: fmt.Sprintf("ok #%d", i), Paths: []string{"b"}})
+	}
+	if got, want := told(CallGuard(same, nil, CallGuard282, nil)), "2:same_result/soft 3:same_result/soft 4:same_result/soft 5:same_result/hard 6:same_result/hard "; got != want {
+		t.Errorf("landed:\n got %s\nwant %s", got, want)
+	}
+	// One that answers differently on the warned call made progress: not told.
+	moved := append(append([]Call{}, same[:2]...), Call{Turn: 3, Tool: "editor", Input: `{"path":"b"}`, Result: "other", Paths: []string{"b"}})
+	if got, want := kinds(CallGuard(moved, nil, CallGuard282, nil)), "2:same_result/soft "; got != want {
+		t.Errorf("moved, formed: got %s want %s", got, want)
+	}
+	if got := told(CallGuard(moved, nil, CallGuard282, nil)); got != "" {
+		t.Errorf("moved: told %s", got)
+	}
+	// restore_file, and sed without in_place, never land; sed with it does.
+	for tool, in := range map[string]string{"restore_file": `{"path":"b"}`, "sed": `{"path":"b"}`} {
+		var cs []Call
+		for i := 1; i <= 4; i++ {
+			cs = append(cs, Call{Turn: i, Tool: tool, Input: in, Result: "ok", Paths: []string{"b"}})
+		}
+		if got := told(CallGuard(cs, nil, CallGuard282, nil)); got != "" {
+			t.Errorf("%s: told %s", tool, got)
+		}
+	}
+	var sed []Call
+	for i := 1; i <= 4; i++ {
+		sed = append(sed, Call{Turn: i, Tool: "sed", Input: `{"in_place":true,"path":"b"}`, Result: "ok", Paths: []string{"b"}})
+	}
+	if got, want := told(CallGuard(sed, nil, CallGuard282, nil)), "2:same_result/soft 3:same_result/soft "; got != want {
+		t.Errorf("sed in place: got %s want %s", got, want)
+	}
+	// A call that keeps failing is told as before.
+	var fails []Call
+	for i := 1; i <= 8; i++ {
+		fails = append(fails, Call{Turn: i, Tool: "editor", Input: `{"path":"a"}`, Result: "err", Failed: true, Paths: []string{"a"}})
+	}
+	if got, want := told(CallGuard(fails, nil, CallGuard282, nil)), kinds(CallGuard(fails, nil, CallGuard275, nil)); got != want {
+		t.Errorf("failing:\n got %s\nwant %s", got, want)
+	}
+	// A failing call warned on, then the same call working: the last
+	// verdict is formed, not told.
+	fixed := append(append([]Call{}, fails[:3]...), Call{Turn: 4, Tool: "editor", Input: `{"path":"a"}`, Result: "ok", Paths: []string{"a"}})
+	if got, want := told(CallGuard(fixed, nil, CallGuard282, nil)), "1:failed/soft 2:failed/soft "; got != want {
+		t.Errorf("fixed: got %s want %s", got, want)
+	}
+}
+
 func TestCallGuardFor(t *testing.T) {
 	for in, want := range map[string]string{"4.100.269": CallGuard269, "4.100.274": CallGuard269, "4.100.275": CallGuard275,
-		"4.100.275+da478ecc8a": CallGuard275, "4.100.275-gda478ecc8a": CallGuard275, "4.100.276": CallGuard275, "4.100.277": CallGuard275, "": CallGuard269} {
+		"4.100.275+da478ecc8a": CallGuard275, "4.100.275-gda478ecc8a": CallGuard275, "4.100.276": CallGuard275, "4.100.277": CallGuard275, "4.100.282": CallGuard282, "4.100.290": CallGuard282, "": CallGuard269} {
 		if got := CallGuardFor(in); got != want {
 			t.Errorf("CallGuardFor(%q) = %s, want %s", in, got, want)
 		}

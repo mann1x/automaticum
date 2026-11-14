@@ -14,7 +14,7 @@ import (
 
 // Version is the version of the library's definitions. It changes when any
 // detector's answer on some input changes, and findings are then recomputed.
-const Version = "9"
+const Version = "10"
 
 // The detectors, by name.
 const (
@@ -266,13 +266,17 @@ const (
 	RepeatedCallsHard = 5
 )
 
-// RepeatedCall is the longest sequence of identical calls.
+// RepeatedCall is the longest sequence of identical calls. Given is the
+// highest count at which the model was told: under CallGuard282 a verdict
+// reaches it only on a call that fails, before that on every call.
 type RepeatedCall struct {
 	Tool  string `json:"tool"`
 	Input string `json:"input"`
 	Count int    `json:"count"`
+	Given int    `json:"given"`
 	Turn  int    `json:"turn"`  // of the first call of the sequence
 	Index int    `json:"index"` // of that call among the run's calls
+	End   int    `json:"-"`     // the index of its last call
 }
 
 // RepeatedCalls finds every sequence of n or more calls in a row with the
@@ -280,21 +284,55 @@ type RepeatedCall struct {
 // the SDK's guard (from library version 3), a second identical call in the
 // same turn, a parallel sibling, is not counted (turn 0 is a turn not
 // known, as in an imported run's stream, where no call is a sibling).
-func RepeatedCalls(calls []Call, n int) []RepeatedCall {
+func RepeatedCalls(calls []Call, n int) []RepeatedCall { return RepeatedCallsFor(calls, n, "") }
+
+// RepeatedCallsFor is RepeatedCalls under a call guard rule set
+// (CallGuardFor the run's release). Under CallGuard282 a call of the
+// sequence that works restarts its count (4.100.282: "a repeat that
+// succeeds is not a mistake, so it starts no streak"): the sequence
+// reported is the longest stretch counted without a restart, from the call
+// after a success to the next success, and Given the highest count reached
+// on a call that failed (0 if none did, under n).
+func RepeatedCallsFor(calls []Call, n int, rules string) []RepeatedCall {
 	if n <= 0 {
 		n = RepeatedCallsSoft
 	}
+	resets := rules == CallGuard282
 	var out []RepeatedCall
 	for i := 0; i < len(calls); {
-		j, count := i+1, 1
+		j := i + 1
 		for j < len(calls) && calls[j].Tool == calls[i].Tool && calls[j].Input == calls[i].Input {
-			if calls[j].Turn == 0 || calls[j].Turn != calls[j-1].Turn {
-				count++
-			}
 			j++
 		}
-		if count >= n {
-			out = append(out, RepeatedCall{Tool: calls[i].Tool, Input: cut(calls[i].Input), Count: count, Turn: calls[i].Turn, Index: i})
+		// calls[i:j] is one run of identical calls.
+		best := RepeatedCall{}
+		count, start, given := 0, i, 0
+		for k := i; k < j; k++ {
+			if k > i && calls[k].Turn != 0 && calls[k].Turn == calls[k-1].Turn {
+				continue // a sibling: neither counted nor looked at
+			}
+			if count == 0 {
+				start, given = k, 0
+			}
+			count++
+			if !resets || calls[k].Failed {
+				given = count
+			}
+			if count > best.Count {
+				best = RepeatedCall{Tool: calls[i].Tool, Input: cut(calls[i].Input), Count: count, Turn: calls[start].Turn, Index: start, End: k}
+			}
+			if count == best.Count && best.Index == start {
+				best.End, best.Given = k, given
+			}
+			if resets && !calls[k].Failed {
+				count = 0
+			}
+		}
+		if best.Count >= n {
+			if best.Given < n {
+				best.Given = 0
+			}
+			out = append(out, best)
 		}
 		i = j
 	}

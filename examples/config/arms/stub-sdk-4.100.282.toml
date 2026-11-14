@@ -1,0 +1,8 @@
+# The stub arm on SDK release 4.100.282, for the harness's own tests of that
+# build: the loop guard's verdict given only on a call that fails or lands
+# on the same text again (CallGuard282), the editor's read check eased, the
+# swallowed-argument refusal; the template's default (D153).
+extends = "stub"
+
+[harness]
+sdk_release = "4.100.282"

@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.40, 2026-11-12.
+**Status:** draft 0.41, 2026-11-14.
 
 ## 1. The rule: no custom script
 
@@ -377,6 +377,26 @@ detector always reads with the release's defaults, so that runs compare.
   runaway size of 10,000 characters given explicitly (6 short-unit, 1
   letter-run, 363 sentence and 529 runaway firings). Criterion 8 of 110 §1
   is met for the detectors the requirements define.
+- **Library version 10 (2026-11-14).** The call guard of @cerebriline/core
+  4.100.282 (`CallGuard282`, `detect.CallGuardFor` from that release): a
+  verdict waits for its call's result and is given (the warning attached,
+  the loop notice sent, a hard verdict's mistake recorded) only when the
+  call fails or is refused. A repeat that works gets none of it, except a
+  call that writes the file it names (a writing tool other than
+  `restore_file`; `sed` and `awk` only with `in_place`) whose same-result
+  verdict is followed by the same answer again: that landing is the loop,
+  and it is told (warned on landings 3 to 5, escalated from the 6th, the
+  same numbers as before). Verdicts are formed as in `CallGuard275`, so
+  each firing is still reported, with `given` saying whether the model was
+  told; the four views count every firing as before, add
+  `detector.<view>.given`, and are a warning only for a hard verdict that
+  was given. Before 4.100.282 every firing is given: its notice and a hard
+  verdict's mistake went out when it was formed. In `repeated_tool_call`
+  (`detect.RepeatedCallsFor`) a call of the sequence that works restarts
+  the count under `CallGuard282`; the sequence reported is the longest
+  stretch without a restart, its `given` the highest count reached on a
+  failing call, and it is a warning only when that reaches the escalation
+  threshold. Analysis version 23.
 - **Library version 9 (2026-11-08).** The call guard of @cerebriline/core
   4.100.275 (`CallGuard275`; `detect.CallGuardFor` the run's SDK build,
   4.100.269 to 4.100.274 keep `CallGuard269`): a failure or a refusal is a

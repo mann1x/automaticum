@@ -1,15 +1,15 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-12T21:05:30.647Z
-> Files: 528 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-14T17:00:00.315Z
+> Files: 512 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
 - `.gitleaks.toml` (~581 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~5835 tok)
-- `CLAUDE.md` — automaticum (~6924 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~7144 tok)
+- `CLAUDE.md` — automaticum (~7556 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
 - `LICENSE` — Project license (~3029 tok)
@@ -20,10 +20,10 @@
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~149485 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~164995 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~211 tok)
-- `score-history.jsonl` (~2005 tok)
+- `score-history.jsonl` (~2034 tok)
 
 ## .caliber/backups/2026-10-12T20-16-19-461Z/
 
@@ -35,13 +35,13 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~97814 tok)
+- `fingerprint.json` — Declares usage (~97348 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` (~36482 tok)
+- `current-session.jsonl` — Declares pollution (~19272 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~104159 tok)
+- `roi-stats.json` (~108232 tok)
 - `state.json` (~41 tok)
 
 ## .claude/
@@ -56,8 +56,10 @@
 
 ## .claude/rules/
 
-- `endpoint-probe.md` — Endpoint probe and gate conventions (~528 tok)
-- `lane-images.md` — Lane image conventions (~763 tok)
+- `browser.md` — The browser in the runner (D150) (~450 tok)
+- `endpoint-probe.md` — Endpoint probe and gate conventions (~819 tok)
+- `lane-images.md` — Lane image conventions (~1193 tok)
+- `lsp.md` — Language servers in the runner (D149) (~752 tok)
 - `openwolf.md` — OpenWolf protocol (~207 tok)
 - `runner-protocol.md` — Runner protocol conventions (~1427 tok)
 - `spec-conventions.md` — Spec conventions (~375 tok)
@@ -91,7 +93,7 @@
 
 ## .claude/skills/learned-new-sdk-release/
 
-- `SKILL.md` — Provisioning a new SDK release (~3976 tok)
+- `SKILL.md` — Provisioning a new SDK release (~4868 tok)
 
 ## .claude/skills/log-wolf-bug/
 
@@ -126,19 +128,19 @@
 - `config_cmds_test.go` — TestParseInterspersed, TestCellTasks, TestNoticeMatch (~593 tok)
 - `config_cmds.go` — place (152 fields) (~4304 tok)
 - `control_cmds.go` (~2935 tok)
-- `detect_cmds_test.go` — TestDetectFailIf (~606 tok)
-- `detect_cmds.go` — failTest (90 fields) (~6605 tok)
+- `detect_cmds_test.go` — TestDetectFailIf, TestDetectLoopTotals, TestDetectLoopBlockTotals (~1686 tok)
+- `detect_cmds.go` — failTest (80 fields) (~8606 tok)
 - `exit_test.go` — TestExitOf (~153 tok)
 - `export_cmds.go` — result (100 fields); methods: Error (~2565 tok)
 - `image_cmds.go` — built (65 fields) (~1334 tok)
-- `main.go` — Command automaticum is the command line of automaticum. (~4305 tok)
-- `reload_cmds.go` (~900 tok)
+- `main.go` — Command automaticum is the command line of automaticum. (~4379 tok)
+- `reload_cmds.go` (~1000 tok)
 - `report_cmds_test.go` — TestWriteRunsCSV, TestPositionalAndFormat (~426 tok)
 - `report_cmds.go` — Declares and (~4844 tok)
 - `rescore_cmds.go` (~956 tok)
 - `sdk_cmds.go` — row (57 fields) (~1545 tok)
-- `server_cmds_test.go` — TestPickTag, TestContainerAddress, TestAttachEndpoint, TestPlanServer, TestRunServer (~3007 tok)
-- `server_cmds.go` — Struct: serverFacts (~6486 tok)
+- `server_cmds_test.go` — TestPickTag, TestContainerAddress, TestAttachEndpoint, TestPlanServer, TestRunServer (~3198 tok)
+- `server_cmds.go` — serverFacts (107 fields) (~7192 tok)
 - `show_cmds.go` — armRow (113 fields) (~5690 tok)
 - `store_cgo.go` — go:build cgo (~2147 tok)
 - `store_nocgo.go` — go:build !cgo (~128 tok)
@@ -659,50 +661,3 @@
 - `f1287.log` (~0 tok)
 - `f1288.log` (~0 tok)
 - `f1289.log` (~0 tok)
-- `f129.log` (~0 tok)
-- `f1290.log` (~0 tok)
-- `f1291.log` (~0 tok)
-- `f1292.log` (~0 tok)
-
-## images/base/
-
-- `Dockerfile` — Docker container definition (~1280 tok)
-
-## images/browser/
-
-- `package.json` — puppeteer-core 23.11.1 and Mermaid 11.16.1 for the lane's browser (D150) (~150 tok)
-
-## images/lsp/
-
-- `package.json` — the language servers that run on Node (typescript-language-server, TypeScript 5.9.3, vscode-langservers-extracted, pyright, bash-language-server), installed by the base under /opt/automaticum/lsp (D149) (~150 tok)
-
-## internal/detect/
-
-- `thresholds.go` — Struct: Threshold (~2088 tok)
-
-## runner/
-
-- `browser.mjs` — The extension's DEFAULT_BROWSER_SETTINGS viewport. (~3129 tok)
-- `browser.mjs` — the extension's BrowserSession (local mode) and renderWithChrome, ported, on Chrome under /opt/automaticum/browser, for browser/render_image/transform_image (D150) (~3600 tok)
-- `editor.mjs` — The extension's check_file and diagnostics after edits (editor/apply_patch), ported word for word from 4.100.276, read from lsp.mjs (D149) (~5200 tok)
-- `host.mjs` — buildLsp/buildBrowserDrivers: the SDK's own LSP host, check_file, diagnostics hooks and Chrome drivers on a build that exports them (4.100.277 on), else lsp.mjs/editor.mjs/browser.mjs; maps the SDK hooks' trace to the editor_diagnostics note; `source` (D152) (~1427 tok)
-- `lsp.mjs` — createLspHost: language servers per lane language under /opt/automaticum/lsp; ask_lsp's CodeIntelProvider; push/pull diagnostics store; server requests answered (D149) (~6700 tok)
-
-## runner/test/
-
-- `browser.test.mjs` — the browser and render drivers on a fake puppeteer: launch options, console text, timeouts, close (~1500 tok)
-- `editor.test.mjs` — check_file, diagnostics after edits, rendering, settling, on a fake host (~2100 tok)
-- `fixtures/fake-lsp.mjs` — a language server for the tests: asks workspace/configuration, publishes BAD/WARN diagnostics, echoes document events; FAKE_PULL answers pulls only from a client that says it pulls, FAKE_PUSH_DELAY_MS delays pushes (~1100 tok)
-- `host.test.mjs` — host.mjs on a fake 4.100.277 SDK and an older one: which halves, server specs and probe check, trace -> note, error notes, Chrome driver options (~1927 tok)
-- `lsp.test.mjs` — the host against test/fixtures/fake-lsp.mjs: questions, server requests, didChange, diagnostics, a broken server (~1300 tok)
-
-## runner/sdk/4.100.277/
-
-- `package.json` — the SDK bundle of build 4.100.277: @cerebriline/sdk 4.100.277 (~60 tok)
-- `package-lock.json` — 372 packages (simple-git 4.0.2, zod 4.6.7, undici 6.29.1; no dify-ai-provider) (~45000 tok)
-- `sdk.toml` — what 4.100.277 changes (X15: the host halves in core, transform_image fixed, dependency bumps), bundle_sha256 85c83693… (~350 tok)
-
-## examples/config/arms/ (4.100.277)
-
-- `base.toml` — the template every arm extends; [harness] sdk_release = 4.100.277 (D152)
-- `stub-sdk-4.100.277.toml` — the stub arm on SDK 4.100.277, for the harness's own tests (~70 tok)

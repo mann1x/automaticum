@@ -46,13 +46,30 @@ const (
 // the file, or run_commands saying it changed or deleted the file
 // (ShellWrites). A write the record does not show -- a command that
 // changed a file the model had not read -- is not seen here either.
+//
+// From 4.100.282 (CallGuard282) a verdict waits for its call's result. It
+// is given -- the warning attached to the result, the loop notice sent,
+// a hard verdict's mistake recorded -- only if the call fails (or is
+// refused). A repeat that works gets none of it. The exception is the
+// landed cycle: a call that writes the file it names (a writing tool, less
+// restore_file, and sed or awk only with in_place) whose same-result
+// verdict is followed by the same answer once more; that success is the
+// loop, so the verdict is given. The verdicts themselves are formed as in
+// CallGuard275, so every firing is still reported and Given says which the
+// model was told of. Before 4.100.282 every firing is Given: its notice and
+// a hard verdict's mistake went out when it was formed. A run of identical
+// calls in a row restarts after a call of it that worked (RepeatedCallsFor).
 const (
 	CallGuard269 = "call-guard-269"
 	CallGuard275 = "call-guard-275"
+	CallGuard282 = "call-guard-282"
 )
 
 // CallGuardFor is the call guard's rule set of an SDK release.
 func CallGuardFor(release string) string {
+	if releaseAtLeast(release, 4, 100, 282) {
+		return CallGuard282
+	}
 	if releaseAtLeast(release, 4, 100, 275) {
 		return CallGuard275
 	}
@@ -86,7 +103,8 @@ func ResultSignature(result string) string { return revisionRE.ReplaceAllString(
 
 // GuardFiring is one call the guard would have warned on ("soft") or
 // escalated ("hard"), and by which rule ("refused", "failed",
-// "same_result").
+// "same_result"). Given is whether the model was told (CallGuard282: the
+// call failed, or landed on the cycle's answer again; always before).
 type GuardFiring struct {
 	Index int    `json:"index"`
 	Turn  int    `json:"turn"`
@@ -95,6 +113,23 @@ type GuardFiring struct {
 	Rule  string `json:"rule"`
 	Kind  string `json:"kind"`
 	Count int    `json:"count"`
+	Given bool   `json:"given"`
+}
+
+// writesItsFile is the SDK's test for a landed cycle (4.100.282,
+// loop-detection.ts): a writing tool other than restore_file, and sed or
+// awk only when the call says in_place.
+func writesItsFile(c Call) bool {
+	if !WritingTools[c.Tool] || c.Tool == "restore_file" {
+		return false
+	}
+	if c.Tool == "sed" || c.Tool == "awk" {
+		var in struct {
+			InPlace any `json:"in_place"`
+		}
+		return json.Unmarshal([]byte(c.Input), &in) == nil && in.InPlace == true
+	}
+	return true
 }
 
 type callState struct {
@@ -117,7 +152,8 @@ func CallGuard(calls []Call, forks []int, rules string, v Values) []GuardFiring 
 	RefusedHard, FailedHard, SameResultSoft, SameResultHard := v.Int(ThRefusedHard), v.Int(ThFailedHard), v.Int(ThSameResultSoft), v.Int(ThSameResultHard)
 	var out []GuardFiring
 	state := map[string]*callState{}
-	stamps := rules == CallGuard275
+	stamps := rules == CallGuard275 || rules == CallGuard282
+	waits := rules == CallGuard282
 	// How many writes each file has had: a stamp's size and time stand
 	// for the writes before it.
 	writes := map[string]int{}
@@ -164,8 +200,10 @@ func CallGuard(calls []Call, forks []int, rules string, v Values) []GuardFiring 
 		if stamps && s.stamped && stampOf(c.Paths) != s.stamp {
 			s.failed, s.refused, s.strikes, s.stamped = 0, false, 0, false
 		}
+		fired := -1
 		fire := func(rule, kind string, n int) {
-			out = append(out, GuardFiring{Index: i, Turn: c.Turn, Tool: c.Tool, Input: cut(c.Input), Rule: rule, Kind: kind, Count: n})
+			fired = len(out)
+			out = append(out, GuardFiring{Index: i, Turn: c.Turn, Tool: c.Tool, Input: cut(c.Input), Rule: rule, Kind: kind, Count: n, Given: true})
 		}
 		switch {
 		case s.refused:
@@ -188,6 +226,10 @@ func CallGuard(calls []Call, forks []int, rules string, v Values) []GuardFiring 
 		}
 		// What the call gave.
 		sig := ResultSignature(c.Result)
+		if waits && fired >= 0 {
+			f := &out[fired]
+			f.Given = c.Failed || (f.Rule == "same_result" && writesItsFile(c) && sig == s.lastResult)
+		}
 		if s.repeats > 0 && sig == s.lastResult {
 			s.repeats++
 		} else {
