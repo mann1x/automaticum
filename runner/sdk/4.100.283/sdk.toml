@@ -1,0 +1,11 @@
+# SDK release 4.100.283, from the registry: as 4.100.282, with core's and
+# llms' OpenTelemetry pinned to 2.12.0/0.223.0 and @langfuse/vercel-ai-sdk at
+# 5.10.1, which clears the two advisories the 4.100.282 lockfile carried
+# (@opentelemetry/core below 2.8.0, @ai-sdk/provider-utils 5.0.0). No agent,
+# tool or guard change: the only code change in core is the OTel 2.x
+# constructor of BatchLogRecordProcessor. CallGuard282 and Rules258 hold. An
+# arm moved to it still changes identity. The lockfile has 349 packages
+# (372 in 4.100.282).
+version = "4.100.283"
+source = "registry"
+bundle_sha256 = "073bd7b6c39926824150b8b8f44d3673c18ad501ee1ccdbc74f85ddaee332d1f"

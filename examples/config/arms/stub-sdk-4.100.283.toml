@@ -1,0 +1,8 @@
+# The stub arm on SDK release 4.100.283, for the harness's own tests of that
+# build: 4.100.282's behaviour on dependencies with no open advisory
+# (OpenTelemetry 2.12.0, @langfuse/vercel-ai-sdk 5.10.1); the template's
+# default (D154).
+extends = "stub"
+
+[harness]
+sdk_release = "4.100.283"

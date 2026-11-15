@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-14T17:00:00.315Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-15T05:00:00.691Z
 > Files: 512 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
@@ -8,8 +8,8 @@
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
 - `.gitleaks.toml` (~581 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~7144 tok)
-- `CLAUDE.md` — automaticum (~7556 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~7515 tok)
+- `CLAUDE.md` — automaticum (~7585 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
 - `LICENSE` — Project license (~3029 tok)
@@ -20,7 +20,7 @@
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~164995 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~166225 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~211 tok)
 - `score-history.jsonl` (~2034 tok)
@@ -35,13 +35,13 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~97348 tok)
+- `fingerprint.json` — Declares usage (~97097 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` — Declares pollution (~19272 tok)
+- `current-session.jsonl` — Declares release (~18626 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~108232 tok)
+- `roi-stats.json` (~109217 tok)
 - `state.json` (~41 tok)
 
 ## .claude/
@@ -85,7 +85,7 @@
 
 ## .claude/skills/learned-lane-host-deploy/
 
-- `SKILL.md` — Deploying a new automaticum build to a lane host (~2843 tok)
+- `SKILL.md` — Deploying a new automaticum build to a lane host (~3421 tok)
 
 ## .claude/skills/learned-new-host-install/
 

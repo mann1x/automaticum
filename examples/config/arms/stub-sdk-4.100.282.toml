@@ -1,7 +1,7 @@
 # The stub arm on SDK release 4.100.282, for the harness's own tests of that
 # build: the loop guard's verdict given only on a call that fails or lands
 # on the same text again (CallGuard282), the editor's read check eased, the
-# swallowed-argument refusal; the template's default (D153).
+# swallowed-argument refusal; the template's default until 4.100.283 (D153, D154).
 extends = "stub"
 
 [harness]
