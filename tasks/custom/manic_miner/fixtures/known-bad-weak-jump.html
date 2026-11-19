@@ -97,6 +97,36 @@ function initClouds() {
 function setupLevel(lv) {
     currentLevelObj = new Level(lv);
     currentLevelObj.pop();
+    spawnPlayer();
+}
+
+// Every cavern starts with the miner standing on the floor near its left end,
+// in the first column where they fit and can walk right, with full air and at
+// rest. If the generator left no such column in reach, two columns are cleared.
+function spawnPlayer() {
+    const L = currentLevelObj, floor = L.height - 1;
+    const open = (c) => L.data[floor - 1][c] === 0 && L.data[floor - 2][c] === 0;
+    let col = 1;
+    while (col < 12 && !(open(col) && open(col + 1))) col++;
+    if (col >= 12) {
+        col = 1;
+        for (const c of [1, 2]) { L.data[floor - 1][c] = 0; L.data[floor - 2][c] = 0; }
+    }
+    player.x = col * TILE_SIZE + (TILE_SIZE - player.width) / 2;
+    player.y = floor * TILE_SIZE - player.height;
+    player.vx = 0; player.vy = 0; player.grounded = true;
+    player.o2 = 100; player.isSuper = false; player.powerupTimer = 0;
+    camera.x = 0;
+}
+
+function gameOver() {
+    gameOverFlag = true;
+    player.o2 = 0;
+    o2El.innerText = '0%';
+    goOverlay.style.display = 'flex';
+    document.getElementById('go-title').innerText = 'GAME OVER';
+    document.getElementById('go-score').innerText = `Final Score: ${player.score}`;
+    sound.gameOver();
 }
 
 function restartGame() { 
@@ -123,7 +153,7 @@ class Level {
     dO2(c,x){this.o2c.forEach(o=>{if(!o.cl){const px=o.x-x,py=o.y;c.fillStyle='#f40';c.fillRect(px-5,py-10,10,20);c.fillStyle='#f60';c.fillRect(px-7,py-12,14,4);c.fillRect(px-7,py+8,14,4);if(Math.sin(performance.now()/300)>0){c.fillStyle='#f80';c.beginPath();c.arc(px,py,14,0,6.28);c.fill();}}})};
     dPw(c,x){this.pw.forEach(p=>{if(!p.cl){const px=p.x-x,py=p.y;c.fillStyle='#f08';c.beginPath();for(let i=0;i<5;i++){const a=(i*6.28/5)-1.57;c.lineTo(px+Math.cos(a)*10,py+Math.sin(a)*10);const m=((i+.5)*6.28/5)-1.57;c.lineTo(px+Math.cos(m)*5,py+Math.sin(m)*5);}c.closePath();c.fill();}})};
     dBoss(c,x){if(this.bs&&this.boss&&this.boss.ac){const b=this.boss;b.fc++;const bx=b.x-x,by=b.y;c.save();c.fillStyle='#48f';c.fillRect(bx-20,by-30,40,60);c.fillStyle='#f40';c.beginPath();c.arc(bx-10,by-20,5,0,6.28);c.fill();c.beginPath();c.arc(bx+10,by-20,5,0,6.28);c.fill();const hr=b.hp/b.mhp;c.fillStyle='#f80';c.fillRect(bx-20,by-35,40*hr,4);const gl=Math.sin(b.fc*.1)*.5+.5;if(gl>.3){c.fillStyle=`rgba(68,136,255,${gl*.3})`;c.beginPath();c.arc(bx,by,40,0,6.28);c.fill();}c.restore();}}
-    dPl(c,x){}
+    dPl(c,x){const px=player.x-x,py=player.y,w=player.width,h=player.height;c.save();c.fillStyle=player.isSuper&&(player.frameCount>>2)%2?'#ffffff':'#ffcc66';c.fillRect(px+4,py,w-8,10);c.fillStyle=player.isSuper?'#ff00aa':'#3366ff';c.fillRect(px+2,py+10,w-4,10);c.fillStyle='#222244';c.fillRect(px+3,py+20,5,h-20);c.fillRect(px+w-8,py+20,5,h-20);c.fillStyle='#ffffff';c.fillRect(px+6,py+3,3,3);c.fillRect(px+w-9,py+3,3,3);c.restore();}
 }
 
 
@@ -175,6 +205,8 @@ function update() {
             levelMsgEl.style.display = 'block';
             levelMsgEl.innerText = `CAVERN ${currentLevel + 1} STARTING, ARE YOU READY?`;
             transitionTimer = 90;
+            currentLevel++;
+            setupLevel(currentLevel);
         }
         return;
     }
@@ -298,6 +330,11 @@ function update() {
                 }
             }
         }
+    }
+
+    if (player.o2 <= 0) {
+        gameOver();
+        return;
     }
 
     if (player.isSuper) {

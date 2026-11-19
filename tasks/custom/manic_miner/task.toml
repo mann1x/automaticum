@@ -11,10 +11,27 @@
 # required game_logic.ok, so v4 and v5 verdicts are comparable: the agent now
 # reads `"ok":false` while game_logic fails, a change of what it is told, not
 # of the measurement (docs/specs/060 section 5.1).
+#
+# Version 6 (2026-11-19): a comparability boundary, used from the new test
+# campaign on; earlier runs are not rescored (owner's decision). The v5 oracle
+# passed an unplayable game: every trap placed the player itself, so where a
+# cavern puts the player, finishing a cavern, running out of air, RESTART and
+# drawing the player were never exercised, and warnings never failed. v5's own
+# known-good spawned the player inside a tile (23 of 40 seeds), never left
+# cavern 1, ignored O2 at 0 and drew no player. v6:
+#   - game_logic.ok needs every trap clean: a warning fails, and a trap that
+#     warns is not counted in `passed` (owner's rule);
+#   - five new traps: spawn, advance, death, restart, draw (28 in all);
+#   - the level trap fails when setupLevel(n) builds a different cavern than
+#     new Level(n);
+#   - the canvas stub returns one context per element, as a browser does;
+#   - known-good is fixed (spawn, cavern advance, O2 death, a drawn player);
+#     v5's is kept as known-bad-v5-unplayable, and each new check has a fixture
+#     that breaks only it.
 
 id = "manic_miner"
 suite = "custom"
-version = 5
+version = 6
 layers = ["typescript"]
 default_answer = "Use your own judgement and continue."
 
@@ -43,7 +60,7 @@ image = "node@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86
 inputs = ["oracle/build.mjs", "oracle/run_game.logic.js"]
 command = ["node", "/task/oracle/build.mjs", "/task/oracle/run_game.logic.js", "/out/run_game"]
 output = "run_game"
-sha256 = "4088844b64c5662815e79cf68e55c1e913350c1fe9d3fcb7d70e61aa0cfd1378"
+sha256 = "465ac2e845671a6411e0c861e6912662c8c0d467cc4e9e46555f7467c55720a3"
 
 # The agent's copy of the oracle: it may run it, and cannot read its source.
 [[workspace.install]]
@@ -63,12 +80,19 @@ command = ["./run_game", "manic_miner.html"]
 expect_pattern = '"ok":\s*true.*"frames_run":\s*[1-9][0-9]*.*"reached_playing":\s*true.*"game_logic":\s*\{"ok":\s*true'
 timeout_s = 120
 
-# The oracle must pass the first and fail the others, or the task cannot run.
+# The oracle must pass the known-good pages and fail the others, or the task cannot run.
+
 [[fixture]]
 name = "known-good"
 expect = "pass"
 [fixture.files]
 "manic_miner.html" = "fixtures/known-good.html"
+
+[[fixture]]
+name = "known-good-renamed-context"
+expect = "pass"
+[fixture.files]
+"manic_miner.html" = "fixtures/known-good-renamed-context.html"
 
 [[fixture]]
 name = "seed"
@@ -81,3 +105,57 @@ name = "weak-jump"
 expect = "fail"
 [fixture.files]
 "manic_miner.html" = "fixtures/known-bad-weak-jump.html"
+
+[[fixture]]
+name = "v5-unplayable"
+expect = "fail"
+[fixture.files]
+"manic_miner.html" = "fixtures/known-bad-v5-unplayable.html"
+
+[[fixture]]
+name = "no-spawn"
+expect = "fail"
+[fixture.files]
+"manic_miner.html" = "fixtures/known-bad-no-spawn.html"
+
+[[fixture]]
+name = "no-advance"
+expect = "fail"
+[fixture.files]
+"manic_miner.html" = "fixtures/known-bad-no-advance.html"
+
+[[fixture]]
+name = "no-death"
+expect = "fail"
+[fixture.files]
+"manic_miner.html" = "fixtures/known-bad-no-death.html"
+
+[[fixture]]
+name = "death-no-overlay"
+expect = "fail"
+[fixture.files]
+"manic_miner.html" = "fixtures/known-bad-death-no-overlay.html"
+
+[[fixture]]
+name = "restart-keeps-o2"
+expect = "fail"
+[fixture.files]
+"manic_miner.html" = "fixtures/known-bad-restart-keeps-o2.html"
+
+[[fixture]]
+name = "no-draw"
+expect = "fail"
+[fixture.files]
+"manic_miner.html" = "fixtures/known-bad-no-draw.html"
+
+[[fixture]]
+name = "level-off-by-one"
+expect = "fail"
+[fixture.files]
+"manic_miner.html" = "fixtures/known-bad-level-off-by-one.html"
+
+[[fixture]]
+name = "sx-no-retry"
+expect = "fail"
+[fixture.files]
+"manic_miner.html" = "fixtures/known-bad-sx-no-retry.html"

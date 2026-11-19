@@ -15,6 +15,15 @@
 // v5 (2026-11-12): `ok` is the whole verdict -- the page runs AND game_logic.ok. `runs` is what
 // `ok` meant up to v4 (the page loads and the physics run).
 //
+// v6 (2026-11-19): a warning is a failure. game_logic.ok needs every trap to pass with no
+// warning, and a trap that warns is not counted in `passed`. Before, a page could print
+// "passed":23,"total":23,"ok":true next to two warnings that were real bugs. Five traps
+// were added for the paths every v5 trap skipped by placing the player itself: spawn,
+// advance, death, restart and draw. The level trap also fails when setupLevel(n) builds
+// a different cavern than new Level(n). v5's known-good fixture fails v6: its player
+// spawned inside a tile, it never left cavern 1, nothing happened at O2 0, and the player
+// was never drawn.
+//
 // FRAMES DEFAULT IS 400, AND THAT IS THE WHOLE POINT.
 //
 // The game opens in a COUNTDOWN state and `update()` returns early for every
@@ -79,6 +88,8 @@ function canvasContext() {
 }
 
 function element(id) {
+	// One context per element, as a browser gives: getContext('2d') twice is the same object.
+	let context2d = null;
 	const el = {
 		id,
 		width: 640,
@@ -90,7 +101,7 @@ function element(id) {
 		innerHTML: "",
 		className: "",
 		classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
-		getContext: () => canvasContext(),
+		getContext: () => context2d || (context2d = canvasContext()),
 		addEventListener() {},
 		removeEventListener() {},
 		appendChild(child) {
@@ -452,6 +463,25 @@ function __center() { return { x: player.x + player.width / 2, y: player.y + pla
 // What one frame of doing nothing costs in O2: 0 in the source, a small
 // drain in a page that adds an air supply. Pickups are judged net of it.
 function __drain() { const o = player.o2; __step(); const d = player.o2 - o; player.o2 = 100; return d; }
+// The player's box overlaps a solid tile, by the source's own collide() rule (x + w - 1).
+function __inTile() {
+	const L = currentLevelObj, T = TILE_SIZE;
+	const l = Math.floor(player.x / T), r = Math.floor((player.x + player.width - 1) / T);
+	const t = Math.floor(player.y / T), b = Math.floor((player.y + player.height - 1) / T);
+	for (let j = t; j <= b; j++) for (let i = l; i <= r; i++) if (L.data[j] && L.data[j][i] === 1) return true;
+	return false;
+}
+// No enemies or boss, so a test of one path is not decided by a collision on another.
+function __calm() { const L = currentLevelObj; L.en = []; L.bs = false; L.boss = null; }
+// Ticks real-time frames until the state is PLAYING again or the limit runs out.
+function __untilPlaying(limit) { let n = 0; while (gameState !== 'PLAYING' && n < limit) { __tick(1); n++; } return n; }
+function __overlay() { const s = document.getElementById('game-over-overlay').style.display; return !!s && s !== 'none'; }
+// Runs O2 out through the game's own rule: an enemy hit at 10 O2 costs 15.
+function __die() {
+	__settle(); const c = __center(); player.o2 = 10;
+	currentLevelObj.en.push({ x: c.x - 10, y: c.y - 6, vx: 0, al: true, tp: 'worm', fc: 0 });
+	__step(3);
+}
 function __text(id) { const e = document.getElementById(id); return String(e.innerText !== undefined && e.innerText !== '' ? e.innerText : e.textContent); }
 `;
 
@@ -588,6 +618,13 @@ const TRAPS = {
 		return '';`,
 	level: `setupLevel(1); const L = currentLevelObj;
 		if (!(L instanceof Level)) return 'setupLevel did not make a Level';
+		// setupLevel(n) must build cavern n: same size as new Level(n) builds.
+		for (const n of [1, 4]) {
+			setupLevel(n); const a = currentLevelObj; let b = null;
+			try { b = new Level(n); } catch (e) { b = null; }
+			if (b && (a.width !== b.width || a.height !== b.height)) return 'setupLevel(' + n + ') builds a ' + a.width + 'x' + a.height + ' cavern, new Level(' + n + ') is ' + b.width + 'x' + b.height + ': setupLevel builds the wrong level';
+		}
+		setupLevel(1);
 		if (!Array.isArray(L.data) || L.data.length !== L.height || L.data[L.height - 1].some((v) => v !== 1)) return 'the bottom row is not solid floor';
 		const source = L.width === 220 && L.height === 12;
 		if (!source) __warn('cavern 1 is ' + L.width + 'x' + L.height + ', the source makes 220x12');
@@ -616,6 +653,88 @@ const TRAPS = {
 		if (seen.size < 10) return 'sX picked only ' + seen.size + ' distinct columns in 200 calls';
 		if (empty > 10) __warn('sX found no column in ' + empty + ' of 200 calls; the source retries 50 times');
 		return '';`,
+	// v6. The traps above place the player themselves; these five start from what
+	// the game itself does: where a cavern puts the player, what finishing one
+	// leads to, what running out of air does, what RESTART restores, and whether
+	// the player is drawn at all.
+	spawn: `const T = TILE_SIZE;
+		for (let i = 0; i < 20; i++) {
+			if (i > 0) setupLevel(1 + (i % 5));
+			const L = currentLevelObj, n = i === 0 ? 'the first cavern' : 'cavern ' + (1 + (i % 5)) + ' (build ' + i + ')';
+			if (!(player.x >= 0 && player.x + player.width <= L.width * T && player.y >= 0 && player.y + player.height <= L.height * T)) return n + ' starts the player outside the cavern, at (' + player.x + ', ' + player.y + ')';
+			if (__inTile()) return n + ' starts the player inside a solid tile, at (' + player.x + ', ' + player.y + ')';
+		}
+		setupLevel(1); __calm(); gameState = 'PLAYING'; __step(30);
+		if (__inTile()) return 'the player ends up inside a solid tile 30 frames into cavern 1';
+		if (!player.grounded) return 'the player is not standing on anything 30 frames into cavern 1';
+		let x0 = player.x; __key('ArrowRight', true); __step(20); __key('ArrowRight', false); let moved = Math.abs(player.x - x0);
+		if (moved < 10) { __step(30); x0 = player.x; __key('ArrowLeft', true); __step(20); __key('ArrowLeft', false); moved = Math.abs(player.x - x0); }
+		if (moved < 10) return 'from where cavern 1 starts the player cannot walk either way (moved ' + moved.toFixed(1) + 'px)';
+		return '';`,
+	advance: `setupLevel(1); currentLevel = 1; __calm(); const L1 = currentLevelObj;
+		gameState = 'PLAYING'; gameOverFlag = false; player.score = 0;
+		player.x = (L1.width - 8) * TILE_SIZE + 5; __step();
+		if (gameState !== 'LEVEL_COMPLETE') return 'at the exit of cavern 1 the state is ' + gameState + ', expected LEVEL_COMPLETE';
+		__untilPlaying(1200);
+		if (gameState !== 'PLAYING') return 'after finishing cavern 1 the game never returned to play (state ' + gameState + ')';
+		if (currentLevel !== 2) return 'after finishing cavern 1 the game is on cavern ' + currentLevel + ', expected 2';
+		if (currentLevelObj === L1) return 'after finishing cavern 1 the game plays the same cavern again';
+		if (!(currentLevelObj.width > L1.width)) return 'cavern 2 is ' + currentLevelObj.width + ' wide, no wider than cavern 1 (' + L1.width + ')';
+		if (player.x > currentLevelObj.width * TILE_SIZE / 2) return 'cavern 2 starts with the player at x ' + player.x.toFixed(0) + ', past its middle: the player was not moved to the start';
+		if (__inTile()) return 'cavern 2 starts with the player inside a solid tile';
+		__calm(); __step(30);
+		if (gameState !== 'PLAYING') return '30 frames into cavern 2 the state is ' + gameState + ', expected PLAYING';
+		if (__text('cavern-val') !== '2') return 'the #cavern-val element shows ' + JSON.stringify(__text('cavern-val')) + ' on cavern 2';
+		return '';`,
+	death: `__die(); const f = player.frameCount; __step(120);
+		if (player.frameCount !== f) return 'the game kept playing after O2 ran out (O2 ' + (+player.o2).toFixed(1) + ' after an enemy hit at 10)';
+		if (!__overlay()) return 'running out of O2 did not show the end-of-game overlay';
+		if (!/GAME\\s*OVER/i.test(__text('go-title'))) return 'the end-of-game title reads ' + JSON.stringify(__text('go-title')) + ' after running out of O2';
+		return '';`,
+	restart: `__die();
+		if (!__overlay()) return 'running out of O2 did not end the game, so RESTART cannot be tested';
+		if (typeof restartGame !== 'function') return 'there is no restartGame() for the RESTART button to call';
+		player.score = 77; currentLevel = 3; restartGame();
+		if (__overlay()) return 'RESTART left the end-of-game overlay showing';
+		if (currentLevel !== 1) return 'RESTART goes to cavern ' + currentLevel + ', expected 1';
+		if (player.score !== 0) return 'RESTART kept the score at ' + player.score;
+		__untilPlaying(600);
+		if (gameState !== 'PLAYING') return 'after RESTART the game never returned to play (state ' + gameState + ')';
+		if (!(player.o2 > 0)) return 'RESTART starts the new game with O2 at ' + player.o2;
+		if (__inTile()) return 'RESTART starts the player inside a solid tile';
+		__calm(); const f = player.frameCount; __step(60);
+		if (player.frameCount - f !== 60) return 'the game stopped again within 60 frames of RESTART (O2 ' + player.o2 + ')';
+		return '';`,
+	// One frame drawn the way a browser draws it: the callback the page last
+	// handed to requestAnimationFrame. On an empty floor with no clouds, the only
+	// thing that can land inside the player's box is the player; fills of a
+	// quarter of the screen or more (backgrounds, overlays) do not count.
+	draw: `__settle(); clouds = []; player.x = 30 * TILE_SIZE; __step(2);
+		if (__frames.pending.length === 0) return 'the page has no animation frame scheduled, so nothing draws the game';
+		const cb = __frames.pending.shift(); __frames.pending.length = 0;
+		const ops = []; let tx = 0, ty = 0; const stack = [];
+		const big = (w, h) => Math.abs(w * h) >= VIEWPORT_W * VIEWPORT_H / 4;
+		const rect = (x, y, w, h) => { if (typeof x === 'number' && typeof w === 'number' && !big(w, h)) ops.push([x + tx, y + ty, w, h]); };
+		const pt = (x, y) => { if (typeof x === 'number') ops.push([x + tx, y + ty, 0, 0]); };
+		const wrap = { fillRect: rect, strokeRect: rect, rect: rect,
+			arc: (x, y, r) => rect(x - r, y - r, 2 * r, 2 * r),
+			ellipse: (x, y, rx, ry) => rect(x - rx, y - ry, 2 * rx, 2 * ry),
+			moveTo: pt, lineTo: pt, fillText: (t, x, y) => pt(x, y),
+			drawImage: (img, a, b, c, d, e, f, g, h) => { if (typeof e === 'number' && typeof g === 'number') rect(e, f, g, h); else if (typeof c === 'number') rect(a, b, c, d); else pt(a, b); },
+			translate: (x, y) => { tx += x; ty += y; },
+			setTransform: (a, b, c, d, e, f) => { if (typeof e === 'number') { tx = e; ty = f; } else { tx = 0; ty = 0; } },
+			resetTransform: () => { tx = 0; ty = 0; },
+			save: () => stack.push([tx, ty]), restore: () => { const t = stack.pop(); if (t) { tx = t[0]; ty = t[1]; } } };
+		const c2d = typeof ctx !== 'undefined' ? ctx : document.getElementById('gameCanvas').getContext('2d');
+		for (const k in wrap) c2d[k] = wrap[k];
+		cb(__clock.now += 16.7);
+		// Inset 2px: the player may rest up to 1px into the floor, and a floor or wall
+		// tile touching the box is not the player.
+		const bx = player.x - camera.x + 2, by = player.y + 2, bw = player.width - 4, bh = player.height - 4;
+		const hit = ops.some(([x, y, w, h]) => { const x1 = Math.min(x, x + w), x2 = Math.max(x, x + w), y1 = Math.min(y, y + h), y2 = Math.max(y, y + h);
+			return x2 >= bx && x1 <= bx + bw && y2 >= by && y1 <= by + bh && (w === 0 || h === 0 ? true : (x2 > bx && x1 < bx + bw && y2 > by && y1 < by + bh)); });
+		if (!hit) return 'a drawn frame puts nothing where the player is (screen ' + (bx - 2).toFixed(0) + ',' + (by - 2).toFixed(0) + ' ' + player.width + 'x' + player.height + '): the player is invisible';
+		return '';`,
 	clouds: `initClouds();
 		if (!Array.isArray(clouds) || clouds.length < 1) return 'initClouds made no clouds';
 		if (!clouds.every((c) => c instanceof Cloud)) return 'the clouds are not Cloud objects';
@@ -627,6 +746,7 @@ function trapContext(blocks) {
 	const clock = { now: 0 };
 	const sandbox = makeSandbox(clock, frames, seeded(0x6d616e));
 	sandbox.__clock = clock;
+	sandbox.__frames = frames;
 	for (const block of blocks) {
 		vm.runInContext(block, sandbox, { timeout: 10000 });
 	}
@@ -661,9 +781,12 @@ function gameLogic(blocks) {
 			warnings.push({ trap: name, detail: String(text) });
 		}
 	}
+	// v6: a warning fails. A trap counts as passed only with no failure and no warning,
+	// so "passed" == "total" exactly when ok is true.
+	const notClean = new Set([...failed, ...warnings].map((f) => f.trap));
 	return {
-		ok: failed.length === 0,
-		passed: names.length - failed.length,
+		ok: notClean.size === 0,
+		passed: names.length - notClean.size,
 		total: names.length,
 		failed,
 		warnings,
