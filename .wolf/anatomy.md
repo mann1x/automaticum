@@ -1,15 +1,15 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-15T05:00:00.691Z
-> Files: 512 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-19T17:10:06.731Z
+> Files: 515 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
 - `.gitattributes` — Git attributes (~20 tok)
 - `.gitignore` — Git ignore rules (~73 tok)
 - `.gitleaks.toml` (~581 tok)
-- `CALIBER_LEARNINGS.md` — Caliber Learnings (~7515 tok)
-- `CLAUDE.md` — automaticum (~7585 tok)
+- `CALIBER_LEARNINGS.md` — Caliber Learnings (~7611 tok)
+- `CLAUDE.md` — automaticum (~7588 tok)
 - `go.mod` — Go module definition (~303 tok)
 - `go.sum` — Go dependency checksums (~1248 tok)
 - `LICENSE` — Project license (~3029 tok)
@@ -20,7 +20,7 @@
 ## .caliber/
 
 - `.caliber-state.json` (~35 tok)
-- `learnings-archive.md` — Caliber Learnings Archive (~166225 tok)
+- `learnings-archive.md` — Caliber Learnings Archive (~169154 tok)
 - `manifest.json` (~728 tok)
 - `refresh-hook.log` (~211 tok)
 - `score-history.jsonl` (~2034 tok)
@@ -35,13 +35,13 @@
 
 ## .caliber/cache/
 
-- `fingerprint.json` — Declares usage (~97097 tok)
+- `fingerprint.json` — Declares usage (~97077 tok)
 
 ## .caliber/learning/
 
-- `current-session.jsonl` — Declares release (~18626 tok)
+- `current-session.jsonl` (~18395 tok)
 - `finalize.log` (~0 tok)
-- `roi-stats.json` (~109217 tok)
+- `roi-stats.json` (~109743 tok)
 - `state.json` (~41 tok)
 
 ## .claude/
@@ -93,7 +93,7 @@
 
 ## .claude/skills/learned-new-sdk-release/
 
-- `SKILL.md` — Provisioning a new SDK release (~4868 tok)
+- `SKILL.md` — Provisioning a new SDK release (~5379 tok)
 
 ## .claude/skills/log-wolf-bug/
 
@@ -661,3 +661,15 @@
 - `f1287.log` (~0 tok)
 - `f1288.log` (~0 tok)
 - `f1289.log` (~0 tok)
+
+## examples/config/arms/
+
+- `base.toml` — The settings every arm here shares. It is not runnable by itself: it names (~897 tok)
+
+## runner/
+
+- `template.mjs` — The arm asks for a template this build or workspace does not have. (~1241 tok)
+
+## runner/test/
+
+- `template.test.mjs` — An SDK build as 4.100.260 on exports it, and @cerebriline/shared: every (~1894 tok)

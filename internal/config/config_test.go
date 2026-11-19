@@ -210,6 +210,91 @@ func TestBrowserIdentity(t *testing.T) {
 	}
 }
 
+// The prompt template (D155): "auto" changes the identity only of an arm
+// whose provider the SDK asks for the model's family (Ollama, xOllama); any
+// other choice is the arm's; a custom file is its content, not its name.
+func TestPromptTemplateIdentity(t *testing.T) {
+	other := strings.Replace(good, `provider = "ollama"`, `provider = "openai"`, 1)
+	dir := arms(t, map[string]string{
+		"plain":        good,
+		"auto":         good + "[agent.prompt_template]\nuse = \"auto\"\n",
+		"other":        other,
+		"other_auto":   other + "[agent.prompt_template]\nuse = \"auto\"\n",
+		"default":      good + "[agent.prompt_template]\nuse = \"default\"\n",
+		"qwen":         good + "[agent.prompt_template]\nuse = \"qwen\"\n",
+		"custom":       good + "[agent.prompt_template]\nuse = \"custom\"\nfile = \"templates/mine.md\"\n",
+		"custom_copy":  good + "[agent.prompt_template]\nuse = \"custom\"\nfile = \"templates/copy.md\"\n",
+		"custom_other": good + "[agent.prompt_template]\nuse = \"custom\"\nfile = \"templates/other.md\"\n",
+	})
+	tdir := filepath.Join(filepath.Dir(dir), "templates")
+	os.MkdirAll(tdir, 0o755)
+	body := "---\nname: mine\n---\n# system\nBe brief.\n"
+	os.WriteFile(filepath.Join(tdir, "mine.md"), []byte(body), 0o644)
+	os.WriteFile(filepath.Join(tdir, "copy.md"), []byte(body), 0o644)
+	os.WriteFile(filepath.Join(tdir, "other.md"), []byte(body+"More.\n"), 0o644)
+	id := map[string]string{}
+	res := map[string]string{}
+	for _, n := range []string{"plain", "auto", "other", "other_auto", "default", "qwen", "custom", "custom_copy", "custom_other"} {
+		a, err := LoadArm(dir, n)
+		if err != nil {
+			t.Fatal(n, err)
+		}
+		id[n], res[n] = a.ID, string(a.Resolved())
+	}
+	if !strings.Contains(res["plain"], `"prompt_template":{"use":"auto"}`) {
+		t.Errorf("an Ollama arm left alone resolves to auto: %s", res["plain"])
+	}
+	if strings.Contains(res["other"], "prompt_template") || strings.Contains(res["other_auto"], "prompt_template") {
+		t.Errorf("auto on a provider nobody asks is the arm it was: %s", res["other_auto"])
+	}
+	if !strings.Contains(res["custom"], `"text":"---\nname: mine`) || !strings.Contains(res["custom"], `"file_name":"mine.md"`) || !strings.Contains(res["custom"], `"sha256":"`) {
+		t.Errorf("custom: %s", res["custom"])
+	}
+	if strings.Contains(res["custom"], "templates/mine.md") {
+		t.Errorf("the path is not the arm's: %s", res["custom"])
+	}
+	same := [][2]string{{"plain", "auto"}, {"other", "other_auto"}, {"custom", "custom_copy"}}
+	for _, p := range same {
+		if id[p[0]] != id[p[1]] {
+			t.Errorf("%s and %s should be one arm", p[0], p[1])
+		}
+	}
+	differ := [][2]string{{"plain", "default"}, {"plain", "qwen"}, {"default", "qwen"}, {"plain", "custom"}, {"custom", "custom_other"}}
+	for _, p := range differ {
+		if id[p[0]] == id[p[1]] {
+			t.Errorf("%s and %s should be two arms", p[0], p[1])
+		}
+	}
+	a, _ := LoadArm(dir, "custom")
+	if v := Values(a); v["agent.prompt_template.sha256"] == "" || v["agent.prompt_template.text"] != "" {
+		t.Errorf("values show a custom template by its sha256: %v", v)
+	}
+	b, _ := LoadArm(dir, "custom_other")
+	if d := strings.Join(Diff(a, b), "\n"); !strings.Contains(d, "agent.prompt_template.sha256") || strings.Contains(d, "Be brief") {
+		t.Errorf("diff: %s", d)
+	}
+}
+
+func TestPromptTemplateValidation(t *testing.T) {
+	dir := arms(t, map[string]string{
+		"nofile":  good + "[agent.prompt_template]\nuse = \"custom\"\n",
+		"strayf":  good + "[agent.prompt_template]\nuse = \"qwen\"\nfile = \"x.md\"\n",
+		"badname": good + "[agent.prompt_template]\nuse = \"../qwen\"\n",
+		"missing": good + "[agent.prompt_template]\nuse = \"custom\"\nfile = \"templates/none.md\"\n",
+	})
+	for n, want := range map[string]string{
+		"nofile":  "agent.prompt_template.file (use is \"custom\") is not stated",
+		"strayf":  "agent.prompt_template.file is stated: use must be \"custom\"",
+		"badname": `agent.prompt_template.use "../qwen"`,
+		"missing": "agent.prompt_template.file: open",
+	} {
+		_, err := LoadArm(dir, n)
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: %v, want %q", n, err, want)
+		}
+	}
+}
+
 // The reasoning-loop limit is stated in every arm (D108). The SDK's own 3
 // leaves the arm's identity as it was; any other number is part of it.
 func TestReasoningLoopLimitIdentity(t *testing.T) {

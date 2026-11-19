@@ -29,6 +29,10 @@ type Script struct {
 	// and send nothing, as a turn with Hang does; otherwise they are
 	// answered at once.
 	HangProbe bool `json:"hang_probe,omitempty"`
+	// Family is the architecture /api/tags and /api/show report (the
+	// family the SDK picks a prompt template by, D155); "stub" when not
+	// given.
+	Family string `json:"family,omitempty"`
 	// Turns are the answers, in order. The answer to a request is chosen by
 	// how many assistant messages the request already holds, so a retried
 	// request gets the same answer. Past the last turn, the last is repeated.
@@ -122,9 +126,13 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	s.paths[r.URL.Path]++
 	s.mu.Unlock()
+	family := s.script.Family
+	if family == "" {
+		family = "stub"
+	}
 	model := map[string]any{
 		"name": s.script.Model, "model": s.script.Model, "digest": s.digest(), "size": 1,
-		"details": map[string]any{"format": "gguf", "family": "stub", "parameter_size": "0", "quantization_level": "none"},
+		"details": map[string]any{"format": "gguf", "family": family, "parameter_size": "0", "quantization_level": "none"},
 	}
 	switch r.URL.Path {
 	case "/api/version":
@@ -143,7 +151,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"parameters":   fmt.Sprintf("num_ctx                        %d", s.script.ContextWindow),
 			"template":     template,
 			"details":      model["details"],
-			"model_info":   map[string]any{"general.architecture": "stub", "stub.context_length": s.script.ContextWindow},
+			"model_info":   map[string]any{"general.architecture": family, family + ".context_length": s.script.ContextWindow},
 			"capabilities": []string{"completion", "tools", "thinking"},
 		})
 	case "/api/chat":

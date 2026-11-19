@@ -32,6 +32,18 @@ interval = 2
 # enabled = true
 # diagnostics_after_edits = true   # the extension's way; false keeps only the tools
 
+# The prompt template (D155, 040 §6.1.4): the system prompt and the tool
+# descriptions. "auto" is the extension's choice: the model's family asked
+# of an Ollama or xOllama server (/api/show), then its name and provider,
+# merged over default.md; left out, an arm is on "auto". "default" is
+# default.md alone; a template's name ("qwen", "gemma", ...) is that one
+# over default.md, whatever the model; "custom" is a file of your own,
+# relative to the configuration directory, whose content is the arm's.
+[agent.prompt_template]
+use = "auto"
+# use = "custom"
+# file = "templates/my-model.md"
+
 [agent.sub_agents]
 spawn = false
 teams = false

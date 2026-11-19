@@ -1,6 +1,6 @@
 # 040 — The runner
 
-**Status:** draft 1.21, 2026-11-15. Facts about the SDK in this file were read
+**Status:** draft 1.22, 2026-11-19. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
 running it. The parity table in §6 was checked row by row by the Cerebriline
 session on 2026-10-13 against its main branch (release 4.100.249 plus requests
@@ -421,6 +421,54 @@ chrome in the lane".
   way; the runner does not patch the SDK's output, and the fix is asked of
   the SDK (§8). Fixed in 4.100.277: the page binds `planTransform` by its own
   name, and the tool writes its image on the stub.
+
+#### 6.1.4 The prompt template (as built, D155)
+
+**Decided by the owner (2026-11-19, D155):** "automaticum must lookup for
+the prompt template and must be able to handle custom configuration to use
+the default or a custom template", on the SDK owner's report that the
+runner was the only host that never asked the server for the model's
+family.
+
+- **What it is.** The SDK chooses a template (a markdown file with a system
+  prompt, tool descriptions and a claim on providers, families and model
+  names) and merges it over `default.md`; the system prompt and every tool
+  description the model reads come from it. The extension asks an Ollama or
+  xOllama server for the model's family (`/api/show`, `details.family`), so
+  a local tag whose name says nothing (`a3b-coder_tb:Q4_K_M`, family
+  `qwen35moe`) gets `qwen.md`. Until protocol 12 the runner did not ask, and
+  such a model ran on `default.md`.
+- **Arm field.** `[agent.prompt_template] use`: `auto` (left out means
+  `auto`) is the extension's choice, the SDK's
+  `resolveSessionPromptTemplate` with the endpoint's address and the wire's
+  fetch, so the lookup is in `wire.jsonl`; `default` is `default.md` alone;
+  a template's name (`qwen`, `gemma`, ...: a builtin of the build, or one in
+  the workspace's `.clinerules/templates`, the nearest winning) is that
+  template over `default.md`, whatever the model; `custom` with `file` is a
+  template of the installation's own (`<config>/templates/...` by
+  convention), read when the arm is loaded and given to the runner as text.
+  A forced template is merged by the SDK's own `renderPromptTemplate` over
+  `default.md` alone, so nothing else can win.
+- **Identity.** `auto` asks the server only on Ollama and xOllama: an arm on
+  either names it in its resolved form, so every such arm changed identity
+  with protocol 12; on any other provider `auto` changes nothing and is left
+  out. A forced choice is the arm's; a custom file is its text and sha256,
+  not its path or name.
+- **Record.** The `prompt_template` note and the `prepared` note say what
+  was used: `use`, the template's `name`, `file_name` and `source`, whether
+  it was merged over `default.md` (`overlaid`), the family the server
+  reported (`family`, null when it gave none), `lookup` (`asked`,
+  `not_asked`, or `not_in_build` on a release before 4.100.260, which has no
+  lookup and matches on the name and provider only), and a custom file's
+  `sha256`; the note's `message` is the line the SDK's hosts log
+  (`[PromptTemplates] <model> (<family>) → qwen over default`).
+- **Refused.** A name no source has (the note names those there are), or a
+  custom file that does not parse, ends the run `refused` (SKIPPED): the
+  arm asks for what the build cannot give.
+- **Proved** on 4.100.283 against the stub reporting `qwen35moe` for that
+  tag: `auto` asked, chose `qwen` over default, and its system prompt and
+  57 tool descriptions equal a forced `use = "qwen"`; on 4.100.250 the same
+  arm records `not_in_build` and gets `default.md`.
 
 ### 6.2 The scripted user
 

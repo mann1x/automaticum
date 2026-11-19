@@ -272,3 +272,25 @@ func TestOpenAICompatible(t *testing.T) {
 		t.Errorf("recorded %d calls, %d chats", got, len(s.Chats()))
 	}
 }
+
+// A script's family is what /api/show and /api/tags report (D155): the
+// family the SDK picks a prompt template by. Left out, it is "stub".
+func TestFamily(t *testing.T) {
+	for family, want := range map[string]string{"": "stub", "qwen35moe": "qwen35moe"} {
+		srv := httptest.NewServer(New(Script{Model: "m:1", ContextWindow: 4096, Family: family}))
+		resp, err := http.Post(srv.URL+"/api/show", "application/json", strings.NewReader(`{"model":"m:1"}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var show struct {
+			Details   map[string]any `json:"details"`
+			ModelInfo map[string]any `json:"model_info"`
+		}
+		json.NewDecoder(resp.Body).Decode(&show)
+		resp.Body.Close()
+		srv.Close()
+		if show.Details["family"] != want || show.ModelInfo["general.architecture"] != want || show.ModelInfo[want+".context_length"] != float64(4096) {
+			t.Errorf("family %q: %+v", family, show)
+		}
+	}
+}

@@ -165,3 +165,28 @@ Rollback then means stopping the daemon, restoring both files and the `.prev` bi
 - Write each smoke as one `ssh <host> bash -s <<'EOF' ... EOF` block. Start the stub with `nohup automaticum stub serve -listen 172.17.0.1:7412 -script work/stub/<script>.json &`. Parse the run id with `grep -oE '^[0-9]{8}-[0-9]{6}-[0-9a-f]{6}$'`. Then `timeout 300 automaticum wait run $ID`, then `run show $ID`, and only then kill the stub. A stub stopped early gives SKIPPED `gate model_tag: endpoint stub does not answer /api/version`.
 - Smoke set: the default stub arm on `demo/answer` (script `fix-answer.json`), and for LSP a temporary arm `extends = "stub-sdk-<ver>"` with `[agent.lsp] enabled = true` on `custom/manic_miner` (script `fix-manic.json`). Check `lsp.source` and `lsp.started` in the `prepared` note (`automaticum logs <id> | grep '"note":"prepared"'`) and the `lsp.*` metrics in `run show`. Remove the temporary arm afterwards.
 - Release the build claim. Mail DONE with the versions, image ids, smoke run ids and verdicts (including any SKIPPED run of your own and why), and the rollback files.
+
+## SDK-only deploy (no daemon restart)
+
+Use this when a commit pins or adopts an SDK release and changes no Go code outside tests. The daemon binary stays as it is, and nothing is restarted.
+
+1. Run `claude-hooks-res status` and check that no claim blocks the host's build resource. Claim it with `claude-hooks-res acquire <host>/build -r "automaticum: SDK <ver> on <host>" --ttl 1h`, then mail the clients a START note: about 10 minutes, lanes idle, queue nothing until DONE. Say that the daemon is not restarted and that arms which state their own release keep it.
+2. In one `ssh <host> bash -s <<'EOF' ... EOF` block with `set -e` and `export AUTOMATICUM_CONFIG=<install>/config`:
+   - Stop unless `automaticum status` shows `0 running, 0 queued` and the smoke lane is `idle`. Use `exit 3` with the status printed.
+   - `cd <install>/repo && git fetch -q origin && git checkout -q <sha>`.
+   - From `<install>/work`, run `automaticum sdk add -repo <install>/repo <ver>` and then `automaticum sdk verify -repo <install>/repo <ver>`. The second must say `is reproduced`.
+   - `cp -p config/arms/base.toml work/base.toml.pre-<sha>`. Never keep the backup under `config/`, which the daemon watches.
+   - Copy the new `examples/config/arms/stub-sdk-<ver>.toml`, plus the previous stub arm whose comment changed, into `config/arms/`.
+   - Change `sdk_release` and its comment in the host `base.toml` with a Python replace that `assert`s the old text is present. The host file can differ from the repo copy.
+   - `automaticum config check --repo <install>/repo` (models ok, tasks ok).
+   - `systemctl reload automaticumd`.
+3. Verify:
+   - `automaticum arm show stub` shows `harness.sdk_release "<ver>" base`.
+   - `systemctl show automaticumd -p NRestarts` shows 0.
+   - The journal may say `configuration reloaded: nothing changed`. That is fine: the config watcher had already applied the edit.
+4. Smoke on a lane:
+   - Start `automaticum stub serve -listen <stub base_url host:port from config/endpoints/stub.toml> -script stub/fix-answer.json` in the background and check that `curl /api/version` answers.
+   - Run `automaticum run start --arm stub-sdk-<ver> --task demo/answer` and parse the id with `grep -oE '^[0-9]{8}-[0-9]{6}-[0-9a-f]{6}'`.
+   - Run `timeout 300 automaticum wait run <id>`, then `automaticum run show <id>`. Expect verdict PASS and `SDK release <ver>`.
+   - Kill the stub only after `wait run` has returned.
+5. Release the claim (`claude-hooks-res release --claim <id>`) and append one `.wolf/memory.md` row with neutral host names. Mail DONE with the repo sha, the bundle hash, the base.toml change and its backup, that the daemon was not restarted, and the smoke run's id and verdict. Moving a client's own arm to the new release is the client's call.

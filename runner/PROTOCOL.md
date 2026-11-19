@@ -1,4 +1,4 @@
-# The runner: protocol 11
+# The runner: protocol 12
 
 The runner is a Node program that runs **one** agent session for one run,
 inside the lane's container, and exits. The harness (`internal/run`) writes
@@ -109,6 +109,24 @@ edits and both Chrome drivers are the SDK's own (`createLspHost`,
 `browser` gain `source` (`sdk` or `runner`); the notes are the same either
 way (the SDK hooks' trace is written as the `editor_diagnostics` note).
 Nothing in the job or the last line changed, so the number did not.
+
+**Protocol 12 (2026-11-19):** the prompt template (040 §6.1.4, D155). The
+arm's `agent.prompt_template` chooses the system prompt and tool
+descriptions (`template.mjs`): `use` "auto" (also when the field is left
+out) is the extension's choice, the SDK's `resolveSessionPromptTemplate`
+asking an Ollama or xOllama server for the model's family through the
+wire's fetch (so the `/api/show` is in `wire.jsonl`); "default" is
+default.md alone; a template's name is that template over default.md
+whatever the model; "custom" is the job's `text` (the arm's file, read by
+the harness) over default.md. A name no source has, or a custom file that
+does not parse, ends the run `refused`. A `prompt_template` note carries
+the SDK's one line (`message`) and what the `prepared` note's
+`prompt_template` carries: `use`, `name`, `file_name`, `source`,
+`overlaid`, `family` (the server's answer, null when none), `lookup`
+(`asked`, `not_asked`, or `not_in_build` before 4.100.260), and `sha256`
+for a custom file; `prepared` also has `model_family_looked_up`,
+`model_family` and `prompt_template_warnings`. A protocol 11 runner would
+ignore the field, so the number went up.
 
 ## In
 
@@ -244,11 +262,10 @@ configuration; 4.100.266 does). From 4.100.266 the notice also says the
 limit that applied (`maxConsecutiveTrips`): one other than the arm's is a
 breach too.
 
-## What protocol 11 does not do
+## What protocol 12 does not do
 
 Escalation, sub-agents and teams, MCP approvals (no arm starts an MCP
 server), the rest of the emulation of editor behaviour (mentions,
 `@problems`, the visible terminal: 040 §6.1; the Library tools and semantic
-search: the audit in 040 §6), and looking up the model's
-family on the server to choose a prompt template. An arm that asks for one
-of the first is refused; the others are recorded differences.
+search: the audit in 040 §6). An arm that asks for one of the first is
+refused; the others are recorded differences.

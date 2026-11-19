@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.30, 2026-11-12.
+**Status:** draft 0.31, 2026-11-19.
 
 ## 1. Rules
 
@@ -270,7 +270,16 @@ diagnostics after edits, `diagnostics_after_edits = false` keeps the tools
 and drops the third; left out or off, the arm keeps the identity it had
 before the field existed (040 §6.1.2). The browser is `[agent.browser]`
 (D150): `enabled` gives `browser`, `render_image` and `transform_image` on
-the lane's Chrome, with the same identity rule (040 §6.1.3).
+the lane's Chrome, with the same identity rule (040 §6.1.3). The prompt
+template is `[agent.prompt_template]` (D155): `use` is `auto` (the
+extension's choice, with the model's family asked of an Ollama or xOllama
+server; also when the field is left out), `default` (default.md alone), a
+template's name (that template over default.md, whatever the model) or
+`custom` with `file`, a template of the installation's own, relative to the
+configuration directory, whose content (not its path) is the arm's. An arm
+on Ollama or xOllama left on `auto` names it, so it changed identity on
+2026-11-19 (it now asks the server); on any other provider `auto` is the arm
+it was (040 §6.1.4).
 
 **Harness:** SDK build, runner version, image, oracle version, task version.
 

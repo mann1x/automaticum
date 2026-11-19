@@ -21,11 +21,12 @@ import { ACT_MODE_CONTINUATION_PROMPT, createSwitchToActModeTool, withSwitchTool
 import { guardTrip, limitBreach, reasoningLimitAnswer, stopsOn } from "./guards.mjs";
 import { chromePath, mermaidPath } from "./browser.mjs";
 import { buildBrowserDrivers, buildLsp } from "./host.mjs";
+import { describeTemplate, resolveTemplate, TemplateError } from "./template.mjs";
 import { privateTools } from "./tools.mjs";
 import { createUser } from "./user.mjs";
 import { createWire, describe } from "./wire.mjs";
 
-const PROTOCOL = 11;
+const PROTOCOL = 12;
 const SDK_PACKAGE = "@cerebriline/sdk";
 const EXIT = { completed: 0, error: 1, refused: 3, invalid: 4, wall_limit: 5, guard_stop: 6 };
 
@@ -184,13 +185,27 @@ async function main() {
 	for (const skill of switchedOff) sdk.setBundledSkillEnabled(skill, false);
 
 	// 4. The system prompt, built as the hosts build it, with the IDE name
-	// the arm states. The model family is not looked up on the server, so a
-	// template chosen by family alone is not chosen here; the record says so.
-	const template = sdk.resolveSessionPromptTemplateFrom({
-		providerId: arm.model.provider,
-		modelId: arm.model.model,
-		globalDir: join(dataDir, "templates"),
-		workspaceDir: join(job.workspace, ".clinerules", "templates"),
+	// the arm states, on the template the arm chooses (040 §6.1.4, D155):
+	// "auto" asks an Ollama or xOllama server for the model's family, as
+	// the extension does, through the wire so the request is recorded.
+	let template;
+	try {
+		template = await resolveTemplate({
+			sdk,
+			shared: await import("@cerebriline/shared"),
+			arm,
+			baseUrl: job.endpoint.base_url,
+			fetch: wire.fetch,
+			globalDir: join(dataDir, "templates"),
+			workspaceDir: join(job.workspace, ".clinerules", "templates"),
+		});
+	} catch (err) {
+		if (!(err instanceof TemplateError)) throw err;
+		end("refused", { reason: err.message, sdk: sdkFound });
+	}
+	note("prompt_template", {
+		message: sdk.describeResolvedPromptTemplate?.({ modelId: arm.model.model, family: template.family }, template.rendered),
+		...describeTemplate(template, arm),
 	});
 	const promptFor = (mode) =>
 		sdk.getClineDefaultSystemPrompt({
@@ -247,9 +262,11 @@ async function main() {
 		node: process.version,
 		private_tools: Object.keys(tools),
 		bundled_skills_switched_off: switchedOff,
-		prompt_template: template.rendered ? { name: template.rendered.name, source: template.rendered.source, overlaid: template.rendered.overlaid } : null,
+		prompt_template: describeTemplate(template, arm),
 		prompt_template_errors: template.errors?.length ?? 0,
-		model_family_looked_up: false,
+		prompt_template_warnings: template.warnings?.length ?? 0,
+		model_family_looked_up: template.lookedUp,
+		model_family: template.family ?? null,
 		system_prompt_sha256: sha(firstPrompt),
 		system_prompt_bytes: Buffer.byteLength(firstPrompt),
 		lsp: lsp

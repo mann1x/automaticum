@@ -136,6 +136,65 @@ type Agent struct {
 	// transform_image on the lane's Chrome (040 §6.1.3, D150). Left out, or
 	// off, the arm keeps its identity.
 	Browser *Browser `toml:"browser" json:"browser,omitempty"`
+	// PromptTemplate chooses the session's prompt template (040 §6.1.4,
+	// D155). Left out, it is "auto": the extension's choice, with the
+	// model's family asked of an Ollama or xOllama server.
+	PromptTemplate *PromptTemplate `toml:"prompt_template" json:"prompt_template,omitempty"`
+}
+
+// PromptTemplate is the system prompt and tool descriptions a session is
+// given (D155). Use is "auto" (the template the extension would choose:
+// the model's family from the server's /api/show, then its name and
+// provider, merged over default.md), "default" (default.md alone, whatever
+// the model), "custom" (the file File, merged over default.md) or the name
+// of a template the SDK build or the workspace has (such as "qwen"),
+// merged over default.md whatever the model.
+type PromptTemplate struct {
+	Use string `toml:"use" json:"use,omitempty"`
+	// File is a custom template, relative to the configuration directory
+	// (the arms directory's parent). Only its content is the arm's.
+	File string `toml:"file" json:"-"`
+	// FileName is File's base name: the template's name when its
+	// frontmatter gives none. Shown, not identity.
+	FileName string `toml:"-" json:"file_name,omitempty"`
+	// Text and SHA256 are the custom file's content, read when the arm is
+	// loaded: the runner is given the text, and both are the arm's identity.
+	Text   string `toml:"-" json:"text,omitempty"`
+	SHA256 string `toml:"-" json:"sha256,omitempty"`
+}
+
+// maxTemplateBytes caps a custom template file.
+const maxTemplateBytes = 256 << 10
+
+var templateNameRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+
+// ollamaNative are the providers whose server the SDK asks for a model's
+// family (@cerebriline/shared isOllamaNativeProvider).
+func ollamaNative(provider string) bool { return provider == "ollama" || provider == "xollama" }
+
+// readTemplate reads a custom template's file into the arm, relative to
+// the configuration directory, the parent of the arms directory dir.
+func (a *Arm) readTemplate(dir string) error {
+	t := a.Agent.PromptTemplate
+	if t == nil || t.Use != "custom" || t.File == "" {
+		return nil
+	}
+	path := t.File
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(filepath.Dir(dir), path)
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("agent.prompt_template.file: %w", err)
+	}
+	if len(b) > maxTemplateBytes {
+		return fmt.Errorf("agent.prompt_template.file %s: %d bytes, more than %d", t.File, len(b), maxTemplateBytes)
+	}
+	sum := sha256.Sum256(b)
+	c := *t
+	c.FileName, c.Text, c.SHA256 = filepath.Base(path), string(b), hex.EncodeToString(sum[:])
+	a.Agent.PromptTemplate = &c
+	return nil
 }
 
 // Browser is the extension's Chrome surface (D150).
@@ -318,7 +377,11 @@ func LoadArm(dir, name string) (*Arm, error) {
 		// A template is checked when something extends it.
 		return &a, nil
 	}
-	if problems := a.Validate(); len(problems) > 0 {
+	problems := a.Validate()
+	if err := a.readTemplate(dir); err != nil {
+		problems = append(problems, err.Error())
+	}
+	if len(problems) > 0 {
 		return nil, &ArmError{Arm: name, Problems: problems}
 	}
 	a.ID = a.hash()
@@ -720,6 +783,17 @@ func (a *Arm) Validate() []string {
 	if a.Limits.IdleS != nil && *a.Limits.IdleS < 0 {
 		bad("limits.idle_s must not be negative")
 	}
+	if t := a.Agent.PromptTemplate; t != nil {
+		switch {
+		case t.Use == "custom":
+			need(t.File != "", "agent.prompt_template.file (use is \"custom\")")
+		case t.File != "":
+			bad("agent.prompt_template.file is stated: use must be \"custom\"")
+		}
+		if t.Use != "" && !templateNameRE.MatchString(t.Use) {
+			bad("agent.prompt_template.use %q: \"auto\", \"default\", \"custom\" or a template's name", t.Use)
+		}
+	}
 	if !releaseRE.MatchString(a.Harness.SDKRelease) {
 		bad("harness.sdk_release must name an SDK build: a release such as 4.100.250, or 4.100.250+<commit> for one that was never released")
 	}
@@ -764,6 +838,18 @@ func (a *Arm) Resolved() []byte {
 		c.Agent.Browser = nil
 		a = &c
 	}
+	// The prompt template (D155). "auto" asks an Ollama or xOllama server
+	// for the model's family, which no run before it did, so an arm on
+	// either provider names it and changes identity; on any other provider
+	// the SDK asks nothing, the session is what it was, and so is the arm.
+	if t := a.Agent.PromptTemplate; t == nil || t.Use == "" || t.Use == "auto" {
+		c := *a
+		c.Agent.PromptTemplate = nil
+		if ollamaNative(a.Model.Provider) {
+			c.Agent.PromptTemplate = &PromptTemplate{Use: "auto"}
+		}
+		a = &c
+	}
 	b, err := json.Marshal(a)
 	if err != nil {
 		panic(err) // the struct holds only plain values
@@ -780,6 +866,11 @@ func (a *Arm) hash() string {
 	json.Unmarshal(a.Resolved(), &v)
 	delete(v, "name")
 	delete(v, "requires")
+	if ag, ok := v["agent"].(map[string]any); ok {
+		if t, ok := ag["prompt_template"].(map[string]any); ok {
+			delete(t, "file_name")
+		}
+	}
 	b, _ := json.Marshal(v)
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])
@@ -796,6 +887,8 @@ func Diff(a, b *Arm) []string {
 	delete(vb, "name")
 	flatten(va, "", fa)
 	flatten(vb, "", fb)
+	delete(fa, templateTextKey)
+	delete(fb, templateTextKey)
 	keys := map[string]bool{}
 	for k := range fa {
 		keys[k] = true
@@ -844,5 +937,9 @@ func Values(a *Arm) map[string]string {
 	delete(v, "name")
 	out := map[string]string{}
 	flatten(v, "", out)
+	delete(out, templateTextKey)
 	return out
 }
+
+// templateTextKey is a custom template's text, shown by its sha256.
+const templateTextKey = "agent.prompt_template.text"
