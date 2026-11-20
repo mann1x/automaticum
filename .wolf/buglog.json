@@ -1703,6 +1703,23 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-11-12T21:30:18+00:00"
+    },
+    {
+      "id": "bug-098",
+      "timestamp": "2026-11-20T10:50:00+01:00",
+      "error_message": "TestLoadAll: manic_miner: &{ID:manic_miner ... Version:6 ... 13 fixtures} (expected version 5, 3 fixtures)",
+      "file": "internal/task/task_test.go",
+      "root_cause": "34b9ab9 moved custom/manic_miner to task version 6 with 13 fixtures; the task loader test pins the version and fixture count and was not run (make test runs internal/task only with -short, and the commit's checks ran oracle verify, not make test)",
+      "fix": "assertion moved to version 6 and 13 fixtures; run make test before committing a task version change",
+      "tags": [
+        "task",
+        "manic_miner",
+        "test",
+        "version"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-20T10:50:00+01:00"
     }
   ]
 }

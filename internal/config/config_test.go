@@ -295,6 +295,51 @@ func TestPromptTemplateValidation(t *testing.T) {
 	}
 }
 
+// Templates left out of "auto" (D157): normalised, the arm's on any
+// provider, empty the arm it was; never default, never with a forced use.
+func TestPromptTemplateDisabled(t *testing.T) {
+	other := strings.Replace(good, `provider = "ollama"`, `provider = "openai"`, 1)
+	dir := arms(t, map[string]string{
+		"plain":    good,
+		"empty":    good + "[agent.prompt_template]\nuse = \"auto\"\ndisabled = []\n",
+		"qwen_off": good + "[agent.prompt_template]\ndisabled = [\"Qwen\", \"gemma\", \"qwen \"]\n",
+		"same":     good + "[agent.prompt_template]\nuse = \"auto\"\ndisabled = [\"gemma\", \"qwen\"]\n",
+		"other":    other + "[agent.prompt_template]\ndisabled = [\"claude\"]\n",
+		"default":  good + "[agent.prompt_template]\ndisabled = [\"default\"]\n",
+		"forced":   good + "[agent.prompt_template]\nuse = \"qwen\"\ndisabled = [\"gemma\"]\n",
+		"badname":  good + "[agent.prompt_template]\ndisabled = [\"../x\"]\n",
+	})
+	load := func(n string) *Arm {
+		a, err := LoadArm(dir, n)
+		if err != nil {
+			t.Fatal(n, err)
+		}
+		return a
+	}
+	plain, empty, off, same, oth := load("plain"), load("empty"), load("qwen_off"), load("same"), load("other")
+	if plain.ID != empty.ID {
+		t.Errorf("an empty list is the arm it was")
+	}
+	if !strings.Contains(string(off.Resolved()), `"prompt_template":{"disabled":["gemma","qwen"],"use":"auto"}`) {
+		t.Errorf("normalised: %s", off.Resolved())
+	}
+	if off.ID != same.ID || off.ID == plain.ID {
+		t.Errorf("the same set is one arm, another set another")
+	}
+	if !strings.Contains(string(oth.Resolved()), `"prompt_template":{"disabled":["claude"],"use":"auto"}`) {
+		t.Errorf("on a provider nobody asks, a set left out is still the arm's: %s", oth.Resolved())
+	}
+	for n, want := range map[string]string{
+		"default": "agent.prompt_template.disabled names default",
+		"forced":  "agent.prompt_template.disabled is stated: use must be \"auto\"",
+		"badname": `agent.prompt_template.disabled "../x"`,
+	} {
+		if _, err := LoadArm(dir, n); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: %v, want %q", n, err, want)
+		}
+	}
+}
+
 // The reasoning-loop limit is stated in every arm (D108). The SDK's own 3
 // leaves the arm's identity as it was; any other number is part of it.
 func TestReasoningLoopLimitIdentity(t *testing.T) {

@@ -504,6 +504,11 @@ func runShow(ctx context.Context, args []string) error {
 	} else if r.State == "finished" && !r.Imported {
 		line("SDK release", "not established")
 	}
+	for _, f := range r.Findings {
+		if f.Detector == ingest.PromptTemplateUsed {
+			line("prompt template", templateText(f.Evidence))
+		}
+	}
 	if !r.StartedAt.IsZero() {
 		line("started", human.Time(r.StartedAt))
 	}
@@ -532,7 +537,7 @@ func runShow(ctx context.Context, args []string) error {
 		for _, m := range r.Metrics {
 			// The scripted user's counts say nothing at zero: a run
 			// without a script always has them.
-			if (strings.HasPrefix(m.Name, "user.") || strings.HasPrefix(m.Name, "mode_switches.") || strings.HasPrefix(m.Name, "guard_trips") || strings.HasPrefix(m.Name, "guard_stop.") || strings.HasPrefix(m.Name, "struggle.") || strings.HasPrefix(m.Name, "transactions.") || strings.HasPrefix(m.Name, "integrity.")) && m.Value == 0 {
+			if (strings.HasPrefix(m.Name, "user.") || strings.HasPrefix(m.Name, "mode_switches.") || strings.HasPrefix(m.Name, "guard_trips") || strings.HasPrefix(m.Name, "guard_stop.") || strings.HasPrefix(m.Name, "struggle.") || strings.HasPrefix(m.Name, "transactions.") || strings.HasPrefix(m.Name, "integrity.") || strings.HasPrefix(m.Name, "prompt_template.")) && m.Value == 0 {
 				continue
 			}
 			fmt.Fprintf(w, "  %s\t%s\n", m.Name, human.Metric(m.Name, m.Value))
@@ -844,6 +849,27 @@ func findingLine(f daemon.FindingView) string {
 		}
 		json.Unmarshal(f.Evidence, &e)
 		return fmt.Sprintf("%s  the model ended the run only partly on the GPU: %s (%s of %s)", head, human.Percent(e.Share), human.Bytes(e.SizeVRAM), human.Bytes(e.Size))
+	case ingest.PromptTemplateUsed:
+		return fmt.Sprintf("%s  %s", head, templateText(f.Evidence))
+	case ingest.PromptTemplateIncomplete:
+		var e struct {
+			Template       string                     `json:"template"`
+			Problems       []ingest.TemplateProblem   `json:"problems"`
+			UncoveredTools []string                   `json:"uncovered_tools"`
+			FileErrors     []ingest.TemplateFileError `json:"file_errors"`
+		}
+		json.Unmarshal(f.Evidence, &e)
+		var parts []string
+		for _, p := range e.Problems {
+			parts = append(parts, fmt.Sprintf("%s (%s): %s", p.Code, p.Section, p.Message))
+		}
+		if len(e.UncoveredTools) > 0 {
+			parts = append(parts, "no section, built-in text kept: "+strings.Join(e.UncoveredTools, ", "))
+		}
+		for _, fe := range e.FileErrors {
+			parts = append(parts, fmt.Sprintf("%s (%s) did not parse: %s", fe.FileName, fe.Source, fe.Message))
+		}
+		return fmt.Sprintf("%s  template %s is missing something: %s", head, e.Template, strings.Join(parts, "; "))
 	case detect.RepeatedToolCall:
 		var c detect.RepeatedCall
 		json.Unmarshal(f.Evidence, &c)
@@ -883,6 +909,62 @@ func findingLine(f daemon.FindingView) string {
 		return fmt.Sprintf("%s  changed during the run: %s took %s (%s)", head, d.Field, strings.Join(d.Values, ", "), where)
 	}
 	return fmt.Sprintf("%s  %s", head, f.Evidence)
+}
+
+// templateText is the runner's account of a session's prompt template
+// (D155, D157) as one line: the template, over default.md or alone, and
+// how it was chosen.
+func templateText(raw json.RawMessage) string {
+	var t struct {
+		Use        string   `json:"use"`
+		Name       *string  `json:"name"`
+		FileName   string   `json:"file_name"`
+		Source     string   `json:"source"`
+		Overlaid   bool     `json:"overlaid"`
+		Family     *string  `json:"family"`
+		Lookup     string   `json:"lookup"`
+		SHA256     string   `json:"sha256"`
+		Disabled   []string `json:"disabled"`
+		DisabledBy string   `json:"disabled_by"`
+	}
+	if json.Unmarshal(raw, &t) != nil {
+		return string(raw)
+	}
+	what := "none: the SDK's built-in prompt"
+	if t.Name != nil {
+		what = *t.Name
+		if t.Source != "" {
+			what += " (" + t.Source + ")"
+		}
+		if t.Overlaid {
+			what += " over default"
+		}
+	}
+	var how string
+	switch t.Use {
+	case "auto":
+		switch {
+		case t.Family != nil:
+			how = "auto, family " + *t.Family + " from the server"
+		case t.Lookup == "asked":
+			how = "auto, the server gave no family"
+		case t.Lookup == "not_in_build":
+			how = "auto, by name and provider: this SDK build does not ask the family"
+		default:
+			how = "auto, by name and provider"
+		}
+		if len(t.Disabled) > 0 {
+			how += "; left out: " + strings.Join(t.Disabled, ", ") + " (by the " + t.DisabledBy + ")"
+		}
+	case "custom":
+		how = "custom " + t.FileName
+		if len(t.SHA256) >= 12 {
+			how += ", sha256 " + t.SHA256[:12]
+		}
+	default:
+		how = "forced: use = " + t.Use
+	}
+	return what + "; " + how
 }
 
 // reanalyse derives metrics, tool calls and findings again from what is

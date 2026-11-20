@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { describeTemplate, resolveTemplate, TemplateError } from "../template.mjs";
+import { checkTemplate, describeTemplate, disabledNames, resolveTemplate, TemplateError, toolCoverage } from "../template.mjs";
 
 // An SDK build as 4.100.260 on exports it, and @cerebriline/shared: every
 // function records what it was given.
-function fakes({ async = true, workspace = [] } = {}) {
+function fakes({ async = true, workspace = [], disables = true } = {}) {
 	const calls = {};
 	const builtins = [
 		{ name: "default", source: "builtin", fileName: "default.md", tools: {} },
@@ -28,12 +28,19 @@ function fakes({ async = true, workspace = [] } = {}) {
 			return { template: { name, source: input.source, fileName: input.fileName, match: { model: ["x"] }, tools: {} }, warnings: [{ message: "w" }] };
 		},
 	};
+	if (disables) sdk.resolveDisabledPromptTemplateNames = (names) => new Set(names);
 	if (async)
 		sdk.resolveSessionPromptTemplate = async (req) => {
 			calls.async = req;
 			return { rendered: { name: "qwen", fileName: "qwen.md", source: "builtin", overlaid: true }, errors: [], warnings: [], family: "qwen35moe" };
 		};
 	const shared = {
+		validatePromptTemplate: (t) => {
+			calls.validate = t;
+			return t.system?.includes("{{CLINE_RULES}}") === false
+				? [{ code: "missing-required-placeholder", section: "system", message: "{{CLINE_RULES}} is missing", extra: 1 }]
+				: [];
+		},
 		isOllamaNativeProvider: (p) => p === "ollama" || p === "xollama",
 		renderPromptTemplate: (list, target) => {
 			calls.render = { list, target };
@@ -51,7 +58,7 @@ test("auto on Ollama: the SDK asks the server for the family, through the runner
 	const { sdk, shared, calls } = fakes();
 	for (const pt of [undefined, { use: "auto" }]) {
 		const t = await resolveTemplate({ sdk, shared, arm: armOf("ollama", pt), ...dirs });
-		assert.deepEqual(calls.async, { providerId: "ollama", modelId: "a3b-coder_tb:Q4_K_M", ...dirs });
+		assert.deepEqual(calls.async, { providerId: "ollama", modelId: "a3b-coder_tb:Q4_K_M", ...dirs, disabledTemplateNames: [] }, "an empty list too: the settings file never decides");
 		assert.equal(t.family, "qwen35moe");
 		assert.equal(t.lookedUp, true);
 		assert.equal(t.lookup, "asked");
@@ -69,7 +76,7 @@ test("auto on a provider the SDK does not ask: no lookup, the record says so", a
 test("auto on a build without the lookup (before 4.100.260): name and provider only", async () => {
 	const { sdk, shared, calls } = fakes({ async: false });
 	const t = await resolveTemplate({ sdk, shared, arm: armOf("ollama"), ...dirs });
-	assert.deepEqual(calls.from, { providerId: "ollama", modelId: "a3b-coder_tb:Q4_K_M", globalDir: dirs.globalDir, workspaceDir: dirs.workspaceDir });
+	assert.deepEqual(calls.from, { providerId: "ollama", modelId: "a3b-coder_tb:Q4_K_M", globalDir: dirs.globalDir, workspaceDir: dirs.workspaceDir, disabledTemplateNames: [] });
 	assert.equal(t.lookup, "not_in_build");
 	assert.equal(t.family, undefined);
 	const other = await resolveTemplate({ sdk, shared, arm: armOf("openai"), ...dirs });
@@ -159,4 +166,68 @@ test("the prepared note for auto", async () => {
 		family: "qwen35moe",
 		lookup: "asked",
 	});
+});
+
+test("disabled: the SDK leaves them out from 4.100.288, the list normalised", async () => {
+	const { sdk, shared, calls } = fakes();
+	const arm = armOf("ollama", { use: "auto", disabled: ["Qwen", "qwen ", "default", "gemma"] });
+	const t = await resolveTemplate({ sdk, shared, arm, ...dirs });
+	assert.deepEqual(calls.async.disabledTemplateNames, ["gemma", "qwen"]);
+	assert.equal(calls.render, undefined, "the SDK's own resolution, nothing rendered again");
+	assert.equal(t.disabledBy, "sdk");
+	assert.deepEqual(describeTemplate(t, arm).disabled, ["gemma", "qwen"]);
+	assert.equal(describeTemplate(t, arm).disabled_by, "sdk");
+	assert.deepEqual(disabledNames(undefined), []);
+	assert.equal("disabled" in describeTemplate(await resolveTemplate({ sdk, shared, arm: armOf("ollama"), ...dirs }), armOf("ollama")), false);
+});
+
+test("disabled on a build before 4.100.288: the runner leaves them out, default never, with the family asked", async () => {
+	const ws = { name: "Qwen", source: "workspace", fileName: "qwen.md", tools: {} };
+	const { sdk, shared, calls } = fakes({ disables: false, workspace: [ws] });
+	const t = await resolveTemplate({ sdk, shared, arm: armOf("ollama", { disabled: ["qwen"] }), ...dirs });
+	assert.deepEqual(
+		calls.render.list.map((x) => x.name),
+		["default"],
+		"the builtin and the workspace copy both go, by name",
+	);
+	assert.deepEqual(calls.render.target, { providerId: "ollama", modelId: "a3b-coder_tb:Q4_K_M", family: "qwen35moe" });
+	assert.equal(t.disabledBy, "runner");
+	assert.equal(t.rendered.name, "default");
+	assert.equal(t.lookup, "asked");
+});
+
+test("the check: the SDK's validator on the rendered template, the files' errors and warnings kept", () => {
+	const { shared, calls } = fakes();
+	const template = {
+		rendered: { name: "mine", source: "global", system: "Be brief.", tools: {} },
+		errors: [{ fileName: "broken.md", source: "workspace", message: "no frontmatter" }],
+		warnings: [{ fileName: "x.md", source: "global", warnings: [{ code: "unknown-placeholder", section: "system", message: "{{cwd}}" }] }],
+	};
+	const c = checkTemplate({ shared, template });
+	assert.equal(calls.validate.system, "Be brief.");
+	assert.deepEqual(c, {
+		checked: true,
+		problems: [{ code: "missing-required-placeholder", section: "system", message: "{{CLINE_RULES}} is missing" }],
+		files: {
+			errors: [{ file_name: "broken.md", source: "workspace", message: "no frontmatter" }],
+			warnings: [{ file_name: "x.md", source: "global", code: "unknown-placeholder", section: "system", message: "{{cwd}}" }],
+		},
+	});
+	assert.deepEqual(checkTemplate({ shared, template: { rendered: { system: "{{CLINE_RULES}} {{CWD}}", tools: {} } } }).problems, []);
+	assert.equal(checkTemplate({ shared: {}, template }).checked, false, "a build without the validator");
+	assert.equal(checkTemplate({ shared, template: {} }).checked, false, "no template: the built-in prompt");
+});
+
+test("tool coverage: noted at the first request and when the tools change, never twice for the same set", () => {
+	const notes = [];
+	const cover = toolCoverage({ rendered: { name: "qwen", tools: { editor: {}, read_files: {} } }, note: (k, v) => notes.push([k, v]) });
+	const req = (...names) => ({ request: { tools: names.map((name) => ({ name })) } });
+	cover(req("read_files", "editor", "switch_to_act_mode"));
+	cover(req("read_files", "editor", "switch_to_act_mode"));
+	cover({ request: {} });
+	cover(req("read_files", "editor"));
+	assert.deepEqual(notes, [
+		["prompt_template_tools", { template: "qwen", tools: 3, uncovered: ["switch_to_act_mode"] }],
+		["prompt_template_tools", { template: "qwen", tools: 2, uncovered: [] }],
+	]);
 });

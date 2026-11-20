@@ -1,6 +1,6 @@
 # 030 — Configuration
 
-**Status:** draft 0.31, 2026-11-19.
+**Status:** draft 0.32, 2026-11-20.
 
 ## 1. Rules
 
@@ -279,7 +279,10 @@ template's name (that template over default.md, whatever the model) or
 configuration directory, whose content (not its path) is the arm's. An arm
 on Ollama or xOllama left on `auto` names it, so it changed identity on
 2026-11-19 (it now asks the server); on any other provider `auto` is the arm
-it was (040 §6.1.4).
+it was (040 §6.1.4). With `auto`, `disabled` lists templates the choice
+leaves out by name, as the extension's On checkbox does (D157; never
+`default`, never with another `use`); it is the arm's, lower-cased and
+sorted, and an empty list leaves the arm as it was.
 
 **Harness:** SDK build, runner version, image, oracle version, task version.
 

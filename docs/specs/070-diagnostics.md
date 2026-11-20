@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.41, 2026-11-14.
+**Status:** draft 0.42, 2026-11-20.
 
 ## 1. The rule: no custom script
 
@@ -68,6 +68,23 @@ method is recorded.
   browser tools failed at; their calls are in `tool_calls.by_tool`.
 - **Volume:** requests, turns, tool calls by tool, tool failures by tool and by
   error class.
+- **Prompt template** (040 §6.1.4). From analysis version 24 (2026-11-20,
+  D157): on every run of a runner of protocol 12 on, the finding
+  `prompt_template` (info, version 1) is the runner's account of the
+  template the session was given (`use`, `name`, `source`, `overlaid`,
+  `family`, `lookup`, a custom file's `sha256`, the templates `disabled`),
+  which `run show` prints as its `prompt template` line. From protocol 13:
+  `prompt_template.problems`, the warnings of the SDK's own check
+  (`validatePromptTemplate`) on the rendered template, and
+  `prompt_template.problems.required`, those of a required placeholder
+  (`{{CLINE_RULES}}`, the plan-mode contract; `{{CWD}}`);
+  `prompt_template.file_errors`, template files in the directories that did
+  not parse; `prompt_template.uncovered_tools`, the tools a request offered
+  that no section of the template describes (they keep their built-in
+  text). Any of these makes the finding `prompt_template_incomplete`
+  (version 1; a warning when the check reported a problem, else a note),
+  each problem with its code, section and message. Absent before
+  protocol 13; the builtins of 4.100.283 and 4.100.288 have no problem.
 - **Tokens:** prompt, cached, fresh, completion; completion split into
   reasoning, visible text and tool input; tokens per second for prompt and
   generation, per request and overall, with the concurrency it was measured at.

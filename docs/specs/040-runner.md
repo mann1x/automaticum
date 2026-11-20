@@ -1,6 +1,6 @@
 # 040 — The runner
 
-**Status:** draft 1.22, 2026-11-19. Facts about the SDK in this file were read
+**Status:** draft 1.23, 2026-11-20. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
 running it. The parity table in §6 was checked row by row by the Cerebriline
 session on 2026-10-13 against its main branch (release 4.100.249 plus requests
@@ -469,6 +469,41 @@ family.
   tag: `auto` asked, chose `qwen` over default, and its system prompt and
   57 tool descriptions equal a forced `use = "qwen"`; on 4.100.250 the same
   arm records `not_in_build` and gets `default.md`.
+
+**Decided by the owner (2026-11-20, D157):** "we need the arms to support
+the prompt template, manual overrides, reporting of which prompt template
+is being used and also the check of the prompt template to report if it's
+missing something". Protocol 13:
+
+- **Templates left out.** With `use = "auto"`, `disabled` names templates
+  the choice leaves out, as the extension's On checkbox per template does
+  (4.100.288, `disabledPromptTemplates`): by name, so a builtin and every
+  copy go together, and the models one claimed fall to the next claim and
+  in the end to `default.md`, which cannot be left out. The runner always
+  passes the list to the resolver (`disabledTemplateNames`), empty
+  included, so the global settings file in the container never decides it;
+  on a build before 4.100.288 it leaves them out itself the same way
+  (`disabled_by`: `sdk` or `runner`). Only with `auto`; lower-cased and
+  sorted in the resolved arm, which an empty list leaves as it was.
+- **The check.** The runner runs the SDK's own `validatePromptTemplate` on
+  the rendered template, what the session is given: a required placeholder
+  missing (`{{CLINE_RULES}}`, where the plan-mode contract goes; `{{CWD}}`),
+  an optional one missing, an unknown one (`{{cwd}}`), `{{DEFAULT}}` in the
+  system section, an empty or repeated section, a compaction section
+  without its token. The `prepared` note's `prompt_template_check` has
+  `checked`, `problems` (code, section, message) and `files`, the template
+  files of the data directory and the workspace that did not parse and the
+  warnings on those that did. The tool names are not given to it: every
+  builtin describes all 57 tools the SDK can offer, so a session's dozen
+  would report the rest as unknown. Instead, at the first request and
+  whenever the tools change, the note `prompt_template_tools` names the
+  tools the request offers that no section describes (`uncovered`), which
+  keep their built-in text.
+- **Report.** Ingest turns the account into the finding `prompt_template`,
+  shown by `run show` as its `prompt template` line, and the check into
+  `prompt_template_incomplete` and the `prompt_template.*` metrics (070 §2).
+  The check reports; it refuses nothing, as the SDK's warnings refuse
+  nothing (a missing `{{CLINE_RULES}}` is appended by the SDK).
 
 ### 6.2 The scripted user
 

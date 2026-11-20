@@ -1,0 +1,23 @@
+# SDK release 4.100.288, from the registry, after 4.100.283 (4.100.284 and
+# 4.100.285 were local builds, never published). What reaches a run:
+# - prompt templates can be switched off by name (disabledPromptTemplates in
+#   core's global settings; resolveSessionPromptTemplate(From) takes
+#   disabledTemplateNames, which overrides it): the runner always passes the
+#   arm's [agent.prompt_template] disabled list, empty included (D157);
+# - default.md, kimi.md and minimax.md: the sed tool's description (and the
+#   SDK's own, and its quiet argument's) says that without quiet every line
+#   is printed too, so `90p` gives the file with line 90 twice; a non-quiet
+#   run that printed a line twice says why in a note;
+# - read receipts move with the lines an edit shifts instead of being
+#   retired on a length change (editor, apply_patch);
+# - the swallowed-argument refusal also takes a tail cut off inside the next
+#   argument (`,start_line:90,task_progress:['`); detect's SwallowedArgs
+#   already finds that form;
+# - readServerSamplingDefaults (llms) is for the extension's settings only;
+#   nothing in core, agents or sdk calls it.
+# No guard change: CallGuard282 and Rules258 hold, detector library 10.
+# The lockfile has 349 packages, as 4.100.283 (patch updates of @ai-sdk/*,
+# hono, jose and a few more). An arm moved to it changes identity.
+version = "4.100.288"
+source = "registry"
+bundle_sha256 = "94c2e9268e6140fcbdb80cb1446197a3847d49fe294f322742bdcb7747ce2367"

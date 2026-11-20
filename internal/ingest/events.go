@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -102,6 +103,16 @@ type Events struct {
 	// counts what the browser tools failed at.
 	Browser       bool
 	BrowserErrors int
+	// PromptTemplate is the prepared note's account of the session's
+	// template (protocol 12 on: use, name, source, family, lookup...),
+	// nil before; TemplateCheck its check (protocol 13 on, D157), nil
+	// before; Uncovered the tools a request offered that no section of the
+	// template describes, every one any prompt_template_tools note named,
+	// sorted, and UncoveredSeen whether any such note came (protocol 13).
+	PromptTemplate json.RawMessage
+	TemplateCheck  *TemplateCheck
+	Uncovered      []string
+	UncoveredSeen  bool
 	// Forks are the session forks a restore of messages started (D86), in
 	// order; ModeSwitches how often the scripted user switched the mode,
 	// AgentModeSwitches how often the agent did (switch_to_act_mode).
@@ -272,6 +283,12 @@ type eventLine struct {
 	Browser    json.RawMessage `json:"browser"`
 	BlockChars int             `json:"block_chars"`
 	Regressed  bool            `json:"regressed"`
+	// The prepared note's prompt template and its check (protocol 12,
+	// D155; protocol 13, D157), and a prompt_template_tools note's tools
+	// that no section of the template describes.
+	PromptTemplate      json.RawMessage `json:"prompt_template"`
+	PromptTemplateCheck json.RawMessage `json:"prompt_template_check"`
+	Uncovered           []string        `json:"uncovered"`
 }
 
 type agentEvent struct {
@@ -471,6 +488,23 @@ func (ev *Events) line(line []byte, sc *scan) {
 		case "prepared":
 			ev.LSP = len(l.LSP) > 0 && string(l.LSP) != "null"
 			ev.Browser = len(l.Browser) > 0 && string(l.Browser) != "null"
+			if len(l.PromptTemplate) > 0 && string(l.PromptTemplate) != "null" {
+				ev.PromptTemplate = append(json.RawMessage(nil), l.PromptTemplate...)
+			}
+			if len(l.PromptTemplateCheck) > 0 && string(l.PromptTemplateCheck) != "null" {
+				var c TemplateCheck
+				if json.Unmarshal(l.PromptTemplateCheck, &c) == nil {
+					ev.TemplateCheck = &c
+				}
+			}
+		case "prompt_template_tools":
+			ev.UncoveredSeen = true
+			for _, n := range l.Uncovered {
+				if !slices.Contains(ev.Uncovered, n) {
+					ev.Uncovered = append(ev.Uncovered, n)
+				}
+			}
+			slices.Sort(ev.Uncovered)
 		case "browser_error":
 			ev.BrowserErrors++
 		case "editor_diagnostics":

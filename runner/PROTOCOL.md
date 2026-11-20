@@ -1,4 +1,4 @@
-# The runner: protocol 12
+# The runner: protocol 13
 
 The runner is a Node program that runs **one** agent session for one run,
 inside the lane's container, and exits. The harness (`internal/run`) writes
@@ -127,6 +127,25 @@ the SDK's one line (`message`) and what the `prepared` note's
 for a custom file; `prepared` also has `model_family_looked_up`,
 `model_family` and `prompt_template_warnings`. A protocol 11 runner would
 ignore the field, so the number went up.
+
+**Protocol 13 (2026-11-20):** the template's check and templates left out
+(040 §6.1.4, D157). With `use` "auto", the arm's
+`agent.prompt_template.disabled` is passed to the resolver as
+`disabledTemplateNames`, always, an empty list included, so the global
+settings file never decides it; a build before 4.100.288 does not read it,
+and the runner leaves those templates out itself (by name, `default`
+never). `prompt_template` (in its note and in `prepared`) gains `disabled`
+and `disabled_by` (`sdk` or `runner`) when the list is not empty.
+`prepared` gains `prompt_template_check`: `checked` (false on a build
+without `validatePromptTemplate` or when no template applies), `problems`
+(the SDK's warnings on the rendered template: `code`, `section`,
+`message`) and `files` (`errors`: template files that did not parse,
+`file_name`, `source`, `message`; `warnings`: those on files that did, with
+their `code` and `section`). A new note `prompt_template_tools`, at the
+first request and whenever the set of tools changes: `template`, `tools`
+(how many the request offers) and `uncovered` (those no section of the
+template describes). A protocol 12 runner would ignore `disabled`, so the
+number went up.
 
 ## In
 
@@ -262,7 +281,7 @@ configuration; 4.100.266 does). From 4.100.266 the notice also says the
 limit that applied (`maxConsecutiveTrips`): one other than the arm's is a
 breach too.
 
-## What protocol 12 does not do
+## What protocol 13 does not do
 
 Escalation, sub-agents and teams, MCP approvals (no arm starts an MCP
 server), the rest of the emulation of editor behaviour (mentions,

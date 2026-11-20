@@ -147,6 +147,7 @@
 - `stub_cmds.go` (~489 tok)
 - `suite_cmds.go` — plan (50 fields) (~1297 tok)
 - `timeline_cmds_test.go` — TestTimeline, TestTimelineRequests (~1115 tok)
+- `template_text_test.go` — TestTemplateText: run show prompt template line and finding lines, D157 (~700 tok)
 - `timeline_cmds.go` — timelineLine (44 fields) (~1500 tok)
 - `wait_cmds_test.go` — oldDaemon (23 fields); methods: ServeHTTP (~984 tok)
 - `wait_cmds.go` — waiter (139 fields) (~5130 tok)
@@ -668,7 +669,7 @@
 
 ## runner/
 
-- `template.mjs` — The arm asks for a template this build or workspace does not have. (~1241 tok)
+- `template.mjs` — resolveTemplate (auto/default/name/custom, disabled D157), checkTemplate (SDK validatePromptTemplate on the rendered template), toolCoverage, describeTemplate (~2300 tok)
 
 ## runner/test/
 

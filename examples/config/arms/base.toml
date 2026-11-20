@@ -39,8 +39,14 @@ interval = 2
 # default.md alone; a template's name ("qwen", "gemma", ...) is that one
 # over default.md, whatever the model; "custom" is a file of your own,
 # relative to the configuration directory, whose content is the arm's.
+# With "auto", disabled leaves templates out by name, as the extension's On
+# checkbox per template does (D157): the models one claimed fall to the
+# next claim and in the end to default.md, which cannot be left out. Every
+# run reports the template it was given (run show, finding
+# prompt_template) and the SDK's check of it (prompt_template_incomplete).
 [agent.prompt_template]
 use = "auto"
+# disabled = ["qwen"]
 # use = "custom"
 # file = "templates/my-model.md"
 
@@ -102,7 +108,7 @@ wall_s = 7200
 idle_s = 1800
 
 [harness]
-# The release an arm runs unless it states its own (D154, 2026-11-15; was
-# 4.100.282, D153, 4.100.277, D152, 4.100.276, D143, 4.100.274, D142, and
-# 4.100.250, D54).
-sdk_release = "4.100.283"
+# The release an arm runs unless it states its own (D156, 2026-11-20; was
+# 4.100.283, D154, 4.100.282, D153, 4.100.277, D152, 4.100.276, D143,
+# 4.100.274, D142, and 4.100.250, D54).
+sdk_release = "4.100.288"

@@ -54,13 +54,14 @@ const SessionFork = "session_fork"
 // analysis records it as the metric analysis.version: the basis (020 §5)
 // says from it which detectors a run was analysed with, whether or not
 // they found anything.
-const AnalysisVersion = 23
+const AnalysisVersion = 24
 
 // Versions are the versions of the detectors this analysis applies:
 // ingest's own and the detector library's.
 var Versions = map[string]string{
 	"library": detect.Version, WireArm: WireArmVersion, CapHit: "2", GPUResidency: "1", ModelIdentity: "1", ModelReloaded: "2", SessionFork: "1",
 	SecondaryOracle: "1", ClaimedNotPassed: "1", GuardTrip: "1", ControlMarkers: "1", GuardReplay: "1", StruggleSignals: "1", OutsideWorkspace: "1", HeldStream: "1",
+	PromptTemplateUsed: "1", PromptTemplateIncomplete: "1",
 }
 
 // VersionsText is Versions as one line, in order.
@@ -91,7 +92,8 @@ func Detectors() []string {
 var owned = map[string]bool{WireArm: true, CapHit: true, GPUResidency: true, ModelReloaded: true, ModelIdentity: true, detect.ShortUnitRepeat: true, detect.CharRun: true,
 	detect.SentenceRepeat: true, detect.Runaway: true, detect.RepeatedToolCall: true,
 	detect.ReasoningRepetition: true, detect.ReasoningLoop: true, detect.FailedIdenticalCall: true, detect.RepeatedCallResult: true,
-	detect.EditOscillation: true, detect.RereadLoop: true, SecondaryOracle: true, ClaimedNotPassed: true, GuardTrip: true, ControlMarkers: true, GuardReplay: true, StruggleSignals: true, OutsideWorkspace: true, detect.SwallowedArgument: true, detect.DuplicateDefinitions: true, detect.RepetitionGuard: true, HeldStream: true}
+	detect.EditOscillation: true, detect.RereadLoop: true, SecondaryOracle: true, ClaimedNotPassed: true, GuardTrip: true, ControlMarkers: true, GuardReplay: true, StruggleSignals: true, OutsideWorkspace: true, detect.SwallowedArgument: true, detect.DuplicateDefinitions: true, detect.RepetitionGuard: true, HeldStream: true,
+	PromptTemplateUsed: true, PromptTemplateIncomplete: true}
 
 // Material is what a run's analysis reads: its record, its event stream,
 // its wire capture and its oracles' outputs, by name.
@@ -768,6 +770,7 @@ func AnalyseWith(r *store.Run, ev *Events, reqs []Request, th detect.Values) *Re
 	struggleSignals(r.ID, ev, m, res, th)
 	transactions(ev, m)
 	integrity(r, m, res)
+	promptTemplate(r.ID, ev, m, res)
 	swallowed(r.ID, ev, reqs, m, res)
 	duplicateDefinitions(r.ID, ev, reqs, m, res, th)
 	repetitionGuard(r.ID, ev, reqs, opt, m, res)

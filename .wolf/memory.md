@@ -237,3 +237,17 @@
 | 18:25 | f16e00b pushed (D155, protocol 12). Mail #2338 (SDK owner, owner's request): manic_miner v5 oracle passes an unplayable game (no spawn/advance/O2 death/draw traps; known-good has the same gaps); repo copy is their v5 (249f1cbf). Owner: SDK owner is fixing it, keep aligned -> asked them (#2339) for v6 oracle + fixed known-good + new known-bads to take byte-for-byte, then v6 bump, oracle verify x3, rescore their run | tasks/custom/manic_miner | waiting | ~3000 |
 | 18:30 | owner: SDK owner updates private manic_miner_plain; v6 forward only, no rescore (boundary). Proposed to SDK owner (#2340): gaps stay in the seed as part of the repair (seed has overlay + dPl placeholder, no setupLevel), behaviour-worded traps from fresh contexts, level off-by-one fails, known-good implements all four, five new known-bads (one gap each), expect_pattern unchanged; waiting for their confirm + files | tasks/custom/manic_miner | waiting | ~1500 |
 | 18:40 | manic_miner v6 adopted from the SDK owner's spool (#2341) byte for byte: oracle 4c0b8b7c (28 traps, a warning fails), fixed known-good + 12 more fixtures; artefact rebuilt 465ac2e8 (matches theirs), oracle verify 13 fixtures x3 ok; v6 on the reported run: ok false 21/28. Boundary, new campaign only, no rescore (owner) | tasks/custom/manic_miner | ok | ~6000 |
+
+## Session: 2026-11-19 18:26
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:40 | plain updated by the SDK owner (#2344, owner confirmed to them). Built 34b9ab9, staged .new on blackswan-2 (sha ok), staged config check ok (63 arms, 32 models, 57 tasks); arm ids old vs new CLI: 46 same (client arms are opencoti), 19 stub* change; window asked of backup_models #2345 | - | waiting | ~2500 |
+| 18:45 | 34b9ab9 pushed (manic_miner v6); replied to the SDK owner #2343: adopted as-is, plain is theirs (owner), deploy waits for the protocol-12 window | - | done | ~800 |
+
+## Session: 2026-11-20 09:57
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:09 | deployed 34b9ab9 on blackswan-2 (backup_models go #2346): swap, repo, 11 images (protocol 12), stub smoke PASS 20261120-090654-60dfcd with family lookup asked qwen35moe->qwen; both manic_miner oracles 13/13 x3; one SKIPPED smoke (stub stopped early, id parse) | blackswan-2 | ok | ~6k |
+| 10:55 | SDK 4.100.288 pinned (349 pkgs, bundle 94c2e926, sdk add+verify offline; 283..288: disabled templates, sed quiet note, read receipts move, swallow cut form, sampling defaults UI-only) + D157 prompt template report/check/disabled (protocol 13, analysis 24): template.mjs checkTemplate/toolCoverage/disabled, arm.go disabled, ingest template.go, run show line; bug-098 stale manic_miner task test | runner/, internal/, docs/specs | tests ok | ~40k |

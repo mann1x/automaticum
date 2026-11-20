@@ -161,6 +161,33 @@ type PromptTemplate struct {
 	// loaded: the runner is given the text, and both are the arm's identity.
 	Text   string `toml:"-" json:"text,omitempty"`
 	SHA256 string `toml:"-" json:"sha256,omitempty"`
+	// Disabled are templates "auto" leaves out, by name, as the
+	// extension's On checkbox per template does (SDK 4.100.288,
+	// disabledPromptTemplates; D157): the models one claimed fall to the
+	// next claim and in the end to default.md, which cannot be left out.
+	// Only with "auto"; lower-cased, sorted and without repeats in the
+	// resolved arm, and absent when empty, so an arm without it keeps its
+	// identity.
+	Disabled []string `toml:"disabled" json:"disabled,omitempty"`
+}
+
+// disabledTemplates is t.Disabled as the SDK reads it: trimmed,
+// lower-cased, without repeats, sorted.
+func disabledTemplates(t *PromptTemplate) []string {
+	if t == nil {
+		return nil
+	}
+	seen := map[string]bool{}
+	var out []string
+	for _, n := range t.Disabled {
+		n = strings.ToLower(strings.TrimSpace(n))
+		if n != "" && !seen[n] {
+			seen[n] = true
+			out = append(out, n)
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 // maxTemplateBytes caps a custom template file.
@@ -793,6 +820,17 @@ func (a *Arm) Validate() []string {
 		if t.Use != "" && !templateNameRE.MatchString(t.Use) {
 			bad("agent.prompt_template.use %q: \"auto\", \"default\", \"custom\" or a template's name", t.Use)
 		}
+		if len(t.Disabled) > 0 && t.Use != "" && t.Use != "auto" {
+			bad("agent.prompt_template.disabled is stated: use must be \"auto\" (it leaves templates out of the extension's choice)")
+		}
+		for _, n := range t.Disabled {
+			switch n = strings.TrimSpace(n); {
+			case !templateNameRE.MatchString(n):
+				bad("agent.prompt_template.disabled %q: a template's name", n)
+			case strings.EqualFold(n, "default"):
+				bad("agent.prompt_template.disabled names default: it cannot be left out, every other template is layered on it")
+			}
+		}
 	}
 	if !releaseRE.MatchString(a.Harness.SDKRelease) {
 		bad("harness.sdk_release must name an SDK build: a release such as 4.100.250, or 4.100.250+<commit> for one that was never released")
@@ -842,11 +880,13 @@ func (a *Arm) Resolved() []byte {
 	// for the model's family, which no run before it did, so an arm on
 	// either provider names it and changes identity; on any other provider
 	// the SDK asks nothing, the session is what it was, and so is the arm.
+	// Templates left out (D157) are the arm's on any provider.
 	if t := a.Agent.PromptTemplate; t == nil || t.Use == "" || t.Use == "auto" {
 		c := *a
+		dis := disabledTemplates(t)
 		c.Agent.PromptTemplate = nil
-		if ollamaNative(a.Model.Provider) {
-			c.Agent.PromptTemplate = &PromptTemplate{Use: "auto"}
+		if ollamaNative(a.Model.Provider) || len(dis) > 0 {
+			c.Agent.PromptTemplate = &PromptTemplate{Use: "auto", Disabled: dis}
 		}
 		a = &c
 	}

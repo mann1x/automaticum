@@ -21,12 +21,12 @@ import { ACT_MODE_CONTINUATION_PROMPT, createSwitchToActModeTool, withSwitchTool
 import { guardTrip, limitBreach, reasoningLimitAnswer, stopsOn } from "./guards.mjs";
 import { chromePath, mermaidPath } from "./browser.mjs";
 import { buildBrowserDrivers, buildLsp } from "./host.mjs";
-import { describeTemplate, resolveTemplate, TemplateError } from "./template.mjs";
+import { checkTemplate, describeTemplate, resolveTemplate, TemplateError, toolCoverage } from "./template.mjs";
 import { privateTools } from "./tools.mjs";
 import { createUser } from "./user.mjs";
 import { createWire, describe } from "./wire.mjs";
 
-const PROTOCOL = 12;
+const PROTOCOL = 13;
 const SDK_PACKAGE = "@cerebriline/sdk";
 const EXIT = { completed: 0, error: 1, refused: 3, invalid: 4, wall_limit: 5, guard_stop: 6 };
 
@@ -189,10 +189,11 @@ async function main() {
 	// "auto" asks an Ollama or xOllama server for the model's family, as
 	// the extension does, through the wire so the request is recorded.
 	let template;
+	const shared = await import("@cerebriline/shared");
 	try {
 		template = await resolveTemplate({
 			sdk,
-			shared: await import("@cerebriline/shared"),
+			shared,
 			arm,
 			baseUrl: job.endpoint.base_url,
 			fetch: wire.fetch,
@@ -219,6 +220,10 @@ async function main() {
 		});
 	const sha = (text) => createHash("sha256").update(text).digest("hex");
 	const hooks = sdk.createPromptTemplateHooks({ rendered: template.rendered, ideName: arm.agent.host_ide, log: (m) => note("prompt_template", { message: m }) });
+	// The template's check (D157): the SDK's validator on what the session
+	// is given, and the tools no section describes, once they are known.
+	const templateCheck = checkTemplate({ shared, template });
+	const coverage = toolCoverage({ rendered: template.rendered, note });
 	const firstPrompt = promptFor(arm.agent.mode);
 
 	// 4a. The editor's language servers, for an arm with [agent.lsp]
@@ -265,6 +270,7 @@ async function main() {
 		prompt_template: describeTemplate(template, arm),
 		prompt_template_errors: template.errors?.length ?? 0,
 		prompt_template_warnings: template.warnings?.length ?? 0,
+		prompt_template_check: templateCheck,
 		model_family_looked_up: template.lookedUp,
 		model_family: template.family ?? null,
 		system_prompt_sha256: sha(firstPrompt),
@@ -363,6 +369,7 @@ async function main() {
 		built.config.hooks = {
 			...(hooks ?? {}),
 			beforeModel: async (context) => {
+				coverage(context);
 				await beforeModel();
 				const control = prior ? await prior(context) : undefined;
 				// As the extension's hook: no request after the switch is asked.
