@@ -28,6 +28,12 @@ import (
 // run the daemon will not export (not a training task, INVALID, no capture,
 // a held-out batch without --heldout, D115)
 // is named and passed over.
+//
+// With --anti-loop (D158) every run, a held-out task's included, is
+// exported only up to the onset of its first loop (the daemon cuts it; a
+// run without a loop is passed over), each manifest line says
+// "use": "anti_loop", and the directory is marked ANTI_LOOP_ONLY: an
+// anti-loop export and a training export never share a directory.
 func exportConversations(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("export conversations", flag.ExitOnError)
 	_, dial := addClient(fs)
@@ -35,11 +41,15 @@ func exportConversations(ctx context.Context, args []string) error {
 	fs.Var(&batches, "batch", "a batch, or a pattern such as 'k-pool-*'; give it several times for several")
 	fs.Var(&runs, "run", "a run; give it several times for several")
 	heldout := fs.Bool("heldout", false, "also export runs of batches started held out (D115), for an eval set; never into a training set")
+	antiLoop := fs.Bool("anti-loop", false, "export every run, a held-out task's too, only up to the onset of its first loop, for anti-loop training (D158); the directory is marked anti-loop only")
 	out := fs.String("out", "", "the directory to write into; a run already in it is refused")
 	dry := fs.Bool("dry-run", false, "say which runs would be exported; write nothing")
 	parse(fs, args)
 	if *out == "" || len(batches)+len(runs) == 0 {
-		return errors.New("usage: automaticum export conversations --out <dir> [--batch B|GLOB ...] [--run R ...] [--heldout]")
+		return errors.New("usage: automaticum export conversations --out <dir> [--batch B|GLOB ...] [--run R ...] [--heldout] [--anti-loop]")
+	}
+	if err := checkExportDir(*out, *antiLoop); err != nil {
+		return err
 	}
 	c, err := dial()
 	if err != nil {
@@ -57,7 +67,11 @@ func exportConversations(ctx context.Context, args []string) error {
 			if _, err := os.Stat(filepath.Join(*out, "conversations", id)); err == nil {
 				fmt.Printf("%s: already in %s, would be refused\n", id, *out)
 			} else {
-				fmt.Printf("%s: would be exported (a run of a task not for training, INVALID or without a capture is passed over then)\n", id)
+				if *antiLoop {
+					fmt.Printf("%s: would be exported up to its first loop's onset (a run without a loop, INVALID or without a capture is passed over then)\n", id)
+				} else {
+					fmt.Printf("%s: would be exported (a run of a task not for training, INVALID or without a capture is passed over then)\n", id)
+				}
 			}
 		}
 		return nil
@@ -70,6 +84,11 @@ func exportConversations(ctx context.Context, args []string) error {
 	for _, id := range ids {
 		if _, err := os.Stat(filepath.Join(*out, "conversations", id)); err == nil {
 			return fmt.Errorf("run %s is already in %s; export into another directory", id, *out)
+		}
+	}
+	if *antiLoop {
+		if err := os.WriteFile(filepath.Join(*out, antiLoopMarker), []byte(antiLoopNote), 0o644); err != nil {
+			return err
 		}
 	}
 	spansF, err := os.OpenFile(filepath.Join(*out, "loop_spans.jsonl"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
@@ -97,7 +116,7 @@ func exportConversations(ctx context.Context, args []string) error {
 		}
 	}
 	for _, id := range ids {
-		x, err := exportRun(ctx, c, id, *out, *heldout)
+		x, err := exportRun(ctx, c, id, *out, *heldout, *antiLoop)
 		if err != nil {
 			var refused *refusal
 			if errors.As(err, &refused) {
@@ -145,6 +164,37 @@ type manifestLine struct {
 	Spans         int    `json:"spans"`
 	// Meta is the run's whole record, under the export's directory.
 	Meta string `json:"meta"`
+	// Use is "anti_loop" in an anti-loop export (D158), HeldOutTask a run
+	// whose task is not a training task.
+	Use         string `json:"use,omitempty"`
+	HeldOutTask bool   `json:"held_out_task,omitempty"`
+}
+
+// antiLoopMarker is the file that marks a directory as an anti-loop
+// export (D158).
+const antiLoopMarker = "ANTI_LOOP_ONLY"
+
+const antiLoopNote = `This export is for anti-loop training only (D158). Each run stops at the
+onset of its first loop: the requests up to that turn, and that turn's
+response cut where the loop's first repeat starts. Runs of held-out tasks
+(not training = true) are here: never use their text as a target beyond
+the loop's onset, and never mix this directory into a training export.
+`
+
+// checkExportDir refuses to mix an anti-loop export (D158) with a
+// training export in one directory.
+func checkExportDir(out string, antiLoop bool) error {
+	_, err := os.Stat(filepath.Join(out, antiLoopMarker))
+	marked := err == nil
+	_, err = os.Stat(filepath.Join(out, "manifest.jsonl"))
+	used := err == nil
+	switch {
+	case antiLoop && used && !marked:
+		return fmt.Errorf("%s holds a training export; an anti-loop export goes into a directory of its own (D158)", out)
+	case !antiLoop && marked:
+		return fmt.Errorf("%s is an anti-loop export (%s); export training runs into another directory (D158)", out, antiLoopMarker)
+	}
+	return nil
 }
 
 // exportRuns is the finished runs the flags name, oldest first.
@@ -195,10 +245,17 @@ type exported struct {
 // exportRun writes one run's capture into <out>/conversations/<run>/,
 // through <out>/.partial/<run>, renamed only once the whole tar has
 // arrived, and its record into <out>/runs/<run>.json.
-func exportRun(ctx context.Context, c *client, id, out string, heldout bool) (*exported, error) {
-	q := ""
+func exportRun(ctx context.Context, c *client, id, out string, heldout, antiLoop bool) (*exported, error) {
+	v := url.Values{}
 	if heldout {
-		q = "?heldout=1"
+		v.Set("heldout", "1")
+	}
+	if antiLoop {
+		v.Set("anti_loop", "1")
+	}
+	q := ""
+	if len(v) > 0 {
+		q = "?" + v.Encode()
 	}
 	resp, err := c.open(ctx, "GET", "/v1/runs/"+url.PathEscape(id)+"/export"+q, nil)
 	if err != nil {
@@ -249,6 +306,10 @@ func exportRun(ctx context.Context, c *client, id, out string, heldout bool) (*e
 	if err := json.Unmarshal(meta, &m); err != nil {
 		return nil, fmt.Errorf("the export has no readable meta.json: %v", err)
 	}
+	// A daemon before D158 ignores anti_loop and hands out the whole run.
+	if antiLoop && m.Use != daemon.UseAntiLoop {
+		return nil, errors.New("the daemon handed out the whole run: it does not know --anti-loop (D158); update it")
+	}
 	// A span names its request by its path under conversations/.
 	var lines bytes.Buffer
 	n := 0
@@ -271,8 +332,8 @@ func exportRun(ctx context.Context, c *client, id, out string, heldout bool) (*e
 	if err := os.Rename(part, dir); err != nil {
 		return nil, err
 	}
-	v := m.Run
-	return &exported{spans: lines.Bytes(), manifest: manifestLine{Run: v.ID, Batch: v.Batch, Task: v.Task, TaskVersion: v.TaskVersion,
-		Verdict: v.Verdict, VerdictReason: v.VerdictReason, AgentEnd: v.AgentEnd, ArmID: v.ArmID, Model: v.Model, Endpoint: v.Endpoint,
-		SDKRelease: v.SDKRelease, Requests: len(m.Requests), Spans: n, Meta: "runs/" + id + ".json"}}, nil
+	r := m.Run
+	return &exported{spans: lines.Bytes(), manifest: manifestLine{Run: r.ID, Batch: r.Batch, Task: r.Task, TaskVersion: r.TaskVersion,
+		Verdict: r.Verdict, VerdictReason: r.VerdictReason, AgentEnd: r.AgentEnd, ArmID: r.ArmID, Model: r.Model, Endpoint: r.Endpoint,
+		SDKRelease: r.SDKRelease, Requests: len(m.Requests), Spans: n, Meta: "runs/" + id + ".json", Use: m.Use, HeldOutTask: m.HeldOutTask}}, nil
 }

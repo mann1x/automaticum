@@ -251,3 +251,11 @@
 |------|--------|---------|---------|--------|
 | 10:09 | deployed 34b9ab9 on blackswan-2 (backup_models go #2346): swap, repo, 11 images (protocol 12), stub smoke PASS 20261120-090654-60dfcd with family lookup asked qwen35moe->qwen; both manic_miner oracles 13/13 x3; one SKIPPED smoke (stub stopped early, id parse) | blackswan-2 | ok | ~6k |
 | 10:55 | SDK 4.100.288 pinned (349 pkgs, bundle 94c2e926, sdk add+verify offline; 283..288: disabled templates, sed quiet note, read receipts move, swallow cut form, sampling defaults UI-only) + D157 prompt template report/check/disabled (protocol 13, analysis 24): template.mjs checkTemplate/toolCoverage/disabled, arm.go disabled, ingest template.go, run show line; bug-098 stale manic_miner task test | runner/, internal/, docs/specs | tests ok | ~40k |
+
+## Session: 2026-11-20 11:39
+| 10:46 | 3c283b4 pushed and deployed on blackswan-2: swap (prev 34b9ab9, unit .pre-3c283b4), repo, sdk add+verify 4.100.288 (94c2e926), stub-sdk-4.100.288 arm, 11 images (protocol 13); host base.toml left at 4.100.283 (38/65 arms follow it); smoke 20261120-094318-d17668 PASS: prompt template line, prompt_template + prompt_template_incomplete (restore_file, task_progress uncovered), analysis 24 | blackswan-2 | ok | ~8k |
+| 13:33 | mail #2354 (backup_models): owner keeps the lane host's config/arms/base.toml at 4.100.283 until told otherwise; matches the 3c283b4 deploy, nothing to do | - | noted | ~1k |
+| 16:20 | Created internal/export/antiloop.go | — | ~1577 |
+| 16:21 | Created internal/export/antiloop_test.go | — | ~1451 |
+| 16:27 | D158 built (not committed): export conversations --anti-loop / ?anti_loop=1, held-out task runs cut at their first loop's onset, record without oracle output, ANTI_LOOP_ONLY dir; make test ok; real-capture probe on 2 blackswan-2 runs: 105 spans cut, 0 wrong | internal/export/antiloop.go, internal/daemon/export.go, cmd/automaticum/export_cmds.go, specs 060/066/090/110, decisions r62 | built | ~40k |
+| 16:28 | Session end: 2 writes across 2 files (antiloop.go, antiloop_test.go) | 0 reads | ~3243 tok |

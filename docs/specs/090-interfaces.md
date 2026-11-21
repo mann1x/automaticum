@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.35, 2026-11-12.
+**Status:** draft 0.36, 2026-11-21.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -266,6 +266,18 @@ batch held out, kept by batch in the daemon's control file like
 (`GET /v1/runs/{id}/export?heldout=1`; without it the route answers 403). A
 held-out task stays unexportable even then. A training export never names
 `--heldout`.
+
+**Decided by the owner (2026-11-21, D158):** `export conversations
+--anti-loop` exports a run of any task, a held-out task's included, only up
+to the onset of its first loop, for anti-loop training
+(`GET /v1/runs/{id}/export?anti_loop=1`; a run without a loop span is
+refused with 422). The requests up to the onset's turn and that turn's
+response, cut where the loop's first repeat starts, are all it holds;
+`meta.json` says `use: anti_loop` and `held_out_task`, and its run record
+has no verdict reason, metrics, findings, blobs or provenance. The
+directory is marked `ANTI_LOOP_ONLY`; a training export refuses it and an
+anti-loop export refuses a training export's directory. A held-out batch
+(D115) still needs `--heldout`.
 
 The API is HTTP and JSON on a loopback address. Everything that changes
 something needs the token; reading from the same host does not. A run in

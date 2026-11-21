@@ -1,6 +1,6 @@
 # 110 — Acceptance and roadmap
 
-**Status:** draft 0.26, 2026-11-02. The milestone order in §3 was approved by the owner
+**Status:** draft 0.27, 2026-11-21. The milestone order in §3 was approved by the owner
 on 2026-10-12. Milestone 1 has been carried out: the store, the importer and
 the spike's measurements exist (080 §7.4, 100 §7), and the owner has decided
 the questions it raised (D46 to D51). Milestone 2 was planned and approved on
@@ -441,6 +441,19 @@ plugin's, the same for every host.
   of training tasks, unless the export is given `--heldout`: the eval
   rollouts of bm-889 run 2 on the training tasks never enter a training set
   by a pattern such as `k-*`.
+  **Decided by the owner (2026-11-21, D158):** `--anti-loop` exports a run
+  of any task, `custom/manic_miner` and `tbench2/*` included, only up to
+  its first loop's onset: the first span in the order the model wrote it
+  (earliest response; reasoning, then reply, then tool calls; earliest
+  start). The requests up to that turn are handed out as they are, that
+  turn's response cut in its stream where the span starts (for a repeated
+  call, before the call's first delta), with no finish reason, usage or
+  `[DONE]` and `complete: false`; nothing later. `spans.jsonl` holds the
+  onset alone, its `start` and `end` both at the cut, and `meta.json` the
+  onset as placed, `use: anti_loop`, `held_out_task`, and the run record
+  without anything the oracle wrote. Each manifest line carries `use` and
+  `held_out_task`. A command whose daemon hands back a run without
+  `use: anti_loop` (a build before D158) stops: it never keeps a whole run.
   **Decided by the owner (2026-10-27, D117):** a tool call that repeats the
   one before it is a span too, for the loops a model makes in its calls
   rather than its text (bm-889 run 3: identical editor calls in every gate

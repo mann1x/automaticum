@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"path"
@@ -34,7 +35,18 @@ type ExportMeta struct {
 	// Capped are the requests whose response ended at its output limit
 	// (finish reason "length").
 	Capped []string `json:"capped"`
+	// Use is "anti_loop" for an anti-loop export (D158): the run up to its
+	// first loop's onset only, its record without anything the oracle
+	// wrote. Onset is that span as the detectors placed it; the export's
+	// spans.jsonl holds it cut, start and end both at the cut.
+	Use   string       `json:"use,omitempty"`
+	Onset *export.Line `json:"onset,omitempty"`
+	// HeldOutTask says the run's task is not a training task.
+	HeldOutTask bool `json:"held_out_task,omitempty"`
 }
+
+// UseAntiLoop is ExportMeta.Use for an anti-loop export (D158).
+const UseAntiLoop = "anti_loop"
 
 const exportOffsets = "Unicode code points in the field's text, the stream's deltas joined; end not included"
 
@@ -44,6 +56,13 @@ const exportOffsets = "Unicode code points in the field's text, the stream's del
 // INVALID and was started with its requests captured is exported; a
 // held-out task such as manic_miner never is, and a run of a batch started
 // held out (D115) only when the request says ?heldout=1.
+//
+// With ?anti_loop=1 (D158) any task's run is exported, held-out tasks
+// included, but only up to the onset of its first loop: the requests up to
+// that turn, that turn's response cut where the loop starts, and the run's
+// record without its verdict reason, metrics, findings, blobs or
+// provenance, anything the oracle wrote. A run with no loop span is not
+// exported then.
 func (d *Daemon) handleExport(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := r.PathValue("id")
@@ -63,8 +82,9 @@ func (d *Daemon) handleExport(w http.ResponseWriter, r *http.Request) {
 	}
 	// A private training task exports too: its runs stay on the owner's
 	// hosts, in the directory the export writes (D137).
-	if !t.Training {
-		fail(w, http.StatusForbidden, "run %s is of %s/%s, which is not a training task (D105); only training runs are exported (D102)", id, t.Suite, t.ID)
+	antiLoop := r.URL.Query().Get("anti_loop") == "1"
+	if !t.Training && !antiLoop {
+		fail(w, http.StatusForbidden, "run %s is of %s/%s, which is not a training task (D105); only training runs are exported (D102), or its loop's onset with --anti-loop (D158)", id, t.Suite, t.ID)
 		return
 	}
 	d.mu.Lock()
@@ -152,7 +172,39 @@ func (d *Daemon) handleExport(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	sort.Strings(capped)
-	meta, _ := json.MarshalIndent(ExportMeta{Run: v, Requests: stems, Cuts: cuts, Offsets: exportOffsets, DetectVersion: detect.Version, Capped: capped}, "", "  ")
+	m := ExportMeta{Run: v, Requests: stems, Cuts: cuts, Offsets: exportOffsets, DetectVersion: detect.Version, Capped: capped}
+	keep := func(string) bool { return true }
+	var onset export.Line
+	if antiLoop {
+		var ok bool
+		if onset, ok = export.Onset(spans); !ok {
+			fail(w, http.StatusUnprocessableEntity, "run %s has no loop span: an anti-loop export holds only a loop's onset (D158)", id)
+			return
+		}
+		m = antiLoopMeta(m, onset, !t.Training)
+		spans = []export.Line{m.cutLine()}
+		keep = func(stem string) bool { return stem <= onset.Request }
+	}
+	// The onset's response, cut, before anything is written: a cut that
+	// fails exports nothing.
+	var cutResp []byte
+	if antiLoop {
+		err = d.eachCaptured(r, capture, func(name string, b []byte) error {
+			if name == onset.Request+".response.json" {
+				cutResp, err = export.CutResponse(b, onset)
+				return err
+			}
+			return nil
+		})
+		if err == nil && cutResp == nil {
+			err = fmt.Errorf("the capture has no %s.response.json", onset.Request)
+		}
+		if err != nil {
+			fail(w, http.StatusUnprocessableEntity, "run %s: the loop's onset cannot be cut: %v", id, err)
+			return
+		}
+	}
+	meta, _ := json.MarshalIndent(m, "", "  ")
 	var lines strings.Builder
 	enc := json.NewEncoder(&lines)
 	for _, s := range spans {
@@ -172,8 +224,22 @@ func (d *Daemon) handleExport(w http.ResponseWriter, r *http.Request) {
 	if add("meta.json", append(meta, '\n')) != nil || add("spans.jsonl", []byte(lines.String())) != nil {
 		return
 	}
-	// Then the capture itself, file for file.
-	if d.eachCaptured(r, capture, add) != nil {
+	// Then the capture itself, file for file; for an anti-loop export
+	// only the requests up to the onset, its response cut.
+	err = d.eachCaptured(r, capture, func(name string, b []byte) error {
+		stem, ok := strings.CutSuffix(name, ".response.json")
+		if !ok {
+			stem, ok = strings.CutSuffix(name, ".json")
+		}
+		if antiLoop && (!ok || !keep(stem)) {
+			return nil
+		}
+		if antiLoop && name == onset.Request+".response.json" {
+			b = cutResp
+		}
+		return add(name, b)
+	})
+	if err != nil {
 		return // the client sees a cut tar
 	}
 	tw.Close()
@@ -207,4 +273,46 @@ func (d *Daemon) eachCaptured(r *http.Request, ref *store.BlobRef, f func(name s
 			return err
 		}
 	}
+}
+
+// antiLoopMeta is an export's meta.json for an anti-loop export (D158):
+// the requests, cuts and capped responses up to the onset's turn, and the
+// run's record with only what names the run, its arm, model and sampler
+// and its verdict; nothing the oracle wrote (the verdict's reason,
+// findings, metrics), no blobs and no provenance.
+func antiLoopMeta(m ExportMeta, onset export.Line, heldOut bool) ExportMeta {
+	upTo := func(stems []string) []string {
+		out := []string{}
+		for _, s := range stems {
+			if s <= onset.Request {
+				out = append(out, s)
+			}
+		}
+		return out
+	}
+	cuts := []export.Cut{}
+	for _, c := range m.Cuts {
+		if c.Request != "" && c.Request <= onset.Request {
+			cuts = append(cuts, c)
+		}
+	}
+	v := m.Run
+	m.Run = RunView{ID: v.ID, State: v.State, Batch: v.Batch, Campaign: v.Campaign, Task: v.Task, TaskVersion: v.TaskVersion,
+		Arm: v.Arm, ArmID: v.ArmID, Verdict: v.Verdict, AgentEnd: v.AgentEnd, StartedAt: v.StartedAt, EndedAt: v.EndedAt,
+		Provider: v.Provider, Model: v.Model, Endpoint: v.Endpoint, Thinking: v.Thinking, SDKRelease: v.SDKRelease,
+		ResolvedArm: v.ResolvedArm, Settings: v.Settings}
+	m.Requests, m.Capped, m.Cuts = upTo(m.Requests), upTo(m.Capped), cuts
+	m.Use, m.Onset, m.HeldOutTask = UseAntiLoop, &onset, heldOut
+	return m
+}
+
+// cutLine is the onset as the cut response holds it: the field ends at
+// the span's start (for a repeated call, the call is not there).
+func (m ExportMeta) cutLine() export.Line {
+	l := *m.Onset
+	if _, ok := strings.CutPrefix(l.Field, "tool_calls["); ok {
+		l.Start = 0
+	}
+	l.End = l.Start
+	return l
 }

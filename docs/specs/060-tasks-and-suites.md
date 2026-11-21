@@ -1,6 +1,6 @@
 # 060 — Tasks, oracles and the suite interface
 
-**Status:** draft 0.17, 2026-11-12.
+**Status:** draft 0.18, 2026-11-21.
 
 ## 1. Scope
 
@@ -196,6 +196,13 @@ public one (`export conversations`, 090 §1): the export writes to a
 directory on the owner's host, so its text leaves no host. Only a task that
 is not a training task is refused. The rule above still holds: export never
 sends a private task's text to a cloud endpoint.
+
+**Decided by the owner (2026-11-21, D158):** a run of a task that is not a
+training task (`manic_miner`, `tbench2/*`) may still be exported for
+anti-loop training, cut at the onset of its first loop
+(`export conversations --anti-loop`, 090 §1, 110 §3.5). The task stays
+held out: no plain export takes it and nothing past the loop's onset
+leaves the daemon.
 
 **Decided by the owner (2026-10-23, D105):** the training pool of
 omnimergekit's recovery (the multi-language suite's tasks and converted

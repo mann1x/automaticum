@@ -1,11 +1,13 @@
 # 066 — Suite: Terminal-Bench 2.0 (`tbench2`)
 
-**Status:** draft 0.2, 2026-10-25.
+**Status:** draft 0.3, 2026-11-21.
 
 The held-out suite of long tasks the owner asked for on 2026-10-25 ("import as
 new external suite"), so that something other than `manic_miner` measures long
 work. It is never trained on: the suite is not a `train-*` suite, no task in it
-says `training = true` (D105), and the export refuses its runs (110 §3.5).
+says `training = true` (D105), and the export refuses its runs (110 §3.5),
+except a run cut at its first loop's onset for anti-loop training
+(`export conversations --anti-loop`, D158, 2026-11-21).
 
 ## 1. Source
 

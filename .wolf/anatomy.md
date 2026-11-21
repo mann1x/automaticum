@@ -132,6 +132,7 @@
 - `detect_cmds.go` — failTest (80 fields) (~8606 tok)
 - `exit_test.go` — TestExitOf (~153 tok)
 - `export_cmds.go` — result (100 fields); methods: Error (~2565 tok)
+- `export_cmds_test.go` — TestCheckExportDir: an anti-loop export and a training export never share a directory (D158) (~400 tok)
 - `image_cmds.go` — built (65 fields) (~1334 tok)
 - `main.go` — Command automaticum is the command line of automaticum. (~4379 tok)
 - `reload_cmds.go` (~1000 tok)
@@ -674,3 +675,8 @@
 ## runner/test/
 
 - `template.test.mjs` — An SDK build as 4.100.260 on exports it, and @cerebriline/shared: every (~1894 tok)
+
+## internal/export/
+
+- `antiloop.go` — Onset (a run's first loop span), CutResponse (a response's stream cut where it starts), D158 (~1577 tok)
+- `antiloop_test.go` — TestOnset, TestCutResponse (~1451 tok)
