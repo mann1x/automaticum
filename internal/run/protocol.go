@@ -15,7 +15,7 @@ import (
 
 // Protocol is the version of the contract between the harness and the
 // runner: the job file in, JSON lines out. See runner/PROTOCOL.md.
-const Protocol = 13
+const Protocol = 14
 
 // Paths inside the lane's container.
 const (
@@ -59,6 +59,10 @@ type Job struct {
 	// response the SDK sends and reads, under requests/ in Out (protocol
 	// 7, D104).
 	SaveModelRequests bool `json:"save_model_requests,omitempty"`
+	// Seed is the run's own sampler seed from its batch's seed list
+	// (protocol 14, D159), sent with every request whoever owns the
+	// sampler; nil sends none. It is not part of the arm.
+	Seed *int `json:"seed,omitempty"`
 }
 
 // JobEndpoint is the model server as the runner reaches it.

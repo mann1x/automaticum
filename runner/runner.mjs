@@ -16,7 +16,7 @@ import { mkdir, writeFile as writeFileAsync } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { BUNDLED_SKILLS_ON_BY_DEFAULT, buildConfig, compareResolved, derivedFromArm, unsupported } from "./session.mjs";
+import { BUNDLED_SKILLS_ON_BY_DEFAULT, buildConfig, compareResolved, derivedFromArm, runSeed, unsupported } from "./session.mjs";
 import { ACT_MODE_CONTINUATION_PROMPT, createSwitchToActModeTool, withSwitchTool } from "./plan.mjs";
 import { guardTrip, limitBreach, reasoningLimitAnswer, stopsOn } from "./guards.mjs";
 import { chromePath, mermaidPath } from "./browser.mjs";
@@ -26,7 +26,7 @@ import { privateTools } from "./tools.mjs";
 import { createUser } from "./user.mjs";
 import { createWire, describe } from "./wire.mjs";
 
-const PROTOCOL = 13;
+const PROTOCOL = 14;
 const SDK_PACKAGE = "@cerebriline/sdk";
 const EXIT = { completed: 0, error: 1, refused: 3, invalid: 4, wall_limit: 5, guard_stop: 6 };
 
@@ -275,6 +275,8 @@ async function main() {
 		model_family: template.family ?? null,
 		system_prompt_sha256: sha(firstPrompt),
 		system_prompt_bytes: Buffer.byteLength(firstPrompt),
+		// The run's own seed from the batch's seed list (D159), or null.
+		seed: runSeed(job) ?? null,
 		lsp: lsp
 			? {
 					tools: lspTools.map((t) => t.name),

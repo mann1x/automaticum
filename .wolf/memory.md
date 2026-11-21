@@ -259,3 +259,24 @@
 | 16:21 | Created internal/export/antiloop_test.go | — | ~1451 |
 | 16:27 | D158 built (not committed): export conversations --anti-loop / ?anti_loop=1, held-out task runs cut at their first loop's onset, record without oracle output, ANTI_LOOP_ONLY dir; make test ok; real-capture probe on 2 blackswan-2 runs: 105 spans cut, 0 wrong | internal/export/antiloop.go, internal/daemon/export.go, cmd/automaticum/export_cmds.go, specs 060/066/090/110, decisions r62 | built | ~40k |
 | 16:28 | Session end: 2 writes across 2 files (antiloop.go, antiloop_test.go) | 0 reads | ~3243 tok |
+
+## Session: 2026-11-21 16:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-21 16:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-21 16:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-21 16:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 16:46 | D159 built: batch seed list (run start --seeds, StartRequest.Seeds, ctl.Seeds, Job.seed protocol 14, runner sends seed whoever owns the sampler, provenance/run show, compare pairs by task+seed, basis fact); specs 020/040/070/090, PROTOCOL.md, decisions r63 | runner/session.mjs, internal/daemon/api.go, control.go, compare.go, basis.go, internal/run/, cmd/automaticum/client_cmds.go | tests ok | ~50k |

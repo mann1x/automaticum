@@ -1,6 +1,6 @@
 # 020 — The run record, verdicts and the basis
 
-**Status:** draft 0.20, 2026-11-12.
+**Status:** draft 0.21, 2026-11-21.
 
 Nothing in this file is optional. Each item is here because its absence
 invalidated or blinded a real campaign. A value is recorded **as probed or as
@@ -239,7 +239,7 @@ where they come from:
 | task | suite, task, version and the hash of its files |
 | scorer | the oracle and its image |
 | detectors | the analysis version a run was analysed with (metric `analysis.version`), and the detector versions it means, whether they found anything or not |
-| seed | the sampler's seed, or none set |
+| seed | the sampler's seed, or none set; for a run given one by its batch's seed list (D159), "per run, from the batch's seed list", the number in the run's record |
 
 In a mode C cell (065 §3.1) the caller's facts fill weights, quantization,
 imatrix, template, server, context, GPU and driver, each marked

@@ -187,8 +187,12 @@ func compareAs(ctx context.Context, args []string, name, split string) error {
 	for _, p := range v.Pairs {
 		fmt.Printf("  %s against %s, pass counts: Fisher's exact test, two-sided p = %.3f\n", letter(p.A), letter(p.B), p.PassP)
 		if q := p.Paired; q.Pairs > 0 {
-			fmt.Printf("  %s against %s, %d runs paired in the order they ran: %d passed only in %s, %d only in %s; McNemar's exact test, two-sided p = %.3f",
-				letter(p.A), letter(p.B), q.Pairs, q.OnlyA, letter(p.A), q.OnlyB, letter(p.B), q.P)
+			how := "in the order they ran"
+			if q.By == "seed" {
+				how = "by task and seed (the batch's seed list)"
+			}
+			fmt.Printf("  %s against %s, %d runs paired %s: %d passed only in %s, %d only in %s; McNemar's exact test, two-sided p = %.3f",
+				letter(p.A), letter(p.B), q.Pairs, how, q.OnlyA, letter(p.A), q.OnlyB, letter(p.B), q.P)
 			if q.Unpaired > 0 {
 				fmt.Printf("; %d runs without a partner", q.Unpaired)
 			}

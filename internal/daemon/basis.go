@@ -276,9 +276,14 @@ func basisOfRun(rec *store.Run, metrics map[string]float64) map[string]string {
 		Seed *int64 `json:"seed"`
 	}
 	json.Unmarshal(arm["sampler"], &sampler)
-	if sampler.Seed != nil {
+	switch {
+	case runSeed(rec.Provenance) != nil:
+		// Each run its own (D159): the group's fact is the list, the
+		// number is in the run's record, and compare pairs by it.
+		set("seed", "per run, from the batch's seed list", "")
+	case sampler.Seed != nil:
 		set("seed", fmt.Sprint(*sampler.Seed), "")
-	} else {
+	default:
 		set("seed", "none set", "")
 	}
 	return out

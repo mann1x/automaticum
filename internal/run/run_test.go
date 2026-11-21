@@ -623,6 +623,40 @@ func TestBatchLimitsOverride(t *testing.T) {
 	}
 }
 
+// A batch's seed list (D159) gives the run its own seed: written to the
+// job and recorded, not part of the arm; an arm with a seed of its own is
+// SKIPPED with one.
+func TestRunSeed(t *testing.T) {
+	w := newWorld(t)
+	seed := 7
+	w.req.Seed = &seed
+	w.engine.runner = func(_ context.Context, s docker.Spec, out io.Writer) (docker.Result, error) {
+		var job Job
+		data, err := os.ReadFile(filepath.Join(mountOf(s, containerJob), jobFile))
+		if err != nil || json.Unmarshal(data, &job) != nil || job.Seed == nil || *job.Seed != seed {
+			return docker.Result{}, fmt.Errorf("job: %v %+v", err, job)
+		}
+		io.WriteString(out, `{"k":"event","event":{}}`+"\n"+endLine(OutcomeCompleted, ""))
+		return docker.Result{}, nil
+	}
+	r, p := w.run(t, context.Background())
+	if strings.HasPrefix(r.VerdictReason, "job:") || r.Verdict == store.Skipped {
+		t.Fatalf("%s: %s", r.Verdict, r.VerdictReason)
+	}
+	if p.Seed == nil || *p.Seed != seed {
+		t.Errorf("recorded seed: %v", p.Seed)
+	}
+
+	w = newWorld(t)
+	own := 3
+	w.req.Seed = &seed
+	w.req.Arm.Sampler.Seed = &own
+	r, _ = w.run(t, context.Background())
+	if r.Verdict != store.Skipped || !strings.Contains(r.VerdictReason, "sampler.seed = 3") {
+		t.Fatalf("an arm with its own seed: %s: %s", r.Verdict, r.VerdictReason)
+	}
+}
+
 // A task that runs as root, sets its own limits and collects a directory
 // of the agent's container (D110, D111, D112).
 func TestRootLimitsCollect(t *testing.T) {

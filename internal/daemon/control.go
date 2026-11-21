@@ -40,6 +40,9 @@ type control struct {
 	// Heldout names the batches started held out (D115): their runs are
 	// exported only when the export asks for held-out runs by name.
 	Heldout map[string]bool `json:"heldout,omitempty"`
+	// Seeds are the runs' own sampler seeds from their batch's seed list
+	// (D159), by run; a retry keeps its run's.
+	Seeds map[string]int `json:"seeds,omitempty"`
 	// Limits are the batches' own limits (D107), in place of the arm's and
 	// the task's, for the runs that start after they are set.
 	Limits map[string]*run.Override `json:"limits,omitempty"`
@@ -86,7 +89,7 @@ type Quarantine struct {
 // loadControl reads the control file once. A missing file is an empty one.
 // It is called with d.mu held.
 func (d *Daemon) loadControl() {
-	d.ctl = control{Drained: map[string]time.Time{}, Held: map[string]time.Time{}, Retries: map[string]string{}, Canary: map[string]*CanaryRecord{}, Campaigns: map[string]*CampaignState{}, Cells: map[string]*CellSpec{}, Capture: map[string]bool{}, Heldout: map[string]bool{}, Limits: map[string]*run.Override{}, Quarantined: map[string]Quarantine{}, LaneHeld: map[string]time.Time{}, InfraStreak: map[string][]InfraEnd{}, Priority: map[string]int{}, StartedBy: map[string]string{}, Reserved: map[string]Reservation{}, CellBatches: map[string]string{}, Idem: map[string]*IdemEntry{}, Rescores: map[string]*RescoreJob{}, Cohorts: map[string]*Cohort{}}
+	d.ctl = control{Drained: map[string]time.Time{}, Held: map[string]time.Time{}, Retries: map[string]string{}, Canary: map[string]*CanaryRecord{}, Campaigns: map[string]*CampaignState{}, Cells: map[string]*CellSpec{}, Capture: map[string]bool{}, Heldout: map[string]bool{}, Seeds: map[string]int{}, Limits: map[string]*run.Override{}, Quarantined: map[string]Quarantine{}, LaneHeld: map[string]time.Time{}, InfraStreak: map[string][]InfraEnd{}, Priority: map[string]int{}, StartedBy: map[string]string{}, Reserved: map[string]Reservation{}, CellBatches: map[string]string{}, Idem: map[string]*IdemEntry{}, Rescores: map[string]*RescoreJob{}, Cohorts: map[string]*Cohort{}}
 	if d.ControlFile == "" {
 		return
 	}
@@ -123,6 +126,9 @@ func (d *Daemon) loadControl() {
 	}
 	if d.ctl.Heldout == nil {
 		d.ctl.Heldout = map[string]bool{}
+	}
+	if d.ctl.Seeds == nil {
+		d.ctl.Seeds = map[string]int{}
 	}
 	if d.ctl.Limits == nil {
 		d.ctl.Limits = map[string]*run.Override{}
@@ -879,6 +885,9 @@ func (d *Daemon) retry(ctx context.Context, id, batch string, verdicts []store.V
 	d.mu.Lock()
 	for nu, old := range out.Retries {
 		d.ctl.Retries[nu] = old
+		if s, ok := d.ctl.Seeds[old]; ok {
+			d.ctl.Seeds[nu] = s
+		}
 	}
 	err := d.saveControl()
 	d.mu.Unlock()

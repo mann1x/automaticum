@@ -1,4 +1,4 @@
-# The runner: protocol 13
+# The runner: protocol 14
 
 The runner is a Node program that runs **one** agent session for one run,
 inside the lane's container, and exits. The harness (`internal/run`) writes
@@ -147,6 +147,15 @@ first request and whenever the set of tools changes: `template`, `tools`
 template describes). A protocol 12 runner would ignore `disabled`, so the
 number went up.
 
+**Protocol 14 (2026-11-21):** the run's own seed (040 §6.1.5, D159). The
+job's `seed`, from the batch's seed list, is sent as the sampler's `seed`
+with every request: in the arm's sampling when the arm owns the sampler,
+and alone in the provider configuration when the model tag owns it (the
+harness refuses an arm that states `sampler.seed` of its own). The
+read-back compares it as part of the sampler either way, so an SDK that
+dropped it ends the run `invalid`. `prepared` gains `seed` (the number, or
+null). A protocol 13 runner would ignore the field, so the number went up.
+
 ## In
 
 `node runner.mjs /job/job.json`, with three mounts: `/job` (read-only),
@@ -164,6 +173,7 @@ number went up.
 | `workspace`, `out` | paths in the container |
 | `wall_s` | the wall limit the runner enforces by stopping the agent |
 | `sdk_release` | the version the installed SDK package must be: that of the build the arm names, mounted at the runner's `node_modules` (the image holds no SDK) |
+| `seed` | the run's own sampler seed from its batch's seed list (protocol 14, D159), sent with every request whoever owns the sampler; absent, none is sent |
 
 ## The hold
 
@@ -281,7 +291,7 @@ configuration; 4.100.266 does). From 4.100.266 the notice also says the
 limit that applied (`maxConsecutiveTrips`): one other than the arm's is a
 breach too.
 
-## What protocol 13 does not do
+## What protocol 14 does not do
 
 Escalation, sub-agents and teams, MCP approvals (no arm starts an MCP
 server), the rest of the emulation of editor behaviour (mentions,

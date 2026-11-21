@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"bytes"
 	"context"
 	"crypto/subtle"
 	"encoding/json"
@@ -123,6 +124,12 @@ type StartRequest struct {
 	// GET /v1/runs/{id}/export refuses them unless it is asked with
 	// ?heldout=1. Like the capture, it changes nothing that is sent.
 	Heldout bool `json:"heldout,omitempty"`
+	// Seeds is the batch's seed list (D159): the k-th run of every arm on
+	// every task is given Seeds[k] as its sampler seed, so the arms' runs
+	// pair by task and seed. Count is its length (a Count that differs is
+	// refused); no arm may state sampler.seed. Like the limits, it is no
+	// part of the arm.
+	Seeds []int `json:"seeds,omitempty"`
 	// Limits are the batch's own wall and idle limits (D107), in place of
 	// the arm's and the task's; they may lengthen a run.
 	Limits *run.Override `json:"limits,omitempty"`
@@ -168,6 +175,9 @@ type StartResponse struct {
 	// Warnings are what the preflight could not check: an endpoint that
 	// did not answer. The runs were queued all the same.
 	Warnings []string `json:"warnings,omitempty"`
+	// Seeds is the seed of each run, in the order they are queued, when
+	// the batch has a seed list (D159).
+	Seeds []int `json:"seeds,omitempty"`
 }
 
 // RunView is a run as the API shows it.
@@ -195,7 +205,9 @@ type RunView struct {
 	Endpoint      string    `json:"endpoint,omitempty"`
 	Thinking      string    `json:"thinking,omitempty"`
 	SDKRelease    string    `json:"sdk_release,omitempty"`
-	Imported      bool      `json:"imported,omitempty"`
+	// Seed is the run's own sampler seed from its batch's seed list (D159).
+	Seed     *int `json:"seed,omitempty"`
+	Imported bool `json:"imported,omitempty"`
 	// Paused says that the run was held at least once; the time held is
 	// not in its wall time (050 §4).
 	Paused bool `json:"paused,omitempty"`
@@ -307,7 +319,23 @@ func view(r *store.Run, full bool) RunView {
 	if full {
 		v.ResolvedArm, v.Provenance = r.Arm, r.Provenance
 	}
+	v.Seed = runSeed(r.Provenance)
 	return v
+}
+
+// runSeed is the seed a run was given by its batch's seed list (D159), as
+// its record says, or nil.
+func runSeed(provenance json.RawMessage) *int {
+	if !bytes.Contains(provenance, []byte(`"seed":`)) {
+		return nil
+	}
+	var p struct {
+		Seed *int `json:"seed"`
+	}
+	if json.Unmarshal(provenance, &p) != nil {
+		return nil
+	}
+	return p.Seed
 }
 
 type apiError struct {
@@ -581,11 +609,32 @@ func (d *Daemon) handleStart(w http.ResponseWriter, r *http.Request) {
 	reply(w, code, resp)
 }
 
+// maxSeed is the largest seed a seed list may give: the range of a signed
+// 32-bit number, well below llama.cpp's 0xFFFFFFFF ("a random seed"), so
+// that no server reads a listed seed as "pick one".
+const maxSeed = 1<<31 - 1
+
 // start queues the runs a StartRequest asks for, or says what it would
 // queue. The status says how it went: 200 for a dry run or a repeated key,
 // 202 when runs were queued; with an error, what the error means.
 func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, int, error) {
 	var resp StartResponse
+	if len(req.Seeds) > 0 {
+		if req.Count != 0 && req.Count != len(req.Seeds) {
+			return resp, http.StatusBadRequest, fmt.Errorf("%d runs of each arm on each task but %d seeds: the seed list gives each round its seed (D159)", req.Count, len(req.Seeds))
+		}
+		req.Count = len(req.Seeds)
+		seen := map[int]bool{}
+		for _, s := range req.Seeds {
+			if s < 0 || s > maxSeed {
+				return resp, http.StatusBadRequest, fmt.Errorf("seed %d is not between 0 and %d", s, maxSeed)
+			}
+			if seen[s] {
+				return resp, http.StatusBadRequest, fmt.Errorf("seed %d is named twice", s)
+			}
+			seen[s] = true
+		}
+	}
 	if req.Count == 0 {
 		req.Count = 1
 	}
@@ -700,6 +749,9 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 		if _, twice := ids[name]; twice {
 			return resp, http.StatusBadRequest, fmt.Errorf("arm %s is named twice", name)
 		}
+		if len(req.Seeds) > 0 && a.Sampler.Seed != nil {
+			return resp, http.StatusUnprocessableEntity, fmt.Errorf("arm %s states sampler.seed = %d; a batch's seed list would replace it (D159)", name, *a.Sampler.Seed)
+		}
 		if arm == nil {
 			arm = a
 		}
@@ -789,21 +841,24 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 		resp.Order = order
 	}
 	// Each round of arms runs on each task in turn.
-	type slot struct{ arm, task string }
+	type slot struct {
+		arm, task string
+		round     int
+	}
 	var slots []slot
 	if req.Order == "blocks" {
 		for _, name := range names {
-			for range req.Count {
+			for k := range req.Count {
 				for _, t := range tks {
-					slots = append(slots, slot{name, t.Name()})
+					slots = append(slots, slot{name, t.Name(), k})
 				}
 			}
 		}
 	} else {
-		for range req.Count {
+		for k := range req.Count {
 			for _, t := range tks {
 				for _, name := range names {
-					slots = append(slots, slot{name, t.Name()})
+					slots = append(slots, slot{name, t.Name(), k})
 				}
 			}
 		}
@@ -836,6 +891,9 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 		}
 		items[i] = store.QueueItem{RunID: id, Batch: resp.Batch, Arm: slots[i].arm, Task: slots[i].task, Lane: l, EnqueuedAt: now}
 		resp.RunIDs = append(resp.RunIDs, id)
+		if len(req.Seeds) > 0 {
+			resp.Seeds = append(resp.Seeds, req.Seeds[slots[i].round])
+		}
 	}
 	if req.DryRun {
 		return resp, http.StatusOK, nil
@@ -854,7 +912,7 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 			return resp, http.StatusInternalServerError, err
 		}
 	}
-	if req.CaptureRequests || req.Heldout || !req.Limits.Empty() || req.Priority != 0 || req.Cohort != "" || req.Client != "" {
+	if req.CaptureRequests || req.Heldout || !req.Limits.Empty() || req.Priority != 0 || req.Cohort != "" || req.Client != "" || len(req.Seeds) > 0 {
 		// Kept with the control state, so a restarted daemon still knows.
 		d.mu.Lock()
 		if req.CaptureRequests {
@@ -862,6 +920,11 @@ func (d *Daemon) start(ctx context.Context, req StartRequest) (StartResponse, in
 		}
 		if req.Heldout {
 			d.ctl.Heldout[resp.Batch] = true
+		}
+		for i, id := range resp.RunIDs {
+			if len(resp.Seeds) > 0 {
+				d.ctl.Seeds[id] = resp.Seeds[i]
+			}
 		}
 		if !req.Limits.Empty() {
 			d.ctl.Limits[resp.Batch] = req.Limits

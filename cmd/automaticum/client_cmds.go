@@ -15,6 +15,7 @@ import (
 	"os/user"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -316,10 +317,23 @@ func runStart(ctx context.Context, args []string) error {
 	fs.BoolVar(&req.CaptureRequests, "capture-requests", false, "every run saves the model requests and responses as the SDK sent and read them (large; off by default)")
 	fs.IntVar(&req.Priority, "priority", 0, "the batch's priority: higher starts first; equal priorities keep the queue's order (D125)")
 	fs.BoolVar(&req.Heldout, "heldout", false, "the batch is held out: export conversations passes over its runs unless it is given --heldout (D115)")
+	seeds := fs.String("seeds", "", "the batch's seed list (D159), such as 1,2,3 or 1-10: the k-th run of every arm on every task gets the k-th seed, so the arms pair by task and seed in compare; -n is its length; no arm may state sampler.seed")
 	fs.BoolVar(&req.NoPreflight, "no-preflight", false, "queue without asking the endpoint first; by default a server that answers without the arm's model, or that the template, sampler or thinking gate refuses, refuses the batch before anything is queued")
 	limits := addLimits(fs)
 	if rest := parse(fs, args); len(rest) > 0 || len(arms) == 0 || len(tasks)+len(suites) == 0 {
-		return errors.New("usage: automaticum run start --arm <arm> [--arm <arm> ...] --task <task> [--task <task> ...] [--suite <suite> ...] [-n 5] [--order interleaved|blocks] [--lane <lane>] [--wall-s S] [--idle-s S]")
+		return errors.New("usage: automaticum run start --arm <arm> [--arm <arm> ...] --task <task> [--task <task> ...] [--suite <suite> ...] [-n 5 | --seeds 1-10] [--order interleaved|blocks] [--lane <lane>] [--wall-s S] [--idle-s S]")
+	}
+	if *seeds != "" {
+		var err error
+		if req.Seeds, err = parseSeeds(*seeds); err != nil {
+			return err
+		}
+		// -n left out is the list's length; one given must match it.
+		explicit := false
+		fs.Visit(func(f *flag.Flag) { explicit = explicit || f.Name == "n" })
+		if !explicit {
+			req.Count = 0
+		}
 	}
 	req.Arms, req.Tasks, req.Suites = arms, tasks, suites
 	req.Limits = limits()
@@ -364,12 +378,45 @@ func printStart(resp daemon.StartResponse, arms []string) {
 		}
 	}
 	for i, id := range resp.RunIDs {
+		line := id
 		if i < len(resp.Order) {
-			fmt.Printf("%s  %s\n", id, resp.Order[i])
-			continue
+			line += "  " + resp.Order[i]
 		}
-		fmt.Println(id)
+		if i < len(resp.Tasks) && len(resp.Images) > 0 {
+			line += "  " + resp.Tasks[i]
+		}
+		if i < len(resp.Seeds) {
+			line += fmt.Sprintf("  seed %d", resp.Seeds[i])
+		}
+		fmt.Println(line)
 	}
+}
+
+// parseSeeds reads a seed list (D159): numbers and ranges such as 3-7,
+// separated by commas, in the order given.
+func parseSeeds(s string) ([]int, error) {
+	var out []int
+	for _, part := range strings.Split(s, ",") {
+		part = strings.TrimSpace(part)
+		lo, hi, isRange := strings.Cut(part, "-")
+		a, err := strconv.Atoi(lo)
+		if err != nil {
+			return nil, fmt.Errorf("--seeds: %q is not a seed or a range such as 1-10", part)
+		}
+		b := a
+		if isRange {
+			if b, err = strconv.Atoi(hi); err != nil || b < a {
+				return nil, fmt.Errorf("--seeds: %q is not a range such as 1-10", part)
+			}
+		}
+		if b-a >= 1000 || len(out)+b-a+1 > 1000 {
+			return nil, fmt.Errorf("--seeds: more than 1000 seeds")
+		}
+		for v := a; v <= b; v++ {
+			out = append(out, v)
+		}
+	}
+	return out, nil
 }
 
 func runLs(ctx context.Context, args []string) error {
@@ -499,6 +546,9 @@ func runShow(ctx context.Context, args []string) error {
 	line("endpoint", r.Endpoint)
 	line("model", strings.TrimSpace(r.Provider+" "+r.Model))
 	line("thinking", r.Thinking)
+	if r.Seed != nil {
+		line("seed", fmt.Sprintf("%d, from the batch's seed list (D159)", *r.Seed))
+	}
 	if r.SDKRelease != "" {
 		line("SDK release", r.SDKRelease)
 	} else if r.State == "finished" && !r.Imported {

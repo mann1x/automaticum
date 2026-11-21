@@ -1,6 +1,6 @@
 # 040 — The runner
 
-**Status:** draft 1.23, 2026-11-20. Facts about the SDK in this file were read
+**Status:** draft 1.24, 2026-11-21. Facts about the SDK in this file were read
 from the Cerebriline source at release 4.100.247 and were not verified by
 running it. The parity table in §6 was checked row by row by the Cerebriline
 session on 2026-10-13 against its main branch (release 4.100.249 plus requests
@@ -504,6 +504,26 @@ missing something". Protocol 13:
   `prompt_template_incomplete` and the `prompt_template.*` metrics (070 §2).
   The check reports; it refuses nothing, as the SDK's warnings refuse
   nothing (a missing `{{CLINE_RULES}}` is appended by the SDK).
+
+#### 6.1.5 The run's own seed
+
+**Decided by the owner (2026-11-21, D159):** "I want to test 2 quants against each one. can i set, as an example, 2 arms with 10 runs with each a list of 10 seeds? so each pair is tested with the same seed?" A batch may carry a
+seed list (`run start --seeds 1-10`, 090 §1): the k-th run of every arm on
+every task is given the k-th seed. The job carries it as `seed`
+(protocol 14), and the runner sends it as the sampler's `seed` with every
+request, whoever owns the sampler: in the arm's sampling, or alone in the
+provider configuration when the model tag owns it. It is read back with
+the sampler, so a session that lost it is `invalid`. The seed is the
+run's, not the arm's: the arm's identity is unchanged, the run's record
+has it (`seed` in its provenance, `run show`'s `seed` line), the basis
+fact `seed` of such a run is "per run, from the batch's seed list", and a
+retry keeps its run's seed. An arm that states `sampler.seed` is refused
+when the batch is queued, and skipped if it gains one before its run
+starts. `compare` pairs two arms' runs by task and seed when every run of
+both has one (070 §6). What a seed pairs is the sampler's random draws:
+two quants given the same seed pick the same token where their
+distributions are close, until their texts first differ; after that the
+runs are as unpaired as any two.
 
 ### 6.2 The scripted user
 

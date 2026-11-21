@@ -41,6 +41,11 @@ export function unsupported(arm) {
  * buildConfig returns { config, localRuntime, toolPolicies } for
  * ClineCore.start, from the job alone.
  */
+/** runSeed is the run's own seed from the batch's seed list (D159), or undefined. */
+export function runSeed(job) {
+	return Number.isInteger(job.seed) ? job.seed : undefined;
+}
+
 export function buildConfig(job, { systemPrompt, fetch, onConfigResolved, onReasoningLoopLimitReached }) {
 	const arm = job.arm;
 	const config = {
@@ -120,14 +125,21 @@ export function buildConfig(job, { systemPrompt, fetch, onConfigResolved, onReas
 	const history = {};
 	if (arm.thinking.reasoning_history !== undefined) history.reasoningHistory = arm.thinking.reasoning_history;
 	if (arm.thinking.reasoning_inline !== undefined) history.reasoningInline = arm.thinking.reasoning_inline;
+	// The run's own seed (protocol 14, D159): the batch's seed list gives
+	// each run one, sent with every request whoever owns the sampler; the
+	// harness refuses an arm that states a seed of its own.
+	const seed = runSeed(job);
 	if (arm.sampler.owner === "arm") {
 		const sampling = {};
 		for (const [from, to] of Object.entries(SAMPLER_FIELDS)) {
 			if (arm.sampler[from] !== undefined) sampling[to] = arm.sampler[from];
 		}
+		if (seed !== undefined) sampling.seed = seed;
 		// The SDK drops a provider configuration whose provider is not the
 		// session's own.
 		config.providerConfig = { providerId: arm.model.provider, modelId: arm.model.model, sampling, ...history };
+	} else if (seed !== undefined) {
+		config.providerConfig = { providerId: arm.model.provider, modelId: arm.model.model, sampling: { seed }, ...history };
 	} else if (Object.keys(history).length > 0) {
 		config.providerConfig = { providerId: arm.model.provider, modelId: arm.model.model, ...history };
 	}
@@ -196,8 +208,12 @@ export function compareResolved(job, config, resolved, { wroteGlobalSettings = f
 		}
 	}
 	const sampling = Object.fromEntries(Object.entries(resolved.sampling ?? {}).filter(([, v]) => v !== undefined));
+	const seed = runSeed(job);
 	if (arm.sampler.owner === "arm") {
 		differ("sampler", config.providerConfig.sampling, sampling);
+	} else if (seed !== undefined) {
+		// The model tag owns the sampler; the run's seed alone is sent.
+		differ("sampler", { seed }, sampling);
 	} else if (Object.keys(sampling).length > 0) {
 		out.push(`the sampler is owned by the model tag, but the session has ${show(sampling)}`);
 	}

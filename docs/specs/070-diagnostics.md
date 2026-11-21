@@ -1,6 +1,6 @@
 # 070 — Diagnostics: metrics, detectors, statistics
 
-**Status:** draft 0.42, 2026-11-20.
+**Status:** draft 0.43, 2026-11-21.
 
 ## 1. The rule: no custom script
 
@@ -1118,6 +1118,10 @@ run of each arm in turn (`--order blocks` for all of one, then the next).
 started. Each pair on one task has McNemar's exact test with its two
 discordant counts, the i-th counted run of one arm paired with the i-th of
 the other in the order they ran, and the runs left without a partner.
+**Decided by the owner (2026-11-21, D159):** when every counted run of
+both groups was given a seed by its batch's seed list (040 §6.1.5), each
+task and seed once, the runs are paired by task and seed instead; the
+pair says which (`by`: `seed` or `order`), and `compare` prints it.
 **Decided by the owner (2026-11-01, O39):** "how many more runs to tell
 these two arms apart", the power of a null result and the jitter band's
 "not distinguishable" are not adopted: each needs a significance level,

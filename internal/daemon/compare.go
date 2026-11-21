@@ -92,6 +92,9 @@ type CompareGroup struct {
 	values map[string][]float64
 	bases  []map[string]string
 	passed map[string]bool // by run, for the streaks
+	// seedKey is each run's task and seed (D159), for the runs given a
+	// seed by their batch's seed list.
+	seedKey map[string]string
 	// Streaks are the longest runs of PASS and of anything else, in the
 	// order the runs started (070 §6).
 	Streaks Streaks `json:"streaks"`
@@ -183,9 +186,10 @@ type ComparePair struct {
 	Differs []string `json:"differs"`
 	// PassP is Fisher's exact test of the two pass counts, two-sided.
 	PassP float64 `json:"pass_p"`
-	// Paired is McNemar's test over the runs of the two groups paired in
-	// the order they ran (070 §6): the i-th counted run of one with the
-	// i-th of the other.
+	// Paired is McNemar's test over the runs of the two groups paired by
+	// task and seed when every run of both was given one by a seed list
+	// (D159), else in the order they ran (070 §6): the i-th counted run
+	// of one with the i-th of the other.
 	Paired  Paired                `json:"paired"`
 	Metrics map[string]stats.Rank `json:"metrics"`
 	// Cap is the cap asymmetry between the two arms (070 §5).
@@ -312,6 +316,9 @@ func counter(name string) bool {
 // pairs, the discordant ones each way, McNemar's exact p, and the runs left
 // without a partner.
 type Paired struct {
+	// By is how the runs were paired: "seed" (task and seed, D159) or
+	// "order".
+	By       string  `json:"by"`
 	Pairs    int     `json:"pairs"`
 	OnlyA    int     `json:"only_a"`
 	OnlyB    int     `json:"only_b"`
@@ -320,11 +327,34 @@ type Paired struct {
 }
 
 func paired(a, b *CompareGroup) Paired {
+	if bySeed(a) && bySeed(b) {
+		keyed := map[string]string{} // b's run by key
+		for _, id := range b.Runs {
+			keyed[b.seedKey[id]] = id
+		}
+		p := Paired{By: "seed"}
+		for _, ia := range a.Runs {
+			ib, ok := keyed[a.seedKey[ia]]
+			if !ok {
+				continue
+			}
+			p.Pairs++
+			switch pa, pb := a.passed[ia], b.passed[ib]; {
+			case pa && !pb:
+				p.OnlyA++
+			case pb && !pa:
+				p.OnlyB++
+			}
+		}
+		p.Unpaired = len(a.Runs) + len(b.Runs) - 2*p.Pairs
+		p.P = stats.McNemar(p.OnlyA, p.OnlyB)
+		return p
+	}
 	ra, rb := append([]string(nil), a.Runs...), append([]string(nil), b.Runs...)
 	sort.Strings(ra)
 	sort.Strings(rb)
 	n := min(len(ra), len(rb))
-	p := Paired{Pairs: n, Unpaired: len(ra) + len(rb) - 2*n}
+	p := Paired{By: "order", Pairs: n, Unpaired: len(ra) + len(rb) - 2*n}
 	for i := 0; i < n; i++ {
 		switch pa, pb := a.passed[ra[i]], b.passed[rb[i]]; {
 		case pa && !pb:
@@ -335,6 +365,23 @@ func paired(a, b *CompareGroup) Paired {
 	}
 	p.P = stats.McNemar(p.OnlyA, p.OnlyB)
 	return p
+}
+
+// bySeed says every counted run of a group was given a seed by its
+// batch's seed list, each task and seed once (D159).
+func bySeed(g *CompareGroup) bool {
+	if len(g.Runs) == 0 || len(g.seedKey) < len(g.Runs) {
+		return false
+	}
+	seen := map[string]bool{}
+	for _, id := range g.Runs {
+		k, ok := g.seedKey[id]
+		if !ok || seen[k] {
+			return false
+		}
+		seen[k] = true
+	}
+	return true
 }
 
 // Streaks are a group's longest runs of passes and of failures (any
@@ -621,6 +668,12 @@ func (d *Daemon) compareView(ctx context.Context, batches []string, leave map[st
 				g.passed = map[string]bool{}
 			}
 			g.passed[run.ID] = run.Verdict == store.Pass
+			if s := runSeed(run.Provenance); s != nil {
+				if g.seedKey == nil {
+					g.seedKey = map[string]string{}
+				}
+				g.seedKey[run.ID] = fmt.Sprintf("%s/%s seed %d", run.Suite, run.TaskID, *s)
+			}
 			if run.Verdict == store.Pass {
 				g.Pass++
 			}

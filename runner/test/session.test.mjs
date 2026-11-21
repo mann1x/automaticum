@@ -186,3 +186,29 @@ test("the reasoning-loop limit: the arm's when stated, the SDK's when left out; 
 	assert.deepEqual(build(stub()).config.execution.reasoningLoopDetection, {});
 	assert.equal("onReasoningLoopLimitReached" in build(stub()).config, false);
 });
+
+test("the run's own seed from the batch's seed list is sent whoever owns the sampler (protocol 14, D159)", () => {
+	const arm = stub();
+	arm.sampler = { owner: "arm", temperature: 0.8 };
+	const job = { ...jobOf(arm), seed: 7 };
+	const own = buildConfig(job, { systemPrompt: "SP", fetch: () => {}, onConfigResolved: () => {} }).config;
+	assert.deepEqual(own.providerConfig.sampling, { temperature: 0.8, seed: 7 });
+	assert.deepEqual(compareResolved(job, own, reportOf(own)), []);
+	// Seed 0 is a seed.
+	const zero = buildConfig({ ...job, seed: 0 }, { systemPrompt: "SP", fetch: () => {}, onConfigResolved: () => {} }).config;
+	assert.equal(zero.providerConfig.sampling.seed, 0);
+
+	// The model tag owns the sampler: the seed alone is sent, and read back.
+	arm.sampler = { owner: "tag" };
+	const tag = buildConfig(job, { systemPrompt: "SP", fetch: () => {}, onConfigResolved: () => {} }).config;
+	assert.deepEqual(tag.providerConfig, { providerId: arm.model.provider, modelId: arm.model.model, sampling: { seed: 7 } });
+	assert.deepEqual(compareResolved(job, tag, reportOf(tag)), []);
+	const lost = compareResolved(job, tag, { ...reportOf(tag), sampling: {} });
+	assert.equal(lost.length, 1);
+	assert.ok(lost[0].startsWith("sampler"), lost[0]);
+	const more = compareResolved(job, tag, { ...reportOf(tag), sampling: { seed: 7, temperature: 0.2 } });
+	assert.equal(more.length, 1);
+
+	// No seed in the job: nothing is sent, as before.
+	assert.equal(build(arm).config.providerConfig, undefined);
+});

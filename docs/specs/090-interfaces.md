@@ -1,6 +1,6 @@
 # 090 — Interfaces
 
-**Status:** draft 0.36, 2026-11-21.
+**Status:** draft 0.37, 2026-11-21.
 
 One API, four ways in. Everything the dashboard can do, the CLI and the API can
 do; everything the CLI can do, the MCP server can do.
@@ -25,7 +25,7 @@ automaticum task ls|show|verify|build
 automaticum task pin [--write] <suite/task | dir>   # build the artefacts, print or write the sha256s to pin (D140)
 automaticum oracle verify <task>
 automaticum suite import tbench2 -source D -commit C <task>...   # Terminal-Bench 2.0 tasks as tbench2, kept only if the oracle holds (066 §3)
-automaticum run start --arm A --task T [--task T2 ...] [--suite S ...] [-n 5] [--lane L] [--wall-s S] [--idle-s S] [--capture-requests] [--no-preflight]
+automaticum run start --arm A --task T [--task T2 ...] [--suite S ...] [-n 5 | --seeds 1-10] [--lane L] [--wall-s S] [--idle-s S] [--capture-requests] [--no-preflight]
 automaticum run server --url U --task T --extends A [-n 10] [--wall-s S] [--model TAG] [--sampler tag|arm] [--lane L] [--idempotency-key K] [--yes] [--dry-run]   # a server already running, in one step (030 §4.3, D146)
 automaticum run ls|show|tail|stop|abort|pause|resume|retry|invalidate|identify|held
 automaticum compare <batch> [<batch> ...] [--group AXIS] [--pool-versions] [--all]
@@ -266,6 +266,15 @@ batch held out, kept by batch in the daemon's control file like
 (`GET /v1/runs/{id}/export?heldout=1`; without it the route answers 403). A
 held-out task stays unexportable even then. A training export never names
 `--heldout`.
+
+**Decided by the owner (2026-11-21, D159):** `run start --seeds 1,2,3`
+or `--seeds 1-10` (`seeds` in `POST /v1/runs`) gives the batch a seed
+list: the k-th run of every arm on every task gets the k-th seed (040
+§6.1.5), in either order; `-n` left out is the list's length, one given
+must equal it; a seed named twice, outside 0 to 2147483647, or an arm that
+states `sampler.seed` is refused. The answer lists each run's seed
+(`seeds`), the daemon keeps them by run in its control file, a retry keeps
+its run's, `run show` prints it and `compare` pairs by it (070 §6).
 
 **Decided by the owner (2026-11-21, D158):** `export conversations
 --anti-loop` exports a run of any task, a held-out task's included, only up

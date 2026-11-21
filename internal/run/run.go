@@ -193,6 +193,10 @@ type Request struct {
 	// Limits is the batch's own limits, in place of the arm's and the
 	// task's (D107); nil, or a field left out, keeps the lower of the two.
 	Limits *Override
+	// Seed is the run's own sampler seed from its batch's seed list
+	// (D159); nil sends none. An arm that states a seed of its own is
+	// SKIPPED with one.
+	Seed *int
 }
 
 // Override is a batch's limits, set when it starts or while it is queued.
@@ -267,7 +271,10 @@ func armCount(a *config.Arm, key string, v *int) count {
 type provenance struct {
 	Automaticum string `json:"automaticum"`
 	Protocol    int    `json:"runner_protocol"`
-	SDK         struct {
+	// Seed is the run's own sampler seed from its batch's seed list
+	// (D159), not part of the arm.
+	Seed *int `json:"seed,omitempty"`
+	SDK  struct {
 		Release       string `json:"release"`        // as the runner found it installed
 		PackageSHA256 string `json:"package_sha256"` //
 		Named         string `json:"named"`          // the build the arm names
@@ -463,6 +470,11 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		facts.Skipped = skip
 		return finish()
 	}
+	p.Seed = req.Seed
+	if req.Seed != nil && a.Sampler.Seed != nil {
+		facts.Skipped = fmt.Sprintf("the batch gives the run seed %d, but arm %s states sampler.seed = %d (D159)", *req.Seed, a.Name, *a.Sampler.Seed)
+		return finish()
+	}
 	r.Harness = a.Harness.SDKRelease
 	user, caps := task.As(t.RunAs, lane.User)
 	nanoCPUs, memory := task.Resources(t.Limits, lane.CPUs, int64(lane.MemoryGB*(1<<30)))
@@ -540,7 +552,7 @@ func (x *Executor) Execute(ctx context.Context, req Request) (*store.Run, error)
 		Endpoint: JobEndpoint{Name: endpoint.Name, Kind: endpoint.Kind, BaseURL: endpoint.BaseURL, APIKey: key},
 		Prompt:   t.Prompt, DefaultAnswer: t.DefaultAnswer, User: t.User, WorkspaceGit: t.Workspace.GitRepo(),
 		Workspace: containerWorkspace, Out: containerOut, WallS: wall.Seconds, SDKRelease: p.SDK.Version,
-		SaveModelRequests: req.CaptureRequests,
+		SaveModelRequests: req.CaptureRequests, Seed: req.Seed,
 	}
 	jb, _ := json.Marshal(job)
 	if err := os.WriteFile(filepath.Join(jobDir, jobFile), jb, 0o644); err != nil {
